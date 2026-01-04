@@ -1,16 +1,15 @@
-export default function WeatherCard() {
+import { Card } from './Card';
+
+export function WeatherCard() {
   return (
-    <div className="rounded-2xl border bg-white p-5 shadow-sm">
-      <div className="text-sm text-gray-500">Weather</div>
-      <div className="mt-2 text-xl font-semibold">București</div>
-
-      <div className="mt-3 text-sm text-gray-600">
-        (placeholder) În pasul următor conectăm un provider meteo și afișăm temperatură + icon.
+    <Card
+      title="🌤️ Vremea"
+      subtitle="(placeholder) — următorul pas: Open-Meteo / weather API"
+      right={<span className="text-xs text-gray-500">București</span>}
+    >
+      <div className="text-sm text-gray-700">
+        În pasul următor conectăm un API gratuit și afișăm temperatura + icon + forecast scurt.
       </div>
-
-      <div className="mt-4 inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">
-        Not connected
-      </div>
-    </div>
+    </Card>
   );
 }

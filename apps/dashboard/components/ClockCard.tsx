@@ -1,32 +1,40 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Card } from './Card';
 
-function formatDateTime(d: Date) {
-  return new Intl.DateTimeFormat('ro-RO', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).format(d);
-}
-
-export default function ClockCard() {
+export function ClockCard() {
   const [now, setNow] = useState<Date>(() => new Date());
 
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
   }, []);
 
+  const time = useMemo(
+    () =>
+      now.toLocaleTimeString('ro-RO', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }),
+    [now]
+  );
+
+  const date = useMemo(
+    () =>
+      now.toLocaleDateString('ro-RO', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+    [now]
+  );
+
   return (
-    <div className="rounded-2xl border bg-white p-5 shadow-sm">
-      <div className="text-sm text-gray-500">Clock</div>
-      <div className="mt-2 text-xl font-semibold">{formatDateTime(now)}</div>
-      <div className="mt-2 text-xs text-gray-500">Timezone: Europe/Bucharest</div>
-    </div>
+    <Card title="🕒 Ora & data" subtitle={date} right={<span className="text-xs text-gray-500">local</span>}>
+      <div className="text-4xl font-bold tracking-tight">{time}</div>
+    </Card>
   );
 }
