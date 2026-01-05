@@ -1,6 +1,9 @@
 import { ClockCard } from '../components/ClockCard';
 import { WeatherCard } from '../components/WeatherCard';
 import { LogoutButton } from '../components/LogoutButton';
+import { AppCards } from '@/components/AppCards';
+
+
 
 export default function HomePage() {
   return (
@@ -19,6 +22,7 @@ export default function HomePage() {
         <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <ClockCard />
           <WeatherCard />
+          <AppCards />
         </section>
 
         <section className="mt-6 rounded-2xl border bg-white p-4 shadow-sm">
