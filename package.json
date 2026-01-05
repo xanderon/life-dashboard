@@ -9,5 +9,8 @@
     "dev": "npm --workspace apps/dashboard run dev",
     "build": "npm --workspace apps/dashboard run build",
     "lint": "npm --workspace apps/dashboard run lint"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.89.0"
   }
 }
