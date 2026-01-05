@@ -14,7 +14,9 @@ export function AppCards() {
       const { data, error } = await supabase
         .from('apps')
         .select('id,slug,name,description,status,last_run_at,github_url,chat_url,home_url')
+        .order('position', { ascending: true })
         .order('created_at', { ascending: true });
+
 
       if (!alive) return;
       if (error) {
@@ -30,14 +32,15 @@ export function AppCards() {
     };
   }, []);
 
-  if (err) {
-    return (
-      <section className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
-        <div className="text-lg font-semibold">🧩 Apps</div>
-        <div className="mt-2 text-sm text-red-700">Eroare DB: {err}</div>
-      </section>
-    );
-  }
+if (err) {
+  return (
+    <section className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
+      <div className="text-sm font-semibold text-red-800">Eroare DB</div>
+      <div className="mt-1 text-sm text-red-700">{err}</div>
+    </section>
+  );
+}
+
 
   if (apps === null) {
     // un card placeholder cât se încarcă, ca să nu fie “gol”
