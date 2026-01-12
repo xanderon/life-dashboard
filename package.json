@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "npm --workspace apps/dashboard run dev",
     "build": "npm --workspace apps/dashboard run build",
-    "lint": "npm --workspace apps/dashboard run lint"
+    "lint": "npm --workspace apps/dashboard run lint",
+    "termo:check": "node --env-file .env scripts/termo_alert.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0"
