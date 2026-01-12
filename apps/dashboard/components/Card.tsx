@@ -12,11 +12,11 @@ export function Card({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-base font-semibold">{title}</div>
-          {subtitle ? <div className="mt-1 text-sm text-gray-600">{subtitle}</div> : null}
+          {subtitle ? <div className="mt-1 text-sm text-[var(--muted)]">{subtitle}</div> : null}
         </div>
         {right ? <div className="shrink-0">{right}</div> : null}
       </div>

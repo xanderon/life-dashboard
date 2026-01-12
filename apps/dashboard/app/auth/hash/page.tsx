@@ -44,9 +44,9 @@ export default function AuthHashCallback() {
   }, [router]);
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6">
-      <div className="mx-auto max-w-md rounded-2xl border bg-white p-6 shadow-sm">
-        <div className="text-sm text-gray-600">Finalizing login…</div>
+    <main className="min-h-screen bg-[var(--bg)] p-6">
+      <div className="mx-auto max-w-md rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-sm">
+        <div className="text-sm text-[var(--muted)]">Finalizing login…</div>
       </div>
     </main>
   );

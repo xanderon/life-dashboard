@@ -26,14 +26,14 @@ export function AppCard({ app }: { app: AppRow }) {
     ? app.description.split('|').map((part) => part.trim()).filter(Boolean)
     : [];
   const termoBadgeClass = (part: string) => {
-    if (part.includes('ETA')) return 'border-slate-200 bg-slate-50 text-slate-700';
-    if (part.includes('DA')) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    if (part.includes('NU')) return 'border-rose-200 bg-rose-50 text-rose-700';
-    return 'border-slate-200 bg-slate-50 text-slate-700';
+    if (part.includes('ETA')) return 'border-slate-500/30 bg-slate-500/10 text-slate-200';
+    if (part.includes('DA')) return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200';
+    if (part.includes('NU')) return 'border-rose-500/30 bg-rose-500/10 text-rose-200';
+    return 'border-slate-500/30 bg-slate-500/10 text-slate-200';
   };
 
   return (
-    <section className="rounded-2xl border bg-white p-5 shadow-sm">
+    <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -52,47 +52,47 @@ export function AppCard({ app }: { app: AppRow }) {
               ))}
             </div>
           ) : (
-            <div className="mt-2 text-sm text-gray-700">
+            <div className="mt-2 text-sm text-[var(--muted)]">
               {app.description}
             </div>
           )}
         </div>
 
         <div className="text-right">
-          <div className="text-[11px] uppercase tracking-wide text-gray-400">Last run</div>
-          <div className="mt-1 text-xs font-semibold text-gray-600">{fmt(app.last_run_at)}</div>
+          <div className="text-[11px] uppercase tracking-wide text-[var(--muted)]">Last run</div>
+          <div className="mt-1 text-xs font-semibold text-[var(--muted)]">{fmt(app.last_run_at)}</div>
         </div>
       </div>
 
-      <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
+      <div className="mt-4 flex items-center gap-2 text-xs text-[var(--muted)]">
         <span className="font-semibold">Quick</span>
-        <Link className="rounded-md px-1.5 py-1 hover:bg-gray-50" href={`/apps/${app.slug}`} aria-label="Details">
+        <Link className="rounded-md px-1.5 py-1 hover:bg-[var(--panel-2)]" href={`/apps/${app.slug}`} aria-label="Details">
           🔎
         </Link>
         {app.home_url ? (
-          <a className="rounded-md px-1.5 py-1 hover:bg-gray-50" href={app.home_url} target="_blank" rel="noreferrer" aria-label="Open UI">
+          <a className="rounded-md px-1.5 py-1 hover:bg-[var(--panel-2)]" href={app.home_url} target="_blank" rel="noreferrer" aria-label="Open UI">
             🚀
           </a>
         ) : (
-          <span className="rounded-md px-1.5 py-1 text-gray-300" aria-label="Open UI">
+          <span className="rounded-md px-1.5 py-1 text-[var(--muted)] opacity-50" aria-label="Open UI">
             🚀
           </span>
         )}
         {app.github_url ? (
-          <a className="rounded-md px-1.5 py-1 hover:bg-gray-50" href={app.github_url} target="_blank" rel="noreferrer" aria-label="GitHub">
+          <a className="rounded-md px-1.5 py-1 hover:bg-[var(--panel-2)]" href={app.github_url} target="_blank" rel="noreferrer" aria-label="GitHub">
             🧠
           </a>
         ) : (
-          <span className="rounded-md px-1.5 py-1 text-gray-300" aria-label="GitHub">
+          <span className="rounded-md px-1.5 py-1 text-[var(--muted)] opacity-50" aria-label="GitHub">
             🧠
           </span>
         )}
         {app.chat_url ? (
-          <a className="rounded-md px-1.5 py-1 hover:bg-gray-50" href={app.chat_url} target="_blank" rel="noreferrer" aria-label="Chat">
+          <a className="rounded-md px-1.5 py-1 hover:bg-[var(--panel-2)]" href={app.chat_url} target="_blank" rel="noreferrer" aria-label="Chat">
             💬
           </a>
         ) : (
-          <span className="rounded-md px-1.5 py-1 text-gray-300" aria-label="Chat">
+          <span className="rounded-md px-1.5 py-1 text-[var(--muted)] opacity-50" aria-label="Chat">
             💬
           </span>
         )}

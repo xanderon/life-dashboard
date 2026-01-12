@@ -5,9 +5,9 @@ export function WeatherCard() {
     <Card
       title="🌤️ Vremea"
       subtitle="(placeholder) — următorul pas: Open-Meteo / weather API"
-      right={<span className="text-xs text-gray-500">București</span>}
+      right={<span className="text-xs text-[var(--muted)]">București</span>}
     >
-      <div className="text-sm text-gray-700">
+      <div className="text-sm text-[var(--muted)]">
         În pasul următor conectăm un API gratuit și afișăm temperatura + icon + forecast scurt.
       </div>
     </Card>

@@ -11,13 +11,14 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_OWNER_ID = process.env.SUPABASE_OWNER_ID ?? null;
 
 const APP_SLUG = process.env.TERMO_APP_SLUG ?? 'termo-alert';
-const APP_NAME = process.env.TERMO_APP_NAME ?? '🚿 Termo alert';
+const APP_NAME = process.env.TERMO_APP_NAME ?? '♨️ Termo alert';
 const APP_DESCRIPTION =
   process.env.TERMO_APP_DESCRIPTION ??
   'Alerta apa calda / status Termo (placeholder).';
 const APP_GITHUB_URL = process.env.TERMO_GITHUB_URL ?? null;
 const APP_HOME_URL = process.env.TERMO_HOME_URL ?? '/termo';
 const APP_CHAT_URL = process.env.TERMO_CHAT_URL ?? null;
+const APP_POSITION = Number.parseInt(process.env.TERMO_APP_POSITION ?? '-10', 10);
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -116,6 +117,7 @@ async function getOrCreateApp(supabase) {
       github_url: APP_GITHUB_URL,
       chat_url: APP_CHAT_URL,
       home_url: APP_HOME_URL,
+      position: Number.isNaN(APP_POSITION) ? -10 : APP_POSITION,
     })
     .select('id,slug')
     .single();
@@ -214,6 +216,7 @@ async function main() {
         github_url: APP_GITHUB_URL,
         chat_url: APP_CHAT_URL,
         home_url: APP_HOME_URL,
+        position: Number.isNaN(APP_POSITION) ? -10 : APP_POSITION,
       })
       .eq('id', app.id);
 

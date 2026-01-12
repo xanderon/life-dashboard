@@ -33,7 +33,7 @@ export function ClockCard() {
   );
 
   return (
-    <Card title="🕒 Ora & data" subtitle={date} right={<span className="text-xs text-gray-500">local</span>}>
+    <Card title="🕒 Ora & data" subtitle={date} right={<span className="text-xs text-[var(--muted)]">local</span>}>
       <div className="text-4xl font-bold tracking-tight">{time}</div>
     </Card>
   );

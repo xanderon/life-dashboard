@@ -32,22 +32,22 @@ export function AppCards() {
     };
   }, []);
 
-if (err) {
-  return (
-    <section className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
-      <div className="text-sm font-semibold text-red-800">Eroare DB</div>
-      <div className="mt-1 text-sm text-red-700">{err}</div>
-    </section>
-  );
-}
+  if (err) {
+    return (
+      <section className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5 shadow-sm">
+        <div className="text-sm font-semibold text-rose-200">Eroare DB</div>
+        <div className="mt-1 text-sm text-rose-200/80">{err}</div>
+      </section>
+    );
+  }
 
 
   if (apps === null) {
     // un card placeholder cât se încarcă, ca să nu fie “gol”
     return (
-      <section className="rounded-2xl border bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
         <div className="text-lg font-semibold">🧩 Apps</div>
-        <div className="mt-2 text-sm text-gray-600">Loading…</div>
+        <div className="mt-2 text-sm text-[var(--muted)]">Loading…</div>
       </section>
     );
   }

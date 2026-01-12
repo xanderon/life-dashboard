@@ -82,22 +82,22 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6">
-      <div className="mx-auto max-w-md rounded-2xl border bg-white p-6 shadow-sm">
+    <main className="min-h-screen bg-[var(--bg)] p-6">
+      <div className="mx-auto max-w-md rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-sm">
         <h1 className="text-2xl font-bold">Login</h1>
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-sm text-[var(--muted)]">
           Dashboard-ul este privat. Loghează-te ca să continui.
         </p>
 
-        <div className="mt-3 rounded-xl bg-gray-100 p-3 text-xs text-gray-700">
+        <div className="mt-3 rounded-xl bg-[var(--panel-2)] p-3 text-xs text-[var(--muted)]">
           Origin curent: <span className="font-mono">{origin || '(loading...)'}</span>
         </div>
 
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-[var(--muted)]">
             Email
             <input
-              className="mt-1 w-full rounded-xl border px-3 py-2"
+              className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
@@ -108,7 +108,7 @@ export default function LoginPage() {
           </label>
 
           <button
-            className="w-full rounded-xl bg-black px-4 py-2 text-white disabled:opacity-50"
+            className="w-full rounded-xl bg-[var(--accent)] px-4 py-2 text-black disabled:opacity-50"
             disabled={status === 'sending' || !email}
             type="submit"
           >
@@ -116,11 +116,11 @@ export default function LoginPage() {
           </button>
 
           {message ? (
-            <div className="rounded-xl bg-gray-100 p-3 text-sm text-gray-700">{message}</div>
+            <div className="rounded-xl bg-[var(--panel-2)] p-3 text-sm text-[var(--muted)]">{message}</div>
           ) : null}
 
           {status === 'error' ? (
-            <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
+            <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-200">
               Eroare. Dacă ai dat click pe un link mai vechi, cere un magic link nou și folosește-l pe
               cel mai recent.
             </div>

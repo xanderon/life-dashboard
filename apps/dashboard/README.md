@@ -91,6 +91,7 @@ Optional:
 - `TERMO_BLOCK` (default: `T21B`)
 - `TERMO_HOME_URL` (default: `/termo`)
 - `TERMO_GITHUB_URL`, `TERMO_CHAT_URL`
+- `TERMO_APP_POSITION` (default: `-10`, ca sa fie primul in lista)
 
 ### Programare la 5 minute
 
