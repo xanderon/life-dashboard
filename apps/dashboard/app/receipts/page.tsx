@@ -927,10 +927,11 @@ export default function ReceiptsPage() {
                       </div>
                       <div className="flex items-center gap-2 text-[var(--muted)]">
                         {(() => {
-                          const itemsTotal = items.reduce(
-                            (sum, item) => sum + (Number(item.paid_amount) || 0),
-                            0
-                          );
+                          const itemsTotal = items.reduce((sum, item) => {
+                            const paid = Number(item.paid_amount) || 0;
+                            const disc = Number(item.discount) || 0;
+                            return sum + (paid - disc);
+                          }, 0);
                           const receiptTotal = Number(selected?.total_amount || 0);
                           if (!items.length) return null;
                           if (Math.abs(itemsTotal - receiptTotal) < 0.01) {
@@ -942,7 +943,11 @@ export default function ReceiptsPage() {
                           Total items:{" "}
                           <span className="font-semibold text-[var(--text)]">
                             {items
-                              .reduce((sum, item) => sum + (Number(item.paid_amount) || 0), 0)
+                              .reduce((sum, item) => {
+                                const paid = Number(item.paid_amount) || 0;
+                                const disc = Number(item.discount) || 0;
+                                return sum + (paid - disc);
+                              }, 0)
                               .toFixed(2)}{" "}
                             {selected?.currency ?? "RON"}
                           </span>
