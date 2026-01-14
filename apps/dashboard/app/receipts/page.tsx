@@ -933,7 +933,8 @@ export default function ReceiptsPage() {
                             return sum + (paid - disc);
                           }, 0);
                           const sgrCharge = Number(selected?.sgr_bottle_charge || 0);
-                          const itemsTotal = itemsSubtotal + sgrCharge;
+                          const sgrRecovered = Number(selected?.sgr_recovered_amount || 0);
+                          const itemsTotal = itemsSubtotal + sgrCharge - sgrRecovered;
                           const receiptTotal = Number(selected?.total_amount || 0);
                           if (!items.length) return null;
                           if (Math.abs(itemsTotal - receiptTotal) < 0.01) {
@@ -949,7 +950,9 @@ export default function ReceiptsPage() {
                                 const paid = Number(item.paid_amount) || 0;
                                 const disc = Number(item.discount) || 0;
                                 return sum + (paid - disc);
-                              }, 0) + Number(selected?.sgr_bottle_charge || 0)
+                              }, 0) +
+                              Number(selected?.sgr_bottle_charge || 0) -
+                              Number(selected?.sgr_recovered_amount || 0)
                             ).toFixed(2)}{" "}
                             {selected?.currency ?? "RON"}
                           </span>
