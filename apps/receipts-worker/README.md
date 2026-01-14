@@ -128,3 +128,86 @@ Set table names with:
 RECEIPTS_TABLE=receipts
 RECEIPT_ITEMS_TABLE=receipt_items
 ```
+
+### Schema (recommended)
+
+Minimal columns used by the worker and the dashboard UI.
+
+`receipts`:
+
+```sql
+create table if not exists public.receipts (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null,
+  store text not null,
+  receipt_date timestamptz not null,
+  currency text not null default 'RON',
+  total_amount numeric not null default 0,
+  discount_total numeric not null default 0,
+  sgr_bottle_charge numeric not null default 0,
+  sgr_recovered_amount numeric not null default 0,
+  merchant_name text,
+  merchant_city text,
+  merchant_cif text,
+  processing_status text not null default 'ok',
+  processing_warnings jsonb not null default '[]'::jsonb,
+  source_file_name text,
+  source_rel_path text,
+  source_hash text not null,
+  schema_version int not null default 3,
+  created_at timestamptz not null default now()
+);
+create index if not exists receipts_owner_store_idx on public.receipts (owner_id, store);
+create index if not exists receipts_owner_date_idx on public.receipts (owner_id, receipt_date desc);
+create unique index if not exists receipts_owner_source_idx on public.receipts (owner_id, store, source_hash);
+```
+
+`receipt_items`:
+
+```sql
+create table if not exists public.receipt_items (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null,
+  receipt_id uuid not null references public.receipts(id) on delete cascade,
+  name text,
+  quantity numeric,
+  unit text,
+  unit_price numeric,
+  paid_amount numeric,
+  discount numeric not null default 0,
+  needs_review boolean not null default false,
+  meta jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+create index if not exists receipt_items_owner_idx on public.receipt_items (owner_id);
+create index if not exists receipt_items_receipt_idx on public.receipt_items (receipt_id);
+```
+
+RLS policy (simplu, per user):
+
+```sql
+alter table public.receipts enable row level security;
+alter table public.receipt_items enable row level security;
+
+create policy "receipts_rw" on public.receipts
+  for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+create policy "receipt_items_rw" on public.receipt_items
+  for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+```
+
+### Dashboard viewer
+
+UI-ul din `apps/dashboard/app/receipts/page.tsx` face:
+
+- listă bonuri cu filter by `store`
+- editor pentru câmpurile din `receipts`
+- editor pentru `receipt_items`
+
+Pentru cardul din dashboard, creează un app în tabela `apps`:
+
+```
+slug = "receipts"
+name = "🧾 Receipts"
+home_url = "/receipts"
+```

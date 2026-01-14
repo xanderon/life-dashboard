@@ -20,8 +20,24 @@ function fmt(ts: string | null) {
   return new Date(ts).toLocaleString('ro-RO');
 }
 
-export function AppCard({ app }: { app: AppRow }) {
+type ReceiptsSummary = {
+  count: number;
+  totalYear: number;
+  totalMonth: number;
+  totalPrevMonth: number;
+  hasPrevMonth: boolean;
+  currency: string;
+} | null;
+
+export function AppCard({
+  app,
+  receiptsSummary,
+}: {
+  app: AppRow;
+  receiptsSummary?: ReceiptsSummary;
+}) {
   const isTermo = app.slug === 'termo-alert';
+  const isReceipts = app.slug === 'receipts';
   const termoParts = isTermo
     ? app.description.split('|').map((part) => part.trim()).filter(Boolean)
     : [];
@@ -40,7 +56,30 @@ export function AppCard({ app }: { app: AppRow }) {
             <div className="truncate text-lg font-semibold">{app.name}</div>
             <StatusPill status={app.status} />
           </div>
-          {isTermo ? (
+          {isReceipts && receiptsSummary ? (
+            <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2">
+                <div className="text-[10px] uppercase text-[var(--muted)]">Total an curent</div>
+                <div className="mt-1 text-base font-semibold">
+                  {receiptsSummary.totalYear.toFixed(2)} {receiptsSummary.currency}
+                </div>
+              </div>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2">
+                <div className="text-[10px] uppercase text-[var(--muted)]">Total luna curenta</div>
+                <div className="mt-1 text-base font-semibold">
+                  {receiptsSummary.totalMonth.toFixed(2)} {receiptsSummary.currency}
+                </div>
+              </div>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2">
+                <div className="text-[10px] uppercase text-[var(--muted)]">Luna trecuta</div>
+                <div className="mt-1 text-base font-semibold">
+                  {receiptsSummary.hasPrevMonth
+                    ? `${receiptsSummary.totalPrevMonth.toFixed(2)} ${receiptsSummary.currency}`
+                    : '—'}
+                </div>
+              </div>
+            </div>
+          ) : isTermo ? (
             <div className="mt-3 flex flex-wrap gap-2 text-sm">
               {termoParts.map((part) => (
                 <span
