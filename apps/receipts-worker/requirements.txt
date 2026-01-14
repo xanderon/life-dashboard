@@ -1,0 +1,7 @@
+Pillow
+pyobjc-framework-Quartz
+pyobjc-framework-Vision
+python-dotenv
+supabase
+tenacity
+pydantic<2
