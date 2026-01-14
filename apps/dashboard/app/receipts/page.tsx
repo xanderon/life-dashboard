@@ -944,14 +944,13 @@ export default function ReceiptsPage() {
                         <span>
                           Total items:{" "}
                           <span className="font-semibold text-[var(--text)]">
-                            {items
-                              .reduce((sum, item) => {
+                            {(
+                              items.reduce((sum, item) => {
                                 const paid = Number(item.paid_amount) || 0;
                                 const disc = Number(item.discount) || 0;
                                 return sum + (paid - disc);
-                              }, 0)
-                              + Number(selected?.sgr_bottle_charge || 0)
-                              .toFixed(2)}{" "}
+                              }, 0) + Number(selected?.sgr_bottle_charge || 0)
+                            ).toFixed(2)}{" "}
                             {selected?.currency ?? "RON"}
                           </span>
                         </span>
