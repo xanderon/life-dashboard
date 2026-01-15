@@ -626,12 +626,6 @@ export default function ReceiptsPage() {
                       <div className="mt-1 text-xs text-[var(--muted)]">
                         {fmtDate(r.receipt_date)}
                       </div>
-                      <div className="mt-1 text-xs text-[var(--text)]/90">
-                        {r.merchant_name ?? '—'}
-                      </div>
-                      {r.merchant_city ? (
-                        <div className="text-[11px] text-[var(--muted)]">{r.merchant_city}</div>
-                      ) : null}
                     </div>
                     <div className="ml-auto text-right">
                       <div className="text-[10px] uppercase tracking-wide text-[var(--muted)]">
