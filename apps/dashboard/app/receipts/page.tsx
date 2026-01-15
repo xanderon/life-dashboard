@@ -600,14 +600,22 @@ export default function ReceiptsPage() {
           ) : null}
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[0.3fr_1.7fr]">
+        <div
+          className={`mt-4 grid grid-cols-1 gap-4 ${
+            selected ? 'lg:grid-cols-[0.3fr_1.7fr]' : ''
+          }`}
+        >
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm">
             <div className="text-base font-semibold">Bonuri</div>
-            <div className="mt-2 space-y-2">
+            <div
+              className={`mt-2 ${
+                selected ? 'space-y-2' : 'grid gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+              }`}
+            >
               {receipts.map((r) => (
                 <button
                   key={r.id}
-                  className={`w-full rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-2 text-left transition hover:bg-[#1b4a45] ${
+                  className={`w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-1 text-left text-[11px] leading-tight transition hover:bg-[#1b4a45] ${
                     selected?.id === r.id
                       ? 'border-white bg-[#1f504a] ring-2 ring-white/90'
                       : ''
@@ -623,15 +631,15 @@ export default function ReceiptsPage() {
                       <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                         {r.store}
                       </div>
-                      <div className="mt-1 text-xs text-[var(--muted)]">
+                      <div className="mt-0.5 text-[10px] text-[var(--muted)]">
                         {fmtDate(r.receipt_date)}
                       </div>
                     </div>
                     <div className="ml-auto text-right">
-                      <div className="text-[10px] uppercase tracking-wide text-[var(--muted)]">
+                      <div className="text-[9px] uppercase tracking-wide text-[var(--muted)]">
                         Total
                       </div>
-                      <div className="mt-0.5 text-lg font-semibold text-[var(--text)]">
+                      <div className="text-sm font-semibold text-[var(--text)]">
                         {r.total_amount?.toFixed(2)} {r.currency}
                       </div>
                     </div>
@@ -646,7 +654,8 @@ export default function ReceiptsPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm">
+          {selected ? (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="text-xl font-semibold">Editor bon</div>
               <div className="flex items-center gap-2">
@@ -684,19 +693,14 @@ export default function ReceiptsPage() {
               </div>
             </div>
 
-            {!selected ? (
-              <div className="mt-3 text-sm text-[var(--muted)]">
-                Selectează un bon din tabel.
-              </div>
-            ) : (
-              <div className="mt-2 text-sm">
-                <fieldset disabled={metaLocked} className={metaLocked ? 'opacity-60' : ''}>
-                  <div className="space-y-3">
-                    <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-2">
-                      <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                        Receipt details
-                      </div>
-                      <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-2 text-sm">
+              <fieldset disabled={metaLocked} className={metaLocked ? 'opacity-60' : ''}>
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                      Receipt details
+                    </div>
+                    <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
                     <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
                       <span className="shrink-0">Magazin</span>
                       <input
@@ -815,36 +819,36 @@ export default function ReceiptsPage() {
                         onChange={(e) => setSelected({ ...selected, source_rel_path: e.target.value })}
                       />
                     </label>
-                      </div>
                     </div>
-
-                    <div className="mt-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-lg font-semibold">Items</div>
-                    <button
-                      className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
-                      onClick={() => {
-                        if (!selected) return;
-                        setItems([
-                          ...items,
-                          {
-                            receipt_id: selected.id,
-                            name: '',
-                            quantity: 1,
-                            unit: 'BUC',
-                            unit_price: null,
-                            paid_amount: null,
-                            discount: 0,
-                            needs_review: false,
-                            meta: {},
-                          },
-                        ]);
-                      }}
-                    >
-                      + Add item
-                    </button>
                   </div>
-                  <div className="mt-2 space-y-2">
+
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-lg font-semibold">Items</div>
+                      <button
+                        className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
+                        onClick={() => {
+                          if (!selected) return;
+                          setItems([
+                            ...items,
+                            {
+                              receipt_id: selected.id,
+                              name: '',
+                              quantity: 1,
+                              unit: 'BUC',
+                              unit_price: null,
+                              paid_amount: null,
+                              discount: 0,
+                              needs_review: false,
+                              meta: {},
+                            },
+                          ]);
+                        }}
+                      >
+                        + Add item
+                      </button>
+                    </div>
+                    <div className="mt-2 space-y-2">
                     <datalist id="receipt-item-names">
                       {itemNameOptions.map((name) => (
                         <option key={name} value={name} />
@@ -1074,13 +1078,13 @@ export default function ReceiptsPage() {
                         + Add item
                       </button>
                     </div>
-                  </div>
                     </div>
                   </div>
-                </fieldset>
-              </div>
-            )}
+                </div>
+              </fieldset>
+            </div>
           </div>
+          ) : null}
         </div>
       </div>
     </main>
