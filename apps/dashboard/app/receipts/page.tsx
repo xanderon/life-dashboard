@@ -70,6 +70,7 @@ export default function ReceiptsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [showJsonImport, setShowJsonImport] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
+  const [metaLocked, setMetaLocked] = useState(true);
   const itemPrefillCache = useRef<Record<string, Partial<ReceiptItemRow>>>({});
   const prevSelectionRef = useRef<ReceiptRow | null>(null);
 
@@ -202,6 +203,7 @@ export default function ReceiptsPage() {
       };
     });
     setItems(nextItems);
+    setMetaLocked(false);
   }
 
   async function loadReceipts(activeStore: string) {
@@ -518,6 +520,7 @@ export default function ReceiptsPage() {
                   });
                   setItems([]);
                   setSuccess(null);
+                  setMetaLocked(false);
                 }}
               >
                 + Add receipt
@@ -612,6 +615,7 @@ export default function ReceiptsPage() {
                   onClick={() => {
                     setSelected(r);
                     setSuccess(null);
+                    setMetaLocked(true);
                   }}
                 >
                   <div className="flex items-start gap-3">
@@ -653,6 +657,13 @@ export default function ReceiptsPage() {
               <div className="text-xl font-semibold">Editor bon</div>
               <div className="flex items-center gap-2">
                 <button
+                  className="rounded-full border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-xs text-[var(--text)]"
+                  onClick={() => setMetaLocked((prev) => !prev)}
+                  type="button"
+                >
+                  {metaLocked ? '🔒 Unlock' : '✏️ Lock'}
+                </button>
+                <button
                   className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50"
                   disabled={!selected || saving}
                   onClick={saveChanges}
@@ -669,6 +680,7 @@ export default function ReceiptsPage() {
                     }
                     setItems([]);
                     setSuccess(null);
+                    setMetaLocked(true);
                   }}
                   title="Închide editor"
                   type="button"
@@ -683,9 +695,14 @@ export default function ReceiptsPage() {
                 Selectează un bon din tabel.
               </div>
             ) : (
-              <div className="mt-2 space-y-3 text-sm">
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-2">
-                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-2 text-sm">
+                <fieldset disabled={metaLocked} className={metaLocked ? 'opacity-60' : ''}>
+                  <div className="space-y-3">
+                    <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-2">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                        Receipt details
+                      </div>
+                      <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
                     <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
                       <span className="shrink-0">Magazin</span>
                       <input
@@ -804,10 +821,10 @@ export default function ReceiptsPage() {
                         onChange={(e) => setSelected({ ...selected, source_rel_path: e.target.value })}
                       />
                     </label>
-                  </div>
-                </div>
+                      </div>
+                    </div>
 
-                <div className="mt-3">
+                    <div className="mt-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-lg font-semibold">Items</div>
                     <button
@@ -1064,7 +1081,9 @@ export default function ReceiptsPage() {
                       </button>
                     </div>
                   </div>
-                </div>
+                    </div>
+                  </div>
+                </fieldset>
               </div>
             )}
           </div>
