@@ -68,6 +68,8 @@ export default function ReceiptsPage() {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showJsonImport, setShowJsonImport] = useState(false);
+  const [jsonInput, setJsonInput] = useState('');
   const itemPrefillCache = useRef<Record<string, Partial<ReceiptItemRow>>>({});
   const prevSelectionRef = useRef<ReceiptRow | null>(null);
 
@@ -151,6 +153,55 @@ export default function ReceiptsPage() {
 
     itemPrefillCache.current[cleaned] = suggested;
     updateItemAt(index, suggested);
+  }
+
+  function applyJsonToEditor(payload: any) {
+    const store = payload?.store ?? 'lidl';
+    const timestamp = payload?.timestamp ?? new Date().toISOString();
+    const merchant = payload?.merchant ?? {};
+    const processing = payload?.processing ?? {};
+    const source = payload?.source ?? {};
+
+    setSelected({
+      id: '',
+      owner_id: ownerId ?? '',
+      store,
+      receipt_date: timestamp,
+      currency: payload?.currency ?? 'RON',
+      total_amount: Number(payload?.total ?? 0),
+      discount_total: Number(payload?.discount_total ?? 0),
+      sgr_bottle_charge: Number(payload?.sgr_bottle_charge ?? 0),
+      sgr_recovered_amount: Number(payload?.sgr_recovered_amount ?? 0),
+      merchant_name: merchant?.name ?? '',
+      merchant_city: merchant?.city ?? '',
+      merchant_cif: merchant?.cif ?? '',
+      processing_status: processing?.status ?? 'ok',
+      processing_warnings: processing?.warnings ?? [],
+      source_file_name: source?.file_name ?? '',
+      source_rel_path: source?.rel_path ?? '',
+      source_hash: source?.source_hash ?? '',
+      schema_version: Number(payload?.schema_version ?? 3),
+    });
+
+    const parsedItems = Array.isArray(payload?.items) ? payload.items : [];
+    const nextItems: ReceiptItemRow[] = parsedItems.map((item: any) => {
+      const quantity = item?.quantity ?? 1;
+      const paidAmount = item?.paid_amount ?? null;
+      const unitPrice =
+        item?.unit_price ?? (paidAmount != null && quantity ? Number(paidAmount) / Number(quantity) : null);
+      return {
+      receipt_id: '',
+      name: item?.name ?? '',
+      quantity,
+      unit: item?.unit ?? 'BUC',
+      unit_price: unitPrice,
+      paid_amount: paidAmount,
+      discount: item?.discount ?? 0,
+      needs_review: Boolean(item?.needs_review),
+      meta: {},
+      };
+    });
+    setItems(nextItems);
   }
 
   async function loadReceipts(activeStore: string) {
@@ -339,10 +390,19 @@ export default function ReceiptsPage() {
       setSelected({ ...selected, id: receiptId, owner_id: ownerId });
     }
 
-    const existingItems = items.filter((item) => item.id);
-    const newItems = items.filter((item) => !item.id);
+    const existingItems = items.map((item) => {
+      if (item.unit_price == null && item.quantity && item.paid_amount != null) {
+        return {
+          ...item,
+          unit_price: Number(item.paid_amount) / Number(item.quantity),
+        };
+      }
+      return item;
+    });
+    const newItems = existingItems.filter((item) => !item.id);
+    const persistedItems = existingItems.filter((item) => item.id);
 
-    for (const item of existingItems) {
+    for (const item of persistedItems) {
       const { error: itemErr } = await supabase
         .from('receipt_items')
         .update({
@@ -375,7 +435,7 @@ export default function ReceiptsPage() {
         paid_amount: item.paid_amount,
         discount: item.discount ?? 0,
         needs_review: Boolean(item.needs_review),
-        meta: item.meta ?? {},
+        meta: {},
       }));
 
       const { error: insertErr } = await supabase
@@ -462,8 +522,69 @@ export default function ReceiptsPage() {
               >
                 + Add receipt
               </button>
+              <button
+                className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
+                onClick={() => setShowJsonImport((v) => !v)}
+              >
+                + Add via JSON
+              </button>
             </div>
           </div>
+          {showJsonImport ? (
+            <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold">Import JSON</div>
+                <button
+                  className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs text-[var(--text)]"
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      setJsonInput(text);
+                    } catch {
+                      setErr('Nu pot citi din clipboard.');
+                    }
+                  }}
+                  type="button"
+                >
+                  Paste
+                </button>
+              </div>
+              <textarea
+                className="mt-2 h-36 w-full rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-xs text-[var(--text)]"
+                placeholder="Pune aici JSON-ul de la parser (schema v3)"
+                value={jsonInput}
+                onChange={(e) => setJsonInput(e.target.value)}
+              />
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-1 text-xs text-[var(--text)]"
+                  onClick={() => {
+                    setErr(null);
+                    try {
+                      const parsed = JSON.parse(jsonInput);
+                      applyJsonToEditor(parsed);
+                      setSuccess('JSON importat.');
+                    } catch {
+                      setErr('JSON invalid.');
+                    }
+                  }}
+                  type="button"
+                >
+                  Parse
+                </button>
+                <button
+                  className="text-xs text-[var(--muted)]"
+                  onClick={() => {
+                    setJsonInput('');
+                    setShowJsonImport(false);
+                  }}
+                  type="button"
+                >
+                  Închide
+                </button>
+              </div>
+            </div>
+          ) : null}
           {err ? (
             <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
               {err}
@@ -901,21 +1022,6 @@ export default function ReceiptsPage() {
                             🗑️
                           </button>
                         </div>
-                        <textarea
-                          className="col-span-full h-20 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs text-[var(--text)]"
-                          value={JSON.stringify(item.meta ?? {})}
-                          onChange={(e) => {
-                            try {
-                              const parsed = JSON.parse(e.target.value);
-                              const next = [...items];
-                              next[idx] = { ...item, meta: parsed };
-                              setItems(next);
-                            } catch {
-                              setItems(items);
-                            }
-                          }}
-                          placeholder="meta (JSON)"
-                        />
                       </div>
                     ))}
                     {!items.length ? (
