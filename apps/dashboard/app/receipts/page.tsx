@@ -43,6 +43,39 @@ function fmtDate(ts: string | null) {
   return new Date(ts).toLocaleString('ro-RO');
 }
 
+function fmtDateOnly(ts: string | null) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('ro-RO');
+}
+
+function isoWeekNumber(date: Date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+}
+
+function weekColorValue(ts: string | null) {
+  if (!ts) return null;
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return null;
+  const week = isoWeekNumber(d);
+  const palette = ['#3FB6A8', '#4A86C5', '#6A5FA8', '#C7923E', '#C15C5C'];
+  return palette[week % palette.length];
+}
+
+function weekGlyph(ts: string | null) {
+  if (!ts) return '✰';
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return '✰';
+  const week = isoWeekNumber(d);
+  const glyphs = ['༄', 'ᯓ★', '₍^. .^₎⟆', '⋆｡𖦹°⭒˚｡⋆', 'ﮩ٨ـﮩﮩ٨ـ♡ﮩ٨ـﮩﮩ٨ـ'];
+  return glyphs[week % glyphs.length];
+}
+
 function toInputDateTime(ts: string | null) {
   if (!ts) return '';
   const d = new Date(ts);
@@ -733,13 +766,26 @@ export default function ReceiptsPage() {
                         setMetaLocked(true);
                       }}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="relative flex items-start gap-3">
+                        {!selected ? (
+                          <span
+                            className="pointer-events-none absolute inset-0 flex items-center justify-center text-base opacity-30"
+                            style={{ color: weekColorValue(r.receipt_date) ?? 'var(--muted)' }}
+                          >
+                            {weekGlyph(r.receipt_date)}
+                          </span>
+                        ) : null}
                         <div>
                           <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                             {r.store}
                           </div>
-                          <div className="mt-0.5 text-[10px] text-[var(--muted)]">
-                            {fmtDate(r.receipt_date)}
+                          <div
+                            className="mt-0.5 text-[10px]"
+                            style={{
+                              color: weekColorValue(r.receipt_date) ?? 'var(--muted)',
+                            }}
+                          >
+                            {fmtDateOnly(r.receipt_date)}
                           </div>
                         </div>
                         <div className="ml-auto text-right">
