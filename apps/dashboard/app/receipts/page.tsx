@@ -74,6 +74,28 @@ function formatMonthLabel(key: string) {
   return label;
 }
 
+function hashString(input: string) {
+  let hash = 5381;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 33) ^ input.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+function buildSourceHash({
+  store,
+  receiptDate,
+  sourceFileName,
+}: {
+  store?: string | null;
+  receiptDate?: string | null;
+  sourceFileName?: string | null;
+}) {
+  const base = [store, receiptDate, sourceFileName].filter(Boolean).join('|');
+  if (!base) return null;
+  return `auto_${hashString(base)}`;
+}
+
 export default function ReceiptsPage() {
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [items, setItems] = useState<ReceiptItemRow[]>([]);
@@ -195,6 +217,13 @@ export default function ReceiptsPage() {
     const merchant = payload?.merchant ?? {};
     const processing = payload?.processing ?? {};
     const source = payload?.source ?? {};
+    const fallbackHash =
+      source?.source_hash ||
+      buildSourceHash({
+        store,
+        receiptDate: timestamp,
+        sourceFileName: source?.file_name,
+      });
 
     setSelected({
       id: '',
@@ -213,7 +242,7 @@ export default function ReceiptsPage() {
       processing_warnings: processing?.warnings ?? [],
       source_file_name: source?.file_name ?? '',
       source_rel_path: source?.rel_path ?? '',
-      source_hash: source?.source_hash ?? '',
+      source_hash: fallbackHash ?? '',
       schema_version: Number(payload?.schema_version ?? 3),
     });
 
@@ -339,8 +368,11 @@ export default function ReceiptsPage() {
   }, []);
 
   useEffect(() => {
-    if (!selected?.id) {
+    if (!selected) {
       setItems([]);
+      return;
+    }
+    if (!selected.id) {
       return;
     }
     let alive = true;
@@ -370,6 +402,15 @@ export default function ReceiptsPage() {
     setErr(null);
     setSuccess(null);
 
+    const computedSourceHash =
+      (selected.source_hash && selected.source_hash.trim()) ||
+      buildSourceHash({
+        store: selected.store,
+        receiptDate: selected.receipt_date,
+        sourceFileName: selected.source_file_name,
+      }) ||
+      '';
+
     const payload = {
       store: selected.store,
       receipt_date: selected.receipt_date,
@@ -385,7 +426,7 @@ export default function ReceiptsPage() {
       processing_warnings: selected.processing_warnings ?? [],
       source_file_name: selected.source_file_name,
       source_rel_path: selected.source_rel_path,
-      source_hash: selected.source_hash,
+      source_hash: computedSourceHash,
       schema_version: selected.schema_version,
     };
 
