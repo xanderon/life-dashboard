@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+APP_DIR="$ROOT_DIR"
+BUNDLE_DIR="$APP_DIR/src-tauri/target/release/bundle/macos"
+APP_NAME="Receipts Operator.app"
+DEST_APP="/Applications/$APP_NAME"
+
+cd "$APP_DIR"
+
+ensure_node() {
+  if command -v npm >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if [ -n "${RECEIPTS_NODE_BIN:-}" ]; then
+    export PATH="$(dirname "$RECEIPTS_NODE_BIN"):$PATH"
+  fi
+
+  if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+    # shellcheck disable=SC1090
+    . "$HOME/.nvm/nvm.sh"
+  fi
+
+  if [ -d "/opt/homebrew/bin" ]; then
+    export PATH="/opt/homebrew/bin:$PATH"
+  fi
+
+  if [ -d "/usr/local/bin" ]; then
+    export PATH="/usr/local/bin:$PATH"
+  fi
+}
+
+ensure_node
+
+if ! command -v npm >/dev/null 2>&1; then
+  echo "npm is required. Install Node.js first." >&2
+  exit 1
+fi
+
+if [ -n "${RECEIPTS_CARGO_BIN:-}" ]; then
+  export PATH="$(dirname "$RECEIPTS_CARGO_BIN"):$PATH"
+fi
+
+if [ -f "$HOME/.cargo/env" ]; then
+  # shellcheck disable=SC1090
+  . "$HOME/.cargo/env"
+fi
+
+if ! command -v cargo >/dev/null 2>&1; then
+  echo "Rust/Cargo is required. Install via rustup first or set RECEIPTS_CARGO_BIN." >&2
+  exit 1
+fi
+
+echo "Building Receipts Operator..."
+npm run tauri build
+
+APP_PATH="$(find "$BUNDLE_DIR" -maxdepth 2 -name "$APP_NAME" -print -quit)"
+if [ -z "$APP_PATH" ]; then
+  echo "Could not find built app in $BUNDLE_DIR" >&2
+  exit 1
+fi
+
+echo "Installing to /Applications..."
+if [ -e "$DEST_APP" ]; then
+  if [ -w "$DEST_APP" ] || [ -w "/Applications" ]; then
+    rm -rf "$DEST_APP"
+  else
+    sudo rm -rf "$DEST_APP"
+  fi
+fi
+
+if [ -w "/Applications" ]; then
+  ditto "$APP_PATH" "$DEST_APP"
+else
+  sudo ditto "$APP_PATH" "$DEST_APP"
+fi
+
+echo "Installed: $DEST_APP"
