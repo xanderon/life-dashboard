@@ -116,16 +116,33 @@ export default function ReceiptsPage() {
 
   const stores = useMemo(() => storeOptions, [storeOptions]);
   const groupedReceipts = useMemo(() => {
-    const groups: { key: string; label: string; items: ReceiptRow[] }[] = [];
+    const groups: {
+      key: string;
+      label: string;
+      items: ReceiptRow[];
+      total: number;
+      currency: string | null;
+    }[] = [];
     const index = new Map<string, number>();
     receipts.forEach((receipt) => {
       const key = monthKey(receipt.receipt_date);
       const label = formatMonthLabel(key);
       if (!index.has(key)) {
         index.set(key, groups.length);
-        groups.push({ key, label, items: [receipt] });
+        groups.push({
+          key,
+          label,
+          items: [receipt],
+          total: Number(receipt.total_amount) || 0,
+          currency: receipt.currency ?? null,
+        });
       } else {
-        groups[index.get(key)!].items.push(receipt);
+        const group = groups[index.get(key)!];
+        group.items.push(receipt);
+        group.total += Number(receipt.total_amount) || 0;
+        if (!group.currency && receipt.currency) {
+          group.currency = receipt.currency;
+        }
       }
     });
     return groups;
@@ -691,6 +708,9 @@ export default function ReceiptsPage() {
                 <div className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-[var(--muted)]">
                   <span>{group.label}</span>
                   <span className="h-px flex-1 bg-[var(--border)]/60" />
+                  <span className="text-[10px] font-semibold text-[var(--muted)]">
+                    {Math.round(group.total)} {group.currency ?? 'RON'}
+                  </span>
                 </div>
                 <div
                   className={`mt-2 ${
