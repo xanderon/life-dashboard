@@ -1,0 +1,37 @@
+{
+  "build": {
+    "beforeDevCommand": "npm run dev -- --host",
+    "beforeBuildCommand": "npm run build",
+    "devPath": "http://localhost:1420",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "Receipts Operator",
+    "version": "1.0.4"
+  },
+  "tauri": {
+    "allowlist": {
+      "fs": {
+        "all": true
+      },
+      "shell": {
+        "open": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "targets": ["app"],
+      "identifier": "com.life-dashboard.receipts",
+      "icon": ["icons/icon.icns", "icons/icon-1024.png"],
+      "resources": ["../config/stores.json"]
+    },
+    "windows": [
+      {
+        "title": "Receipts Operator",
+        "width": 1200,
+        "height": 800,
+        "resizable": true
+      }
+    ]
+  }
+}

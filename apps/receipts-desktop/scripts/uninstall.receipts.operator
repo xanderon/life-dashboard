@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_NAME="Receipts Operator.app"
+DEST_APP="/Applications/$APP_NAME"
+STATE_DIR="$HOME/.life-dashboard/receipts-desktop"
+
+if [ -e "$DEST_APP" ]; then
+  echo "Removing $DEST_APP..."
+  if [ -w "$DEST_APP" ] || [ -w "/Applications" ]; then
+    rm -rf "$DEST_APP"
+  else
+    sudo rm -rf "$DEST_APP"
+  fi
+fi
+
+if [ -d "$STATE_DIR" ]; then
+  echo "Removing local state at $STATE_DIR..."
+  rm -rf "$STATE_DIR"
+fi
+
+echo "Uninstall complete."

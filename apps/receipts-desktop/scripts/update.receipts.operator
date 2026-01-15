@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+APP_DIR="$ROOT_DIR"
+APP_NAME="Receipts Operator.app"
+DEST_APP="/Applications/$APP_NAME"
+BUNDLE_ID="com.life-dashboard.receipts"
+
+cd "$APP_DIR"
+
+ensure_node() {
+  if command -v npm >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if [ -n "${RECEIPTS_NODE_BIN:-}" ]; then
+    export PATH="$(dirname "$RECEIPTS_NODE_BIN"):$PATH"
+  fi
+
+  if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+    # shellcheck disable=SC1090
+    . "$HOME/.nvm/nvm.sh"
+  fi
+
+  if [ -d "/opt/homebrew/bin" ]; then
+    export PATH="/opt/homebrew/bin:$PATH"
+  fi
+
+  if [ -d "/usr/local/bin" ]; then
+    export PATH="/usr/local/bin:$PATH"
+  fi
+}
+
+ensure_node
+
+if ! command -v npm >/dev/null 2>&1; then
+  echo "npm is required. Install Node.js first or set RECEIPTS_NODE_BIN." >&2
+  exit 1
+fi
+
+if [ -n "${RECEIPTS_CARGO_BIN:-}" ]; then
+  export PATH="$(dirname "$RECEIPTS_CARGO_BIN"):$PATH"
+fi
+
+if [ -f "$HOME/.cargo/env" ]; then
+  # shellcheck disable=SC1090
+  . "$HOME/.cargo/env"
+fi
+
+if ! command -v cargo >/dev/null 2>&1; then
+  echo "Rust/Cargo is required. Install via rustup first or set RECEIPTS_CARGO_BIN." >&2
+  exit 1
+fi
+
+if command -v python3 >/dev/null 2>&1; then
+LOCAL_VERSION="$(python3 -c "import json;print(json.load(open('src-tauri/tauri.conf.json'))['package']['version'])")"
+else
+  echo "python3 is required to read version." >&2
+  exit 1
+fi
+INSTALLED_VERSION=""
+if [ -e "$DEST_APP/Contents/Info.plist" ]; then
+  INSTALLED_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$DEST_APP/Contents/Info.plist" 2>/dev/null || true)"
+fi
+
+echo "Local version: $LOCAL_VERSION"
+if [ -n "$INSTALLED_VERSION" ]; then
+  echo "Installed version: $INSTALLED_VERSION"
+  if [ "$LOCAL_VERSION" = "$INSTALLED_VERSION" ]; then
+    echo "No update needed."
+    exit 0
+  fi
+fi
+
+if pgrep -x "Receipts Operator" >/dev/null 2>&1; then
+  echo "Closing running app..."
+  osascript -e "tell application id \"$BUNDLE_ID\" to quit" >/dev/null 2>&1 || true
+  for _ in {1..20}; do
+    if ! pgrep -x "Receipts Operator" >/dev/null 2>&1; then
+      break
+    fi
+    sleep 0.5
+  done
+fi
+
+"$APP_DIR/scripts/install.receipts.operator"
+
+if [ -d "$DEST_APP" ]; then
+  if pgrep -x "Receipts Operator" >/dev/null 2>&1; then
+    echo "App still running, forcing restart..."
+    pkill -x "Receipts Operator" >/dev/null 2>&1 || true
+  fi
+  sleep 1
+  open -a "$DEST_APP" || true
+fi

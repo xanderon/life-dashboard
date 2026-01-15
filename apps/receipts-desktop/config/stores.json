@@ -1,0 +1,6 @@
+[
+  { "id": "lidl", "name": "Lidl", "enabled": true },
+  { "id": "kaufland", "name": "Kaufland", "enabled": false },
+  { "id": "carrefour", "name": "Carrefour", "enabled": false },
+  { "id": "mega", "name": "Mega Image", "enabled": false }
+]
