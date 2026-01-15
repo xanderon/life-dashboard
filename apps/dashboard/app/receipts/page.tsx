@@ -56,6 +56,24 @@ function fromInputDateTime(value: string) {
   return d.toISOString();
 }
 
+function monthKey(ts: string | null) {
+  if (!ts) return 'unknown';
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return 'unknown';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
+function formatMonthLabel(key: string) {
+  if (key === 'unknown') return 'Dată necunoscută';
+  const [year, month] = key.split('-');
+  const d = new Date(Number(year), Number(month) - 1, 1);
+  if (Number.isNaN(d.getTime())) return key;
+  const label = d.toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' });
+  return label;
+}
+
 export default function ReceiptsPage() {
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [items, setItems] = useState<ReceiptItemRow[]>([]);
@@ -75,6 +93,21 @@ export default function ReceiptsPage() {
   const prevSelectionRef = useRef<ReceiptRow | null>(null);
 
   const stores = useMemo(() => storeOptions, [storeOptions]);
+  const groupedReceipts = useMemo(() => {
+    const groups: { key: string; label: string; items: ReceiptRow[] }[] = [];
+    const index = new Map<string, number>();
+    receipts.forEach((receipt) => {
+      const key = monthKey(receipt.receipt_date);
+      const label = formatMonthLabel(key);
+      if (!index.has(key)) {
+        index.set(key, groups.length);
+        groups.push({ key, label, items: [receipt] });
+      } else {
+        groups[index.get(key)!].items.push(receipt);
+      }
+    });
+    return groups;
+  }, [receipts]);
 
   useEffect(() => {
     let alive = true;
@@ -607,51 +640,61 @@ export default function ReceiptsPage() {
         >
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm">
             <div className="text-base font-semibold">Bonuri</div>
-            <div
-              className={`mt-2 ${
-                selected ? 'space-y-2' : 'grid gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
-              }`}
-            >
-              {receipts.map((r) => (
-                <button
-                  key={r.id}
-                  className={`w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-1 text-left text-[11px] leading-tight transition hover:bg-[#1b4a45] ${
-                    selected?.id === r.id
-                      ? 'border-white bg-[#1f504a] ring-2 ring-white/90'
-                      : ''
-                  }`}
-                  onClick={() => {
-                    setSelected(r);
-                    setSuccess(null);
-                    setMetaLocked(true);
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                        {r.store}
-                      </div>
-                      <div className="mt-0.5 text-[10px] text-[var(--muted)]">
-                        {fmtDate(r.receipt_date)}
-                      </div>
-                    </div>
-                    <div className="ml-auto text-right">
-                      <div className="text-[9px] uppercase tracking-wide text-[var(--muted)]">
-                        Total
-                      </div>
-                      <div className="text-sm font-semibold text-[var(--text)]">
-                        {r.total_amount?.toFixed(2)} {r.currency}
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              ))}
-              {!receipts.length ? (
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-4 text-sm text-[var(--muted)]">
-                  Nu există bonuri.
+            {!groupedReceipts.length ? (
+              <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-4 text-sm text-[var(--muted)]">
+                Nu există bonuri.
+              </div>
+            ) : null}
+            {groupedReceipts.map((group) => (
+              <div key={group.key} className="mt-3">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-[var(--muted)]">
+                  <span>{group.label}</span>
+                  <span className="h-px flex-1 bg-[var(--border)]/60" />
                 </div>
-              ) : null}
-            </div>
+                <div
+                  className={`mt-2 ${
+                    selected
+                      ? 'space-y-2'
+                      : 'grid gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+                  }`}
+                >
+                  {group.items.map((r) => (
+                    <button
+                      key={r.id}
+                      className={`w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-1 text-left text-[11px] leading-tight transition hover:bg-[#1b4a45] ${
+                        selected?.id === r.id
+                          ? 'border-white bg-[#1f504a] ring-2 ring-white/90'
+                          : ''
+                      }`}
+                      onClick={() => {
+                        setSelected(r);
+                        setSuccess(null);
+                        setMetaLocked(true);
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div>
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                            {r.store}
+                          </div>
+                          <div className="mt-0.5 text-[10px] text-[var(--muted)]">
+                            {fmtDate(r.receipt_date)}
+                          </div>
+                        </div>
+                        <div className="ml-auto text-right">
+                          <div className="text-[9px] uppercase tracking-wide text-[var(--muted)]">
+                            Total
+                          </div>
+                          <div className="text-sm font-semibold text-[var(--text)]">
+                            {r.total_amount?.toFixed(2)} {r.currency}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
           {selected ? (
