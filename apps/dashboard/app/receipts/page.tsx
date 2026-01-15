@@ -605,14 +605,16 @@ export default function ReceiptsPage() {
                 <button
                   key={r.id}
                   className={`w-full rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-2 text-left transition hover:bg-[#1b4a45] ${
-                    selected?.id === r.id ? 'outline outline-2 outline-[var(--accent)]/40' : ''
+                    selected?.id === r.id
+                      ? 'border-white bg-[#1f504a] ring-2 ring-white/90'
+                      : ''
                   }`}
                   onClick={() => {
                     setSelected(r);
                     setSuccess(null);
                   }}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
                     <div>
                       <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                         {r.store}
@@ -627,7 +629,7 @@ export default function ReceiptsPage() {
                         <div className="text-[11px] text-[var(--muted)]">{r.merchant_city}</div>
                       ) : null}
                     </div>
-                    <div className="text-right">
+                    <div className="ml-auto text-right">
                       <div className="text-[10px] uppercase tracking-wide text-[var(--muted)]">
                         Total
                       </div>
