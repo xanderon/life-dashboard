@@ -56,6 +56,46 @@ function fromInputDateTime(value: string) {
   return d.toISOString();
 }
 
+function monthKey(ts: string | null) {
+  if (!ts) return 'unknown';
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return 'unknown';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
+function formatMonthLabel(key: string) {
+  if (key === 'unknown') return 'Dată necunoscută';
+  const [year, month] = key.split('-');
+  const d = new Date(Number(year), Number(month) - 1, 1);
+  if (Number.isNaN(d.getTime())) return key;
+  const label = d.toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' });
+  return label;
+}
+
+function hashString(input: string) {
+  let hash = 5381;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 33) ^ input.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+function buildSourceHash({
+  store,
+  receiptDate,
+  sourceFileName,
+}: {
+  store?: string | null;
+  receiptDate?: string | null;
+  sourceFileName?: string | null;
+}) {
+  const base = [store, receiptDate, sourceFileName].filter(Boolean).join('|');
+  if (!base) return null;
+  return `auto_${hashString(base)}`;
+}
+
 export default function ReceiptsPage() {
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [items, setItems] = useState<ReceiptItemRow[]>([]);
@@ -70,10 +110,26 @@ export default function ReceiptsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [showJsonImport, setShowJsonImport] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
+  const [metaLocked, setMetaLocked] = useState(true);
   const itemPrefillCache = useRef<Record<string, Partial<ReceiptItemRow>>>({});
   const prevSelectionRef = useRef<ReceiptRow | null>(null);
 
   const stores = useMemo(() => storeOptions, [storeOptions]);
+  const groupedReceipts = useMemo(() => {
+    const groups: { key: string; label: string; items: ReceiptRow[] }[] = [];
+    const index = new Map<string, number>();
+    receipts.forEach((receipt) => {
+      const key = monthKey(receipt.receipt_date);
+      const label = formatMonthLabel(key);
+      if (!index.has(key)) {
+        index.set(key, groups.length);
+        groups.push({ key, label, items: [receipt] });
+      } else {
+        groups[index.get(key)!].items.push(receipt);
+      }
+    });
+    return groups;
+  }, [receipts]);
 
   useEffect(() => {
     let alive = true;
@@ -161,6 +217,13 @@ export default function ReceiptsPage() {
     const merchant = payload?.merchant ?? {};
     const processing = payload?.processing ?? {};
     const source = payload?.source ?? {};
+    const fallbackHash =
+      source?.source_hash ||
+      buildSourceHash({
+        store,
+        receiptDate: timestamp,
+        sourceFileName: source?.file_name,
+      });
 
     setSelected({
       id: '',
@@ -179,7 +242,7 @@ export default function ReceiptsPage() {
       processing_warnings: processing?.warnings ?? [],
       source_file_name: source?.file_name ?? '',
       source_rel_path: source?.rel_path ?? '',
-      source_hash: source?.source_hash ?? '',
+      source_hash: fallbackHash ?? '',
       schema_version: Number(payload?.schema_version ?? 3),
     });
 
@@ -202,6 +265,7 @@ export default function ReceiptsPage() {
       };
     });
     setItems(nextItems);
+    setMetaLocked(false);
   }
 
   async function loadReceipts(activeStore: string) {
@@ -304,8 +368,11 @@ export default function ReceiptsPage() {
   }, []);
 
   useEffect(() => {
-    if (!selected?.id) {
+    if (!selected) {
       setItems([]);
+      return;
+    }
+    if (!selected.id) {
       return;
     }
     let alive = true;
@@ -335,6 +402,15 @@ export default function ReceiptsPage() {
     setErr(null);
     setSuccess(null);
 
+    const computedSourceHash =
+      (selected.source_hash && selected.source_hash.trim()) ||
+      buildSourceHash({
+        store: selected.store,
+        receiptDate: selected.receipt_date,
+        sourceFileName: selected.source_file_name,
+      }) ||
+      '';
+
     const payload = {
       store: selected.store,
       receipt_date: selected.receipt_date,
@@ -350,7 +426,7 @@ export default function ReceiptsPage() {
       processing_warnings: selected.processing_warnings ?? [],
       source_file_name: selected.source_file_name,
       source_rel_path: selected.source_rel_path,
-      source_hash: selected.source_hash,
+      source_hash: computedSourceHash,
       schema_version: selected.schema_version,
     };
 
@@ -463,7 +539,7 @@ export default function ReceiptsPage() {
 
   return (
     <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-7xl">
         <div className="flex items-center justify-between gap-4">
           <Link className="text-sm underline" href="/">
             ← Înapoi
@@ -518,6 +594,7 @@ export default function ReceiptsPage() {
                   });
                   setItems([]);
                   setSuccess(null);
+                  setMetaLocked(false);
                 }}
               >
                 + Add receipt
@@ -597,57 +674,82 @@ export default function ReceiptsPage() {
           ) : null}
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
+        <div
+          className={`mt-4 grid grid-cols-1 gap-4 ${
+            selected ? 'lg:grid-cols-[0.3fr_1.7fr]' : ''
+          }`}
+        >
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm">
             <div className="text-base font-semibold">Bonuri</div>
-            <div className="mt-3 space-y-3">
-              {receipts.map((r) => (
-                <button
-                  key={r.id}
-                  className={`w-full rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-4 text-left transition hover:bg-[#1b4a45] ${
-                    selected?.id === r.id ? 'outline outline-2 outline-[var(--accent)]/40' : ''
-                  }`}
-                  onClick={() => {
-                    setSelected(r);
-                    setSuccess(null);
-                  }}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
-                        {r.store}
-                      </div>
-                      <div className="mt-2 text-sm text-[var(--muted)]">
-                        {fmtDate(r.receipt_date)}
-                      </div>
-                      <div className="mt-2 text-sm text-[var(--text)]/90">
-                        {r.merchant_name ?? '—'}
-                      </div>
-                      {r.merchant_city ? (
-                        <div className="text-xs text-[var(--muted)]">{r.merchant_city}</div>
-                      ) : null}
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs text-[var(--muted)]">Total</div>
-                      <div className="mt-1 text-2xl font-semibold text-[var(--text)]">
-                        {r.total_amount?.toFixed(2)} {r.currency}
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              ))}
-              {!receipts.length ? (
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-4 text-sm text-[var(--muted)]">
-                  Nu există bonuri.
+            {!groupedReceipts.length ? (
+              <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-4 text-sm text-[var(--muted)]">
+                Nu există bonuri.
+              </div>
+            ) : null}
+            {groupedReceipts.map((group) => (
+              <div key={group.key} className="mt-3">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-[var(--muted)]">
+                  <span>{group.label}</span>
+                  <span className="h-px flex-1 bg-[var(--border)]/60" />
                 </div>
-              ) : null}
-            </div>
+                <div
+                  className={`mt-2 ${
+                    selected
+                      ? 'space-y-2'
+                      : 'grid gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+                  }`}
+                >
+                  {group.items.map((r) => (
+                    <button
+                      key={r.id}
+                      className={`w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-1 text-left text-[11px] leading-tight transition hover:bg-[#1b4a45] ${
+                        selected?.id === r.id
+                          ? 'border-white bg-[#1f504a] ring-2 ring-white/90'
+                          : ''
+                      }`}
+                      onClick={() => {
+                        setSelected(r);
+                        setSuccess(null);
+                        setMetaLocked(true);
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div>
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                            {r.store}
+                          </div>
+                          <div className="mt-0.5 text-[10px] text-[var(--muted)]">
+                            {fmtDate(r.receipt_date)}
+                          </div>
+                        </div>
+                        <div className="ml-auto text-right">
+                          <div className="text-[9px] uppercase tracking-wide text-[var(--muted)]">
+                            Total
+                          </div>
+                          <div className="text-sm font-semibold text-[var(--text)]">
+                            {r.total_amount?.toFixed(2)} {r.currency}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
+          {selected ? (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm">
             <div className="flex items-center justify-between">
-              <div className="text-base font-semibold">Editor bon</div>
+              <div className="text-xl font-semibold">Editor bon</div>
               <div className="flex items-center gap-2">
+                <button
+                  className="rounded-full border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-xs text-[var(--text)]"
+                  onClick={() => setMetaLocked((prev) => !prev)}
+                  type="button"
+                >
+                  {metaLocked ? '🔒 Unlock' : '✏️ Lock'}
+                </button>
                 <button
                   className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50"
                   disabled={!selected || saving}
@@ -665,6 +767,7 @@ export default function ReceiptsPage() {
                     }
                     setItems([]);
                     setSuccess(null);
+                    setMetaLocked(true);
                   }}
                   title="Închide editor"
                   type="button"
@@ -674,205 +777,175 @@ export default function ReceiptsPage() {
               </div>
             </div>
 
-            {!selected ? (
-              <div className="mt-3 text-sm text-[var(--muted)]">
-                Selectează un bon din tabel.
-              </div>
-            ) : (
-              <div className="mt-3 space-y-3 text-sm">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="space-y-1 text-[var(--muted)]">
-                    Magazin
-                    <input
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={selected.store}
-                      onChange={(e) => setSelected({ ...selected, store: e.target.value })}
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    Data bon
-                    <input
-                      type="datetime-local"
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={toInputDateTime(selected.receipt_date)}
-                      onChange={(e) =>
-                        setSelected({
-                          ...selected,
-                          receipt_date: fromInputDateTime(e.target.value) ?? selected.receipt_date,
-                        })
-                      }
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    Total
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={selected.total_amount ?? 0}
-                      onChange={(e) => setSelected({ ...selected, total_amount: Number(e.target.value) })}
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    Monedă
-                    <input
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={selected.currency ?? 'RON'}
-                      onChange={(e) => setSelected({ ...selected, currency: e.target.value })}
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    Discount total
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={selected.discount_total ?? 0}
-                      onChange={(e) => setSelected({ ...selected, discount_total: Number(e.target.value) })}
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    SGR charge
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={selected.sgr_bottle_charge ?? 0}
-                      onChange={(e) => setSelected({ ...selected, sgr_bottle_charge: Number(e.target.value) })}
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    SGR recovered
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={selected.sgr_recovered_amount ?? 0}
-                      onChange={(e) => setSelected({ ...selected, sgr_recovered_amount: Number(e.target.value) })}
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    Merchant
-                    <input
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={selected.merchant_name ?? ''}
-                      onChange={(e) => setSelected({ ...selected, merchant_name: e.target.value })}
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    Oraș
-                    <input
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={selected.merchant_city ?? ''}
-                      onChange={(e) => setSelected({ ...selected, merchant_city: e.target.value })}
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    CIF
-                    <input
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={selected.merchant_cif ?? ''}
-                      onChange={(e) => setSelected({ ...selected, merchant_cif: e.target.value })}
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    Status procesare
-                    <input
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={selected.processing_status ?? ''}
-                      onChange={(e) => setSelected({ ...selected, processing_status: e.target.value })}
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    Warnings (JSON)
-                    <textarea
-                      className="h-20 w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={JSON.stringify(selected.processing_warnings ?? [])}
-                      onChange={(e) => {
-                        try {
-                          const parsed = JSON.parse(e.target.value);
-                          setSelected({ ...selected, processing_warnings: parsed });
-                        } catch {
-                          setSelected({ ...selected, processing_warnings: selected.processing_warnings });
+            <div className="mt-2 text-sm">
+              <fieldset disabled={metaLocked} className={metaLocked ? 'opacity-60' : ''}>
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                      Receipt details
+                    </div>
+                    <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                      <span className="shrink-0">Magazin</span>
+                      <input
+                        className="h-6 w-36 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-[11px] text-[var(--text)]"
+                        value={selected.store}
+                        onChange={(e) => setSelected({ ...selected, store: e.target.value })}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                      <span className="shrink-0">Data</span>
+                      <input
+                        type="datetime-local"
+                        className="h-6 w-52 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-[11px] text-[var(--text)]"
+                        value={toInputDateTime(selected.receipt_date)}
+                        onChange={(e) =>
+                          setSelected({
+                            ...selected,
+                            receipt_date: fromInputDateTime(e.target.value) ?? selected.receipt_date,
+                          })
                         }
-                      }}
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    Source file
-                    <input
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={selected.source_file_name ?? ''}
-                      onChange={(e) => setSelected({ ...selected, source_file_name: e.target.value })}
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    Source path
-                    <input
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={selected.source_rel_path ?? ''}
-                      onChange={(e) => setSelected({ ...selected, source_rel_path: e.target.value })}
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    Source hash
-                    <input
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={selected.source_hash ?? ''}
-                      onChange={(e) => setSelected({ ...selected, source_hash: e.target.value })}
-                    />
-                  </label>
-                  <label className="space-y-1 text-[var(--muted)]">
-                    Schema version
-                    <input
-                      type="number"
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
-                      value={selected.schema_version ?? 3}
-                      onChange={(e) => setSelected({ ...selected, schema_version: Number(e.target.value) })}
-                    />
-                  </label>
-                </div>
-
-                <div className="mt-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold">Items</div>
-                    <button
-                      className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
-                      onClick={() => {
-                        if (!selected) return;
-                        setItems([
-                          ...items,
-                          {
-                            receipt_id: selected.id,
-                            name: '',
-                            quantity: 1,
-                            unit: 'BUC',
-                            unit_price: null,
-                            paid_amount: null,
-                            discount: 0,
-                            needs_review: false,
-                            meta: {},
-                          },
-                        ]);
-                      }}
-                    >
-                      + Add item
-                    </button>
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                      <span className="shrink-0">Total</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="h-6 w-24 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-[11px] text-[var(--text)]"
+                        value={selected.total_amount ?? 0}
+                        onChange={(e) => setSelected({ ...selected, total_amount: Number(e.target.value) })}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                      <span className="shrink-0">Monedă</span>
+                      <input
+                        className="h-6 w-20 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-[11px] text-[var(--text)]"
+                        value={selected.currency ?? 'RON'}
+                        onChange={(e) => setSelected({ ...selected, currency: e.target.value })}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                      <span className="shrink-0">Discount</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="h-6 w-24 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-[11px] text-[var(--text)]"
+                        value={selected.discount_total ?? 0}
+                        onChange={(e) => setSelected({ ...selected, discount_total: Number(e.target.value) })}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                      <span className="shrink-0">SGR charge</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="h-6 w-24 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-[11px] text-[var(--text)]"
+                        value={selected.sgr_bottle_charge ?? 0}
+                        onChange={(e) => setSelected({ ...selected, sgr_bottle_charge: Number(e.target.value) })}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                      <span className="shrink-0">SGR recovered</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="h-6 w-24 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-[11px] text-[var(--text)]"
+                        value={selected.sgr_recovered_amount ?? 0}
+                        onChange={(e) => setSelected({ ...selected, sgr_recovered_amount: Number(e.target.value) })}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                      <span className="shrink-0">Merchant</span>
+                      <input
+                        className="h-6 w-56 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-[11px] text-[var(--text)]"
+                        value={selected.merchant_name ?? ''}
+                        onChange={(e) => setSelected({ ...selected, merchant_name: e.target.value })}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                      <span className="shrink-0">Oraș</span>
+                      <input
+                        className="h-6 w-40 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-[11px] text-[var(--text)]"
+                        value={selected.merchant_city ?? ''}
+                        onChange={(e) => setSelected({ ...selected, merchant_city: e.target.value })}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                      <span className="shrink-0">CIF</span>
+                      <input
+                        className="h-6 w-28 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-[11px] text-[var(--text)]"
+                        value={selected.merchant_cif ?? ''}
+                        onChange={(e) => setSelected({ ...selected, merchant_cif: e.target.value })}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                      <span className="shrink-0">Status</span>
+                      <input
+                        className="h-6 w-24 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-[11px] text-[var(--text)]"
+                        value={selected.processing_status ?? ''}
+                        onChange={(e) => setSelected({ ...selected, processing_status: e.target.value })}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                      <span className="shrink-0">Source file</span>
+                      <input
+                        className="h-6 w-64 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-[11px] text-[var(--text)]"
+                        value={selected.source_file_name ?? ''}
+                        onChange={(e) => setSelected({ ...selected, source_file_name: e.target.value })}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
+                      <span className="shrink-0">Source path</span>
+                      <input
+                        className="h-6 w-64 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-[11px] text-[var(--text)]"
+                        value={selected.source_rel_path ?? ''}
+                        onChange={(e) => setSelected({ ...selected, source_rel_path: e.target.value })}
+                      />
+                    </label>
+                    </div>
                   </div>
-                  <div className="mt-2 space-y-2">
+
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-lg font-semibold">Items</div>
+                      <button
+                        className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
+                        onClick={() => {
+                          if (!selected) return;
+                          setItems([
+                            ...items,
+                            {
+                              receipt_id: selected.id,
+                              name: '',
+                              quantity: 1,
+                              unit: 'BUC',
+                              unit_price: null,
+                              paid_amount: null,
+                              discount: 0,
+                              needs_review: false,
+                              meta: {},
+                            },
+                          ]);
+                        }}
+                      >
+                        + Add item
+                      </button>
+                    </div>
+                    <div className="mt-2 space-y-2">
                     <datalist id="receipt-item-names">
                       {itemNameOptions.map((name) => (
                         <option key={name} value={name} />
                       ))}
                     </datalist>
-                    <div className="hidden grid-cols-[1.2fr_0.6fr_0.7fr_0.7fr_0.7fr_0.6fr_auto] gap-2 px-1 text-[10px] uppercase tracking-wide text-[var(--muted)] sm:grid">
+                    <div className="hidden grid-cols-[minmax(220px,1fr)_80px_80px_110px_110px_80px_140px] gap-2 px-1 text-sm uppercase tracking-wide text-[var(--muted)] sm:grid">
                       <span>Produs</span>
-                      <span>Cantitate</span>
-                      <span>Unit (ex. BUC)</span>
-                      <span>Pret/unit</span>
+                      <span>Cant.</span>
+                      <span>Unit</span>
+                      <span>Pret/u</span>
                       <span>Total</span>
-                      <span>Disc.</span>
-                      <span>Review</span>
+                      <span>Disc</span>
+                      <span>Rev</span>
                     </div>
                     <datalist id="receipt-item-units">
                       {unitOptions.map((unit) => (
@@ -882,10 +955,10 @@ export default function ReceiptsPage() {
                     {items.map((item, idx) => (
                       <div
                         key={item.id ?? `new-${idx}`}
-                        className="grid grid-cols-1 gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 sm:grid-cols-[1.2fr_0.6fr_0.7fr_0.7fr_0.7fr_0.6fr_auto]"
+                        className="grid grid-cols-1 gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-2 sm:grid-cols-[minmax(220px,1fr)_80px_80px_110px_110px_80px_140px]"
                       >
                         <input
-                          className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-[var(--text)]"
+                          className="h-6 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-sm text-[var(--text)]"
                           value={item.name ?? ''}
                           placeholder="Nume produs (ex: Tortilla)"
                           list="receipt-item-names"
@@ -900,7 +973,7 @@ export default function ReceiptsPage() {
                         <input
                           type="number"
                           step="0.01"
-                          className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-[var(--text)]"
+                          className="h-6 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-sm text-[var(--text)]"
                           value={item.quantity ?? ''}
                           placeholder="Cantitate ex: 1"
                           onChange={(e) => {
@@ -921,7 +994,7 @@ export default function ReceiptsPage() {
                           }}
                         />
                         <input
-                          className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-[var(--text)]"
+                          className="h-6 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-sm text-[var(--text)]"
                           value={item.unit ?? ''}
                           placeholder="Unit ex: BUC"
                           list="receipt-item-units"
@@ -934,7 +1007,7 @@ export default function ReceiptsPage() {
                         <input
                           type="number"
                           step="0.01"
-                          className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-[var(--text)]"
+                          className="h-6 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-sm text-[var(--text)]"
                           value={item.unit_price ?? ''}
                           placeholder="Pret/unit ex: 12.50"
                           onChange={(e) => {
@@ -957,7 +1030,7 @@ export default function ReceiptsPage() {
                         <input
                           type="number"
                           step="0.01"
-                          className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-[var(--text)]"
+                          className="h-6 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-sm text-[var(--text)]"
                           value={item.paid_amount ?? ''}
                           placeholder="Total ex: 25.00"
                           onChange={(e) => {
@@ -970,7 +1043,7 @@ export default function ReceiptsPage() {
                         <input
                           type="number"
                           step="0.01"
-                          className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-[var(--text)]"
+                          className="h-6 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-sm text-[var(--text)]"
                           value={item.discount ?? ''}
                           placeholder="Disc. ex: 0.50"
                           onChange={(e) => {
@@ -980,8 +1053,8 @@ export default function ReceiptsPage() {
                             setItems(next);
                           }}
                         />
-                        <div className="flex items-center gap-2">
-                          <label className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                        <div className="flex items-center gap-1">
+                          <label className="flex items-center gap-1 text-xs text-[var(--muted)]">
                             <input
                               type="checkbox"
                               checked={Boolean(item.needs_review)}
@@ -1089,11 +1162,13 @@ export default function ReceiptsPage() {
                         + Add item
                       </button>
                     </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              </fieldset>
+            </div>
           </div>
+          ) : null}
         </div>
       </div>
     </main>
