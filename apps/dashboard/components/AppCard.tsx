@@ -109,9 +109,25 @@ export function AppCard({
           🔎
         </Link>
         {app.home_url ? (
-          <a className="rounded-md px-1.5 py-1 hover:bg-[var(--panel-2)]" href={app.home_url} target="_blank" rel="noreferrer" aria-label="Open UI">
-            🚀
-          </a>
+          app.home_url.startsWith('/') ? (
+            <Link
+              className="rounded-md px-1.5 py-1 hover:bg-[var(--panel-2)]"
+              href={app.home_url}
+              aria-label="Open UI"
+            >
+              🚀
+            </Link>
+          ) : (
+            <a
+              className="rounded-md px-1.5 py-1 hover:bg-[var(--panel-2)]"
+              href={app.home_url}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open UI"
+            >
+              🚀
+            </a>
+          )
         ) : (
           <span className="rounded-md px-1.5 py-1 text-[var(--muted)] opacity-50" aria-label="Open UI">
             🚀
