@@ -29,10 +29,16 @@ type ReceiptItemRow = {
   discount: number | null;
   is_food: boolean | null;
   food_quality: FoodQuality | null;
-  receipt?: {
-    receipt_date: string | null;
-    currency: string | null;
-  } | null;
+  receipt?:
+    | {
+        receipt_date: string | null;
+        currency: string | null;
+      }
+    | {
+        receipt_date: string | null;
+        currency: string | null;
+      }[]
+    | null;
 };
 
 type WeekBucket = {
@@ -42,6 +48,13 @@ type WeekBucket = {
   balanced: number;
   junk: number;
   nonFood: number;
+};
+
+const FOOD_BUDGET_SPLIT = {
+  healthy: 2200,
+  balanced: 1400,
+  junk: 400,
+  nonFood: 1000,
 };
 
 const FOOD_COLORS: Record<FoodQuality, string> = {
@@ -128,7 +141,10 @@ export default function ReceiptsChartsPage() {
         return;
       }
 
-      const nextItems = (data as ReceiptItemRow[]) ?? [];
+      const nextItems = ((data as ReceiptItemRow[]) ?? []).map((row) => ({
+        ...row,
+        receipt: Array.isArray(row.receipt) ? row.receipt[0] ?? null : row.receipt ?? null,
+      }));
       setItems(nextItems);
       const fallbackCurrency =
         nextItems.find((row) => row.receipt?.currency)?.receipt?.currency ?? 'RON';
@@ -150,6 +166,7 @@ export default function ReceiptsChartsPage() {
     pieData,
     topJunk,
     insight,
+    budgetBars,
   } = useMemo(() => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -286,7 +303,38 @@ export default function ReceiptsChartsPage() {
             ).toFixed(1)}% fata de saptamana trecuta.`,
     };
 
-    return { stats, weeklyBuckets, pieData, topJunk, insight };
+    const budgetBars = [
+      {
+        key: 'healthy',
+        label: 'Healthy',
+        spent: healthyMonth,
+        budget: FOOD_BUDGET_SPLIT.healthy,
+        icon: '💚',
+      },
+      {
+        key: 'balanced',
+        label: 'Balanced',
+        spent: balancedMonth,
+        budget: FOOD_BUDGET_SPLIT.balanced,
+        icon: '🟡',
+      },
+      {
+        key: 'junk',
+        label: 'Junk',
+        spent: junkMonth,
+        budget: FOOD_BUDGET_SPLIT.junk,
+        icon: '🔥',
+      },
+      {
+        key: 'nonFood',
+        label: 'Non-food',
+        spent: nonFoodMonth,
+        budget: FOOD_BUDGET_SPLIT.nonFood,
+        icon: '🛒',
+      },
+    ];
+
+    return { stats, weeklyBuckets, pieData, topJunk, insight, budgetBars };
   }, [items, now]);
 
   if (loading) {
@@ -475,6 +523,14 @@ export default function ReceiptsChartsPage() {
             </div>
           </div>
         </div>
+
+        <ChartCard title="Bugete luna curenta">
+          <BudgetProgressBars
+            items={budgetBars}
+            currency={currency}
+            monthLabel={currentMonthLabel}
+          />
+        </ChartCard>
       </div>
     </main>
   );
@@ -524,6 +580,206 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
       <div className="mb-3 text-sm font-semibold text-[var(--text)]">{title}</div>
       {children}
+    </div>
+  );
+}
+
+function BudgetProgressBars({
+  items,
+  currency,
+  monthLabel,
+}: {
+  items: {
+    key: string;
+    label: string;
+    spent: number;
+    budget: number;
+    icon: string;
+  }[];
+  currency: string;
+  monthLabel: string;
+}) {
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const id = setTimeout(() => setLoaded(true), 80);
+    return () => clearTimeout(id);
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--muted)]">
+        <div>Tracking {monthLabel}</div>
+        <div>Bugete estimative (ajustabile)</div>
+      </div>
+      <div className="space-y-4">
+        {items.map((item, idx) => (
+          <BudgetBar
+            key={item.key}
+            label={item.label}
+            spent={item.spent}
+            budget={item.budget}
+            currency={currency}
+            icon={item.icon}
+            delay={idx * 200}
+            loaded={loaded}
+          />
+        ))}
+      </div>
+      <style jsx>{`
+        @keyframes shimmer {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
+        }
+
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-8px);
+          }
+        }
+
+        @keyframes burst {
+          0% {
+            transform: scale(0.7);
+            opacity: 0;
+          }
+          70% {
+            transform: scale(1.1);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 0.85;
+          }
+        }
+
+        @keyframes shake {
+          0%,
+          100% {
+            transform: translateX(0);
+          }
+          25% {
+            transform: translateX(-4px);
+          }
+          75% {
+            transform: translateX(4px);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function BudgetBar({
+  label,
+  spent,
+  budget,
+  currency,
+  icon,
+  delay,
+  loaded,
+}: {
+  label: string;
+  spent: number;
+  budget: number;
+  currency: string;
+  icon: string;
+  delay: number;
+  loaded: boolean;
+}) {
+  const ratio = budget ? spent / budget : 0;
+  const percentage = Math.min(ratio * 100, 165);
+  const isOver = spent > budget;
+  const isWarning = percentage >= 80 && percentage < 100;
+
+  const colorClass =
+    percentage < 80
+      ? 'from-emerald-400/80 to-emerald-600'
+      : percentage < 100
+      ? 'from-amber-400/80 to-orange-500'
+      : 'from-rose-500/80 to-rose-700';
+
+  const message =
+    percentage < 80 ? 'On track' : percentage < 100 ? 'Getting close' : 'Over budget';
+
+  return (
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-4 shadow-sm transition hover:border-[var(--accent-2)]">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="text-lg">{icon}</div>
+          <div className="text-sm font-semibold text-[var(--text)]">{label}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-lg font-semibold text-[var(--text)]">
+            {spent.toFixed(0)} <span className="text-xs text-[var(--muted)]">/ {budget} {currency}</span>
+          </div>
+          <div
+            className={`text-xs font-semibold ${
+              percentage >= 100 ? 'text-rose-300' : isWarning ? 'text-amber-200' : 'text-emerald-300'
+            }`}
+          >
+            {message}
+          </div>
+        </div>
+      </div>
+
+      <div className="relative mt-3 h-6 w-full overflow-hidden rounded-full bg-[#0f2c2a]">
+        <div
+          className={`h-full bg-gradient-to-r ${colorClass} relative`}
+          style={{
+            width: `${loaded ? Math.min(percentage, 100) : 0}%`,
+            transition: `width 1.5s ease ${delay}ms`,
+            boxShadow: isOver ? '0 0 14px rgba(255, 123, 123, 0.45)' : 'none',
+          }}
+        >
+          <div
+            className="absolute inset-0 opacity-30"
+            style={{
+              background:
+                'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%)',
+              animation: 'shimmer 1.8s linear infinite',
+            }}
+          />
+        </div>
+
+        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-white">
+          {percentage.toFixed(0)}%
+        </div>
+
+        {isOver ? (
+          <div className="absolute right-0 top-0 flex h-full items-center">
+            <div className="relative animate-[burst_0.6s_ease-out]">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <span
+                  key={i}
+                  className="absolute text-rose-400 animate-[float_2.4s_ease-in-out_infinite]"
+                  style={{
+                    right: `${-8 - i * 12}px`,
+                    top: `${-6 + i * 4}px`,
+                    animationDelay: `${i * 0.15}s`,
+                  }}
+                >
+                  🔥
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {isOver ? (
+        <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200 animate-[shake_0.5s_ease-in-out]">
+          Depasire buget: <span className="font-semibold">{(spent - budget).toFixed(0)} {currency}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
