@@ -346,7 +346,7 @@ export default function ReceiptsPage() {
     const targets = baseItems.filter((item) => {
       if (!item.name || !item.name.trim()) return false;
       if (item.is_food === false) return false;
-      return item.is_food == null || (item.is_food !== false && item.food_quality == null);
+      return item.is_food == null || item.food_quality == null;
     });
     if (!targets.length) return;
 
@@ -1140,7 +1140,7 @@ export default function ReceiptsPage() {
                       <div className="flex items-center gap-2">
                         <button
                           className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)] disabled:opacity-60"
-                          onClick={populateFoodFromHistory}
+                          onClick={() => populateFoodFromHistory()}
                           disabled={populatingFood || !items.length}
                           type="button"
                         >
