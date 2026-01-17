@@ -23,6 +23,8 @@ def _build_items_payload(items: list, owner_id: str, receipt_id: str) -> list:
                 "paid_amount",
                 "discount",
                 "needs_review",
+                "is_food",
+                "food_quality",
             }:
                 continue
             meta[key] = value
@@ -37,10 +39,43 @@ def _build_items_payload(items: list, owner_id: str, receipt_id: str) -> list:
                 "paid_amount": item.get("paid_amount"),
                 "discount": item.get("discount") or 0.0,
                 "needs_review": bool(item.get("needs_review")),
+                "is_food": True if item.get("is_food") is None else bool(item.get("is_food")),
+                "food_quality": None if item.get("is_food") is False else item.get("food_quality"),
                 "meta": meta,
             }
         )
     return normalized
+
+
+def _apply_food_hints(items: list, hints: dict) -> list:
+    if not hints:
+        return items
+    enriched = []
+    for item in items:
+        if not isinstance(item, dict):
+            enriched.append(item)
+            continue
+        name = item.get("name")
+        if not isinstance(name, str):
+            enriched.append(item)
+            continue
+        key = name.strip().lower()
+        hint = hints.get(key)
+        if not hint:
+            enriched.append(item)
+            continue
+
+        updated = dict(item)
+        if updated.get("is_food") is None and hint.get("is_food") is not None:
+            updated["is_food"] = hint.get("is_food")
+
+        if updated.get("is_food") is False:
+            updated["food_quality"] = None
+        elif updated.get("food_quality") is None and hint.get("food_quality") is not None:
+            updated["food_quality"] = hint.get("food_quality")
+
+        enriched.append(updated)
+    return enriched
 
 
 def _build_failure_payload(store: str, img_path: Path, error_code: str, message: str) -> Dict[str, Any]:
@@ -143,8 +178,15 @@ def process_image(
                     }
                     db_result = db_client.upsert_receipt(receipt_payload, config.owner_id, store, source_hash)
                     if db_result.ok and not db_result.skipped and db_result.receipt_id:
+                        items_input = parsed.get("items") or []
+                        names = [
+                            item.get("name")
+                            for item in items_input
+                            if isinstance(item, dict) and item.get("name")
+                        ]
+                        hints = db_client.fetch_item_food_hints(config.owner_id, names)
                         items_payload = _build_items_payload(
-                            parsed.get("items") or [],
+                            _apply_food_hints(items_input, hints),
                             config.owner_id,
                             db_result.receipt_id,
                         )
