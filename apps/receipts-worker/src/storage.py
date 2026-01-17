@@ -104,3 +104,36 @@ class SupabaseClient:
             return DbResult(ok=True, skipped=False)
         except Exception as exc:
             return DbResult(ok=False, skipped=False, error=str(exc))
+
+    def fetch_item_food_hints(self, owner_id: str, names: List[str]) -> dict:
+        if not names:
+            return {}
+        cleaned = [name.strip() for name in names if isinstance(name, str) and name.strip()]
+        if not cleaned:
+            return {}
+
+        hints: dict = {}
+        batch_size = 200
+        for i in range(0, len(cleaned), batch_size):
+            batch = cleaned[i : i + batch_size]
+            resp = (
+                self.client.table(self.receipt_items_table)
+                .select("name,is_food,food_quality,created_at")
+                .eq("owner_id", owner_id)
+                .in_("name", batch)
+                .order("created_at", desc=True)
+                .limit(2000)
+                .execute()
+            )
+            for row in resp.data or []:
+                name = row.get("name")
+                if not isinstance(name, str):
+                    continue
+                key = name.strip().lower()
+                if not key or key in hints:
+                    continue
+                hints[key] = {
+                    "is_food": row.get("is_food"),
+                    "food_quality": row.get("food_quality"),
+                }
+        return hints

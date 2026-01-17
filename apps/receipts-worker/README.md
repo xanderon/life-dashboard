@@ -176,6 +176,8 @@ create table if not exists public.receipt_items (
   paid_amount numeric,
   discount numeric not null default 0,
   needs_review boolean not null default false,
+  is_food boolean not null default true,
+  food_quality text check (food_quality in ('healthy', 'balanced', 'junk')),
   meta jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );

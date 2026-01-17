@@ -25,6 +25,14 @@ type ReceiptRow = {
   schema_version: number | null;
 };
 
+type FoodQuality = 'healthy' | 'balanced' | 'junk';
+
+const FOOD_QUALITY_OPTIONS: { value: FoodQuality; label: string }[] = [
+  { value: 'healthy', label: 'Healthy' },
+  { value: 'balanced', label: 'Balanced' },
+  { value: 'junk', label: 'Junk' },
+];
+
 type ReceiptItemRow = {
   id?: string;
   receipt_id: string;
@@ -35,6 +43,8 @@ type ReceiptItemRow = {
   paid_amount: number | null;
   discount: number | null;
   needs_review: boolean | null;
+  is_food?: boolean | null;
+  food_quality?: FoodQuality | null;
   meta: any;
 };
 
@@ -139,6 +149,8 @@ export default function ReceiptsPage() {
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [selected, setSelected] = useState<ReceiptRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const [populatingFood, setPopulatingFood] = useState(false);
+  const [pendingDeleteKey, setPendingDeleteKey] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showJsonImport, setShowJsonImport] = useState(false);
@@ -211,6 +223,18 @@ export default function ReceiptsPage() {
     });
   }
 
+  function updateItemFoodAt(index: number, patch: Partial<ReceiptItemRow>) {
+    setItems((prev) => {
+      const next = [...prev];
+      const merged = { ...next[index], ...patch };
+      if (merged.is_food === false) {
+        merged.food_quality = null;
+      }
+      next[index] = merged;
+      return next;
+    });
+  }
+
   async function prefillItemFromName(index: number, name: string) {
     const cleaned = name.trim();
     if (cleaned.length < 3) return;
@@ -218,8 +242,9 @@ export default function ReceiptsPage() {
       (opt) => opt.toLowerCase() === cleaned.toLowerCase()
     );
     if (!exactMatch) return;
-    if (itemPrefillCache.current[cleaned]) {
-      const cached = itemPrefillCache.current[cleaned];
+    const cacheKey = cleaned.toLowerCase();
+    if (itemPrefillCache.current[cacheKey]) {
+      const cached = itemPrefillCache.current[cacheKey];
       updateItemAt(index, cached);
       return;
     }
@@ -227,7 +252,9 @@ export default function ReceiptsPage() {
     let data: any[] | null = null;
     const primary = await supabase
       .from('receipt_items')
-      .select('name,quantity,unit,unit_price,paid_amount,discount,needs_review,meta,created_at')
+      .select(
+        'name,quantity,unit,unit_price,paid_amount,discount,needs_review,is_food,food_quality,meta,created_at'
+      )
       .ilike('name', cleaned)
       .order('created_at', { ascending: false })
       .limit(1);
@@ -235,7 +262,7 @@ export default function ReceiptsPage() {
     if (primary.error) {
       const fallback = await supabase
         .from('receipt_items')
-        .select('name,quantity,unit,unit_price,paid_amount,discount,needs_review,meta')
+        .select('name,quantity,unit,unit_price,paid_amount,discount,needs_review,is_food,food_quality,meta')
         .ilike('name', cleaned)
         .limit(1);
       if (fallback.error || !fallback.data?.length) return;
@@ -257,11 +284,126 @@ export default function ReceiptsPage() {
       suggested.paid_amount = Number(currentQty) * Number(suggested.unit_price);
     }
 
-    itemPrefillCache.current[cleaned] = suggested;
+    if (items[index]?.is_food == null && latest.is_food != null) {
+      suggested.is_food = Boolean(latest.is_food);
+      if (!suggested.is_food) {
+        suggested.food_quality = null;
+      }
+    }
+    if (
+      items[index]?.food_quality == null &&
+      latest.food_quality &&
+      (items[index]?.is_food ?? latest.is_food) !== false
+    ) {
+      suggested.food_quality = latest.food_quality as FoodQuality;
+    }
+
+    itemPrefillCache.current[cacheKey] = suggested;
     updateItemAt(index, suggested);
   }
 
-  function applyJsonToEditor(payload: any) {
+  function applyFoodHintsToItems(
+    baseItems: ReceiptItemRow[],
+    lookup: Map<string, { is_food: boolean | null; food_quality: FoodQuality | null }>
+  ) {
+    return baseItems.map((item) => {
+      if (!item.name || !item.name.trim()) return item;
+      const key = item.name.trim().toLowerCase();
+      const hint = lookup.get(key);
+      if (!hint) return item;
+
+      let nextIsFood = item.is_food;
+      let nextQuality = item.food_quality;
+
+      if (nextIsFood == null && hint.is_food != null) {
+        nextIsFood = hint.is_food;
+      }
+      if (nextIsFood === false) {
+        nextQuality = null;
+      } else if (nextQuality == null && hint.food_quality != null) {
+        nextQuality = hint.food_quality;
+      }
+
+      if (nextIsFood === item.is_food && nextQuality === item.food_quality) {
+        return item;
+      }
+
+      return {
+        ...item,
+        is_food: nextIsFood ?? item.is_food,
+        food_quality: nextQuality ?? null,
+      };
+    });
+  }
+
+  async function populateFoodFromHistory(
+    itemsOverride?: ReceiptItemRow[],
+    options?: { silent?: boolean }
+  ) {
+    const silent = options?.silent ?? false;
+    const baseItems = itemsOverride ?? items;
+    if (!baseItems.length) return;
+    const targets = baseItems.filter((item) => {
+      if (!item.name || !item.name.trim()) return false;
+      if (item.is_food === false) return false;
+      return item.is_food == null || (item.is_food !== false && item.food_quality == null);
+    });
+    if (!targets.length) return;
+
+    const names = Array.from(
+      new Set(targets.map((item) => item.name!.trim()).filter(Boolean))
+    );
+    if (!names.length) return;
+
+    if (!silent) {
+      setPopulatingFood(true);
+    }
+    setErr(null);
+    const { data, error } = await supabase
+      .from('receipt_items')
+      .select('name,is_food,food_quality,created_at')
+      .in('name', names)
+      .order('created_at', { ascending: false })
+      .limit(1000);
+
+    if (error) {
+      setErr(error.message);
+      if (!silent) {
+        setPopulatingFood(false);
+      }
+      return;
+    }
+
+    const lookup = new Map<string, { is_food: boolean | null; food_quality: FoodQuality | null }>();
+    (data as any[] | null)?.forEach((row) => {
+      const key = typeof row.name === 'string' ? row.name.trim().toLowerCase() : '';
+      if (!key || lookup.has(key)) return;
+      lookup.set(key, {
+        is_food: row.is_food === null || row.is_food === undefined ? null : Boolean(row.is_food),
+        food_quality: row.food_quality ? (row.food_quality as FoodQuality) : null,
+      });
+    });
+
+    if (!lookup.size) {
+      if (!silent) {
+        setPopulatingFood(false);
+      }
+      return;
+    }
+
+    if (itemsOverride) {
+      setItems(applyFoodHintsToItems(baseItems, lookup));
+    } else {
+      setItems((prev) => applyFoodHintsToItems(prev, lookup));
+    }
+
+    if (!silent) {
+      setPopulatingFood(false);
+      setSuccess('Tipurile alimentare au fost populate unde exista istoric.');
+    }
+  }
+
+  async function applyJsonToEditor(payload: any) {
     const store = payload?.store ?? 'lidl';
     const timestamp = payload?.timestamp ?? new Date().toISOString();
     const merchant = payload?.merchant ?? {};
@@ -302,6 +444,9 @@ export default function ReceiptsPage() {
       const paidAmount = item?.paid_amount ?? null;
       const unitPrice =
         item?.unit_price ?? (paidAmount != null && quantity ? Number(paidAmount) / Number(quantity) : null);
+      const isFood = item?.is_food === false ? false : true;
+      const foodQuality =
+        isFood && item?.food_quality ? (item.food_quality as FoodQuality) : null;
       return {
       receipt_id: '',
       name: item?.name ?? '',
@@ -311,11 +456,14 @@ export default function ReceiptsPage() {
       paid_amount: paidAmount,
       discount: item?.discount ?? 0,
       needs_review: Boolean(item?.needs_review),
+      is_food: isFood,
+      food_quality: foodQuality,
       meta: {},
       };
     });
     setItems(nextItems);
     setMetaLocked(false);
+    await populateFoodFromHistory(nextItems, { silent: true });
   }
 
   async function loadReceipts(activeStore: string) {
@@ -429,7 +577,9 @@ export default function ReceiptsPage() {
     (async () => {
       const { data, error } = await supabase
         .from('receipt_items')
-        .select('id,receipt_id,name,quantity,unit,unit_price,paid_amount,discount,needs_review,meta')
+        .select(
+          'id,receipt_id,name,quantity,unit,unit_price,paid_amount,discount,needs_review,is_food,food_quality,meta'
+        )
         .eq('receipt_id', selected.id)
         .order('id', { ascending: true });
 
@@ -539,6 +689,8 @@ export default function ReceiptsPage() {
           paid_amount: item.paid_amount,
           discount: item.discount,
           needs_review: item.needs_review,
+          is_food: item.is_food === null || item.is_food === undefined ? true : item.is_food,
+          food_quality: item.is_food === false ? null : item.food_quality ?? null,
           meta: item.meta ?? {},
         })
         .eq('id', item.id);
@@ -561,6 +713,8 @@ export default function ReceiptsPage() {
         paid_amount: item.paid_amount,
         discount: item.discount ?? 0,
         needs_review: Boolean(item.needs_review),
+        is_food: item.is_food === null || item.is_food === undefined ? true : item.is_food,
+        food_quality: item.is_food === false ? null : item.food_quality ?? null,
         meta: {},
       }));
 
@@ -580,7 +734,9 @@ export default function ReceiptsPage() {
 
     const { data: refreshedItems } = await supabase
       .from('receipt_items')
-      .select('id,receipt_id,name,quantity,unit,unit_price,paid_amount,discount,needs_review,meta')
+      .select(
+        'id,receipt_id,name,quantity,unit,unit_price,paid_amount,discount,needs_review,is_food,food_quality,meta'
+      )
       .eq('receipt_id', receiptId)
       .order('id', { ascending: true });
     setItems((refreshedItems as any) ?? []);
@@ -685,11 +841,11 @@ export default function ReceiptsPage() {
               <div className="mt-2 flex items-center gap-2">
                 <button
                   className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-1 text-xs text-[var(--text)]"
-                  onClick={() => {
+                  onClick={async () => {
                     setErr(null);
                     try {
                       const parsed = JSON.parse(jsonInput);
-                      applyJsonToEditor(parsed);
+                      await applyJsonToEditor(parsed);
                       setSuccess('JSON importat.');
                     } catch {
                       setErr('JSON invalid.');
@@ -975,28 +1131,41 @@ export default function ReceiptsPage() {
                   <div className="mt-3">
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-lg font-semibold">Items</div>
-                      <button
-                        className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
-                        onClick={() => {
-                          if (!selected) return;
-                          setItems([
-                            ...items,
-                            {
-                              receipt_id: selected.id,
-                              name: '',
-                              quantity: 1,
-                              unit: 'BUC',
-                              unit_price: null,
-                              paid_amount: null,
-                              discount: 0,
-                              needs_review: false,
-                              meta: {},
-                            },
-                          ]);
-                        }}
-                      >
-                        + Add item
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)] disabled:opacity-60"
+                          onClick={populateFoodFromHistory}
+                          disabled={populatingFood || !items.length}
+                          type="button"
+                        >
+                          {populatingFood ? 'Populare…' : 'Food hints'}
+                        </button>
+                        <button
+                          className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
+                          onClick={() => {
+                            if (!selected) return;
+                            setItems([
+                              ...items,
+                              {
+                                receipt_id: selected.id,
+                                name: '',
+                                quantity: 1,
+                                unit: 'BUC',
+                                unit_price: null,
+                                paid_amount: null,
+                                discount: 0,
+                                needs_review: false,
+                                is_food: true,
+                                food_quality: null,
+                                meta: {},
+                              },
+                            ]);
+                          }}
+                          type="button"
+                        >
+                          + Add item
+                        </button>
+                      </div>
                     </div>
                     <div className="mt-2 space-y-2">
                     <datalist id="receipt-item-names">
@@ -1004,13 +1173,14 @@ export default function ReceiptsPage() {
                         <option key={name} value={name} />
                       ))}
                     </datalist>
-                    <div className="hidden grid-cols-[minmax(220px,1fr)_80px_80px_110px_110px_80px_140px] gap-2 px-1 text-sm uppercase tracking-wide text-[var(--muted)] sm:grid">
+                    <div className="hidden grid-cols-[minmax(220px,1fr)_80px_80px_110px_110px_80px_180px_120px] gap-2 px-1 text-sm uppercase tracking-wide text-[var(--muted)] sm:grid">
                       <span>Produs</span>
                       <span>Cant.</span>
                       <span>Unit</span>
                       <span>Pret/u</span>
                       <span>Total</span>
                       <span>Disc</span>
+                      <span>Food</span>
                       <span>Rev</span>
                     </div>
                     <datalist id="receipt-item-units">
@@ -1018,11 +1188,15 @@ export default function ReceiptsPage() {
                         <option key={unit} value={unit} />
                       ))}
                     </datalist>
-                    {items.map((item, idx) => (
-                      <div
-                        key={item.id ?? `new-${idx}`}
-                        className="grid grid-cols-1 gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-2 sm:grid-cols-[minmax(220px,1fr)_80px_80px_110px_110px_80px_140px]"
-                      >
+                    {items.map((item, idx) => {
+                      const isFood = item.is_food !== false;
+                      const itemKey = item.id ?? `new-${idx}`;
+                      const isDeleteArmed = pendingDeleteKey === itemKey;
+                      return (
+                        <div
+                          key={itemKey}
+                          className="grid grid-cols-1 gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-2 sm:grid-cols-[minmax(220px,1fr)_80px_80px_110px_110px_80px_180px_120px]"
+                        >
                         <input
                           className="h-6 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-sm text-[var(--text)]"
                           value={item.name ?? ''}
@@ -1119,19 +1293,66 @@ export default function ReceiptsPage() {
                             setItems(next);
                           }}
                         />
+                        <div className="flex flex-wrap items-center gap-1">
+                          <div className="flex overflow-hidden rounded-md border border-[var(--border)] text-[10px]">
+                            <button
+                              type="button"
+                              className={`px-2 py-1 ${isFood ? 'bg-[var(--panel)] text-[var(--text)]' : 'text-[var(--muted)]'}`}
+                              onClick={() =>
+                                updateItemFoodAt(idx, {
+                                  is_food: true,
+                                  food_quality: item.food_quality ?? null,
+                                })
+                              }
+                            >
+                              Food
+                            </button>
+                            <button
+                              type="button"
+                              className={`px-2 py-1 ${!isFood ? 'bg-[var(--panel)] text-[var(--text)]' : 'text-[var(--muted)]'}`}
+                              onClick={() => updateItemFoodAt(idx, { is_food: false, food_quality: null })}
+                            >
+                              Non
+                            </button>
+                          </div>
+                          <div className={`flex flex-wrap items-center gap-1 ${isFood ? '' : 'opacity-40'}`}>
+                            {FOOD_QUALITY_OPTIONS.map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                disabled={!isFood}
+                                className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                                  item.food_quality === opt.value && isFood
+                                    ? 'border-[var(--accent)] bg-[var(--panel)] text-[var(--text)]'
+                                    : 'border-[var(--border)] text-[var(--muted)]'
+                                }`}
+                                onClick={() =>
+                                  updateItemFoodAt(idx, { is_food: true, food_quality: opt.value })
+                                }
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                         <div className="flex items-center gap-1">
-                          <label className="flex items-center gap-1 text-xs text-[var(--muted)]">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(item.needs_review)}
-                              onChange={(e) => {
-                                const next = [...items];
-                                next[idx] = { ...item, needs_review: e.target.checked };
-                                setItems(next);
-                              }}
-                            />
-                            Review
-                          </label>
+                          <button
+                            type="button"
+                            aria-pressed={Boolean(item.needs_review)}
+                            className={`rounded-md border border-[var(--border)] px-2 py-1 text-[10px] ${
+                              item.needs_review
+                                ? 'bg-amber-500/20 text-amber-200'
+                                : 'bg-[var(--panel)] text-[var(--muted)]'
+                            }`}
+                            onClick={() => {
+                              const next = [...items];
+                              next[idx] = { ...item, needs_review: !item.needs_review };
+                              setItems(next);
+                            }}
+                            title="Review"
+                          >
+                            Rv
+                          </button>
                           <button
                             className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-[10px] text-[var(--text)]"
                             onClick={() => {
@@ -1143,6 +1364,7 @@ export default function ReceiptsPage() {
                               const next = [...items];
                               next.splice(idx + 1, 0, clone);
                               setItems(next);
+                              setPendingDeleteKey(null);
                             }}
                             type="button"
                             title="Duplicate line"
@@ -1150,19 +1372,29 @@ export default function ReceiptsPage() {
                             ⧉
                           </button>
                           <button
-                            className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-[10px] text-[var(--text)]"
+                            className={`rounded-md border border-[var(--border)] px-2 py-1 text-[10px] ${
+                              isDeleteArmed
+                                ? 'bg-rose-500/20 text-rose-200'
+                                : 'bg-[var(--panel)] text-[var(--text)]'
+                            }`}
                             onClick={() => {
-                              const next = items.filter((_, i) => i !== idx);
-                              setItems(next);
+                              if (isDeleteArmed) {
+                                const next = items.filter((_, i) => i !== idx);
+                                setItems(next);
+                                setPendingDeleteKey(null);
+                              } else {
+                                setPendingDeleteKey(itemKey);
+                              }
                             }}
                             type="button"
-                            title="Delete line"
+                            title={isDeleteArmed ? 'Delete line' : 'Confirm delete'}
                           >
                             🗑️
                           </button>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                     {!items.length ? (
                       <div className="text-sm text-[var(--muted)]">Nu există items pentru acest bon.</div>
                     ) : null}
@@ -1220,6 +1452,8 @@ export default function ReceiptsPage() {
                               paid_amount: null,
                               discount: 0,
                               needs_review: false,
+                              is_food: true,
+                              food_quality: null,
                               meta: {},
                             },
                           ]);
