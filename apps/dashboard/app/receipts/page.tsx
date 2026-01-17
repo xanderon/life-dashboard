@@ -750,6 +750,12 @@ export default function ReceiptsPage() {
           <Link className="text-sm underline" href="/">
             ← Înapoi
           </Link>
+          <Link
+            className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
+            href="/receipts/charts"
+          >
+            🧠 Charts
+          </Link>
         </div>
 
         <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
