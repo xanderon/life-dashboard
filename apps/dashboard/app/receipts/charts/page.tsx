@@ -29,10 +29,16 @@ type ReceiptItemRow = {
   discount: number | null;
   is_food: boolean | null;
   food_quality: FoodQuality | null;
-  receipt?: {
-    receipt_date: string | null;
-    currency: string | null;
-  } | null;
+  receipt?:
+    | {
+        receipt_date: string | null;
+        currency: string | null;
+      }
+    | {
+        receipt_date: string | null;
+        currency: string | null;
+      }[]
+    | null;
 };
 
 type WeekBucket = {
@@ -135,7 +141,10 @@ export default function ReceiptsChartsPage() {
         return;
       }
 
-      const nextItems = (data as ReceiptItemRow[]) ?? [];
+      const nextItems = ((data as ReceiptItemRow[]) ?? []).map((row) => ({
+        ...row,
+        receipt: Array.isArray(row.receipt) ? row.receipt[0] ?? null : row.receipt ?? null,
+      }));
       setItems(nextItems);
       const fallbackCurrency =
         nextItems.find((row) => row.receipt?.currency)?.receipt?.currency ?? 'RON';
