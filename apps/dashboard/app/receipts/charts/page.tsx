@@ -29,6 +29,13 @@ type ReceiptItemRow = {
   discount: number | null;
   is_food: boolean | null;
   food_quality: FoodQuality | null;
+  receipt?: {
+    receipt_date: string | null;
+    currency: string | null;
+  } | null;
+};
+
+type ReceiptItemRowRaw = Omit<ReceiptItemRow, 'receipt'> & {
   receipt?:
     | {
         receipt_date: string | null;
@@ -141,7 +148,7 @@ export default function ReceiptsChartsPage() {
         return;
       }
 
-      const nextItems = ((data as ReceiptItemRow[]) ?? []).map((row) => ({
+      const nextItems = ((data as ReceiptItemRowRaw[]) ?? []).map((row) => ({
         ...row,
         receipt: Array.isArray(row.receipt) ? row.receipt[0] ?? null : row.receipt ?? null,
       }));
