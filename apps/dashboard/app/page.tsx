@@ -1,5 +1,4 @@
 import { ClockCard } from '../components/ClockCard';
-import { WeatherCard } from '../components/WeatherCard';
 import { LogoutButton } from '../components/LogoutButton';
 import { AppCards } from '@/components/AppCards';
 
@@ -18,21 +17,7 @@ export default function HomePage() {
 
         <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <ClockCard />
-          <WeatherCard />
           <AppCards />
-        </section>
-
-        <section className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
-          <div className="text-base font-semibold">🧩 Apps</div>
-          <div className="mt-2 text-sm text-[var(--muted)]">
-            Următorul pas: tabel/tiles cu apps (Lidl receipts, Termo, Price tracker), cu:
-            <ul className="mt-2 list-disc pl-5">
-              <li>status (healthy / failed)</li>
-              <li>last run</li>
-              <li>quick actions (Run / Open / Logs)</li>
-              <li>link GitHub + link chat GPT</li>
-            </ul>
-          </div>
         </section>
       </div>
     </main>
