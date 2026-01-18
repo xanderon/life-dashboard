@@ -170,6 +170,7 @@ export default function ReceiptsPage() {
     }[] = [];
     const index = new Map<string, number>();
     receipts.forEach((receipt) => {
+      const receiptTotal = Number(receipt.total_amount) || 0;
       const key = monthKey(receipt.receipt_date);
       const label = formatMonthLabel(key);
       if (!index.has(key)) {
@@ -178,13 +179,13 @@ export default function ReceiptsPage() {
           key,
           label,
           items: [receipt],
-          total: Number(receipt.total_amount) || 0,
+          total: receiptTotal,
           currency: receipt.currency ?? null,
         });
       } else {
         const group = groups[index.get(key)!];
         group.items.push(receipt);
-        group.total += Number(receipt.total_amount) || 0;
+        group.total += receiptTotal;
         if (!group.currency && receipt.currency) {
           group.currency = receipt.currency;
         }
@@ -1273,19 +1274,36 @@ export default function ReceiptsPage() {
                             setItems(next);
                           }}
                         />
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="h-6 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-sm text-[var(--text)]"
-                          value={item.paid_amount ?? ''}
-                          placeholder="Total ex: 25.00"
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            const next = [...items];
-                            next[idx] = { ...item, paid_amount: value === '' ? null : Number(value) };
-                            setItems(next);
-                          }}
-                        />
+                        <div className="flex flex-col gap-1">
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="h-6 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-sm text-[var(--text)]"
+                            value={item.paid_amount ?? ''}
+                            placeholder="Total ex: 25.00"
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              const next = [...items];
+                              next[idx] = { ...item, paid_amount: value === '' ? null : Number(value) };
+                              setItems(next);
+                            }}
+                          />
+                          <div className="text-[10px] text-[var(--muted)]">
+                            Net:{' '}
+                            {(() => {
+                              const paid = item.paid_amount;
+                              if (paid != null && !Number.isNaN(Number(paid))) {
+                                return Number(paid).toFixed(2);
+                              }
+                              const qty = Number(item.quantity) || 0;
+                              const unit = Number(item.unit_price) || 0;
+                              const disc = Number(item.discount) || 0;
+                              const net = Math.max(0, qty * unit - disc);
+                              if (!net) return '—';
+                              return net.toFixed(2);
+                            })()}
+                          </div>
+                        </div>
                         <input
                           type="number"
                           step="0.01"
@@ -1411,13 +1429,17 @@ export default function ReceiptsPage() {
                       <div className="flex items-center gap-2 text-[var(--muted)]">
                         {(() => {
                           const itemsSubtotal = items.reduce((sum, item) => {
-                            const paid = Number(item.paid_amount) || 0;
+                            const paid = item.paid_amount;
+                            if (paid != null && !Number.isNaN(Number(paid))) {
+                              return sum + Number(paid);
+                            }
+                            const qty = Number(item.quantity) || 0;
+                            const unit = Number(item.unit_price) || 0;
                             const disc = Number(item.discount) || 0;
-                            return sum + (paid - disc);
+                            return sum + Math.max(0, qty * unit - disc);
                           }, 0);
                           const sgrCharge = Number(selected?.sgr_bottle_charge || 0);
-                          const sgrRecovered = Number(selected?.sgr_recovered_amount || 0);
-                          const itemsTotal = itemsSubtotal + sgrCharge - sgrRecovered;
+                          const itemsTotal = itemsSubtotal + sgrCharge;
                           const receiptTotal = Number(selected?.total_amount || 0);
                           if (!items.length) return null;
                           if (Math.abs(itemsTotal - receiptTotal) < 0.01) {
@@ -1430,12 +1452,17 @@ export default function ReceiptsPage() {
                           <span className="font-semibold text-[var(--text)]">
                             {(
                               items.reduce((sum, item) => {
-                                const paid = Number(item.paid_amount) || 0;
+                                const paid = item.paid_amount;
+                                if (paid != null && !Number.isNaN(Number(paid))) {
+                                  return sum + Number(paid);
+                                }
+                                const qty = Number(item.quantity) || 0;
+                                const unit = Number(item.unit_price) || 0;
                                 const disc = Number(item.discount) || 0;
-                                return sum + (paid - disc);
+                                return sum + Math.max(0, qty * unit - disc);
                               }, 0) +
                               Number(selected?.sgr_bottle_charge || 0) -
-                              Number(selected?.sgr_recovered_amount || 0)
+                              0
                             ).toFixed(2)}{" "}
                             {selected?.currency ?? "RON"}
                           </span>
