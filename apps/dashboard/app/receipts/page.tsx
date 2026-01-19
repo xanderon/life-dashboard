@@ -1439,7 +1439,9 @@ export default function ReceiptsPage() {
                             return sum + Math.max(0, qty * unit - disc);
                           }, 0);
                           const sgrCharge = Number(selected?.sgr_bottle_charge || 0);
-                          const itemsTotal = itemsSubtotal + sgrCharge;
+                          const sgrRecovered = Number(selected?.sgr_recovered_amount || 0);
+                          const discountTotal = Number(selected?.discount_total || 0);
+                          const itemsTotal = itemsSubtotal + sgrCharge - sgrRecovered - discountTotal;
                           const receiptTotal = Number(selected?.total_amount || 0);
                           if (!items.length) return null;
                           if (Math.abs(itemsTotal - receiptTotal) < 0.01) {
@@ -1462,7 +1464,8 @@ export default function ReceiptsPage() {
                                 return sum + Math.max(0, qty * unit - disc);
                               }, 0) +
                               Number(selected?.sgr_bottle_charge || 0) -
-                              0
+                              Number(selected?.sgr_recovered_amount || 0) -
+                              Number(selected?.discount_total || 0)
                             ).toFixed(2)}{" "}
                             {selected?.currency ?? "RON"}
                           </span>
