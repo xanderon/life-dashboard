@@ -17,6 +17,7 @@ use tauri::{Env, Manager, PackageInfo};
 const DEFAULT_RECEIPTS_ROOT: &str = "Dropbox/bonuri";
 const STATE_DIR: &str = ".life-dashboard/receipts-desktop";
 const STATE_FILE: &str = "state.json";
+const DEFAULT_WORKER_DIR: &str = "Documents/Github repos/life-dashboard/apps/receipts-worker";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct StoreConfig {
@@ -31,6 +32,14 @@ struct AppConfig {
   worker_dir: Option<String>,
   worker_run_cmd: Option<String>,
   stores: Vec<StoreConfig>,
+  config_ready: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+struct LocalConfig {
+  receipts_root: Option<String>,
+  worker_dir: Option<String>,
+  worker_run_cmd: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -90,6 +99,26 @@ fn default_receipts_root() -> String {
   DEFAULT_RECEIPTS_ROOT.to_string()
 }
 
+fn default_worker_dir() -> Option<String> {
+  let home = home_dir()?;
+  let path = home.join(DEFAULT_WORKER_DIR);
+  if path.exists() {
+    Some(path.to_string_lossy().to_string())
+  } else {
+    None
+  }
+}
+
+fn default_worker_cmd(worker_dir: &Option<String>) -> Option<String> {
+  let dir = worker_dir.as_deref()?;
+  let path = Path::new(dir).join("run.sh");
+  if path.exists() {
+    Some(path.to_string_lossy().to_string())
+  } else {
+    None
+  }
+}
+
 fn env_var(key: &str) -> Option<String> {
   std::env::var(key).ok().filter(|value| !value.trim().is_empty())
 }
@@ -139,11 +168,33 @@ fn load_stores_config(package_env: Option<(&PackageInfo, &Env)>) -> Vec<StoreCon
 }
 
 fn read_app_config(package_env: Option<(&PackageInfo, &Env)>) -> AppConfig {
+  let local = load_local_config();
+  let receipts_root = env_var("RECEIPTS_ROOT")
+    .or(local.receipts_root)
+    .unwrap_or_else(default_receipts_root);
+  let worker_dir = env_var("WORKER_DIR")
+    .or(local.worker_dir)
+    .or_else(default_worker_dir);
+  let worker_run_cmd = env_var("WORKER_RUN_CMD")
+    .or(local.worker_run_cmd)
+    .or_else(|| default_worker_cmd(&worker_dir));
+  let receipts_ok = Path::new(receipts_root.trim()).exists();
+  let worker_dir_ok = worker_dir
+    .as_deref()
+    .map(|path| Path::new(path).exists())
+    .unwrap_or(false);
+  let worker_cmd_ok = worker_run_cmd
+    .as_deref()
+    .map(|path| Path::new(path).exists())
+    .unwrap_or(false);
+  let config_ready = receipts_ok && (worker_cmd_ok || worker_dir_ok);
+
   AppConfig {
-    receipts_root: env_var("RECEIPTS_ROOT").unwrap_or_else(default_receipts_root),
-    worker_dir: env_var("WORKER_DIR"),
-    worker_run_cmd: env_var("WORKER_RUN_CMD"),
+    receipts_root,
+    worker_dir,
+    worker_run_cmd,
     stores: load_stores_config(package_env),
+    config_ready,
   }
 }
 
@@ -190,6 +241,34 @@ fn read_source_version(source_dir: &Path) -> Result<String, String> {
 fn state_file_path() -> Option<PathBuf> {
   let home = home_dir()?;
   Some(home.join(STATE_DIR).join(STATE_FILE))
+}
+
+fn config_file_path() -> Option<PathBuf> {
+  let home = home_dir()?;
+  Some(home.join(STATE_DIR).join("config.json"))
+}
+
+fn load_local_config() -> LocalConfig {
+  let path = match config_file_path() {
+    Some(path) => path,
+    None => return LocalConfig::default(),
+  };
+  if let Ok(raw) = fs::read_to_string(path) {
+    if let Ok(config) = serde_json::from_str::<LocalConfig>(&raw) {
+      return config;
+    }
+  }
+  LocalConfig::default()
+}
+
+fn save_local_config(config: &LocalConfig) -> Result<(), String> {
+  let path = config_file_path().ok_or("Missing home directory")?;
+  if let Some(parent) = path.parent() {
+    fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+  }
+  let raw = serde_json::to_string_pretty(config).map_err(|err| err.to_string())?;
+  fs::write(path, raw).map_err(|err| err.to_string())?;
+  Ok(())
 }
 
 fn load_state() -> SeenState {
@@ -317,6 +396,20 @@ fn get_config(app: tauri::AppHandle) -> AppConfig {
 }
 
 #[tauri::command]
+fn set_config(
+  receipts_root: String,
+  worker_dir: Option<String>,
+  worker_run_cmd: Option<String>,
+) -> Result<(), String> {
+  let config = LocalConfig {
+    receipts_root: Some(receipts_root),
+    worker_dir,
+    worker_run_cmd,
+  };
+  save_local_config(&config)
+}
+
+#[tauri::command]
 fn get_inbox_counts() -> Result<Vec<InboxCount>, String> {
   let config = read_app_config(None);
   let mut results = Vec::new();
@@ -439,6 +532,53 @@ fn run_worker(
   mode: String,
 ) -> Result<RunWorkerResult, String> {
   let config = read_app_config(None);
+  if !config.config_ready {
+    let mut missing = Vec::new();
+    if !Path::new(config.receipts_root.trim()).exists() {
+      missing.push(format!("RECEIPTS_ROOT not found: {}", config.receipts_root));
+    }
+    if config.worker_run_cmd.as_deref().unwrap_or("").trim().is_empty() {
+      missing.push("WORKER_RUN_CMD is empty".to_string());
+    } else if let Some(cmd) = &config.worker_run_cmd {
+      if !Path::new(cmd).exists() {
+        missing.push(format!("WORKER_RUN_CMD not found: {}", cmd));
+      }
+    }
+    if config.worker_dir.as_deref().unwrap_or("").trim().is_empty() {
+      missing.push("WORKER_DIR is empty".to_string());
+    } else if let Some(dir) = &config.worker_dir {
+      if !Path::new(dir).exists() {
+        missing.push(format!("WORKER_DIR not found: {}", dir));
+      }
+    }
+    let details = if missing.is_empty() {
+      "Missing config: set RECEIPTS_ROOT and WORKER_DIR/WORKER_RUN_CMD".to_string()
+    } else {
+      format!("Missing config: {}", missing.join(" | "))
+    };
+    let _ = window.emit(
+      "worker-log",
+      WorkerLogEvent {
+        stream: "stderr".to_string(),
+        line: details.clone(),
+        stores: stores.clone(),
+      },
+    );
+    return Err(details);
+  }
+  let _ = window.emit(
+    "worker-log",
+    WorkerLogEvent {
+      stream: "stdout".to_string(),
+      line: format!(
+        "Starting worker: root={} dir={} cmd={}",
+        config.receipts_root,
+        config.worker_dir.clone().unwrap_or_else(|| "—".to_string()),
+        config.worker_run_cmd.clone().unwrap_or_else(|| "—".to_string())
+      ),
+      stores: stores.clone(),
+    },
+  );
   let mut args: Vec<String> = Vec::new();
   if stores.is_empty() {
     args.push("--all".to_string());
@@ -713,6 +853,7 @@ fn main() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![
       get_config,
+      set_config,
       get_inbox_counts,
       get_last_runs,
       get_unread_badges,

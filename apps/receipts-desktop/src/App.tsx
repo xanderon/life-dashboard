@@ -13,6 +13,7 @@ type AppConfig = {
   worker_dir: string | null;
   worker_run_cmd: string | null;
   stores: StoreConfig[];
+  config_ready: boolean;
 };
 
 type InboxCount = {
@@ -71,6 +72,11 @@ type UpdateStatus = {
 
 const AUTO_INTERVAL_MS = 3 * 60 * 1000;
 const MAX_RUNS = 5;
+const DEFAULT_RECEIPTS_ROOT = '/Users/xan/Dropbox/bonuri';
+const DEFAULT_WORKER_DIR =
+  '/Users/xan/Documents/Github repos/life-dashboard/apps/receipts-worker';
+const DEFAULT_WORKER_CMD =
+  '/Users/xan/Documents/Github repos/life-dashboard/apps/receipts-worker/run.sh';
 
 function fmtDate(value?: string | null) {
   if (!value) return '—';
@@ -129,6 +135,10 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
   const [updateBusy, setUpdateBusy] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [receiptsRootInput, setReceiptsRootInput] = useState('');
+  const [workerDirInput, setWorkerDirInput] = useState('');
+  const [workerCmdInput, setWorkerCmdInput] = useState('');
 
   const enabledStores = useMemo(() => {
     return (config?.stores ?? []).filter((store) => store.enabled);
@@ -200,6 +210,12 @@ export default function App() {
           nextSelected[store.id] = store.enabled;
         });
         setSelectedStores(nextSelected);
+        setReceiptsRootInput(nextConfig.receipts_root || DEFAULT_RECEIPTS_ROOT);
+        setWorkerDirInput(nextConfig.worker_dir || DEFAULT_WORKER_DIR);
+        setWorkerCmdInput(nextConfig.worker_run_cmd || DEFAULT_WORKER_CMD);
+        if (!nextConfig.config_ready) {
+          setSettingsOpen(true);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load config.');
       }
@@ -275,6 +291,11 @@ export default function App() {
     setNotice(null);
     setLogLines([]);
     setLastRunOutput(null);
+    if (!config?.config_ready) {
+      setNotice('Missing config. Open Settings and save paths first.');
+      setSettingsOpen(true);
+      return;
+    }
     const working = { ...busyStores };
     stores.forEach((store) => {
       working[store] = true;
@@ -334,6 +355,34 @@ export default function App() {
     }
   }
 
+  async function saveConfig() {
+    setError(null);
+    setNotice(null);
+    try {
+      await invoke('set_config', {
+        receiptsRoot: receiptsRootInput.trim() || DEFAULT_RECEIPTS_ROOT,
+        workerDir: workerDirInput.trim() || DEFAULT_WORKER_DIR,
+        workerRunCmd: workerCmdInput.trim() || DEFAULT_WORKER_CMD
+      });
+      const nextConfig = await invoke<AppConfig>('get_config');
+      setConfig(nextConfig);
+      setSettingsOpen(false);
+      setNotice('Settings saved.');
+      refreshAll();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  function closeSettings() {
+    if (!config?.config_ready) {
+      setNotice('Please save settings before closing.');
+      setSettingsOpen(true);
+      return;
+    }
+    setSettingsOpen(false);
+  }
+
   return (
     <div className="app">
       <header className="topbar">
@@ -363,6 +412,9 @@ export default function App() {
           </p>
         </div>
         <div className="topbar-actions">
+          <button className="ghost" onClick={() => setSettingsOpen((prev) => !prev)}>
+            {settingsOpen ? 'Close settings' : 'Settings'}
+          </button>
           <button
             className="ghost"
             disabled={updateBusy || updateStatus?.status !== 'update_available'}
@@ -381,6 +433,7 @@ export default function App() {
           </button>
           <button
             className="primary"
+            disabled={!config?.config_ready}
             onClick={() =>
               runWorker(
                 Object.entries(selectedStores)
@@ -389,6 +442,7 @@ export default function App() {
                 'once'
               )
             }
+            title={!config?.config_ready ? 'Set paths in Settings first' : undefined}
           >
             Process selected
           </button>
@@ -400,6 +454,61 @@ export default function App() {
 
       {error && <div className="alert error">{error}</div>}
       {notice && <div className="alert success">{notice}</div>}
+
+      {!config?.config_ready || settingsOpen ? (
+        <section className="panel settings">
+          <div className="section-title">
+            <h3>Setup</h3>
+            <p>Set paths to run the worker.</p>
+          </div>
+          <div className="text-[11px] text-[var(--muted)]">
+            Required: Receipts root + Worker dir or Worker run cmd.
+          </div>
+          <div className="settings-grid">
+            <label className="field">
+              <span>Receipts root</span>
+              <input
+                value={receiptsRootInput}
+                onChange={(e) => setReceiptsRootInput(e.target.value)}
+                placeholder="/Users/xan/Dropbox/bonuri"
+              />
+            </label>
+            <label className="field">
+              <span>Worker dir</span>
+              <input
+                value={workerDirInput}
+                onChange={(e) => setWorkerDirInput(e.target.value)}
+                placeholder="/Users/xan/Documents/Github repos/life-dashboard/apps/receipts-worker"
+              />
+            </label>
+            <label className="field">
+              <span>Worker run cmd</span>
+              <input
+                value={workerCmdInput}
+                onChange={(e) => setWorkerCmdInput(e.target.value)}
+                placeholder="/Users/xan/Documents/Github repos/life-dashboard/apps/receipts-worker/run.sh"
+              />
+            </label>
+          </div>
+          <div className="settings-actions">
+            <button className="primary" onClick={saveConfig}>
+              Save settings
+            </button>
+            <button
+              className="ghost"
+              onClick={() => {
+                setReceiptsRootInput(DEFAULT_RECEIPTS_ROOT);
+                setWorkerDirInput(DEFAULT_WORKER_DIR);
+                setWorkerCmdInput(DEFAULT_WORKER_CMD);
+                saveConfig();
+              }}
+            >
+              Use defaults
+            </button>
+            <button onClick={closeSettings}>Close</button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="content-grid">
         <div className="stack">
