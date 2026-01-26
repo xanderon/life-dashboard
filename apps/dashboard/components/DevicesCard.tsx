@@ -5,12 +5,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { StatusPill } from './StatusPill';
 
+type Status = 'ok' | 'warn' | 'down' | 'unknown';
+
 type DeviceRow = {
   id: string;
   slug: string;
   name: string;
   user_name: string | null;
-  status: 'ok' | 'warn' | 'down' | 'unknown';
+  status: Status;
   last_seen_at: string | null;
   ip_address: string | null;
   alerts: { type: string; level: string; message: string }[] | null;
@@ -18,7 +20,7 @@ type DeviceRow = {
 
 const OFFLINE_AFTER_MIN = 45;
 
-function deriveStatus(device: DeviceRow) {
+function deriveStatus(device: DeviceRow): Status {
   if (!device.last_seen_at) return 'unknown' as const;
   const last = new Date(device.last_seen_at).getTime();
   const diffMin = (Date.now() - last) / 60000;
@@ -59,7 +61,7 @@ export function DevicesCard() {
     const enriched = rows.map((d) => ({ ...d, derivedStatus: deriveStatus(d) }));
     const hasDown = enriched.some((d) => d.derivedStatus === 'down');
     const hasWarn = enriched.some((d) => d.derivedStatus === 'warn');
-    const overall = hasDown ? 'down' : hasWarn ? 'warn' : rows.length ? 'ok' : 'unknown';
+    const overall: Status = hasDown ? 'down' : hasWarn ? 'warn' : rows.length ? 'ok' : 'unknown';
     const onlineCount = enriched.filter((d) => d.derivedStatus === 'ok' || d.derivedStatus === 'warn').length;
     const warnCount = enriched.filter((d) => d.derivedStatus === 'warn').length;
     const downCount = enriched.filter((d) => d.derivedStatus === 'down').length;
