@@ -221,6 +221,25 @@ Windows (Task Scheduler):
 - Trigger: every 10-20 minutes
 - Start in: folderul repo-ului
 
+PowerShell (Task Scheduler, 30 min):
+
+```powershell
+$node = (Get-Command node).Path
+$repo = "C:\Users\Alexandru\Documents\GitHub\life-dashboard"
+$action = New-ScheduledTaskAction -Execute $node -Argument "--env-file .env scripts\device_heartbeat.mjs" -WorkingDirectory $repo
+$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 30) -RepetitionDuration ([TimeSpan]::MaxValue)
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+Register-ScheduledTask -TaskName "life-dashboard-device-heartbeat" -Action $action -Trigger $trigger -Settings $settings
+```
+
+Node fara `--env-file` (manual):
+
+```powershell
+$envContent=Get-Content "$repo\.env"
+$envContent | % { if($_ -match '^(.*?)=(.*)$'){[Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')} }
+node scripts\device_heartbeat.mjs
+```
+
 ### macOS (Xan) - setup curent
 
 - Repo path: `/Users/xan/Documents/Github repos/life-dashboard`
@@ -245,6 +264,16 @@ Windows (Task Scheduler):
   - `DEVICE_SLUG=linux-xan`
   - `DEVICE_NAME=Linux`
   - `DEVICE_DISK=/`
+
+### Windows (Alexandru) - setup curent
+
+- Repo path: `C:\Users\Alexandru\Documents\GitHub\life-dashboard`
+- Task Scheduler (30 min):
+  - Task name: `life-dashboard-device-heartbeat`
+- Env in `\.env`:
+  - `DEVICE_SLUG=win-xan`
+  - `DEVICE_NAME=Windows`
+  - `DEVICE_DISK=C:`
 
 ### Inventar device-uri (de completat)
 
