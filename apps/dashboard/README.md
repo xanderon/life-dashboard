@@ -133,6 +133,110 @@ Exemplu plist (interval 300 sec):
 </plist>
 ```
 
+## Device heartbeat (PC-uri / laptopuri)
+
+Scop: fiecare device trimite un ping la 10-20 minute, iar dashboard-ul afiseaza status + snapshot minimal.
+
+### Schema minima Supabase (public)
+
+Ruleaza SQL-ul de mai jos o singura data in Supabase:
+
+```sql
+create table if not exists public.devices (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null,
+  slug text unique not null,
+  name text not null,
+  os text not null default 'unknown',
+  user_name text,
+  status text not null default 'unknown',
+  ip_address text,
+  last_seen_at timestamptz,
+  uptime_sec int,
+  mem_total_mb int,
+  mem_used_mb int,
+  storage_total_gb int,
+  storage_used_gb int,
+  alerts jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+```
+
+Optional (RLS read-only):
+
+```sql
+alter table public.devices enable row level security;
+create policy "devices_read" on public.devices
+  for select using (true);
+```
+
+Daca ai creat deja tabela, adauga coloana user_name:
+
+```sql
+alter table public.devices add column if not exists user_name text;
+```
+
+### Script local (toate OS-urile)
+
+Script: `scripts/device_heartbeat.mjs`
+
+Comanda locala (citeste variabilele din `/.env`):
+
+```bash
+SUPABASE_URL=... \
+SUPABASE_SERVICE_ROLE_KEY=... \
+SUPABASE_OWNER_ID=... \
+DEVICE_SLUG=macbook-xan \
+DEVICE_NAME="Mac-ul lui Xan" \
+DEVICE_DISK="/" \
+npm run device:ping
+```
+
+Variabile:
+- `DEVICE_SLUG` (unic)
+- `DEVICE_NAME` (afisat in UI)
+- `DEVICE_DISK` (default `/` pe linux, `C:` pe Windows; pe mac recomand `/System/Volumes/Data`)
+- `LOW_STORAGE_WARN_PCT` (default `10`)
+- `LOW_STORAGE_CRIT_PCT` (default `5`)
+
+### Programare la 10-20 minute
+
+macOS (launchd): similar cu `termo_alert.mjs`, rulezi scriptul la 600-1200 sec.
+
+Linux (cron):
+
+```bash
+*/10 * * * * cd "/path/to/life-dashboard" && /usr/bin/node --env-file .env scripts/device_heartbeat.mjs >> ~/device_heartbeat.log 2>&1
+```
+
+Windows (Task Scheduler):
+- Action: `node --env-file .env scripts/device_heartbeat.mjs`
+- Trigger: every 10-20 minutes
+- Start in: folderul repo-ului
+
+### macOS (Xan) - setup curent
+
+- Repo path: `/Users/xan/Documents/Github repos/life-dashboard`
+- Plist: `/Users/xan/Library/LaunchAgents/ro.life-dashboard.device-heartbeat.plist`
+- Logs:
+  - `/Users/xan/device_heartbeat.log`
+  - `/Users/xan/device_heartbeat.err`
+- Interval: 30 min (`StartInterval` = 1800)
+- Env in `/.env`:
+  - `DEVICE_SLUG=mac`
+  - `DEVICE_NAME=Mac`
+  - `DEVICE_DISK=/System/Volumes/Data`
+
+### Inventar device-uri (de completat)
+
+| Device | OS | Repo path | Scheduler | Interval |
+| --- | --- | --- | --- | --- |
+| Mac (Xan) | macOS | /path/to/life-dashboard | launchd | 10-20m |
+| Laptop fiica | Windows | ... | Task Scheduler | 10-20m |
+| Desktop fiu | Windows | ... | Task Scheduler | 10-20m |
+| Mini server | Linux | ... | cron/systemd | 10-20m |
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

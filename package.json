@@ -9,7 +9,8 @@
     "dev": "npm --workspace apps/dashboard run dev",
     "build": "npm --workspace apps/dashboard run build",
     "lint": "npm --workspace apps/dashboard run lint",
-    "termo:check": "node --env-file .env scripts/termo_alert.mjs"
+    "termo:check": "node --env-file .env scripts/termo_alert.mjs",
+    "device:ping": "node --env-file .env scripts/device_heartbeat.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0"
