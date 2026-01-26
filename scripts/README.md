@@ -11,6 +11,7 @@ Scop: documentatie rapida pentru scripturile care ruleaza periodic si unde sunt 
 | device_heartbeat.mjs | Laptop fiica | ... | Task Scheduler | 10-20m | heartbeat |
 | device_heartbeat.mjs | Desktop fiu | ... | Task Scheduler | 10-20m | heartbeat |
 | device_heartbeat.mjs | Mini server | ... | cron/systemd | 10-20m | heartbeat |
+| device_heartbeat.mjs | Linux (ThinkPad W530) | /home/xan/github/life-dashboard | cron | 30m | heartbeat |
 
 ## Notes
 
@@ -27,3 +28,14 @@ Scop: documentatie rapida pentru scripturile care ruleaza periodic si unde sunt 
   - `DEVICE_SLUG=mac`
   - `DEVICE_NAME=Mac`
   - `DEVICE_DISK=/System/Volumes/Data`
+
+## Linux (ThinkPad W530) - device heartbeat
+
+- Cron:
+  - `*/30 * * * * cd "/home/xan/github/life-dashboard" && /bin/bash -lc 'set -a; . .env; set +a; /usr/bin/node scripts/device_heartbeat.mjs' >> ~/device_heartbeat.log 2>&1`
+- Logs:
+  - `/home/xan/device_heartbeat.log`
+- Env (in `/.env`):
+  - `DEVICE_SLUG=linux-xan`
+  - `DEVICE_NAME=Linux`
+  - `DEVICE_DISK=/`

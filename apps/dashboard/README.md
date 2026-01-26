@@ -210,6 +210,12 @@ Linux (cron):
 */10 * * * * cd "/path/to/life-dashboard" && /usr/bin/node --env-file .env scripts/device_heartbeat.mjs >> ~/device_heartbeat.log 2>&1
 ```
 
+Daca Node nu suporta `--env-file` (versiuni vechi), foloseste:
+
+```bash
+*/10 * * * * cd "/path/to/life-dashboard" && /bin/bash -lc 'set -a; . .env; set +a; /usr/bin/node scripts/device_heartbeat.mjs' >> ~/device_heartbeat.log 2>&1
+```
+
 Windows (Task Scheduler):
 - Action: `node --env-file .env scripts/device_heartbeat.mjs`
 - Trigger: every 10-20 minutes
@@ -227,6 +233,18 @@ Windows (Task Scheduler):
   - `DEVICE_SLUG=mac`
   - `DEVICE_NAME=Mac`
   - `DEVICE_DISK=/System/Volumes/Data`
+
+### Linux (ThinkPad W530) - setup curent
+
+- Repo path: `/home/xan/github/life-dashboard`
+- Cron:
+  - `*/30 * * * * cd "/home/xan/github/life-dashboard" && /bin/bash -lc 'set -a; . .env; set +a; /usr/bin/node scripts/device_heartbeat.mjs' >> ~/device_heartbeat.log 2>&1`
+- Logs:
+  - `/home/xan/device_heartbeat.log`
+- Env in `/.env`:
+  - `DEVICE_SLUG=linux-xan`
+  - `DEVICE_NAME=Linux`
+  - `DEVICE_DISK=/`
 
 ### Inventar device-uri (de completat)
 
