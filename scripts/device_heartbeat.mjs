@@ -9,6 +9,9 @@ const SUPABASE_OWNER_ID = process.env.SUPABASE_OWNER_ID ?? null;
 const DEVICE_SLUG = process.env.DEVICE_SLUG ?? os.hostname().toLowerCase();
 const DEVICE_NAME = process.env.DEVICE_NAME ?? os.hostname();
 const DEVICE_DISK = process.env.DEVICE_DISK ?? (process.platform === 'win32' ? 'C:' : '/');
+const DEVICE_DISKS = process.env.DEVICE_DISKS
+  ? process.env.DEVICE_DISKS.split(',').map((d) => d.trim()).filter(Boolean)
+  : null;
 
 const LOW_STORAGE_WARN_PCT = Number.parseInt(process.env.LOW_STORAGE_WARN_PCT ?? '10', 10);
 const LOW_STORAGE_CRIT_PCT = Number.parseInt(process.env.LOW_STORAGE_CRIT_PCT ?? '5', 10);
@@ -26,11 +29,11 @@ function pickLocalIp() {
   return null;
 }
 
-function getDiskUsage() {
+function getDiskUsageForDisk(diskPath) {
   try {
     if (process.platform === 'win32') {
       const output = execSync(
-        `wmic logicaldisk where "DeviceID='${DEVICE_DISK}'" get FreeSpace,Size /format:value`,
+        `wmic logicaldisk where "DeviceID='${diskPath}'" get FreeSpace,Size /format:value`,
         { encoding: 'utf8' }
       );
       const freeMatch = output.match(/FreeSpace=(\d+)/i);
@@ -42,9 +45,9 @@ function getDiskUsage() {
       return { totalBytes: total, usedBytes: used };
     }
 
-    const diskPath =
-      process.platform === 'darwin' && DEVICE_DISK === '/' ? '/System/Volumes/Data' : DEVICE_DISK;
-    const output = execSync(`df -k "${diskPath}"`, { encoding: 'utf8' });
+    const resolvedPath =
+      process.platform === 'darwin' && diskPath === '/' ? '/System/Volumes/Data' : diskPath;
+    const output = execSync(`df -k "${resolvedPath}"`, { encoding: 'utf8' });
     const lines = output.trim().split('\n');
     if (lines.length < 2) return null;
     const parts = lines[1].split(/\s+/);
@@ -81,7 +84,23 @@ async function main() {
   const userName = os.userInfo().username;
   const uptimeSec = Math.floor(os.uptime());
   const ipAddress = pickLocalIp();
-  const disk = getDiskUsage();
+  const disks = DEVICE_DISKS ?? [DEVICE_DISK];
+  const volumeStats = disks
+    .map((diskPath) => {
+      const usage = getDiskUsageForDisk(diskPath);
+      if (!usage) return null;
+      const freeBytes = usage.totalBytes - usage.usedBytes;
+      const freePct = usage.totalBytes > 0 ? Math.floor((freeBytes / usage.totalBytes) * 100) : null;
+      return {
+        path: diskPath,
+        totalBytes: usage.totalBytes,
+        usedBytes: usage.usedBytes,
+        freePct,
+      };
+    })
+    .filter(Boolean);
+
+  const disk = volumeStats[0] ?? null;
   const nowIso = new Date().toISOString();
 
   const memTotalMb = toFixedInt(memTotal / (1024 * 1024));
@@ -92,23 +111,22 @@ async function main() {
   const alerts = [];
   let status = 'ok';
 
-  if (disk?.totalBytes) {
-    const freeBytes = disk.totalBytes - disk.usedBytes;
-    const freePct = Math.floor((freeBytes / disk.totalBytes) * 100);
-    if (freePct <= LOW_STORAGE_CRIT_PCT) {
+  for (const volume of volumeStats) {
+    if (volume?.freePct === null) continue;
+    if (volume.freePct <= LOW_STORAGE_CRIT_PCT) {
       alerts.push({
         type: 'low_storage',
         level: 'down',
-        message: `Storage critic: ${freePct}% liber pe ${DEVICE_DISK}`,
+        message: `Storage critic: ${volume.freePct}% liber pe ${volume.path}`,
       });
       status = 'down';
-    } else if (freePct <= LOW_STORAGE_WARN_PCT) {
+    } else if (volume.freePct <= LOW_STORAGE_WARN_PCT) {
       alerts.push({
         type: 'low_storage',
         level: 'warn',
-        message: `Storage low: ${freePct}% liber pe ${DEVICE_DISK}`,
+        message: `Storage low: ${volume.freePct}% liber pe ${volume.path}`,
       });
-      status = 'warn';
+      if (status !== 'down') status = 'warn';
     }
   }
 
@@ -126,6 +144,7 @@ async function main() {
     mem_used_mb: memUsedMb,
     storage_total_gb: storageTotalGb,
     storage_used_gb: storageUsedGb,
+    storage_volumes: volumeStats,
     alerts,
     updated_at: nowIso,
   };

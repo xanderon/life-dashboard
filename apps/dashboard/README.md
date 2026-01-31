@@ -157,6 +157,7 @@ create table if not exists public.devices (
   mem_used_mb int,
   storage_total_gb int,
   storage_used_gb int,
+  storage_volumes jsonb not null default '[]'::jsonb,
   alerts jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -175,6 +176,7 @@ Daca ai creat deja tabela, adauga coloana user_name:
 
 ```sql
 alter table public.devices add column if not exists user_name text;
+alter table public.devices add column if not exists storage_volumes jsonb default '[]'::jsonb;
 ```
 
 ### Script local (toate OS-urile)
@@ -197,6 +199,7 @@ Variabile:
 - `DEVICE_SLUG` (unic)
 - `DEVICE_NAME` (afisat in UI)
 - `DEVICE_DISK` (default `/` pe linux, `C:` pe Windows; pe mac recomand `/System/Volumes/Data`)
+- `DEVICE_DISKS` (lista separata prin virgula, ex: `C:,D:,J:,K:`)
 - `LOW_STORAGE_WARN_PCT` (default `10`)
 - `LOW_STORAGE_CRIT_PCT` (default `5`)
 
@@ -224,18 +227,18 @@ Windows (Task Scheduler):
 PowerShell (Task Scheduler, 30 min):
 
 ```powershell
-$node = (Get-Command node).Path
-$repo = "C:\Users\Alexandru\Documents\GitHub\life-dashboard"
-$action = New-ScheduledTaskAction -Execute $node -Argument "--env-file .env scripts\device_heartbeat.mjs" -WorkingDirectory $repo
-$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 30) -RepetitionDuration ([TimeSpan]::MaxValue)
+$ps1 = "C:\Users\Alexandru\Documents\GitHub\life-dashboard\scripts\device_heartbeat.ps1"
+$action = New-ScheduledTaskAction -Execute (Get-Command powershell).Path -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ps1`""
+$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 30) -RepetitionDuration (New-TimeSpan -Days 1)
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
 Register-ScheduledTask -TaskName "life-dashboard-device-heartbeat" -Action $action -Trigger $trigger -Settings $settings
 ```
 
-Node fara `--env-file` (manual):
+Node fara `--env-file` (manual sau Task Scheduler):
 
 ```powershell
-$envContent=Get-Content "$repo\.env"
+$repo = "C:\Users\Alexandru\Documents\GitHub\life-dashboard"
+$envContent = Get-Content "$repo\.env"
 $envContent | % { if($_ -match '^(.*?)=(.*)$'){[Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')} }
 node scripts\device_heartbeat.mjs
 ```
@@ -270,6 +273,7 @@ node scripts\device_heartbeat.mjs
 - Repo path: `C:\Users\Alexandru\Documents\GitHub\life-dashboard`
 - Task Scheduler (30 min):
   - Task name: `life-dashboard-device-heartbeat`
+  - Script: `C:\Users\Alexandru\Documents\GitHub\life-dashboard\scripts\device_heartbeat.ps1`
 - Env in `\.env`:
   - `DEVICE_SLUG=win-xan`
   - `DEVICE_NAME=Windows`

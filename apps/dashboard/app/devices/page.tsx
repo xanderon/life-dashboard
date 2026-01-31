@@ -19,6 +19,12 @@ type DeviceRow = {
   mem_used_mb: number | null;
   storage_total_gb: number | null;
   storage_used_gb: number | null;
+  storage_volumes: {
+    path: string;
+    totalBytes: number;
+    usedBytes: number;
+    freePct: number | null;
+  }[] | null;
   alerts: { type: string; level: string; message: string }[] | null;
 };
 
@@ -94,7 +100,7 @@ export default function DevicesPage() {
       const { data, error } = await supabase
         .from('devices')
         .select(
-          'id,slug,name,user_name,os,status,ip_address,last_seen_at,uptime_sec,mem_total_mb,mem_used_mb,storage_total_gb,storage_used_gb,alerts'
+          'id,slug,name,user_name,os,status,ip_address,last_seen_at,uptime_sec,mem_total_mb,mem_used_mb,storage_total_gb,storage_used_gb,storage_volumes,alerts'
         )
         .order('name', { ascending: true });
 
@@ -209,6 +215,37 @@ export default function DevicesPage() {
                     unit="MB"
                   />
                 </div>
+
+                {device.storage_volumes && device.storage_volumes.length > 1 ? (
+                  <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-[var(--muted)]">
+                    {device.storage_volumes.map((vol) => {
+                      const totalGb = Math.round(vol.totalBytes / (1024 * 1024 * 1024));
+                      const usedGb = Math.round(vol.usedBytes / (1024 * 1024 * 1024));
+                      const pct =
+                        vol.freePct !== null ? Math.max(0, 100 - vol.freePct) : null;
+                      return (
+                        <div
+                          key={vol.path}
+                          className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2"
+                        >
+                          <div className="flex items-center justify-between text-[11px] uppercase text-[var(--muted)]">
+                            <span>{vol.path}</span>
+                            <span>{pct !== null ? `${pct}%` : '—'}</span>
+                          </div>
+                          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/20">
+                            <div
+                              className="h-full rounded-full bg-emerald-400/80"
+                              style={{ width: pct !== null ? `${pct}%` : '0%' }}
+                            />
+                          </div>
+                          <div className="mt-2 text-xs text-[var(--muted)]">
+                            {`${usedGb}/${totalGb} GB`}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
 
                 {device.alerts && device.alerts.length ? (
                   <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">

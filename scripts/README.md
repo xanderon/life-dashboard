@@ -45,7 +45,9 @@ Scop: documentatie rapida pentru scripturile care ruleaza periodic si unde sunt 
 
 - Task Scheduler:
   - Task name: `life-dashboard-device-heartbeat`
+- Script: `C:\Users\Alexandru\Documents\GitHub\life-dashboard\scripts\device_heartbeat.ps1`
 - Env (in `\.env`):
   - `DEVICE_SLUG=win-xan`
   - `DEVICE_NAME=Windows`
   - `DEVICE_DISK=C:`
+  - `DEVICE_DISKS=C:,D:,J:,K:` (optional)
