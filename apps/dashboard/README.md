@@ -227,8 +227,8 @@ Windows (Task Scheduler):
 PowerShell (Task Scheduler, 30 min):
 
 ```powershell
-$ps1 = "C:\Users\Alexandru\Documents\GitHub\life-dashboard\scripts\device_heartbeat.ps1"
-$action = New-ScheduledTaskAction -Execute (Get-Command powershell).Path -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ps1`""
+$vbs = "C:\Users\Alexandru\Documents\GitHub\life-dashboard\scripts\device_heartbeat_hidden.vbs"
+$action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$vbs`""
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 30) -RepetitionDuration (New-TimeSpan -Days 1)
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
 Register-ScheduledTask -TaskName "life-dashboard-device-heartbeat" -Action $action -Trigger $trigger -Settings $settings
@@ -273,7 +273,7 @@ node scripts\device_heartbeat.mjs
 - Repo path: `C:\Users\Alexandru\Documents\GitHub\life-dashboard`
 - Task Scheduler (30 min):
   - Task name: `life-dashboard-device-heartbeat`
-  - Script: `C:\Users\Alexandru\Documents\GitHub\life-dashboard\scripts\device_heartbeat.ps1`
+  - Script: `C:\Users\Alexandru\Documents\GitHub\life-dashboard\scripts\device_heartbeat_hidden.vbs`
 - Env in `\.env`:
   - `DEVICE_SLUG=win-xan`
   - `DEVICE_NAME=Windows`
