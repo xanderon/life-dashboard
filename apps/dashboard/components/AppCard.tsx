@@ -108,6 +108,15 @@ export function AppCard({
         <Link className="rounded-md px-1.5 py-1 hover:bg-[var(--panel-2)]" href={`/apps/${app.slug}`} aria-label="Details">
           🔎
         </Link>
+        {isReceipts ? (
+          <Link
+            className="rounded-md px-1.5 py-1 hover:bg-[var(--panel-2)]"
+            href="/receipts/charts"
+            aria-label="Charts"
+          >
+            📈
+          </Link>
+        ) : null}
         {app.home_url ? (
           app.home_url.startsWith('/') ? (
             <Link

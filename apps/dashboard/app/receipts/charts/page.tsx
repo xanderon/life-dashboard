@@ -453,8 +453,11 @@ export default function ReceiptsChartsPage() {
                 ▶
               </button>
             </div>
+            <Link className="text-sm underline" href="/">
+              ← Dashboard
+            </Link>
             <Link className="text-sm underline" href="/receipts">
-              ← Inapoi la bonuri
+              ← Bonuri
             </Link>
           </div>
         </div>

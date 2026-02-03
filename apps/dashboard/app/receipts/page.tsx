@@ -749,7 +749,7 @@ export default function ReceiptsPage() {
       <div className="mx-auto max-w-7xl">
         <div className="flex items-center justify-between gap-4">
           <Link className="text-sm underline" href="/">
-            ← Înapoi
+            ← Dashboard
           </Link>
           <Link
             className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
