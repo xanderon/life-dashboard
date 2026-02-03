@@ -95,6 +95,10 @@ function formatMonthLabel(date: Date) {
   return date.toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' });
 }
 
+function monthIndex(date: Date) {
+  return date.getFullYear() * 12 + date.getMonth();
+}
+
 function amountForItem(item: ReceiptItemRow) {
   const paid = item.paid_amount ?? null;
   const fallback =
@@ -122,6 +126,7 @@ export default function ReceiptsChartsPage() {
   const [currency, setCurrency] = useState('RON');
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [monthOffset, setMonthOffset] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -130,8 +135,8 @@ export default function ReceiptsChartsPage() {
       setLoading(true);
 
       const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lookbackStart = addDays(startOfMonth, -35);
+      const earliestMonth = new Date(now.getFullYear(), now.getMonth() - 24, 1);
+      const lookbackStart = addDays(earliestMonth, -7);
 
       const { data, error } = await supabase
         .from('receipt_items')
@@ -165,7 +170,11 @@ export default function ReceiptsChartsPage() {
   }, []);
 
   const now = useMemo(() => new Date(), []);
-  const currentMonthLabel = useMemo(() => formatMonthLabel(now), [now]);
+  const selectedMonthDate = useMemo(
+    () => new Date(now.getFullYear(), now.getMonth() + monthOffset, 1),
+    [now, monthOffset]
+  );
+  const selectedMonthLabel = useMemo(() => formatMonthLabel(selectedMonthDate), [selectedMonthDate]);
 
   const {
     stats,
@@ -174,10 +183,23 @@ export default function ReceiptsChartsPage() {
     topJunk,
     insight,
     budgetBars,
+    minOffset,
+    maxOffset,
   } = useMemo(() => {
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const nowIndex = monthIndex(now);
+    let minIndex = nowIndex;
+    let maxIndex = nowIndex;
+    items.forEach((item) => {
+      const receiptDate = item.receipt?.receipt_date ? new Date(item.receipt.receipt_date) : null;
+      if (!receiptDate || Number.isNaN(receiptDate.getTime())) return;
+      const idx = monthIndex(receiptDate);
+      if (idx < minIndex) minIndex = idx;
+      if (idx > maxIndex) maxIndex = idx;
+    });
+
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+    const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + monthOffset + 1, 1);
+    const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() + monthOffset - 1, 1);
 
     const weekCount = 5;
     const weekStarts: Date[] = [];
@@ -341,8 +363,22 @@ export default function ReceiptsChartsPage() {
       },
     ];
 
-    return { stats, weeklyBuckets, pieData, topJunk, insight, budgetBars };
-  }, [items, now]);
+    return {
+      stats,
+      weeklyBuckets,
+      pieData,
+      topJunk,
+      insight,
+      budgetBars,
+      minOffset: minIndex - nowIndex,
+      maxOffset: maxIndex - nowIndex,
+    };
+  }, [items, now, monthOffset]);
+
+  useEffect(() => {
+    if (monthOffset < minOffset) setMonthOffset(minOffset);
+    if (monthOffset > maxOffset) setMonthOffset(maxOffset);
+  }, [monthOffset, minOffset, maxOffset]);
 
   if (loading) {
     return (
@@ -370,11 +406,57 @@ export default function ReceiptsChartsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold">🧠 Grafice bonuri</h1>
-            <div className="text-sm text-[var(--muted)]">{currentMonthLabel}</div>
+            <div className="text-sm text-[var(--muted)]">{selectedMonthLabel}</div>
           </div>
-          <Link className="text-sm underline" href="/receipts">
-            ← Inapoi la bonuri
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center rounded-full border border-[var(--border)] bg-[var(--panel)] p-1 text-xs text-[var(--muted)]">
+              <button
+                type="button"
+                onClick={() => setMonthOffset((prev) => Math.max(minOffset, prev - 1))}
+                disabled={monthOffset <= minOffset}
+                className={`rounded-full px-3 py-1 transition ${
+                  monthOffset <= minOffset
+                    ? 'cursor-not-allowed text-[var(--muted)]'
+                    : 'hover:text-[var(--text)]'
+                }`}
+              >
+                ◀
+              </button>
+              <button
+                type="button"
+                onClick={() => setMonthOffset(-1)}
+                className={`rounded-full px-3 py-1 transition ${
+                  monthOffset === -1 ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'hover:text-[var(--text)]'
+                }`}
+              >
+                Luna trecuta
+              </button>
+              <button
+                type="button"
+                onClick={() => setMonthOffset(0)}
+                className={`rounded-full px-3 py-1 transition ${
+                  monthOffset === 0 ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'hover:text-[var(--text)]'
+                }`}
+              >
+                Luna curenta
+              </button>
+              <button
+                type="button"
+                onClick={() => setMonthOffset((prev) => Math.min(maxOffset, prev + 1))}
+                disabled={monthOffset >= maxOffset}
+                className={`rounded-full px-3 py-1 transition ${
+                  monthOffset >= maxOffset
+                    ? 'cursor-not-allowed text-[var(--muted)]'
+                    : 'hover:text-[var(--text)]'
+                }`}
+              >
+                ▶
+              </button>
+            </div>
+            <Link className="text-sm underline" href="/receipts">
+              ← Inapoi la bonuri
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
@@ -432,7 +514,7 @@ export default function ReceiptsChartsPage() {
             </ResponsiveContainer>
           </ChartCard>
 
-          <ChartCard title="Distributie categorii (luna curenta)">
+          <ChartCard title={`Distributie categorii (${selectedMonthLabel})`}>
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie
@@ -495,7 +577,7 @@ export default function ReceiptsChartsPage() {
             </ResponsiveContainer>
           </ChartCard>
 
-          <ChartCard title="Top produse junk (luna curenta)">
+          <ChartCard title={`Top produse junk (${selectedMonthLabel})`}>
             <div className="space-y-3">
               {topJunk.length ? (
                 topJunk.map((item) => (
@@ -514,7 +596,7 @@ export default function ReceiptsChartsPage() {
                 ))
               ) : (
                 <div className="text-sm text-[var(--muted)]">
-                  Nu exista produse junk clasificate in luna curenta.
+                  Nu exista produse junk clasificate in luna selectata.
                 </div>
               )}
             </div>
@@ -531,11 +613,11 @@ export default function ReceiptsChartsPage() {
           </div>
         </div>
 
-        <ChartCard title="Bugete luna curenta">
+        <ChartCard title={`Bugete ${selectedMonthLabel}`}>
           <BudgetProgressBars
             items={budgetBars}
             currency={currency}
-            monthLabel={currentMonthLabel}
+            monthLabel={selectedMonthLabel}
           />
         </ChartCard>
       </div>
