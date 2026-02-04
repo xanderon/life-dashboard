@@ -162,10 +162,11 @@ function hasServiceChange(prev, curr) {
   return false;
 }
 
-function buildStatusLines(curr) {
+function buildStatusLines(curr, etaText) {
   const hot = curr.hot_water === 'ok' ? '✅' : '❌';
   const heat = curr.heat === 'ok' ? '✅' : '❌';
-  return `🚿 ${hot} Apă caldă\n🔥 ${heat} Încălzire`;
+  const etaSuffix = etaText && etaText !== '-' ? ` | ETA ${etaText}` : '';
+  return `🚿 ${hot} Apă caldă\n🔥 ${heat} Încălzire${etaSuffix}`;
 }
 
 async function sendPushNotifications(supabase, payload) {
@@ -309,7 +310,7 @@ async function main() {
     if (shouldNotify) {
       const payload = {
         title: 'Termo alert · Dashboard',
-        body: buildStatusLines(currService),
+        body: buildStatusLines(currService, etaText),
         tag: 'termo-status',
         url: PUSH_URL,
         data: {
