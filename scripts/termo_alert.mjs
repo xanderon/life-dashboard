@@ -155,20 +155,17 @@ async function getPreviousServiceState(supabase, appId) {
   };
 }
 
-function buildChangeText(prev, curr) {
-  if (!prev) return null;
-  const changeBits = [];
-  if (prev.hot_water && prev.hot_water !== curr.hot_water) {
-    changeBits.push(
-      `Apa calda ${prev.hot_water === 'ok' ? 'DA' : 'NU'}→${curr.hot_water === 'ok' ? 'DA' : 'NU'}`
-    );
-  }
-  if (prev.heat && prev.heat !== curr.heat) {
-    changeBits.push(
-      `Incalzire ${prev.heat === 'ok' ? 'DA' : 'NU'}→${curr.heat === 'ok' ? 'DA' : 'NU'}`
-    );
-  }
-  return changeBits.length ? changeBits.join(' | ') : null;
+function hasServiceChange(prev, curr) {
+  if (!prev) return false;
+  if (prev.hot_water && prev.hot_water !== curr.hot_water) return true;
+  if (prev.heat && prev.heat !== curr.heat) return true;
+  return false;
+}
+
+function buildStatusLines(curr) {
+  const hot = curr.hot_water === 'ok' ? '✅' : '❌';
+  const heat = curr.heat === 'ok' ? '✅' : '❌';
+  return `🚿 ${hot} Apă caldă\n🔥 ${heat} Încălzire`;
 }
 
 async function sendPushNotifications(supabase, payload) {
@@ -308,11 +305,11 @@ async function main() {
     }
 
     const currService = metrics.service;
-    const changeText = buildChangeText(prevService, currService);
-    if (changeText) {
+    const shouldNotify = hasServiceChange(prevService, currService);
+    if (shouldNotify) {
       const payload = {
-        title: '♨️ Termo alert',
-        body: changeText,
+        title: 'Termo alert · Dashboard',
+        body: buildStatusLines(currService),
         tag: 'termo-status',
         url: PUSH_URL,
         data: {
