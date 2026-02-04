@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import webpush from 'web-push';
 
 const SOURCE_URL =
   process.env.TERMO_URL ??
@@ -10,6 +11,10 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_OWNER_ID = process.env.SUPABASE_OWNER_ID ?? null;
 
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY ?? null;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY ?? null;
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? null;
+
 const APP_SLUG = process.env.TERMO_APP_SLUG ?? 'termo-alert';
 const APP_NAME = process.env.TERMO_APP_NAME ?? '♨️ Termo alert';
 const APP_DESCRIPTION =
@@ -19,6 +24,7 @@ const APP_GITHUB_URL = process.env.TERMO_GITHUB_URL ?? null;
 const APP_HOME_URL = process.env.TERMO_HOME_URL ?? '/termo';
 const APP_CHAT_URL = process.env.TERMO_CHAT_URL ?? null;
 const APP_POSITION = Number.parseInt(process.env.TERMO_APP_POSITION ?? '-10', 10);
+const PUSH_URL = process.env.TERMO_PUSH_URL ?? APP_HOME_URL ?? '/termo';
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -129,6 +135,82 @@ async function getOrCreateApp(supabase) {
   return inserted;
 }
 
+async function getPreviousServiceState(supabase, appId) {
+  const { data, error } = await supabase
+    .from('app_runs')
+    .select('metrics')
+    .eq('app_id', appId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    throw new Error(`Supabase prev run select failed: ${error.message}`);
+  }
+
+  const metrics = data?.[0]?.metrics ?? null;
+  const service = metrics?.service ?? null;
+  return {
+    hot_water: service?.hot_water ?? null,
+    heat: service?.heat ?? null,
+  };
+}
+
+function buildChangeText(prev, curr) {
+  if (!prev) return null;
+  const changeBits = [];
+  if (prev.hot_water && prev.hot_water !== curr.hot_water) {
+    changeBits.push(
+      `Apa calda ${prev.hot_water === 'ok' ? 'DA' : 'NU'}→${curr.hot_water === 'ok' ? 'DA' : 'NU'}`
+    );
+  }
+  if (prev.heat && prev.heat !== curr.heat) {
+    changeBits.push(
+      `Incalzire ${prev.heat === 'ok' ? 'DA' : 'NU'}→${curr.heat === 'ok' ? 'DA' : 'NU'}`
+    );
+  }
+  return changeBits.length ? changeBits.join(' | ') : null;
+}
+
+async function sendPushNotifications(supabase, payload) {
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY || !VAPID_SUBJECT) {
+    return;
+  }
+
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+
+  const { data: subs, error } = await supabase
+    .from('push_subscriptions')
+    .select('id,endpoint,p256dh,auth')
+    .eq('app_slug', APP_SLUG)
+    .eq('enabled', true);
+
+  if (error) {
+    throw new Error(`Supabase push_subscriptions select failed: ${error.message}`);
+  }
+
+  if (!subs?.length) return;
+
+  const serialized = JSON.stringify(payload);
+  for (const sub of subs) {
+    const subscription = {
+      endpoint: sub.endpoint,
+      keys: {
+        p256dh: sub.p256dh,
+        auth: sub.auth,
+      },
+    };
+
+    try {
+      await webpush.sendNotification(subscription, serialized);
+    } catch (err) {
+      const statusCode = err?.statusCode ?? err?.status ?? null;
+      if (statusCode === 404 || statusCode === 410) {
+        await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+      }
+    }
+  }
+}
+
 async function main() {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.');
@@ -190,6 +272,7 @@ async function main() {
     };
 
     const app = await getOrCreateApp(supabase);
+    const prevService = await getPreviousServiceState(supabase, app.id);
     const endedAt = new Date().toISOString();
 
     const { error: runErr } = await supabase.from('app_runs').insert({
@@ -222,6 +305,26 @@ async function main() {
 
     if (appErr) {
       throw new Error(`Supabase app update failed: ${appErr.message}`);
+    }
+
+    const currService = metrics.service;
+    const changeText = buildChangeText(prevService, currService);
+    if (changeText) {
+      const payload = {
+        title: '♨️ Termo alert',
+        body: changeText,
+        tag: 'termo-status',
+        url: PUSH_URL,
+        data: {
+          service: currService,
+          fetched_at: startedAt,
+        },
+      };
+      try {
+        await sendPushNotifications(supabase, payload);
+      } catch (pushErr) {
+        console.warn('[termo_alert] push failed', pushErr);
+      }
     }
   } catch (err) {
     const endedAt = new Date().toISOString();

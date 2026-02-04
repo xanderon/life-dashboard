@@ -13,6 +13,7 @@
     "device:ping": "node --env-file .env scripts/device_heartbeat.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.89.0"
+    "@supabase/supabase-js": "^2.89.0",
+    "web-push": "^3.6.7"
   }
 }

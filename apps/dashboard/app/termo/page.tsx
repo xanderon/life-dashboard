@@ -28,6 +28,19 @@ type RunRow = {
 };
 
 const APP_SLUG = 'termo-alert';
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
+const PUSH_SUBSCRIBE_TOKEN = process.env.NEXT_PUBLIC_PUSH_SUBSCRIBE_TOKEN ?? '';
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i += 1) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 function fmt(ts: string | null) {
   if (!ts) return '—';
@@ -38,6 +51,11 @@ export default function TermoPage() {
   const [app, setApp] = useState<AppRow | null>(null);
   const [run, setRun] = useState<RunRow | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushPermission, setPushPermission] = useState<NotificationPermission | null>(null);
+  const [pushError, setPushError] = useState<string | null>(null);
+  const [pushLoading, setPushLoading] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -80,6 +98,82 @@ export default function TermoPage() {
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+    setPushSupported(supported);
+    if (!supported) return;
+    setPushPermission(Notification.permission);
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => {
+        setPushEnabled(Boolean(sub));
+      })
+      .catch(() => {
+        setPushEnabled(false);
+      });
+  }, []);
+
+  async function enableNotifications() {
+    if (!pushSupported) return;
+    setPushLoading(true);
+    setPushError(null);
+    try {
+      if (Notification.permission === 'denied') {
+        setPushError('Notificările sunt blocate în browser.');
+        setPushLoading(false);
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      setPushPermission(permission);
+      if (permission !== 'granted') {
+        setPushError('Permisiunea pentru notificări nu a fost acordată.');
+        setPushLoading(false);
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      let subscription = await registration.pushManager.getSubscription();
+
+      if (!subscription) {
+        if (!VAPID_PUBLIC_KEY) {
+          setPushError('Lipsește cheia publică VAPID.');
+          setPushLoading(false);
+          return;
+        }
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+      }
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (PUSH_SUBSCRIBE_TOKEN) headers['x-push-token'] = PUSH_SUBSCRIBE_TOKEN;
+      const res = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          subscription,
+          appSlug: APP_SLUG,
+          userAgent: navigator.userAgent,
+        }),
+      });
+
+      if (!res.ok) {
+        setPushError('Nu am putut salva abonarea.');
+        setPushLoading(false);
+        return;
+      }
+
+      setPushEnabled(true);
+      setPushLoading(false);
+    } catch {
+      setPushError('Nu am putut activa notificările.');
+      setPushLoading(false);
+    }
+  }
 
   if (err) {
     return (
@@ -199,6 +293,37 @@ export default function TermoPage() {
               </div>
             </div>
           )}
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
+          <div className="text-base font-semibold">🔔 Notificări</div>
+          {!pushSupported ? (
+            <div className="mt-2 text-sm text-[var(--muted)]">
+              Browserul nu suportă notificări push.
+            </div>
+          ) : (
+            <div className="mt-2 text-sm text-[var(--muted)]">
+              {pushEnabled ? 'Notificările sunt active.' : 'Primește alertă la schimbarea statusului.'}
+            </div>
+          )}
+          {pushSupported && (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                className="rounded-full border border-[var(--border)] bg-[var(--panel-2)] px-4 py-2 text-sm font-semibold transition hover:border-emerald-400/50 hover:text-emerald-200 disabled:opacity-60"
+                onClick={enableNotifications}
+                disabled={pushLoading || pushEnabled}
+              >
+                {pushEnabled ? 'Activat' : pushLoading ? 'Se activează…' : 'Activează notificările'}
+              </button>
+              {pushPermission === 'denied' ? (
+                <span className="text-xs text-rose-300">Permisiune blocată în browser.</span>
+              ) : null}
+              {pushError ? <span className="text-xs text-rose-300">{pushError}</span> : null}
+            </div>
+          )}
+          <div className="mt-3 text-xs text-[var(--muted)]">
+            Pe iOS notificările funcționează doar după “Add to Home Screen”.
+          </div>
         </div>
 
         <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">

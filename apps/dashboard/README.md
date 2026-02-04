@@ -103,6 +103,54 @@ Cron:
 
 Daca folosesti alt path pentru Node, afla cu `which node` si inlocuieste in linia de mai sus.
 
+### Notificari push (iOS / web)
+
+Mecanism: PWA + Web Push. Necesita chei VAPID + tabela `push_subscriptions`.
+
+SQL (Supabase):
+
+```sql
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid,
+  app_slug text not null,
+  endpoint text unique not null,
+  p256dh text not null,
+  auth text not null,
+  user_agent text,
+  enabled boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  last_seen_at timestamptz
+);
+```
+
+Env vars (pe mac pentru script + pe dashboard pentru API):
+
+```
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:you@example.com
+TERMO_PUSH_URL=https://your-domain/termo
+SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_OWNER_ID=...
+```
+
+Client (dashboard):
+
+```
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
+```
+
+Optional (protecție API subscribe):
+
+```
+PUSH_SUBSCRIBE_TOKEN=...
+NEXT_PUBLIC_PUSH_SUBSCRIBE_TOKEN=...
+```
+
+Pe iOS: trebuie instalat PWA (“Add to Home Screen”) ca sa functioneze push.
+
 Launchd (macOS):
 
 1) Creezi fisierul `~/Library/LaunchAgents/ro.life-dashboard.termo.plist`
