@@ -309,7 +309,7 @@ async function main() {
     const shouldNotify = hasServiceChange(prevService, currService);
     if (shouldNotify) {
       const payload = {
-        title: 'Termo alert · Dashboard',
+        title: '♨️ Termo alert',
         body: buildStatusLines(currService, etaText),
         tag: 'termo-status',
         url: PUSH_URL,
