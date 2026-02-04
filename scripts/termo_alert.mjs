@@ -149,16 +149,20 @@ async function getPreviousServiceState(supabase, appId) {
 
   const metrics = data?.[0]?.metrics ?? null;
   const service = metrics?.service ?? null;
+  const dataRow = metrics?.data ?? null;
+  const prevEta = dataRow?.eta ?? null;
   return {
     hot_water: service?.hot_water ?? null,
     heat: service?.heat ?? null,
+    eta: prevEta,
   };
 }
 
-function hasServiceChange(prev, curr) {
+function hasServiceChange(prev, curr, etaText) {
   if (!prev) return false;
   if (prev.hot_water && prev.hot_water !== curr.hot_water) return true;
   if (prev.heat && prev.heat !== curr.heat) return true;
+  if (etaText && prev.eta && prev.eta !== etaText) return true;
   return false;
 }
 
@@ -306,7 +310,7 @@ async function main() {
     }
 
     const currService = metrics.service;
-    const shouldNotify = hasServiceChange(prevService, currService);
+    const shouldNotify = hasServiceChange(prevService, currService, etaText);
     if (shouldNotify) {
       const payload = {
         title: '♨️ Termo alert',
