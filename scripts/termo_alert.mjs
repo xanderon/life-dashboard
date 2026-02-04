@@ -165,8 +165,8 @@ function hasServiceChange(prev, curr) {
 function buildStatusLines(curr, etaText) {
   const hot = curr.hot_water === 'ok' ? '✅' : '❌';
   const heat = curr.heat === 'ok' ? '✅' : '❌';
-  const etaSuffix = etaText && etaText !== '-' ? ` | ETA ${etaText}` : '';
-  return `🚿 ${hot} Apă caldă\n🔥 ${heat} Încălzire${etaSuffix}`;
+  const etaLine = etaText && etaText !== '-' ? `\n⏱ ETA ${etaText}` : '';
+  return `🚿 ${hot} Apă caldă\n🔥 ${heat} Încălzire${etaLine}`;
 }
 
 async function sendPushNotifications(supabase, payload) {
