@@ -57,14 +57,25 @@ type WeekBucket = {
   nonFood: number;
 };
 
-type WeekSplitComparison = {
-  label: string;
-  healthyCurrent: number;
-  healthyPrev: number;
-  balancedCurrent: number;
-  balancedPrev: number;
-  junkCurrent: number;
-  junkPrev: number;
+type WeekPaceLane = {
+  key: FoodQuality;
+  title: string;
+  color: string;
+  fadedColor: string;
+  currentToDate: number;
+  prevToDate: number;
+  prevFullWeek: number;
+  projectedCurrentWeek: number;
+  dailyCurrent: number[];
+  dailyPrev: number[];
+};
+
+type WeekPaceComparison = {
+  weekLabel: string;
+  dayProgressLabel: string;
+  elapsedDays: number;
+  comparableDays: number;
+  lanes: WeekPaceLane[];
 };
 
 const FOOD_BUDGET_SPLIT = {
@@ -198,7 +209,7 @@ export default function ReceiptsChartsPage() {
     topJunk,
     insight,
     budgetBars,
-    weekSplitComparisons,
+    weekPaceComparison,
     minOffset,
     maxOffset,
   } = useMemo(() => {
@@ -250,8 +261,49 @@ export default function ReceiptsChartsPage() {
     let junkPrev = 0;
 
     const junkMap = new Map<string, { spent: number; count: number }>();
-    const currentWeekSplits = new Map<number, { healthy: number; balanced: number; junk: number }>();
-    const prevWeekSplits = new Map<number, { healthy: number; balanced: number; junk: number }>();
+
+    const selectedMonthDays = new Date(startOfNextMonth.getTime() - 1).getDate();
+    const prevMonthDays = new Date(startOfMonth.getTime() - 1).getDate();
+    const isSelectedCurrentMonth = monthOffset === 0;
+    const anchorDay = isSelectedCurrentMonth ? Math.min(now.getDate(), selectedMonthDays) : selectedMonthDays;
+    const activeWeekIndex = Math.floor((Math.max(anchorDay, 1) - 1) / 7) + 1;
+    const activeWeekStartDay = (activeWeekIndex - 1) * 7 + 1;
+    const activeWeekEndDayCurrent = Math.min(activeWeekIndex * 7, selectedMonthDays);
+    const activeWeekEndDayPrev = Math.min(activeWeekIndex * 7, prevMonthDays);
+    const activeWeekLengthCurrent = Math.max(0, activeWeekEndDayCurrent - activeWeekStartDay + 1);
+    const activeWeekLengthPrev = Math.max(0, activeWeekEndDayPrev - activeWeekStartDay + 1);
+    const elapsedDaysCurrent = Math.max(
+      0,
+      Math.min(anchorDay, activeWeekEndDayCurrent) - activeWeekStartDay + 1
+    );
+    const elapsedComparableDays = Math.max(0, Math.min(elapsedDaysCurrent, activeWeekLengthPrev));
+
+    const weekLaneTotals: Record<
+      FoodQuality,
+      { currentToDate: number; prevToDate: number; prevFullWeek: number; dailyCurrent: number[]; dailyPrev: number[] }
+    > = {
+      healthy: {
+        currentToDate: 0,
+        prevToDate: 0,
+        prevFullWeek: 0,
+        dailyCurrent: Array.from({ length: elapsedDaysCurrent }, () => 0),
+        dailyPrev: Array.from({ length: elapsedComparableDays }, () => 0),
+      },
+      balanced: {
+        currentToDate: 0,
+        prevToDate: 0,
+        prevFullWeek: 0,
+        dailyCurrent: Array.from({ length: elapsedDaysCurrent }, () => 0),
+        dailyPrev: Array.from({ length: elapsedComparableDays }, () => 0),
+      },
+      junk: {
+        currentToDate: 0,
+        prevToDate: 0,
+        prevFullWeek: 0,
+        dailyCurrent: Array.from({ length: elapsedDaysCurrent }, () => 0),
+        dailyPrev: Array.from({ length: elapsedComparableDays }, () => 0),
+      },
+    };
 
     items.forEach((item) => {
       const receiptDate = item.receipt?.receipt_date ? new Date(item.receipt.receipt_date) : null;
@@ -259,6 +311,7 @@ export default function ReceiptsChartsPage() {
       const amount = amountForItem(item);
       const isFood = item.is_food !== false;
       const quality = item.food_quality ?? null;
+      const isTrackedFoodQuality = quality === 'healthy' || quality === 'balanced' || quality === 'junk';
 
       if (receiptDate >= startOfMonth && receiptDate < startOfNextMonth) {
         if (isFood) {
@@ -266,15 +319,20 @@ export default function ReceiptsChartsPage() {
           if (quality === 'healthy') healthyMonth += amount;
           if (quality === 'balanced') balancedMonth += amount;
           if (quality === 'junk') junkMonth += amount;
-
-          const weekOfMonth = Math.floor((receiptDate.getDate() - 1) / 7) + 1;
-          const entry = currentWeekSplits.get(weekOfMonth) ?? { healthy: 0, balanced: 0, junk: 0 };
-          if (quality === 'healthy') entry.healthy += amount;
-          if (quality === 'balanced') entry.balanced += amount;
-          if (quality === 'junk') entry.junk += amount;
-          currentWeekSplits.set(weekOfMonth, entry);
         } else {
           nonFoodMonth += amount;
+        }
+
+        if (isFood && isTrackedFoodQuality) {
+          const dayOfMonth = receiptDate.getDate();
+          if (dayOfMonth >= activeWeekStartDay && dayOfMonth <= activeWeekEndDayCurrent) {
+            const lane = weekLaneTotals[quality];
+            const dayInWeek = dayOfMonth - activeWeekStartDay + 1;
+            if (dayInWeek <= elapsedDaysCurrent) {
+              lane.currentToDate += amount;
+              lane.dailyCurrent[dayInWeek - 1] += amount;
+            }
+          }
         }
 
         if (quality === 'junk' && item.name) {
@@ -291,15 +349,21 @@ export default function ReceiptsChartsPage() {
           foodPrev += amount;
           if (quality === 'healthy') healthyPrev += amount;
           if (quality === 'junk') junkPrev += amount;
-
-          const weekOfMonth = Math.floor((receiptDate.getDate() - 1) / 7) + 1;
-          const entry = prevWeekSplits.get(weekOfMonth) ?? { healthy: 0, balanced: 0, junk: 0 };
-          if (quality === 'healthy') entry.healthy += amount;
-          if (quality === 'balanced') entry.balanced += amount;
-          if (quality === 'junk') entry.junk += amount;
-          prevWeekSplits.set(weekOfMonth, entry);
         } else {
           nonFoodPrev += amount;
+        }
+
+        if (isFood && isTrackedFoodQuality) {
+          const dayOfMonth = receiptDate.getDate();
+          if (dayOfMonth >= activeWeekStartDay && dayOfMonth <= activeWeekEndDayPrev) {
+            const lane = weekLaneTotals[quality];
+            lane.prevFullWeek += amount;
+            const dayInWeek = dayOfMonth - activeWeekStartDay + 1;
+            if (dayInWeek <= elapsedComparableDays) {
+              lane.prevToDate += amount;
+              lane.dailyPrev[dayInWeek - 1] += amount;
+            }
+          }
         }
       }
 
@@ -395,23 +459,64 @@ export default function ReceiptsChartsPage() {
       },
     ];
 
-    const currentMonthDays = new Date(startOfNextMonth.getTime() - 1).getDate();
-    const prevMonthDays = new Date(startOfMonth.getTime() - 1).getDate();
-    const maxMonthWeeks = Math.max(Math.ceil(currentMonthDays / 7), Math.ceil(prevMonthDays / 7));
-    const weekSplitComparisons: WeekSplitComparison[] = [];
-    for (let week = 1; week <= maxMonthWeeks; week += 1) {
-      const current = currentWeekSplits.get(week) ?? { healthy: 0, balanced: 0, junk: 0 };
-      const prev = prevWeekSplits.get(week) ?? { healthy: 0, balanced: 0, junk: 0 };
-      weekSplitComparisons.push({
-        label: `Sapt. ${week}`,
-        healthyCurrent: current.healthy,
-        healthyPrev: prev.healthy,
-        balancedCurrent: current.balanced,
-        balancedPrev: prev.balanced,
-        junkCurrent: current.junk,
-        junkPrev: prev.junk,
-      });
-    }
+    const weekPaceComparison: WeekPaceComparison = {
+      weekLabel: `Sapt. ${activeWeekIndex} (${String(activeWeekStartDay).padStart(2, '0')}-${String(
+        activeWeekEndDayCurrent
+      ).padStart(2, '0')})`,
+      dayProgressLabel:
+        monthOffset === 0
+          ? `Ziua ${elapsedDaysCurrent} din ${activeWeekLengthCurrent}`
+          : `Saptamana completa (${activeWeekLengthCurrent} zile)`,
+      elapsedDays: elapsedDaysCurrent,
+      comparableDays: elapsedComparableDays,
+      lanes: [
+        {
+          key: 'healthy',
+          title: 'Healthy',
+          color: FOOD_COLORS.healthy,
+          fadedColor: 'rgba(127, 215, 184, 0.35)',
+          currentToDate: weekLaneTotals.healthy.currentToDate,
+          prevToDate: weekLaneTotals.healthy.prevToDate,
+          prevFullWeek: weekLaneTotals.healthy.prevFullWeek,
+          projectedCurrentWeek:
+            elapsedDaysCurrent > 0
+              ? (weekLaneTotals.healthy.currentToDate / elapsedDaysCurrent) * activeWeekLengthCurrent
+              : 0,
+          dailyCurrent: weekLaneTotals.healthy.dailyCurrent,
+          dailyPrev: weekLaneTotals.healthy.dailyPrev,
+        },
+        {
+          key: 'balanced',
+          title: 'Balanced',
+          color: FOOD_COLORS.balanced,
+          fadedColor: 'rgba(241, 195, 109, 0.35)',
+          currentToDate: weekLaneTotals.balanced.currentToDate,
+          prevToDate: weekLaneTotals.balanced.prevToDate,
+          prevFullWeek: weekLaneTotals.balanced.prevFullWeek,
+          projectedCurrentWeek:
+            elapsedDaysCurrent > 0
+              ? (weekLaneTotals.balanced.currentToDate / elapsedDaysCurrent) * activeWeekLengthCurrent
+              : 0,
+          dailyCurrent: weekLaneTotals.balanced.dailyCurrent,
+          dailyPrev: weekLaneTotals.balanced.dailyPrev,
+        },
+        {
+          key: 'junk',
+          title: 'Junk',
+          color: FOOD_COLORS.junk,
+          fadedColor: 'rgba(255, 123, 123, 0.35)',
+          currentToDate: weekLaneTotals.junk.currentToDate,
+          prevToDate: weekLaneTotals.junk.prevToDate,
+          prevFullWeek: weekLaneTotals.junk.prevFullWeek,
+          projectedCurrentWeek:
+            elapsedDaysCurrent > 0
+              ? (weekLaneTotals.junk.currentToDate / elapsedDaysCurrent) * activeWeekLengthCurrent
+              : 0,
+          dailyCurrent: weekLaneTotals.junk.dailyCurrent,
+          dailyPrev: weekLaneTotals.junk.dailyPrev,
+        },
+      ],
+    };
 
     return {
       stats,
@@ -420,7 +525,7 @@ export default function ReceiptsChartsPage() {
       topJunk,
       insight,
       budgetBars,
-      weekSplitComparisons,
+      weekPaceComparison,
       minOffset: minIndex - nowIndex,
       maxOffset: maxIndex - nowIndex,
     };
@@ -668,7 +773,7 @@ export default function ReceiptsChartsPage() {
             currency={currency}
             monthLabel={selectedMonthLabel}
             prevMonthLabel={compareMonthLabel}
-            weekSplitComparisons={weekSplitComparisons}
+            weekPaceComparison={weekPaceComparison}
           />
         </ChartCard>
       </div>
@@ -729,7 +834,7 @@ function BudgetProgressBars({
   currency,
   monthLabel,
   prevMonthLabel,
-  weekSplitComparisons,
+  weekPaceComparison,
 }: {
   items: {
     key: string;
@@ -741,7 +846,7 @@ function BudgetProgressBars({
   currency: string;
   monthLabel: string;
   prevMonthLabel: string;
-  weekSplitComparisons: WeekSplitComparison[];
+  weekPaceComparison: WeekPaceComparison;
 }) {
   const [loaded, setLoaded] = useState(false);
 
@@ -771,43 +876,24 @@ function BudgetProgressBars({
         ))}
       </div>
       <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4">
-        <div className="mb-3 text-sm font-semibold text-[var(--text)]">
-          Split pe saptamani: {monthLabel} vs {prevMonthLabel}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-sm font-semibold text-[var(--text)]">
+            Pace saptamana activa: {weekPaceComparison.weekLabel}
+          </div>
+          <div className="text-xs text-[var(--muted)]">
+            {monthLabel} vs {prevMonthLabel} | {weekPaceComparison.dayProgressLabel}
+          </div>
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <WeeklySplitLane
-            title="Healthy"
-            colorCurrent={FOOD_COLORS.healthy}
-            colorPrev="rgba(127, 215, 184, 0.35)"
-            currency={currency}
-            rows={weekSplitComparisons.map((row) => ({
-              label: row.label,
-              current: row.healthyCurrent,
-              prev: row.healthyPrev,
-            }))}
-          />
-          <WeeklySplitLane
-            title="Balanced"
-            colorCurrent={FOOD_COLORS.balanced}
-            colorPrev="rgba(241, 195, 109, 0.35)"
-            currency={currency}
-            rows={weekSplitComparisons.map((row) => ({
-              label: row.label,
-              current: row.balancedCurrent,
-              prev: row.balancedPrev,
-            }))}
-          />
-          <WeeklySplitLane
-            title="Junk"
-            colorCurrent={FOOD_COLORS.junk}
-            colorPrev="rgba(255, 123, 123, 0.35)"
-            currency={currency}
-            rows={weekSplitComparisons.map((row) => ({
-              label: row.label,
-              current: row.junkCurrent,
-              prev: row.junkPrev,
-            }))}
-          />
+          {weekPaceComparison.lanes.map((lane) => (
+            <WeekPaceLaneCard
+              key={lane.key}
+              lane={lane}
+              currency={currency}
+              elapsedDays={weekPaceComparison.elapsedDays}
+              comparableDays={weekPaceComparison.comparableDays}
+            />
+          ))}
         </div>
       </div>
       <style jsx>{`
@@ -862,61 +948,125 @@ function BudgetProgressBars({
   );
 }
 
-function WeeklySplitLane({
-  title,
-  rows,
-  colorCurrent,
-  colorPrev,
+function WeekPaceLaneCard({
+  lane,
   currency,
+  elapsedDays,
+  comparableDays,
 }: {
-  title: string;
-  rows: { label: string; current: number; prev: number }[];
-  colorCurrent: string;
-  colorPrev: string;
+  lane: WeekPaceLane;
   currency: string;
+  elapsedDays: number;
+  comparableDays: number;
 }) {
-  const maxValue = rows.reduce((acc, row) => Math.max(acc, row.current, row.prev), 0);
-  const denominator = maxValue > 0 ? maxValue : 1;
+  const denominator = Math.max(
+    lane.currentToDate,
+    lane.prevToDate,
+    lane.prevFullWeek,
+    lane.projectedCurrentWeek,
+    1
+  );
+  const prevComparableWidth = (lane.prevToDate / denominator) * 100;
+  const currentWidth = (lane.currentToDate / denominator) * 100;
+  const projectedWidth = (lane.projectedCurrentWeek / denominator) * 100;
+  const paceDelta = lane.currentToDate - lane.prevToDate;
+  const paceClass =
+    paceDelta > 0 ? 'text-rose-300' : paceDelta < 0 ? 'text-emerald-300' : 'text-[var(--muted)]';
+  const paceSign = paceDelta > 0 ? '+' : '';
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
-      <div className="mb-2 text-sm font-semibold text-[var(--text)]">{title}</div>
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-sm font-semibold text-[var(--text)]">{lane.title}</div>
+        <div className={`text-xs font-semibold ${paceClass}`}>
+          {paceSign}
+          {paceDelta.toFixed(0)} {currency}
+        </div>
+      </div>
       <div className="space-y-2">
-        {rows.map((row) => {
-          const currentWidth = (row.current / denominator) * 100;
-          const prevWidth = (row.prev / denominator) * 100;
-          const delta = row.current - row.prev;
-          const deltaClass =
-            delta > 0 ? 'text-rose-300' : delta < 0 ? 'text-emerald-300' : 'text-[var(--muted)]';
-          const sign = delta > 0 ? '+' : '';
+        <div className="relative h-3 overflow-hidden rounded-full bg-[#102725]">
+          <div
+            className="absolute inset-y-0 left-0 rounded-full"
+            style={{ width: `${prevComparableWidth}%`, backgroundColor: lane.fadedColor }}
+          />
+          <div
+            className="absolute inset-y-0 left-0 rounded-full"
+            style={{ width: `${currentWidth}%`, backgroundColor: lane.color }}
+          />
+        </div>
+        <div className="relative h-2 overflow-hidden rounded-full bg-[#102725]">
+          <div
+            className="absolute inset-y-0 left-0 rounded-full border border-dashed border-[var(--muted)]/50 bg-transparent"
+            style={{ width: `${projectedWidth}%` }}
+          />
+        </div>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] text-[var(--muted)]">
+        <div>Curent pana azi: {lane.currentToDate.toFixed(0)} {currency}</div>
+        <div>Luna trecuta pana azi: {lane.prevToDate.toFixed(0)} {currency}</div>
+        <div>Medie proiectata: {lane.projectedCurrentWeek.toFixed(0)} {currency}</div>
+        <div>Total final luna trecuta: {lane.prevFullWeek.toFixed(0)} {currency}</div>
+      </div>
+      <DailyPaceBars
+        current={lane.dailyCurrent}
+        prev={lane.dailyPrev}
+        color={lane.color}
+        fadedColor={lane.fadedColor}
+        elapsedDays={elapsedDays}
+        comparableDays={comparableDays}
+      />
+    </div>
+  );
+}
 
+function DailyPaceBars({
+  current,
+  prev,
+  color,
+  fadedColor,
+  elapsedDays,
+  comparableDays,
+}: {
+  current: number[];
+  prev: number[];
+  color: string;
+  fadedColor: string;
+  elapsedDays: number;
+  comparableDays: number;
+}) {
+  const buckets = Math.max(elapsedDays, comparableDays, 1);
+  const currentCumulative: number[] = [];
+  const prevCumulative: number[] = [];
+  let currentRunning = 0;
+  let prevRunning = 0;
+  for (let i = 0; i < buckets; i += 1) {
+    currentRunning += current[i] ?? 0;
+    prevRunning += prev[i] ?? 0;
+    currentCumulative.push(currentRunning);
+    prevCumulative.push(prevRunning);
+  }
+  const maxCum = Math.max(...currentCumulative, ...prevCumulative, 1);
+
+  return (
+    <div className="mt-3">
+      <div className="mb-1 text-[10px] text-[var(--muted)]">Pace pe zile (cumulat)</div>
+      <div className="flex items-end gap-1">
+        {Array.from({ length: buckets }).map((_, i) => {
+          const prevHeight = (prevCumulative[i] / maxCum) * 100;
+          const currentHeight = (currentCumulative[i] / maxCum) * 100;
           return (
-            <div key={`${title}-${row.label}`} className="rounded-lg border border-[var(--border)] px-2 py-2">
-              <div className="mb-1 flex items-center justify-between text-[11px] text-[var(--muted)]">
-                <span>{row.label}</span>
-                <span className={deltaClass}>
-                  {sign}
-                  {delta.toFixed(0)} {currency}
-                </span>
+            <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+              <div className="relative h-16 w-full rounded-sm bg-[#102725]">
+                <div
+                  className="absolute bottom-0 left-0 w-full rounded-sm"
+                  style={{ height: `${prevHeight}%`, backgroundColor: fadedColor }}
+                />
+                <div
+                  className="absolute bottom-0 left-[30%] w-[40%] rounded-sm"
+                  style={{ height: `${currentHeight}%`, backgroundColor: color }}
+                />
               </div>
-              <div className="space-y-1">
-                <div className="h-2 overflow-hidden rounded-full bg-[#102725]">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${currentWidth}%`, backgroundColor: colorCurrent }}
-                  />
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-[#102725]">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${prevWidth}%`, backgroundColor: colorPrev }}
-                  />
-                </div>
-              </div>
-              <div className="mt-1 flex items-center justify-between text-[10px] text-[var(--muted)]">
-                <span>Curent: {row.current.toFixed(0)} {currency}</span>
-                <span>Luna trecuta: {row.prev.toFixed(0)} {currency}</span>
-              </div>
+              <div className="text-[9px] text-[var(--muted)]">{i + 1}</div>
             </div>
           );
         })}
