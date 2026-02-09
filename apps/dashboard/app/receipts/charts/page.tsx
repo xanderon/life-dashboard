@@ -57,6 +57,16 @@ type WeekBucket = {
   nonFood: number;
 };
 
+type WeekSplitComparison = {
+  label: string;
+  healthyCurrent: number;
+  healthyPrev: number;
+  balancedCurrent: number;
+  balancedPrev: number;
+  junkCurrent: number;
+  junkPrev: number;
+};
+
 const FOOD_BUDGET_SPLIT = {
   healthy: 2200,
   balanced: 1400,
@@ -174,7 +184,12 @@ export default function ReceiptsChartsPage() {
     () => new Date(now.getFullYear(), now.getMonth() + monthOffset, 1),
     [now, monthOffset]
   );
+  const compareMonthDate = useMemo(
+    () => new Date(now.getFullYear(), now.getMonth() + monthOffset - 1, 1),
+    [now, monthOffset]
+  );
   const selectedMonthLabel = useMemo(() => formatMonthLabel(selectedMonthDate), [selectedMonthDate]);
+  const compareMonthLabel = useMemo(() => formatMonthLabel(compareMonthDate), [compareMonthDate]);
 
   const {
     stats,
@@ -183,6 +198,7 @@ export default function ReceiptsChartsPage() {
     topJunk,
     insight,
     budgetBars,
+    weekSplitComparisons,
     minOffset,
     maxOffset,
   } = useMemo(() => {
@@ -234,6 +250,8 @@ export default function ReceiptsChartsPage() {
     let junkPrev = 0;
 
     const junkMap = new Map<string, { spent: number; count: number }>();
+    const currentWeekSplits = new Map<number, { healthy: number; balanced: number; junk: number }>();
+    const prevWeekSplits = new Map<number, { healthy: number; balanced: number; junk: number }>();
 
     items.forEach((item) => {
       const receiptDate = item.receipt?.receipt_date ? new Date(item.receipt.receipt_date) : null;
@@ -248,6 +266,13 @@ export default function ReceiptsChartsPage() {
           if (quality === 'healthy') healthyMonth += amount;
           if (quality === 'balanced') balancedMonth += amount;
           if (quality === 'junk') junkMonth += amount;
+
+          const weekOfMonth = Math.floor((receiptDate.getDate() - 1) / 7) + 1;
+          const entry = currentWeekSplits.get(weekOfMonth) ?? { healthy: 0, balanced: 0, junk: 0 };
+          if (quality === 'healthy') entry.healthy += amount;
+          if (quality === 'balanced') entry.balanced += amount;
+          if (quality === 'junk') entry.junk += amount;
+          currentWeekSplits.set(weekOfMonth, entry);
         } else {
           nonFoodMonth += amount;
         }
@@ -266,6 +291,13 @@ export default function ReceiptsChartsPage() {
           foodPrev += amount;
           if (quality === 'healthy') healthyPrev += amount;
           if (quality === 'junk') junkPrev += amount;
+
+          const weekOfMonth = Math.floor((receiptDate.getDate() - 1) / 7) + 1;
+          const entry = prevWeekSplits.get(weekOfMonth) ?? { healthy: 0, balanced: 0, junk: 0 };
+          if (quality === 'healthy') entry.healthy += amount;
+          if (quality === 'balanced') entry.balanced += amount;
+          if (quality === 'junk') entry.junk += amount;
+          prevWeekSplits.set(weekOfMonth, entry);
         } else {
           nonFoodPrev += amount;
         }
@@ -363,6 +395,24 @@ export default function ReceiptsChartsPage() {
       },
     ];
 
+    const currentMonthDays = new Date(startOfNextMonth.getTime() - 1).getDate();
+    const prevMonthDays = new Date(startOfMonth.getTime() - 1).getDate();
+    const maxMonthWeeks = Math.max(Math.ceil(currentMonthDays / 7), Math.ceil(prevMonthDays / 7));
+    const weekSplitComparisons: WeekSplitComparison[] = [];
+    for (let week = 1; week <= maxMonthWeeks; week += 1) {
+      const current = currentWeekSplits.get(week) ?? { healthy: 0, balanced: 0, junk: 0 };
+      const prev = prevWeekSplits.get(week) ?? { healthy: 0, balanced: 0, junk: 0 };
+      weekSplitComparisons.push({
+        label: `Sapt. ${week}`,
+        healthyCurrent: current.healthy,
+        healthyPrev: prev.healthy,
+        balancedCurrent: current.balanced,
+        balancedPrev: prev.balanced,
+        junkCurrent: current.junk,
+        junkPrev: prev.junk,
+      });
+    }
+
     return {
       stats,
       weeklyBuckets,
@@ -370,15 +420,11 @@ export default function ReceiptsChartsPage() {
       topJunk,
       insight,
       budgetBars,
+      weekSplitComparisons,
       minOffset: minIndex - nowIndex,
       maxOffset: maxIndex - nowIndex,
     };
   }, [items, now, monthOffset]);
-
-  useEffect(() => {
-    if (monthOffset < minOffset) setMonthOffset(minOffset);
-    if (monthOffset > maxOffset) setMonthOffset(maxOffset);
-  }, [monthOffset, minOffset, maxOffset]);
 
   if (loading) {
     return (
@@ -424,7 +470,7 @@ export default function ReceiptsChartsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setMonthOffset(-1)}
+                onClick={() => setMonthOffset(Math.max(minOffset, -1))}
                 className={`rounded-full px-3 py-1 transition ${
                   monthOffset === -1 ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'hover:text-[var(--text)]'
                 }`}
@@ -621,6 +667,8 @@ export default function ReceiptsChartsPage() {
             items={budgetBars}
             currency={currency}
             monthLabel={selectedMonthLabel}
+            prevMonthLabel={compareMonthLabel}
+            weekSplitComparisons={weekSplitComparisons}
           />
         </ChartCard>
       </div>
@@ -680,6 +728,8 @@ function BudgetProgressBars({
   items,
   currency,
   monthLabel,
+  prevMonthLabel,
+  weekSplitComparisons,
 }: {
   items: {
     key: string;
@@ -690,6 +740,8 @@ function BudgetProgressBars({
   }[];
   currency: string;
   monthLabel: string;
+  prevMonthLabel: string;
+  weekSplitComparisons: WeekSplitComparison[];
 }) {
   const [loaded, setLoaded] = useState(false);
 
@@ -717,6 +769,46 @@ function BudgetProgressBars({
             loaded={loaded}
           />
         ))}
+      </div>
+      <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4">
+        <div className="mb-3 text-sm font-semibold text-[var(--text)]">
+          Split pe saptamani: {monthLabel} vs {prevMonthLabel}
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <WeeklySplitLane
+            title="Healthy"
+            colorCurrent={FOOD_COLORS.healthy}
+            colorPrev="rgba(127, 215, 184, 0.35)"
+            currency={currency}
+            rows={weekSplitComparisons.map((row) => ({
+              label: row.label,
+              current: row.healthyCurrent,
+              prev: row.healthyPrev,
+            }))}
+          />
+          <WeeklySplitLane
+            title="Balanced"
+            colorCurrent={FOOD_COLORS.balanced}
+            colorPrev="rgba(241, 195, 109, 0.35)"
+            currency={currency}
+            rows={weekSplitComparisons.map((row) => ({
+              label: row.label,
+              current: row.balancedCurrent,
+              prev: row.balancedPrev,
+            }))}
+          />
+          <WeeklySplitLane
+            title="Junk"
+            colorCurrent={FOOD_COLORS.junk}
+            colorPrev="rgba(255, 123, 123, 0.35)"
+            currency={currency}
+            rows={weekSplitComparisons.map((row) => ({
+              label: row.label,
+              current: row.junkCurrent,
+              prev: row.junkPrev,
+            }))}
+          />
+        </div>
       </div>
       <style jsx>{`
         @keyframes shimmer {
@@ -766,6 +858,69 @@ function BudgetProgressBars({
           }
         }
       `}</style>
+    </div>
+  );
+}
+
+function WeeklySplitLane({
+  title,
+  rows,
+  colorCurrent,
+  colorPrev,
+  currency,
+}: {
+  title: string;
+  rows: { label: string; current: number; prev: number }[];
+  colorCurrent: string;
+  colorPrev: string;
+  currency: string;
+}) {
+  const maxValue = rows.reduce((acc, row) => Math.max(acc, row.current, row.prev), 0);
+  const denominator = maxValue > 0 ? maxValue : 1;
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
+      <div className="mb-2 text-sm font-semibold text-[var(--text)]">{title}</div>
+      <div className="space-y-2">
+        {rows.map((row) => {
+          const currentWidth = (row.current / denominator) * 100;
+          const prevWidth = (row.prev / denominator) * 100;
+          const delta = row.current - row.prev;
+          const deltaClass =
+            delta > 0 ? 'text-rose-300' : delta < 0 ? 'text-emerald-300' : 'text-[var(--muted)]';
+          const sign = delta > 0 ? '+' : '';
+
+          return (
+            <div key={`${title}-${row.label}`} className="rounded-lg border border-[var(--border)] px-2 py-2">
+              <div className="mb-1 flex items-center justify-between text-[11px] text-[var(--muted)]">
+                <span>{row.label}</span>
+                <span className={deltaClass}>
+                  {sign}
+                  {delta.toFixed(0)} {currency}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="h-2 overflow-hidden rounded-full bg-[#102725]">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${currentWidth}%`, backgroundColor: colorCurrent }}
+                  />
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-[#102725]">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${prevWidth}%`, backgroundColor: colorPrev }}
+                  />
+                </div>
+              </div>
+              <div className="mt-1 flex items-center justify-between text-[10px] text-[var(--muted)]">
+                <span>Curent: {row.current.toFixed(0)} {currency}</span>
+                <span>Luna trecuta: {row.prev.toFixed(0)} {currency}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
