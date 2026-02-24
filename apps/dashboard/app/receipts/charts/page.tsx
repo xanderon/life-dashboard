@@ -80,10 +80,10 @@ type WeekPaceComparison = {
 };
 
 const FOOD_BUDGET_SPLIT = {
-  healthy: 2200,
-  balanced: 1400,
+  healthy: 2000,
+  balanced: 2000,
   junk: 400,
-  nonFood: 1000,
+  nonFood: 600,
 };
 
 const FOOD_COLORS: Record<FoodQuality, string> = {
@@ -1165,15 +1165,15 @@ function BudgetBar({
         </div>
 
         {isOver ? (
-          <div className="absolute right-0 top-0 flex h-full items-center">
-            <div className="relative animate-[burst_0.6s_ease-out]">
+          <div className="absolute right-2 top-1/2 z-10 -translate-y-1/2">
+            <div className="relative h-7 w-12 animate-[burst_0.6s_ease-out]">
               {Array.from({ length: 5 }).map((_, i) => (
                 <span
                   key={i}
-                  className="absolute text-rose-400 animate-[float_2.4s_ease-in-out_infinite]"
+                  className="absolute text-base leading-none text-rose-300 drop-shadow-[0_0_8px_rgba(255,123,123,0.8)] animate-[float_2.4s_ease-in-out_infinite]"
                   style={{
-                    right: `${-8 - i * 12}px`,
-                    top: `${-6 + i * 4}px`,
+                    right: `${i * 9}px`,
+                    top: `${Math.abs(2 - i) * 3}px`,
                     animationDelay: `${i * 0.15}s`,
                   }}
                 >
