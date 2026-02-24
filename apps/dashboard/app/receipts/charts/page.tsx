@@ -57,28 +57,6 @@ type WeekBucket = {
   nonFood: number;
 };
 
-type WeekPaceLane = {
-  key: FoodQuality;
-  title: string;
-  color: string;
-  fadedColor: string;
-  currentComparable: number;
-  prevComparable: number;
-  currentWeekTotal: number;
-  prevWeekTotal: number;
-  prevWeekDailyAvg: number;
-  dailyCurrent: number[];
-  dailyPrev: number[];
-};
-
-type WeekPaceComparison = {
-  dayProgressLabel: string;
-  elapsedDays: number;
-  comparableDays: number;
-  dayNumbers: number[];
-  lanes: WeekPaceLane[];
-};
-
 const FOOD_BUDGET_SPLIT = {
   healthy: 2000,
   balanced: 2000,
@@ -210,7 +188,6 @@ export default function ReceiptsChartsPage() {
     topJunk,
     insight,
     budgetBars,
-    weekPaceComparison,
     minOffset,
     maxOffset,
   } = useMemo(() => {
@@ -466,60 +443,6 @@ export default function ReceiptsChartsPage() {
       },
     ];
 
-    const weekPaceComparison: WeekPaceComparison = {
-      dayProgressLabel:
-        monthOffset === 0
-          ? `Comparatie pana in ziua ${elapsedComparableDays} din interval`
-          : `Comparatie pe interval complet (${activeWeekLengthCurrent} zile)`,
-      elapsedDays: elapsedDaysCurrent,
-      comparableDays: elapsedComparableDays,
-      dayNumbers: Array.from({ length: activeWeekLengthCurrent }, (_, idx) => activeWeekStartDay + idx),
-      lanes: [
-        {
-          key: 'healthy',
-          title: 'Healthy',
-          color: FOOD_COLORS.healthy,
-          fadedColor: 'rgba(127, 215, 184, 0.35)',
-          currentComparable: weekLaneTotals.healthy.currentComparable,
-          prevComparable: weekLaneTotals.healthy.prevComparable,
-          currentWeekTotal: weekLaneTotals.healthy.currentWeekTotal,
-          prevWeekTotal: weekLaneTotals.healthy.prevWeekTotal,
-          prevWeekDailyAvg:
-            activeWeekLengthPrev > 0 ? weekLaneTotals.healthy.prevWeekTotal / activeWeekLengthPrev : 0,
-          dailyCurrent: weekLaneTotals.healthy.dailyCurrent,
-          dailyPrev: weekLaneTotals.healthy.dailyPrev,
-        },
-        {
-          key: 'balanced',
-          title: 'Balanced',
-          color: FOOD_COLORS.balanced,
-          fadedColor: 'rgba(241, 195, 109, 0.35)',
-          currentComparable: weekLaneTotals.balanced.currentComparable,
-          prevComparable: weekLaneTotals.balanced.prevComparable,
-          currentWeekTotal: weekLaneTotals.balanced.currentWeekTotal,
-          prevWeekTotal: weekLaneTotals.balanced.prevWeekTotal,
-          prevWeekDailyAvg:
-            activeWeekLengthPrev > 0 ? weekLaneTotals.balanced.prevWeekTotal / activeWeekLengthPrev : 0,
-          dailyCurrent: weekLaneTotals.balanced.dailyCurrent,
-          dailyPrev: weekLaneTotals.balanced.dailyPrev,
-        },
-        {
-          key: 'junk',
-          title: 'Junk',
-          color: FOOD_COLORS.junk,
-          fadedColor: 'rgba(255, 123, 123, 0.35)',
-          currentComparable: weekLaneTotals.junk.currentComparable,
-          prevComparable: weekLaneTotals.junk.prevComparable,
-          currentWeekTotal: weekLaneTotals.junk.currentWeekTotal,
-          prevWeekTotal: weekLaneTotals.junk.prevWeekTotal,
-          prevWeekDailyAvg:
-            activeWeekLengthPrev > 0 ? weekLaneTotals.junk.prevWeekTotal / activeWeekLengthPrev : 0,
-          dailyCurrent: weekLaneTotals.junk.dailyCurrent,
-          dailyPrev: weekLaneTotals.junk.dailyPrev,
-        },
-      ],
-    };
-
     return {
       stats,
       weeklyBuckets,
@@ -527,7 +450,6 @@ export default function ReceiptsChartsPage() {
       topJunk,
       insight,
       budgetBars,
-      weekPaceComparison,
       minOffset: minIndex - nowIndex,
       maxOffset: maxIndex - nowIndex,
     };
@@ -775,7 +697,6 @@ export default function ReceiptsChartsPage() {
             currency={currency}
             monthLabel={selectedMonthLabel}
             prevMonthLabel={compareMonthLabel}
-            weekPaceComparison={weekPaceComparison}
           />
         </ChartCard>
       </div>
@@ -836,7 +757,6 @@ function BudgetProgressBars({
   currency,
   monthLabel,
   prevMonthLabel,
-  weekPaceComparison,
 }: {
   items: {
     key: string;
@@ -849,7 +769,6 @@ function BudgetProgressBars({
   currency: string;
   monthLabel: string;
   prevMonthLabel: string;
-  weekPaceComparison: WeekPaceComparison;
 }) {
   const [loaded, setLoaded] = useState(false);
 
@@ -879,25 +798,6 @@ function BudgetProgressBars({
             loaded={loaded}
           />
         ))}
-      </div>
-      <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="text-sm font-semibold text-[var(--text)]">Pace saptamanal pe categorii</div>
-          <div className="text-xs text-[var(--muted)]">
-            {monthLabel} vs {prevMonthLabel} | {weekPaceComparison.dayProgressLabel}
-          </div>
-        </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {weekPaceComparison.lanes.map((lane) => (
-            <WeekPaceLaneCard
-              key={lane.key}
-              lane={lane}
-              currency={currency}
-              comparableDays={weekPaceComparison.comparableDays}
-              dayNumbers={weekPaceComparison.dayNumbers}
-            />
-          ))}
-        </div>
       </div>
       <style jsx>{`
         @keyframes shimmer {
@@ -947,119 +847,6 @@ function BudgetProgressBars({
           }
         }
       `}</style>
-    </div>
-  );
-}
-
-function WeekPaceLaneCard({
-  lane,
-  currency,
-  comparableDays,
-  dayNumbers,
-}: {
-  lane: WeekPaceLane;
-  currency: string;
-  comparableDays: number;
-  dayNumbers: number[];
-}) {
-  const denominator = Math.max(lane.currentComparable, lane.prevComparable, 1);
-  const prevComparableWidth = (lane.prevComparable / denominator) * 100;
-  const currentComparableWidth = (lane.currentComparable / denominator) * 100;
-  const comparableDelta = lane.currentComparable - lane.prevComparable;
-  const paceClass =
-    comparableDelta > 0
-      ? 'text-rose-300'
-      : comparableDelta < 0
-      ? 'text-emerald-300'
-      : 'text-[var(--muted)]';
-  const paceSign = comparableDelta > 0 ? '+' : '';
-
-  return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="text-sm font-semibold text-[var(--text)]">{lane.title}</div>
-        <div className={`text-xs font-semibold ${paceClass}`}>
-          {paceSign}
-          {comparableDelta.toFixed(0)} {currency}
-        </div>
-      </div>
-      <div className="space-y-2">
-        <div className="relative h-3 overflow-hidden rounded-full bg-[#102725]">
-          <div
-            className="absolute inset-y-0 left-0 rounded-full"
-            style={{ width: `${prevComparableWidth}%`, backgroundColor: lane.fadedColor }}
-          />
-          <div
-            className="absolute inset-y-0 left-0 rounded-full"
-            style={{ width: `${currentComparableWidth}%`, backgroundColor: lane.color }}
-          />
-        </div>
-      </div>
-      <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] text-[var(--muted)]">
-        <div>Week total curent: {lane.currentWeekTotal.toFixed(0)} {currency}</div>
-        <div>Week total luna trecuta: {lane.prevWeekTotal.toFixed(0)} {currency}</div>
-        <div>Checkpoint comparabil: {lane.currentComparable.toFixed(0)} {currency}</div>
-        <div>Checkpoint luna trecuta: {lane.prevComparable.toFixed(0)} {currency}</div>
-        <div>Medie/zi luna trecuta: {lane.prevWeekDailyAvg.toFixed(0)} {currency}</div>
-      </div>
-      <DailyPaceBars
-        current={lane.dailyCurrent}
-        prev={lane.dailyPrev}
-        color={lane.color}
-        fadedColor={lane.fadedColor}
-        comparableDays={comparableDays}
-        dayNumbers={dayNumbers}
-      />
-    </div>
-  );
-}
-
-function DailyPaceBars({
-  current,
-  prev,
-  color,
-  fadedColor,
-  comparableDays,
-  dayNumbers,
-}: {
-  current: number[];
-  prev: number[];
-  color: string;
-  fadedColor: string;
-  comparableDays: number;
-  dayNumbers: number[];
-}) {
-  const buckets = Math.max(current.length, prev.length, dayNumbers.length, 1);
-  const maxDaily = Math.max(...current, ...prev, 1);
-
-  return (
-    <div className="mt-3">
-      <div className="mb-1 text-[10px] text-[var(--muted)]">Interval pe zile (doar saptamana selectata)</div>
-      <div className="flex items-end gap-1">
-        {Array.from({ length: buckets }).map((_, i) => {
-          const prevHeight = ((prev[i] ?? 0) / maxDaily) * 100;
-          const currentHeight = ((current[i] ?? 0) / maxDaily) * 100;
-          const markerVisible = i < comparableDays;
-          return (
-            <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-              <div className="relative h-16 w-full rounded-sm bg-[#102725]">
-                <div
-                  className="absolute bottom-0 left-0 w-full rounded-sm"
-                  style={{ height: `${prevHeight}%`, backgroundColor: fadedColor }}
-                />
-                <div
-                  className="absolute bottom-0 left-[30%] w-[40%] rounded-sm"
-                  style={{ height: `${currentHeight}%`, backgroundColor: color }}
-                />
-                {markerVisible ? (
-                  <div className="absolute left-0 right-0 top-0 h-[2px] bg-[var(--accent-2)]/70" />
-                ) : null}
-              </div>
-              <div className="text-[9px] text-[var(--muted)]">{dayNumbers[i] ?? i + 1}</div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
