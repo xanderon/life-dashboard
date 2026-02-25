@@ -20,6 +20,33 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## SprintPulse
+
+`SprintPulse` este disponibil la `/sprintpulse` si are card dedicat in homepage.
+
+Ce face:
+- sprinturi de 2 saptamani (configurabile) cu start manual;
+- taskuri recurente generate automat din template-uri;
+- ad-hoc rapid (`+ Add ad-hoc`, plus shortcut `N`);
+- status colorat clar (`NOT_STARTED`, `IN_PROGRESS`, `DONE`, `BLOCKED`);
+- carry-over la sprint nou (carry unfinished / keep old / convert to template);
+- review sprint + copy markdown;
+- endpoint de reminders rule-based (`POST /api/sprintpulse/reminders/check`).
+
+### Setup Supabase pentru SprintPulse
+
+Ruleaza fisierul SQL:
+
+```bash
+# din SQL editor Supabase, ruleaza continutul:
+apps/dashboard/supabase/sprintpulse.sql
+```
+
+Env necesar pentru API routes:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_OWNER_ID` (ex: user id-ul tau; fallback `single-user`)
+
 ## Termo alert (CMTEB)
 
 Dashboard-ul citeste statusul din Supabase. Scriptul `termo_alert.mjs` ruleaza pe Mac si scrie in tabelele `apps` si `app_runs`. Cardul din dashboard afiseaza un rezumat, iar `Open UI` merge la pagina interna `/termo` cu toate detaliile.

@@ -2,6 +2,7 @@ import { ClockCard } from '../components/ClockCard';
 import { LogoutButton } from '../components/LogoutButton';
 import { AppCards } from '@/components/AppCards';
 import { DevicesCard } from '@/components/DevicesCard';
+import { SprintPulseCard } from '@/components/SprintPulseCard';
 
 
 
@@ -19,6 +20,7 @@ export default function HomePage() {
         <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <ClockCard />
           <DevicesCard />
+          <SprintPulseCard />
           <AppCards />
         </section>
       </div>
