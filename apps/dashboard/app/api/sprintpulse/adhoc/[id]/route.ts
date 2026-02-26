@@ -54,3 +54,25 @@ export async function PATCH(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+    const client = getSprintPulseAdminClient();
+
+    const { error } = await client
+      .from('sprintpulse_adhoc_tasks')
+      .delete()
+      .eq('id', id)
+      .eq('owner_id', SPRINTPULSE_OWNER);
+
+    if (error) throw error;
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

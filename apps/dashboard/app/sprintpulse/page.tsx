@@ -23,6 +23,7 @@ type Template = {
   cadence_type: 'ONCE_PER_SPRINT' | 'MULTI_PER_SPRINT';
   reminder_rules: unknown;
   is_active: boolean;
+  default_owner_name?: string | null;
 };
 
 type RecurringTask = {
@@ -92,6 +93,13 @@ const PRIORITY_CLASSES: Record<Priority, string> = {
   P3: 'border-slate-500/50 bg-slate-500/20 text-slate-100',
 };
 
+const PRIORITY_HINTS: Record<Priority, string> = {
+  P0: 'Critical now',
+  P1: 'High priority',
+  P2: 'Normal priority',
+  P3: 'Low priority',
+};
+
 function fmtDate(iso: string | null) {
   if (!iso) return '—';
   return new Date(iso).toLocaleString('ro-RO');
@@ -111,9 +119,24 @@ function prioritySort(priority: Priority) {
   return 3;
 }
 
-function daysBetween(startDate: string) {
-  const start = new Date(`${startDate}T00:00:00.000Z`).getTime();
-  return Math.max(1, Math.floor((Date.now() - start) / (24 * 3600 * 1000)) + 1);
+function isWorkingDay(date: Date) {
+  const day = date.getUTCDay();
+  return day !== 0 && day !== 6;
+}
+
+function workingDaysBetween(startIso: string, endIso: string) {
+  const start = new Date(`${startIso}T00:00:00.000Z`);
+  const end = new Date(`${endIso}T00:00:00.000Z`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+  if (end < start) return 0;
+
+  let count = 0;
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    if (isWorkingDay(cursor)) count += 1;
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return count;
 }
 
 export default function SprintPulsePage() {
@@ -132,9 +155,10 @@ export default function SprintPulsePage() {
   const [addTitle, setAddTitle] = useState('');
   const [addNote, setAddNote] = useState('');
   const [addPriority, setAddPriority] = useState<Priority>('P2');
+  const [addOwner, setAddOwner] = useState('Me');
 
   const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [durationDays, setDurationDays] = useState(14);
+  const [durationDays, setDurationDays] = useState(10);
   const [carryMode, setCarryMode] = useState<'carry_unfinished' | 'keep_old' | 'convert_to_template'>('carry_unfinished');
   const [convertTaskIds, setConvertTaskIds] = useState<string[]>([]);
 
@@ -148,9 +172,7 @@ export default function SprintPulsePage() {
 
     const res = await fetch(`/api/sprintpulse/bootstrap${query}`, { cache: 'no-store' });
     const payload = await res.json();
-    if (!res.ok) {
-      throw new Error(payload.error ?? 'Failed to load SprintPulse');
-    }
+    if (!res.ok) throw new Error(payload.error ?? 'Failed to load SprintPulse');
 
     setSprints(payload.sprints ?? []);
     setSelectedSprint(payload.selectedSprint ?? payload.currentSprint ?? null);
@@ -173,9 +195,26 @@ export default function SprintPulsePage() {
       cache: 'no-store',
     });
     const payload = await res.json();
-    if (!res.ok) return;
-    setSummary(payload.summary ?? null);
+    if (res.ok) setSummary(payload.summary ?? null);
   }, []);
+
+  const ownerOptions = useMemo(() => {
+    const set = new Set<string>();
+    set.add('Me');
+    templates.forEach((t) => t.default_owner_name && set.add(t.default_owner_name));
+    recurring.forEach((r) => r.owner_name && set.add(r.owner_name));
+    adhoc.forEach((a) => a.owner_name && set.add(a.owner_name));
+    return [...set];
+  }, [templates, recurring, adhoc]);
+
+  const sprintProgress = useMemo(() => {
+    if (!selectedSprint) return { dayOfSprint: 0, remainingDays: 0, started: false };
+    const today = new Date().toISOString().slice(0, 10);
+    const dayOfSprint = Math.max(1, workingDaysBetween(selectedSprint.start_date, today));
+    const remainingDays = Math.max(0, workingDaysBetween(today, selectedSprint.end_date) - 1);
+    const started = today >= selectedSprint.start_date;
+    return { dayOfSprint, remainingDays, started };
+  }, [selectedSprint]);
 
   const filteredRecurring = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -193,7 +232,6 @@ export default function SprintPulsePage() {
     const middle = rows.filter(
       (task) => !start.some((s) => s.id === task.id) && !highCadence.some((h) => h.id === task.id)
     );
-
     const byStatus = (a: RecurringTask, b: RecurringTask) => statusSort(a.status) - statusSort(b.status);
 
     return {
@@ -207,10 +245,7 @@ export default function SprintPulsePage() {
     const q = search.trim().toLowerCase();
     const rows = !q
       ? adhoc
-      : adhoc.filter((task) => {
-          const text = `${task.title} ${task.note ?? ''}`.toLowerCase();
-          return text.includes(q);
-        });
+      : adhoc.filter((task) => `${task.title} ${task.note ?? ''}`.toLowerCase().includes(q));
 
     return [...rows].sort((a, b) => {
       const p = prioritySort(a.priority) - prioritySort(b.priority);
@@ -241,57 +276,25 @@ export default function SprintPulsePage() {
     }
 
     const payload = await res.json();
-    const nextTask = payload.task as RecurringTask;
-    setRecurring((rows) => rows.map((row) => (row.id === taskId ? nextTask : row)));
+    setRecurring((rows) => rows.map((row) => (row.id === taskId ? (payload.task as RecurringTask) : row)));
     if (selectedSprint?.id) refreshSummary(selectedSprint.id);
   }, [recurring, refreshSummary, selectedSprint]);
 
-  const saveRecurringNote = useCallback(async (task: RecurringTask, note: string) => {
-    const res = await fetch(`/api/sprintpulse/instances/${task.id}`, {
+  const patchRecurring = useCallback(async (taskId: string, patch: { notes?: string; ownerName?: string | null }) => {
+    const res = await fetch(`/api/sprintpulse/instances/${taskId}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ notes: note, action: 'NOTE_UPDATED' }),
+      body: JSON.stringify({ ...patch, action: 'UPDATED' }),
     });
 
+    const payload = await res.json().catch(() => null);
     if (!res.ok) {
-      const payload = await res.json().catch(() => null);
-      setError(payload?.error ?? 'Failed saving note.');
+      setError(payload?.error ?? 'Failed updating recurring task.');
       return;
     }
 
-    const payload = await res.json();
-    const nextTask = payload.task as RecurringTask;
-    setRecurring((rows) => rows.map((row) => (row.id === task.id ? nextTask : row)));
+    setRecurring((rows) => rows.map((row) => (row.id === taskId ? (payload.task as RecurringTask) : row)));
   }, []);
-
-  async function addAdhocTask() {
-    if (!selectedSprint || !addTitle.trim()) return;
-
-    const res = await fetch('/api/sprintpulse/adhoc', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        sprintId: selectedSprint.id,
-        title: addTitle,
-        note: addNote || null,
-        priority: addPriority,
-        ownerName: 'Me',
-      }),
-    });
-
-    const payload = await res.json();
-    if (!res.ok) {
-      setError(payload.error ?? 'Failed creating ad-hoc task.');
-      return;
-    }
-
-    setAdhoc((rows) => [payload.task as AdhocTask, ...rows]);
-    setAddTitle('');
-    setAddNote('');
-    setAddPriority('P2');
-    setShowAddAdhoc(false);
-    if (selectedSprint?.id) refreshSummary(selectedSprint.id);
-  }
 
   const patchAdhoc = useCallback(async (taskId: string, patch: Partial<AdhocTask>) => {
     const res = await fetch(`/api/sprintpulse/adhoc/${taskId}`, {
@@ -316,6 +319,48 @@ export default function SprintPulsePage() {
     setAdhoc((rows) => rows.map((row) => (row.id === next.id ? next : row)));
     if (selectedSprint?.id) refreshSummary(selectedSprint.id);
   }, [refreshSummary, selectedSprint]);
+
+  const deleteAdhoc = useCallback(async (taskId: string) => {
+    const res = await fetch(`/api/sprintpulse/adhoc/${taskId}`, { method: 'DELETE' });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) {
+      setError(payload?.error ?? 'Failed deleting ad-hoc task.');
+      return;
+    }
+
+    setAdhoc((rows) => rows.filter((row) => row.id !== taskId));
+    if (selectedSprint?.id) refreshSummary(selectedSprint.id);
+  }, [refreshSummary, selectedSprint]);
+
+  async function addAdhocTask() {
+    if (!selectedSprint || !addTitle.trim()) return;
+
+    const res = await fetch('/api/sprintpulse/adhoc', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        sprintId: selectedSprint.id,
+        title: addTitle.trim(),
+        note: addNote || null,
+        priority: addPriority,
+        ownerName: addOwner.trim() || 'Me',
+      }),
+    });
+
+    const payload = await res.json();
+    if (!res.ok) {
+      setError(payload.error ?? 'Failed creating ad-hoc task.');
+      return;
+    }
+
+    setAdhoc((rows) => [payload.task as AdhocTask, ...rows]);
+    setAddTitle('');
+    setAddNote('');
+    setAddPriority('P2');
+    setAddOwner('Me');
+    setShowAddAdhoc(false);
+    if (selectedSprint?.id) refreshSummary(selectedSprint.id);
+  }
 
   async function startNewSprint() {
     const res = await fetch('/api/sprintpulse/sprints/start', {
@@ -343,6 +388,30 @@ export default function SprintPulsePage() {
     setConvertTaskIds([]);
   }
 
+  async function resetCurrentSprint() {
+    if (!selectedSprint) return;
+    const confirmReset = window.confirm('Reset current sprint? This sets all tasks to NOT_STARTED and restarts dates from today.');
+    if (!confirmReset) return;
+
+    const res = await fetch('/api/sprintpulse/sprints/reset', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sprintId: selectedSprint.id }),
+    });
+
+    const payload = await res.json();
+    if (!res.ok) {
+      setError(payload.error ?? 'Failed to reset sprint.');
+      return;
+    }
+
+    setSprints(payload.sprints ?? []);
+    setSelectedSprint(payload.sprint ?? null);
+    setRecurring(payload.recurring ?? []);
+    setAdhoc(payload.adhoc ?? []);
+    setSummary(payload.summary ?? null);
+  }
+
   async function checkReminders() {
     const res = await fetch('/api/sprintpulse/reminders/check', { method: 'POST' });
     const payload = await res.json();
@@ -364,7 +433,7 @@ export default function SprintPulsePage() {
     const md = [
       `# Sprint Review - ${selectedSprint.name ?? selectedSprint.start_date}`,
       '',
-      `- Range: ${selectedSprint.start_date} -> ${selectedSprint.end_date}`,
+      `- Range: ${selectedSprint.start_date} -> ${selectedSprint.end_date} (working days sprint)`,
       `- Recurring completion: ${summary.recurringDone}/${summary.recurringTotal} (${summary.recurringPercent}%)`,
       `- Ad-hoc completion: ${summary.adhocCompleted}/${summary.adhocTotal}`,
       `- Leftover ad-hoc: ${summary.adhocLeftover}`,
@@ -389,10 +458,7 @@ export default function SprintPulsePage() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      const isInput =
-        target?.tagName === 'INPUT' ||
-        target?.tagName === 'TEXTAREA' ||
-        target?.getAttribute('contenteditable') === 'true';
+      const isInput = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA';
       if (isInput) return;
 
       if (event.key.toLowerCase() === 'n') {
@@ -428,9 +494,7 @@ export default function SprintPulsePage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
-        <div className="mx-auto max-w-7xl rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6">
-          Loading SprintPulse...
-        </div>
+        <div className="mx-auto max-w-7xl rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6">Loading SprintPulse...</div>
       </main>
     );
   }
@@ -442,23 +506,18 @@ export default function SprintPulsePage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold">SprintPulse</h1>
-              <p className="mt-1 text-sm text-[var(--muted)]">
-                Rosu = te doare, portocaliu = e pe teava, verde = ai scapat.
-              </p>
+              <p className="mt-1 text-sm text-[var(--muted)]">Rosu = te doare, portocaliu = e pe teava, verde = ai scapat.</p>
             </div>
             <div className="flex items-center gap-2">
-              <Link
-                className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm font-semibold hover:bg-black/10"
-                href="/"
-              >
-                ← Dashboard
-              </Link>
-              <button
-                className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-2 text-sm font-semibold hover:bg-emerald-500/30"
-                onClick={() => setShowAddAdhoc(true)}
-              >
-                + Add ad-hoc
-              </button>
+              <Link className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm font-semibold hover:bg-black/10" href="/">← Dashboard</Link>
+              <button className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-2 text-sm font-semibold hover:bg-emerald-500/30" onClick={() => setShowAddAdhoc(true)}>+ Add ad-hoc</button>
+            </div>
+          </div>
+
+          <div className="mt-3 rounded-xl border border-sky-500/35 bg-sky-500/10 p-3 text-sm text-sky-100">
+            <div className="font-semibold">Sprint status</div>
+            <div className="mt-1">
+              {sprintProgress.started ? 'Sprint started' : 'Sprint not started yet'} · Day {sprintProgress.dayOfSprint} · {sprintProgress.remainingDays} working day(s) left
             </div>
           </div>
 
@@ -470,131 +529,77 @@ export default function SprintPulsePage() {
                 value={selectedSprint?.id ?? ''}
                 onChange={(event) => {
                   const nextId = event.target.value;
-                  const nextSprint = sprints.find((row) => row.id === nextId) ?? null;
-                  setSelectedSprint(nextSprint);
-                  loadBootstrap(nextId).catch((err) => {
-                    setError(err instanceof Error ? err.message : 'Failed loading sprint');
-                  });
+                  setSelectedSprint(sprints.find((row) => row.id === nextId) ?? null);
+                  loadBootstrap(nextId).catch((err) => setError(err instanceof Error ? err.message : 'Failed loading sprint'));
                 }}
               >
                 {sprints.map((sprint) => (
-                  <option key={sprint.id} value={sprint.id}>
-                    {sprint.name ?? sprint.start_date}
-                  </option>
+                  <option key={sprint.id} value={sprint.id}>{sprint.name ?? sprint.start_date}</option>
                 ))}
               </select>
             </label>
 
             <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm">
               <div className="text-[11px] uppercase text-[var(--muted)]">Range</div>
-              <div className="mt-1 font-semibold">
-                {selectedSprint?.start_date ?? '—'} → {selectedSprint?.end_date ?? '—'}
-              </div>
+              <div className="mt-1 font-semibold">{selectedSprint?.start_date ?? '—'} → {selectedSprint?.end_date ?? '—'}</div>
             </div>
 
             <label className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm">
               <div className="text-[11px] uppercase text-[var(--muted)]">Search</div>
-              <input
-                className="mt-1 w-full bg-transparent outline-none"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="title, notes..."
-              />
+              <input className="mt-1 w-full bg-transparent outline-none" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="title, notes..." />
             </label>
 
             <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm">
-              <div className="text-[11px] uppercase text-[var(--muted)]">Day of sprint</div>
-              <div className="mt-1 font-semibold">
-                {selectedSprint ? daysBetween(selectedSprint.start_date) : '—'}
-              </div>
+              <div className="text-[11px] uppercase text-[var(--muted)]">Working day</div>
+              <div className="mt-1 font-semibold">{sprintProgress.dayOfSprint}</div>
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-5">
+          <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-6">
             <label className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm">
               <div className="text-[11px] uppercase text-[var(--muted)]">Start date</div>
-              <input
-                className="mt-1 w-full bg-transparent outline-none"
-                type="date"
-                value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
-              />
+              <input className="mt-1 w-full bg-transparent outline-none" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
             </label>
 
             <label className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm">
-              <div className="text-[11px] uppercase text-[var(--muted)]">Duration days</div>
-              <input
-                className="mt-1 w-full bg-transparent outline-none"
-                type="number"
-                min={1}
-                max={60}
-                value={durationDays}
-                onChange={(event) => setDurationDays(Number(event.target.value || 14))}
-              />
+              <div className="text-[11px] uppercase text-[var(--muted)]">Working days</div>
+              <input className="mt-1 w-full bg-transparent outline-none" type="number" min={1} max={60} value={durationDays} onChange={(event) => setDurationDays(Number(event.target.value || 10))} />
             </label>
 
             <label className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm lg:col-span-2">
               <div className="text-[11px] uppercase text-[var(--muted)]">Carry-over unfinished ad-hoc</div>
-              <select
-                className="mt-1 w-full bg-transparent outline-none"
-                value={carryMode}
-                onChange={(event) => setCarryMode(event.target.value as typeof carryMode)}
-              >
+              <select className="mt-1 w-full bg-transparent outline-none" value={carryMode} onChange={(event) => setCarryMode(event.target.value as typeof carryMode)}>
                 <option value="carry_unfinished">Carry over unfinished (default)</option>
                 <option value="keep_old">Keep in old sprint</option>
                 <option value="convert_to_template">Convert selected to recurring template</option>
               </select>
             </label>
 
-            <button
-              className="rounded-xl border border-sky-500/40 bg-sky-500/20 px-3 py-2 text-sm font-semibold hover:bg-sky-500/30"
-              onClick={startNewSprint}
-            >
-              Start New Sprint
-            </button>
+            <button className="rounded-xl border border-sky-500/40 bg-sky-500/20 px-3 py-2 text-sm font-semibold hover:bg-sky-500/30" onClick={startNewSprint}>Start New Sprint</button>
+            <button className="rounded-xl border border-rose-500/40 bg-rose-500/20 px-3 py-2 text-sm font-semibold hover:bg-rose-500/30" onClick={resetCurrentSprint}>Reset Current Sprint</button>
           </div>
 
           {carryMode === 'convert_to_template' && incompleteAdhoc.length ? (
             <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-sm">
               <div className="text-[11px] uppercase text-[var(--muted)]">Select unfinished ad-hoc to convert</div>
               <div className="mt-2 grid grid-cols-1 gap-2 lg:grid-cols-2">
-                {incompleteAdhoc.map((task) => {
-                  const checked = convertTaskIds.includes(task.id);
-                  return (
-                    <label key={task.id} className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-2 py-1">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(event) => {
-                          const isChecked = event.target.checked;
-                          setConvertTaskIds((ids) =>
-                            isChecked ? [...ids, task.id] : ids.filter((id) => id !== task.id)
-                          );
-                        }}
-                      />
-                      <span>
-                        [{task.priority}] {task.title}
-                      </span>
-                    </label>
-                  );
-                })}
+                {incompleteAdhoc.map((task) => (
+                  <label key={task.id} className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-2 py-1">
+                    <input type="checkbox" checked={convertTaskIds.includes(task.id)} onChange={(event) => setConvertTaskIds((ids) => event.target.checked ? [...ids, task.id] : ids.filter((id) => id !== task.id))} />
+                    <span>[{task.priority}] {task.title}</span>
+                  </label>
+                ))}
               </div>
             </div>
           ) : null}
 
+          <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-xs text-[var(--muted)]">
+            Priorities: P0 = critical now, P1 = high, P2 = normal, P3 = low.
+          </div>
+
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-xs font-semibold hover:bg-black/10"
-              onClick={checkReminders}
-            >
-              Check reminders
-            </button>
-            <button
-              className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-xs font-semibold hover:bg-black/10"
-              onClick={exportSummaryMarkdown}
-            >
-              Copy review markdown
-            </button>
+            <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-xs font-semibold hover:bg-black/10" onClick={checkReminders}>Check reminders</button>
+            <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-xs font-semibold hover:bg-black/10" onClick={exportSummaryMarkdown}>Copy review markdown</button>
             <div className="text-xs text-[var(--muted)]">Shortcuts: N (new), D (done), I (in progress)</div>
           </div>
 
@@ -602,43 +607,22 @@ export default function SprintPulsePage() {
             <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/15 p-3 text-sm text-amber-100">
               <div className="font-semibold">Reminder hits ({activeReminderHits.length})</div>
               <div className="mt-1 space-y-1">
-                {activeReminderHits.map((hit) => (
-                  <div key={`${hit.instanceId}-${hit.matchedRule}`}>
-                    • Day {hit.dayOfSprint}: {hit.title} ({hit.matchedRule})
-                  </div>
-                ))}
+                {activeReminderHits.map((hit) => <div key={`${hit.instanceId}-${hit.matchedRule}`}>• Day {hit.dayOfSprint}: {hit.title} ({hit.matchedRule})</div>)}
               </div>
             </div>
           ) : null}
 
-          {error ? (
-            <div className="mt-3 rounded-xl border border-rose-500/40 bg-rose-500/20 p-3 text-sm text-rose-100">
-              {error}
-            </div>
-          ) : null}
+          {error ? <div className="mt-3 rounded-xl border border-rose-500/40 bg-rose-500/20 p-3 text-sm text-rose-100">{error}</div> : null}
         </header>
 
         {showAddAdhoc ? (
           <section className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
             <div className="text-lg font-semibold">Quick add ad-hoc</div>
-            <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-4">
-              <input
-                className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 outline-none lg:col-span-2"
-                placeholder="Task title"
-                value={addTitle}
-                onChange={(event) => setAddTitle(event.target.value)}
-              />
-              <input
-                className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 outline-none"
-                placeholder="Optional note"
-                value={addNote}
-                onChange={(event) => setAddNote(event.target.value)}
-              />
-              <select
-                className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 outline-none"
-                value={addPriority}
-                onChange={(event) => setAddPriority(event.target.value as Priority)}
-              >
+            <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-5">
+              <input className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 outline-none lg:col-span-2" placeholder="Task title" value={addTitle} onChange={(event) => setAddTitle(event.target.value)} />
+              <input className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 outline-none" placeholder="Optional note" value={addNote} onChange={(event) => setAddNote(event.target.value)} />
+              <input list="owners-list" className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 outline-none" placeholder="Owner" value={addOwner} onChange={(event) => setAddOwner(event.target.value)} />
+              <select className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 outline-none" value={addPriority} onChange={(event) => setAddPriority(event.target.value as Priority)}>
                 <option value="P0">P0</option>
                 <option value="P1">P1</option>
                 <option value="P2">P2</option>
@@ -646,72 +630,17 @@ export default function SprintPulsePage() {
               </select>
             </div>
             <div className="mt-3 flex items-center gap-2">
-              <button
-                className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-2 text-sm font-semibold hover:bg-emerald-500/30"
-                onClick={addAdhocTask}
-              >
-                Save
-              </button>
-              <button
-                className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm font-semibold hover:bg-black/10"
-                onClick={() => setShowAddAdhoc(false)}
-              >
-                Cancel
-              </button>
+              <button className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-2 text-sm font-semibold hover:bg-emerald-500/30" onClick={addAdhocTask}>Save</button>
+              <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm font-semibold hover:bg-black/10" onClick={() => setShowAddAdhoc(false)}>Cancel</button>
             </div>
           </section>
         ) : null}
 
         <section className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="space-y-3 lg:col-span-2">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
-              <h2 className="text-lg font-semibold">Recurring Sprint Checklist</h2>
-              <p className="mt-1 text-xs text-[var(--muted)]">Start of Sprint</p>
-              <div className="mt-3 space-y-3">
-                {filteredRecurring.start.map((task) => (
-                  <RecurringCard
-                    key={task.id}
-                    task={task}
-                    selected={selectedItem?.kind === 'recurring' && selectedItem.id === task.id}
-                    onSelect={() => setSelectedItem({ kind: 'recurring', id: task.id })}
-                    onStatusChange={changeRecurringStatus}
-                    onSaveNote={saveRecurringNote}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
-              <h2 className="text-lg font-semibold">Weekly / Once per sprint</h2>
-              <div className="mt-3 space-y-3">
-                {filteredRecurring.middle.map((task) => (
-                  <RecurringCard
-                    key={task.id}
-                    task={task}
-                    selected={selectedItem?.kind === 'recurring' && selectedItem.id === task.id}
-                    onSelect={() => setSelectedItem({ kind: 'recurring', id: task.id })}
-                    onStatusChange={changeRecurringStatus}
-                    onSaveNote={saveRecurringNote}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
-              <h2 className="text-lg font-semibold">Higher cadence near release</h2>
-              <div className="mt-3 space-y-3">
-                {filteredRecurring.highCadence.map((task) => (
-                  <RecurringCard
-                    key={task.id}
-                    task={task}
-                    selected={selectedItem?.kind === 'recurring' && selectedItem.id === task.id}
-                    onSelect={() => setSelectedItem({ kind: 'recurring', id: task.id })}
-                    onStatusChange={changeRecurringStatus}
-                    onSaveNote={saveRecurringNote}
-                  />
-                ))}
-              </div>
-            </div>
+            <RecurringSection title="Start of Sprint" tasks={filteredRecurring.start} selectedItem={selectedItem} setSelectedItem={setSelectedItem} onStatusChange={changeRecurringStatus} onPatchTask={patchRecurring} />
+            <RecurringSection title="Weekly / Once per sprint (Update Node.js utils)" tasks={filteredRecurring.middle} selectedItem={selectedItem} setSelectedItem={setSelectedItem} onStatusChange={changeRecurringStatus} onPatchTask={patchRecurring} />
+            <RecurringSection title="Higher cadence near release" tasks={filteredRecurring.highCadence} selectedItem={selectedItem} setSelectedItem={setSelectedItem} onStatusChange={changeRecurringStatus} onPatchTask={patchRecurring} />
           </div>
 
           <div className="space-y-3">
@@ -721,30 +650,25 @@ export default function SprintPulsePage() {
                 {filteredAdhoc.map((task) => (
                   <button
                     key={task.id}
-                    className={`w-full rounded-xl border p-3 text-left ${
-                      selectedItem?.kind === 'adhoc' && selectedItem.id === task.id
-                        ? 'border-sky-500/60 bg-sky-500/10'
-                        : 'border-[var(--border)] bg-[var(--panel-2)]'
-                    }`}
+                    className={`w-full rounded-xl border p-3 text-left ${selectedItem?.kind === 'adhoc' && selectedItem.id === task.id ? 'border-sky-500/60 bg-sky-500/10' : 'border-[var(--border)] bg-[var(--panel-2)]'}`}
                     onClick={() => setSelectedItem({ kind: 'adhoc', id: task.id })}
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${PRIORITY_CLASSES[task.priority]}`}>
-                        {task.priority}
-                      </span>
+                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${PRIORITY_CLASSES[task.priority]}`} title={PRIORITY_HINTS[task.priority]}>{task.priority}</span>
                       <span className="text-sm font-semibold">{task.title}</span>
                     </div>
                     <div className="mt-1 text-xs text-[var(--muted)]">{task.note || '—'}</div>
+                    <div className="mt-1 text-xs text-[var(--muted)]">Owner: {task.owner_name ?? '—'} · Created: {fmtDate(task.created_at)}</div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <StatusPill status={task.status} />
-                      <button
-                        className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2 py-1 text-[11px] font-semibold hover:bg-emerald-500/30"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          patchAdhoc(task.id, { status: task.status === 'DONE' ? 'NOT_STARTED' : 'DONE' });
-                        }}
-                      >
+                      <button className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2 py-1 text-[11px] font-semibold hover:bg-emerald-500/30" onClick={(event) => { event.stopPropagation(); patchAdhoc(task.id, { status: task.status === 'DONE' ? 'NOT_STARTED' : 'DONE' }); }}>
                         {task.status === 'DONE' ? 'Reset' : 'Quick done'}
+                      </button>
+                      <button className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-[11px] font-semibold hover:bg-black/10" onClick={(event) => { event.stopPropagation(); const owner = window.prompt('Owner name', task.owner_name ?? ''); if (owner !== null) patchAdhoc(task.id, { owner_name: owner.trim() || null }); }}>
+                        Owner
+                      </button>
+                      <button className="rounded-md border border-rose-500/40 bg-rose-500/20 px-2 py-1 text-[11px] font-semibold hover:bg-rose-500/30" onClick={(event) => { event.stopPropagation(); deleteAdhoc(task.id); }}>
+                        Delete
                       </button>
                     </div>
                   </button>
@@ -768,17 +692,17 @@ export default function SprintPulsePage() {
             </div>
           </div>
         </section>
+
+        <datalist id="owners-list">
+          {ownerOptions.map((owner) => <option key={owner} value={owner} />)}
+        </datalist>
       </div>
     </main>
   );
 }
 
 function StatusPill({ status }: { status: SprintStatus }) {
-  return (
-    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${STATUS_CLASSES[status]}`}>
-      {STATUS_LABELS[status]}
-    </span>
-  );
+  return <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${STATUS_CLASSES[status]}`}>{STATUS_LABELS[status]}</span>;
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
@@ -790,103 +714,86 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function RecurringSection({
+  title,
+  tasks,
+  selectedItem,
+  setSelectedItem,
+  onStatusChange,
+  onPatchTask,
+}: {
+  title: string;
+  tasks: RecurringTask[];
+  selectedItem: { kind: 'recurring' | 'adhoc'; id: string } | null;
+  setSelectedItem: (value: { kind: 'recurring' | 'adhoc'; id: string } | null) => void;
+  onStatusChange: (id: string, status: SprintStatus, action: string) => Promise<void>;
+  onPatchTask: (taskId: string, patch: { notes?: string; ownerName?: string | null }) => Promise<void>;
+}) {
+  return (
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <div className="mt-3 space-y-3">
+        {tasks.map((task) => (
+          <RecurringCard
+            key={task.id}
+            task={task}
+            selected={selectedItem?.kind === 'recurring' && selectedItem.id === task.id}
+            onSelect={() => setSelectedItem({ kind: 'recurring', id: task.id })}
+            onStatusChange={onStatusChange}
+            onPatchTask={onPatchTask}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function RecurringCard({
   task,
   selected,
   onSelect,
   onStatusChange,
-  onSaveNote,
+  onPatchTask,
 }: {
   task: RecurringTask;
   selected: boolean;
   onSelect: () => void;
   onStatusChange: (id: string, status: SprintStatus, action: string) => Promise<void>;
-  onSaveNote: (task: RecurringTask, note: string) => Promise<void>;
+  onPatchTask: (taskId: string, patch: { notes?: string; ownerName?: string | null }) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [note, setNote] = useState(() => task.notes ?? '');
+  const [ownerInput, setOwnerInput] = useState(() => task.owner_name ?? '');
 
   return (
-    <article
-      className={`rounded-xl border p-3 ${
-        selected ? 'border-sky-500/60 bg-sky-500/10' : 'border-[var(--border)] bg-[var(--panel-2)]'
-      }`}
-      onClick={onSelect}
-    >
+    <article className={`rounded-xl border p-3 ${selected ? 'border-sky-500/60 bg-sky-500/10' : 'border-[var(--border)] bg-[var(--panel-2)]'}`} onClick={onSelect}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="text-sm font-semibold">{task.title_snapshot}</div>
             <StatusPill status={task.status} />
           </div>
-          <div className="mt-1 text-xs text-[var(--muted)]">
-            Owner: {task.owner_name ?? '—'} · Due: {task.due_hint ?? '—'} · Updated: {fmtDate(task.updated_at)}
-          </div>
+          <div className="mt-1 text-xs text-[var(--muted)]">Owner: {task.owner_name ?? '—'} · Due: {task.due_hint ?? '—'} · Updated: {fmtDate(task.updated_at)}</div>
         </div>
-        <button
-          className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-black/10"
-          onClick={(event) => {
-            event.stopPropagation();
-            setExpanded((v) => !v);
-          }}
-        >
-          {expanded ? 'Hide' : 'Notes'}
+        <button className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-black/10" onClick={(event) => { event.stopPropagation(); setExpanded((v) => !v); }}>
+          {expanded ? 'Hide' : 'Details'}
         </button>
       </div>
 
       <div className="mt-2 flex flex-wrap gap-2">
-        <button
-          className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2 py-1 text-xs font-semibold hover:bg-emerald-500/30"
-          onClick={(event) => {
-            event.stopPropagation();
-            onStatusChange(task.id, 'DONE', 'QUICK_DONE');
-          }}
-        >
-          Done
-        </button>
-        <button
-          className="rounded-md border border-amber-500/40 bg-amber-500/20 px-2 py-1 text-xs font-semibold hover:bg-amber-500/30"
-          onClick={(event) => {
-            event.stopPropagation();
-            onStatusChange(task.id, 'IN_PROGRESS', 'QUICK_PROGRESS');
-          }}
-        >
-          In progress
-        </button>
-        <button
-          className="rounded-md border border-rose-500/40 bg-rose-500/20 px-2 py-1 text-xs font-semibold hover:bg-rose-500/30"
-          onClick={(event) => {
-            event.stopPropagation();
-            onStatusChange(task.id, 'NOT_STARTED', 'QUICK_RESET');
-          }}
-        >
-          Reset
-        </button>
-        <button
-          className="rounded-md border border-violet-500/40 bg-violet-500/20 px-2 py-1 text-xs font-semibold hover:bg-violet-500/30"
-          onClick={(event) => {
-            event.stopPropagation();
-            onStatusChange(task.id, 'BLOCKED', 'QUICK_BLOCKED');
-          }}
-        >
-          Blocked
-        </button>
+        <button className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2 py-1 text-xs font-semibold hover:bg-emerald-500/30" onClick={(event) => { event.stopPropagation(); onStatusChange(task.id, 'DONE', 'QUICK_DONE'); }}>Done</button>
+        <button className="rounded-md border border-amber-500/40 bg-amber-500/20 px-2 py-1 text-xs font-semibold hover:bg-amber-500/30" onClick={(event) => { event.stopPropagation(); onStatusChange(task.id, 'IN_PROGRESS', 'QUICK_PROGRESS'); }}>In progress</button>
+        <button className="rounded-md border border-rose-500/40 bg-rose-500/20 px-2 py-1 text-xs font-semibold hover:bg-rose-500/30" onClick={(event) => { event.stopPropagation(); onStatusChange(task.id, 'NOT_STARTED', 'QUICK_RESET'); }}>Reset</button>
+        <button className="rounded-md border border-violet-500/40 bg-violet-500/20 px-2 py-1 text-xs font-semibold hover:bg-violet-500/30" onClick={(event) => { event.stopPropagation(); onStatusChange(task.id, 'BLOCKED', 'QUICK_BLOCKED'); }}>Blocked</button>
       </div>
 
       {expanded ? (
-        <div className="mt-3" onClick={(event) => event.stopPropagation()}>
-          <textarea
-            className="h-20 w-full rounded-lg border border-[var(--border)] bg-[var(--panel)] p-2 text-sm outline-none"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="Add note..."
-          />
-          <button
-            className="mt-2 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs font-semibold hover:bg-black/10"
-            onClick={() => onSaveNote(task, note)}
-          >
-            Save note
-          </button>
+        <div className="mt-3 grid grid-cols-1 gap-2" onClick={(event) => event.stopPropagation()}>
+          <input list="owners-list" className="rounded-lg border border-[var(--border)] bg-[var(--panel)] p-2 text-sm outline-none" value={ownerInput} onChange={(event) => setOwnerInput(event.target.value)} placeholder="Owner" />
+          <button className="w-fit rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs font-semibold hover:bg-black/10" onClick={() => onPatchTask(task.id, { ownerName: ownerInput.trim() || null })}>Save owner</button>
+
+          <textarea className="h-20 w-full rounded-lg border border-[var(--border)] bg-[var(--panel)] p-2 text-sm outline-none" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Add note..." />
+          <button className="w-fit rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs font-semibold hover:bg-black/10" onClick={() => onPatchTask(task.id, { notes: note })}>Save note</button>
         </div>
       ) : null}
     </article>

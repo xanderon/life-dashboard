@@ -25,10 +25,13 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 `SprintPulse` este disponibil la `/sprintpulse` si are card dedicat in homepage.
 
 Ce face:
-- sprinturi de 2 saptamani (configurabile) cu start manual;
+- sprinturi pe zile lucratoare (default 10 zile lucratoare = 2 saptamani) cu start manual;
 - taskuri recurente generate automat din template-uri;
 - ad-hoc rapid (`+ Add ad-hoc`, plus shortcut `N`);
 - status colorat clar (`NOT_STARTED`, `IN_PROGRESS`, `DONE`, `BLOCKED`);
+- owner editabil pe taskuri recurente si ad-hoc;
+- delete pentru ad-hoc;
+- reset sprint curent (reseteaza statusurile + reporneste sprintul de azi);
 - carry-over la sprint nou (carry unfinished / keep old / convert to template);
 - review sprint + copy markdown;
 - endpoint de reminders rule-based (`POST /api/sprintpulse/reminders/check`).

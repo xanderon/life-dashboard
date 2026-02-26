@@ -74,13 +74,42 @@ export function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function addDaysIsoDate(isoDate: string, days: number) {
+function isWorkingDay(date: Date) {
+  const day = date.getUTCDay();
+  return day !== 0 && day !== 6;
+}
+
+export function addWorkingDaysIsoDate(isoDate: string, workingDays: number) {
   const date = new Date(`${isoDate}T00:00:00.000Z`);
   if (Number.isNaN(date.getTime())) {
     throw new Error(`Invalid date: ${isoDate}`);
   }
-  date.setUTCDate(date.getUTCDate() + days);
+
+  const days = Math.max(1, workingDays);
+  let remaining = days - 1;
+  while (remaining > 0) {
+    date.setUTCDate(date.getUTCDate() + 1);
+    if (isWorkingDay(date)) {
+      remaining -= 1;
+    }
+  }
+
   return date.toISOString().slice(0, 10);
+}
+
+export function countWorkingDaysBetween(startIso: string, endIso: string) {
+  const start = new Date(`${startIso}T00:00:00.000Z`);
+  const end = new Date(`${endIso}T00:00:00.000Z`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+  if (end < start) return 0;
+
+  const cursor = new Date(start);
+  let count = 0;
+  while (cursor <= end) {
+    if (isWorkingDay(cursor)) count += 1;
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return count;
 }
 
 export function formatSprintName(startDate: string) {
@@ -122,7 +151,7 @@ export async function ensureDefaultTemplates(client: SupabaseClient) {
     },
     {
       owner_id: SPRINTPULSE_OWNER,
-      title: 'Update NuGet utils across microservices',
+      title: 'Update Node.js utils across microservices',
       category: 'Dependencies',
       cadence_type: 'ONCE_PER_SPRINT',
       reminder_rules: [{ day: 8 }],
@@ -258,8 +287,8 @@ export async function startSprint(client: SupabaseClient, payload: StartSprintPa
   await ensureDefaultTemplates(client);
 
   const startDate = payload.startDate ?? todayIsoDate();
-  const durationDays = Math.max(1, Math.min(payload.durationDays ?? 14, 60));
-  const endDate = addDaysIsoDate(startDate, durationDays);
+  const durationDays = Math.max(1, Math.min(payload.durationDays ?? 10, 60));
+  const endDate = addWorkingDaysIsoDate(startDate, durationDays);
   const name = formatSprintName(startDate);
 
   const { data: sprintRows, error: sprintError } = await client
@@ -358,6 +387,53 @@ export async function startSprint(client: SupabaseClient, payload: StartSprintPa
   return sprint;
 }
 
+export async function resetSprint(client: SupabaseClient, sprintId: string) {
+  const { data: sprintRows, error: sprintError } = await client
+    .from('sprintpulse_sprints')
+    .select('id,start_date,end_date,duration_days')
+    .eq('id', sprintId)
+    .eq('owner_id', SPRINTPULSE_OWNER)
+    .limit(1);
+
+  if (sprintError) throw sprintError;
+  const sprint = sprintRows?.[0] ?? null;
+  if (!sprint) throw new Error('Sprint not found.');
+
+  const startDate = todayIsoDate();
+  const endDate = addWorkingDaysIsoDate(startDate, Math.max(1, sprint.duration_days ?? 10));
+
+  const { error: updateSprintError } = await client
+    .from('sprintpulse_sprints')
+    .update({
+      start_date: startDate,
+      end_date: endDate,
+      name: formatSprintName(startDate),
+    })
+    .eq('id', sprintId)
+    .eq('owner_id', SPRINTPULSE_OWNER);
+
+  if (updateSprintError) throw updateSprintError;
+
+  const resetTaskPatch = {
+    status: 'NOT_STARTED' as SprintPulseStatus,
+    completed_at: null,
+  };
+
+  const { error: resetRecurringError } = await client
+    .from('sprintpulse_sprint_task_instances')
+    .update(resetTaskPatch)
+    .eq('owner_id', SPRINTPULSE_OWNER)
+    .eq('sprint_id', sprintId);
+  if (resetRecurringError) throw resetRecurringError;
+
+  const { error: resetAdhocError } = await client
+    .from('sprintpulse_adhoc_tasks')
+    .update(resetTaskPatch)
+    .eq('owner_id', SPRINTPULSE_OWNER)
+    .eq('sprint_id', sprintId);
+  if (resetAdhocError) throw resetAdhocError;
+}
+
 export function appendHistory(existing: unknown, event: Record<string, unknown>) {
   const current = Array.isArray(existing) ? existing : [];
   return [...current, event];
@@ -401,9 +477,7 @@ export function computeReminderHits(
   templates: TemplateRow[],
   instances: SprintTaskInstanceRow[]
 ): ReminderHit[] {
-  const start = new Date(`${sprint.start_date}T00:00:00.000Z`).getTime();
-  const now = Date.now();
-  const dayOfSprint = Math.max(1, Math.floor((now - start) / (24 * 3600 * 1000)) + 1);
+  const dayOfSprint = Math.max(1, countWorkingDaysBetween(sprint.start_date, todayIsoDate()));
 
   const templateById = new Map(templates.map((template) => [template.id, template]));
   const hits: ReminderHit[] = [];
