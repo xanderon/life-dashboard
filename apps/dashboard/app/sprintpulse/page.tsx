@@ -42,6 +42,7 @@ type AdhocTask = {
   status: SprintStatus;
   priority: Priority;
   created_at: string;
+  updated_at: string;
 };
 
 type Summary = {
@@ -74,16 +75,43 @@ const STATUS_CLASSES: Record<SprintStatus, string> = {
   BLOCKED: 'border-violet-500/50 bg-violet-500/20 text-violet-100',
 };
 
-const PRIORITY_CLASSES: Record<Priority, string> = {
-  P0: 'border-rose-500/50 bg-rose-500/20 text-rose-100',
-  P1: 'border-orange-500/50 bg-orange-500/20 text-orange-100',
-  P2: 'border-sky-500/50 bg-sky-500/20 text-sky-100',
-  P3: 'border-slate-500/50 bg-slate-500/20 text-slate-100',
+const PRIORITY_META: Record<Priority, { label: string; short: string; chipClass: string; cardClass: string }> = {
+  P0: {
+    label: 'Critical',
+    short: 'Critical',
+    chipClass: 'border-rose-500/60 bg-rose-500/25 text-rose-100',
+    cardClass: 'border-l-4 border-l-rose-500 bg-rose-500/8',
+  },
+  P1: {
+    label: 'High',
+    short: 'High',
+    chipClass: 'border-orange-500/60 bg-orange-500/25 text-orange-100',
+    cardClass: 'border-l-4 border-l-orange-500 bg-orange-500/8',
+  },
+  P2: {
+    label: 'Normal',
+    short: 'Normal',
+    chipClass: 'border-amber-500/60 bg-amber-500/20 text-amber-100',
+    cardClass: 'border-l-4 border-l-amber-500 bg-amber-500/6',
+  },
+  P3: {
+    label: 'Low',
+    short: 'Low',
+    chipClass: 'border-slate-500/60 bg-slate-500/20 text-slate-100',
+    cardClass: 'border-l-4 border-l-slate-500 bg-slate-500/6',
+  },
 };
 
 function fmtDate(iso: string | null) {
   if (!iso) return '—';
   return new Date(iso).toLocaleString('ro-RO');
+}
+
+function daysSince(iso: string | null, nowTs: number) {
+  if (!iso) return 999;
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return 999;
+  return Math.max(0, Math.floor((nowTs - ts) / (24 * 3600 * 1000)));
 }
 
 function statusSort(status: SprintStatus) {
@@ -137,7 +165,6 @@ export default function SprintPulsePage() {
   const [focusMode, setFocusMode] = useState(false);
 
   const [addTitle, setAddTitle] = useState('');
-  const [addNote, setAddNote] = useState('');
   const [addPriority, setAddPriority] = useState<Priority>('P2');
   const [addOwner, setAddOwner] = useState('Me');
 
@@ -149,6 +176,12 @@ export default function SprintPulsePage() {
 
   const [selectedItem, setSelectedItem] = useState<{ kind: 'recurring' | 'adhoc'; id: string } | null>(null);
   const [activeReminderHits, setActiveReminderHits] = useState<ReminderHit[]>([]);
+  const [nowTs, setNowTs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTs(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const loadBootstrap = useCallback(async (sprintId?: string) => {
     setLoading(true);
@@ -201,6 +234,20 @@ export default function SprintPulsePage() {
     return { dayOfSprint, totalDays, remainingDays, started };
   }, [selectedSprint]);
 
+  const lastInteractionDays = useMemo(() => {
+    const stamps = [
+      ...recurring.map((task) => task.updated_at),
+      ...adhoc.map((task) => task.updated_at || task.created_at),
+    ];
+    if (!stamps.length) return 0;
+    const latest = stamps
+      .map((stamp) => new Date(stamp).getTime())
+      .filter((ts) => !Number.isNaN(ts))
+      .sort((a, b) => b - a)[0];
+    if (!latest) return 0;
+    return Math.max(0, Math.floor((nowTs - latest) / (24 * 3600 * 1000)));
+  }, [recurring, adhoc, nowTs]);
+
   const filteredRecurring = useMemo(() => {
     const q = search.trim().toLowerCase();
     const rows = !q
@@ -247,18 +294,53 @@ export default function SprintPulsePage() {
 
   const incompleteAdhoc = useMemo(() => adhoc.filter((task) => task.status !== 'DONE'), [adhoc]);
 
-  const needsAttention = useMemo(() => {
-    const recurringHot = recurring.filter((task) => task.status !== 'DONE');
-    const adhocHot = adhoc.filter(
-      (task) => task.status !== 'DONE' && (task.priority === 'P0' || task.priority === 'P1')
-    );
+  const attention = useMemo(() => {
+    const openRecurring = recurring.filter((task) => task.status !== 'DONE');
+    const openAdhoc = adhoc.filter((task) => task.status !== 'DONE');
+
+    const critical = openAdhoc.filter((task) => task.priority === 'P0').length;
+    const high = openAdhoc.filter((task) => task.priority === 'P1').length;
+    const aging = [
+      ...openRecurring.filter((task) => daysSince(task.updated_at, nowTs) >= 3).map((task) => task.id),
+      ...openAdhoc.filter((task) => daysSince(task.updated_at || task.created_at, nowTs) >= 3).map((task) => task.id),
+    ].length;
+    const noOwner = [...openRecurring, ...openAdhoc].filter((task) => !task.owner_name?.trim()).length;
 
     return {
-      count: recurringHot.length + adhocHot.length,
-      recurringHot: recurringHot.slice(0, 4),
-      adhocHot: adhocHot.slice(0, 4),
+      count: critical + high + aging + noOwner,
+      critical,
+      high,
+      aging,
+      noOwner,
+      recurringHot: openRecurring.slice(0, 4),
+      adhocHot: openAdhoc.slice(0, 4),
     };
-  }, [recurring, adhoc]);
+  }, [recurring, adhoc, nowTs]);
+
+  const qualitySignals = useMemo(() => {
+    const signals = [
+      { label: 'Coverity', matcher: /coverity/i },
+      { label: 'Error logs', matcher: /error logs|opensearch|logs/i },
+      { label: 'xc1-nodejs-utils update', matcher: /xc1-nodejs-utils|nodejs utils|dependencies/i },
+    ];
+
+    return signals.map((signal) => {
+      const task = recurring.find((row) => signal.matcher.test(row.title_snapshot));
+      if (!task) return { label: signal.label, status: 'No task' };
+      const days = daysSince(task.updated_at, nowTs);
+      return {
+        label: signal.label,
+        status: `${days} day(s) ago`,
+      };
+    });
+  }, [recurring, nowTs]);
+
+  const adhocCounts = useMemo(() => {
+    const active = adhoc.filter((task) => task.status !== 'DONE').length;
+    const p01 = adhoc.filter((task) => task.status !== 'DONE' && (task.priority === 'P0' || task.priority === 'P1')).length;
+    const done = adhoc.filter((task) => task.status === 'DONE').length;
+    return { active, p01, done, all: adhoc.length };
+  }, [adhoc]);
 
   const changeRecurringStatus = useCallback(async (taskId: string, status: SprintStatus, action: string) => {
     const previous = recurring;
@@ -334,6 +416,27 @@ export default function SprintPulsePage() {
     if (selectedSprint?.id) refreshSummary(selectedSprint.id);
   }, [refreshSummary, selectedSprint]);
 
+  const convertAdhocToTemplate = useCallback(async (task: AdhocTask) => {
+    const res = await fetch('/api/sprintpulse/templates', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: task.title,
+        category: 'AdhocConverted',
+        defaultOwnerName: task.owner_name ?? 'Me',
+        cadenceType: 'ONCE_PER_SPRINT',
+        reminderRules: [],
+        isActive: true,
+      }),
+    });
+    const payload = await res.json();
+    if (!res.ok) {
+      setError(payload.error ?? 'Failed converting ad-hoc to template.');
+      return;
+    }
+    setTemplates((rows) => [...rows, payload.template]);
+  }, []);
+
   async function addAdhocTask() {
     if (!selectedSprint || !addTitle.trim()) return;
 
@@ -343,7 +446,7 @@ export default function SprintPulsePage() {
       body: JSON.stringify({
         sprintId: selectedSprint.id,
         title: addTitle.trim(),
-        note: addNote || null,
+        note: null,
         priority: addPriority,
         ownerName: addOwner.trim() || 'Me',
       }),
@@ -357,7 +460,6 @@ export default function SprintPulsePage() {
 
     setAdhoc((rows) => [payload.task as AdhocTask, ...rows]);
     setAddTitle('');
-    setAddNote('');
     setAddPriority('P2');
     setAddOwner('Me');
     setShowAddAdhoc(false);
@@ -421,39 +523,6 @@ export default function SprintPulsePage() {
     setActiveReminderHits(payload.reminders ?? []);
   }
 
-  async function exportSummaryMarkdown() {
-    if (!selectedSprint || !summary) return;
-
-    const doneRecurring = recurring.filter((task) => task.status === 'DONE');
-    const openRecurring = recurring.filter((task) => task.status !== 'DONE');
-    const doneAdhoc = adhoc.filter((task) => task.status === 'DONE');
-    const openAdhoc = adhoc.filter((task) => task.status !== 'DONE');
-
-    const md = [
-      `# Sprint Review - ${selectedSprint.name ?? selectedSprint.start_date}`,
-      '',
-      `- Range: ${selectedSprint.start_date} -> ${selectedSprint.end_date} (working days sprint)`,
-      `- Recurring completion: ${summary.recurringDone}/${summary.recurringTotal} (${summary.recurringPercent}%)`,
-      `- Ad-hoc completion: ${summary.adhocCompleted}/${summary.adhocTotal}`,
-      `- Leftover ad-hoc: ${summary.adhocLeftover}`,
-      '',
-      '## Recurring Done',
-      ...doneRecurring.map((task) => `- [x] ${task.title_snapshot}`),
-      '',
-      '## Recurring Not Done',
-      ...openRecurring.map((task) => `- [ ] ${task.title_snapshot} (${STATUS_LABELS[task.status]})`),
-      '',
-      '## Ad-hoc Done',
-      ...doneAdhoc.map((task) => `- [x] [${task.priority}] ${task.title}`),
-      '',
-      '## Ad-hoc Not Done',
-      ...openAdhoc.map((task) => `- [ ] [${task.priority}] ${task.title} (${STATUS_LABELS[task.status]})`),
-      '',
-    ].join('\n');
-
-    await navigator.clipboard.writeText(md);
-  }
-
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -493,9 +562,7 @@ export default function SprintPulsePage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
-        <div className="mx-auto max-w-7xl rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6">
-          Loading SprintPulse...
-        </div>
+        <div className="mx-auto max-w-7xl rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6">Loading SprintPulse...</div>
       </main>
     );
   }
@@ -507,7 +574,7 @@ export default function SprintPulsePage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold">SprintPulse</h1>
-              <p className="mt-1 text-sm text-[var(--muted)]">Attention radar for sprint rituals.</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">Control panel for sprint risk and focus.</p>
             </div>
             <div className="flex items-center gap-2">
               <Link className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm font-semibold hover:bg-black/10" href="/">← Dashboard</Link>
@@ -538,27 +605,31 @@ export default function SprintPulsePage() {
             <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm">
               <div className="text-[11px] uppercase text-[var(--muted)]">Progress</div>
               <div className="mt-1 font-semibold">Day {sprintProgress.dayOfSprint}/{sprintProgress.totalDays}</div>
+              <div className="text-xs text-[var(--muted)]">{sprintProgress.remainingDays} day(s) left</div>
             </div>
 
             <label className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm">
               <div className="text-[11px] uppercase text-[var(--muted)]">Search</div>
-              <input className="mt-1 w-full bg-transparent outline-none" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="red items, title..." />
+              <input className="mt-1 w-full bg-transparent outline-none" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="critical, coverity, owner..." />
             </label>
           </div>
 
-          <div className="mt-3 rounded-xl border border-sky-500/35 bg-sky-500/10 p-3 text-sm text-sky-100">
-            {sprintProgress.started ? 'Sprint started' : 'Sprint not started yet'} · {sprintProgress.remainingDays} working day(s) left
-          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
+            <div className="rounded-xl border border-rose-500/35 bg-rose-500/10 p-3 text-sm text-rose-100">
+              <div className="font-semibold">Needs attention ({attention.count})</div>
+              <div className="mt-1 text-xs">🔴 Critical: {attention.critical} · 🟠 High: {attention.high} · 🟡 Aging: {attention.aging} · 👤 No owner: {attention.noOwner}</div>
+            </div>
 
-          <div className="mt-3 rounded-xl border border-rose-500/35 bg-rose-500/10 p-3 text-sm text-rose-100">
-            <div className="font-semibold">Needs attention ({needsAttention.count})</div>
-            <div className="mt-1 space-y-1 text-xs">
-              {needsAttention.recurringHot.map((task) => (
-                <div key={`r-${task.id}`}>• {task.title_snapshot} ({STATUS_LABELS[task.status]})</div>
-              ))}
-              {needsAttention.adhocHot.map((task) => (
-                <div key={`a-${task.id}`}>• [{task.priority}] {task.title}</div>
-              ))}
+            <div className="rounded-xl border border-sky-500/35 bg-sky-500/10 p-3 text-sm text-sky-100">
+              <div className="font-semibold">Quality signals</div>
+              <div className="mt-1 space-y-1 text-xs">
+                {qualitySignals.map((signal) => <div key={signal.label}>• {signal.label}: {signal.status}</div>)}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-sm">
+              <div className="font-semibold">Discipline</div>
+              <div className="mt-1 text-xs text-[var(--muted)]">Last interaction: {lastInteractionDays} day(s) ago</div>
             </div>
           </div>
 
@@ -595,7 +666,7 @@ export default function SprintPulsePage() {
                     {incompleteAdhoc.map((task) => (
                       <label key={task.id} className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-2 py-1">
                         <input type="checkbox" checked={convertTaskIds.includes(task.id)} onChange={(event) => setConvertTaskIds((ids) => event.target.checked ? [...ids, task.id] : ids.filter((id) => id !== task.id))} />
-                        <span>[{task.priority}] {task.title}</span>
+                        <span>[{PRIORITY_META[task.priority].short}] {task.title}</span>
                       </label>
                     ))}
                   </div>
@@ -604,8 +675,7 @@ export default function SprintPulsePage() {
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <button className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-3 py-1.5 text-xs font-semibold hover:bg-black/10" onClick={checkReminders}>Check reminders</button>
-                <button className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-3 py-1.5 text-xs font-semibold hover:bg-black/10" onClick={exportSummaryMarkdown}>Copy review markdown</button>
-                <div className="text-xs text-[var(--muted)]">P0 critical, P1 high, P2 normal, P3 low · Shortcuts: N / D / I</div>
+                <div className="text-xs text-[var(--muted)]">Quick add = title + priority + owner (notes later)</div>
               </div>
             </div>
           ) : null}
@@ -625,15 +695,14 @@ export default function SprintPulsePage() {
         {showAddAdhoc ? (
           <section className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
             <div className="text-lg font-semibold">Quick add ad-hoc</div>
-            <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-5">
+            <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-4">
               <input className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 outline-none lg:col-span-2" placeholder="Task title" value={addTitle} onChange={(event) => setAddTitle(event.target.value)} />
-              <input className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 outline-none" placeholder="Optional note" value={addNote} onChange={(event) => setAddNote(event.target.value)} />
               <input list="owners-list" className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 outline-none" placeholder="Owner" value={addOwner} onChange={(event) => setAddOwner(event.target.value)} />
               <select className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 outline-none" value={addPriority} onChange={(event) => setAddPriority(event.target.value as Priority)}>
-                <option value="P0">P0</option>
-                <option value="P1">P1</option>
-                <option value="P2">P2</option>
-                <option value="P3">P3</option>
+                <option value="P0">Critical</option>
+                <option value="P1">High</option>
+                <option value="P2">Normal</option>
+                <option value="P3">Low</option>
               </select>
             </div>
             <div className="mt-3 flex items-center gap-2">
@@ -652,6 +721,7 @@ export default function SprintPulsePage() {
               setSelectedItem={setSelectedItem}
               onChangeStatus={changeRecurringStatus}
               onPatchTask={patchRecurring}
+              nowTs={nowTs}
             />
             <RecurringSection
               title="Weekly / Once per sprint (Update xc1-nodejs-utils across services)"
@@ -660,6 +730,7 @@ export default function SprintPulsePage() {
               setSelectedItem={setSelectedItem}
               onChangeStatus={changeRecurringStatus}
               onPatchTask={patchRecurring}
+              nowTs={nowTs}
             />
             <RecurringSection
               title="Higher cadence near release"
@@ -668,6 +739,7 @@ export default function SprintPulsePage() {
               setSelectedItem={setSelectedItem}
               onChangeStatus={changeRecurringStatus}
               onPatchTask={patchRecurring}
+              nowTs={nowTs}
             />
           </div>
 
@@ -676,24 +748,31 @@ export default function SprintPulsePage() {
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
                 <h2 className="text-lg font-semibold">Ad-hoc & Notes</h2>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <ViewChip label="Active" active={adhocView === 'ACTIVE'} onClick={() => setAdhocView('ACTIVE')} />
-                  <ViewChip label="Only P0/P1" active={adhocView === 'P01'} onClick={() => setAdhocView('P01')} />
-                  <ViewChip label="Done" active={adhocView === 'DONE'} onClick={() => setAdhocView('DONE')} />
-                  <ViewChip label="All" active={adhocView === 'ALL'} onClick={() => setAdhocView('ALL')} />
+                  <ViewChip label={`Active (${adhocCounts.active})`} active={adhocView === 'ACTIVE'} onClick={() => setAdhocView('ACTIVE')} />
+                  <ViewChip label={`Only Critical/High (${adhocCounts.p01})`} active={adhocView === 'P01'} onClick={() => setAdhocView('P01')} />
+                  <ViewChip label={`Done (${adhocCounts.done})`} active={adhocView === 'DONE'} onClick={() => setAdhocView('DONE')} />
+                  <ViewChip label={`All (${adhocCounts.all})`} active={adhocView === 'ALL'} onClick={() => setAdhocView('ALL')} />
                 </div>
 
                 <div className="mt-3 space-y-2">
                   {filteredAdhoc.map((task) => (
-                    <article key={task.id} className={`rounded-xl border p-3 ${selectedItem?.kind === 'adhoc' && selectedItem.id === task.id ? 'border-sky-500/60 bg-sky-500/10' : 'border-[var(--border)] bg-[var(--panel-2)]'}`} onClick={() => setSelectedItem({ kind: 'adhoc', id: task.id })}>
+                    <article
+                      key={task.id}
+                      className={`rounded-xl border p-3 ${PRIORITY_META[task.priority].cardClass} ${selectedItem?.kind === 'adhoc' && selectedItem.id === task.id ? 'ring-1 ring-sky-500/60' : 'border-[var(--border)]'}`}
+                      onClick={() => setSelectedItem({ kind: 'adhoc', id: task.id })}
+                    >
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${PRIORITY_CLASSES[task.priority]}`}>{task.priority}</span>
+                        <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${PRIORITY_META[task.priority].chipClass}`}>
+                          {PRIORITY_META[task.priority].label}
+                        </span>
                         <span className="text-sm font-semibold">{task.title}</span>
                       </div>
                       <div className="mt-1 text-xs text-[var(--muted)]">{task.note || '—'}</div>
-                      <div className="mt-1 text-xs text-[var(--muted)]">Owner: {task.owner_name ?? '—'} · {fmtDate(task.created_at)}</div>
+                      <div className="mt-1 text-xs text-[var(--muted)]">Owner: {task.owner_name ?? '—'} · {fmtDate(task.created_at)} · {daysSince(task.updated_at || task.created_at, nowTs)}d ago</div>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <StatusSelect status={task.status} onChange={(status) => patchAdhoc(task.id, { status })} />
                         <button className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-[11px] font-semibold hover:bg-black/10" onClick={(event) => { event.stopPropagation(); const owner = window.prompt('Owner name', task.owner_name ?? ''); if (owner !== null) patchAdhoc(task.id, { owner_name: owner.trim() || null }); }}>Owner</button>
+                        <button className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-[11px] font-semibold hover:bg-black/10" onClick={(event) => { event.stopPropagation(); convertAdhocToTemplate(task); }}>Convert</button>
                         <button className="rounded-md border border-rose-500/40 bg-rose-500/20 px-2 py-1 text-[11px] font-semibold hover:bg-rose-500/30" onClick={(event) => { event.stopPropagation(); deleteAdhoc(task.id); }}>Delete</button>
                       </div>
                     </article>
@@ -765,6 +844,7 @@ function RecurringSection({
   setSelectedItem,
   onChangeStatus,
   onPatchTask,
+  nowTs,
 }: {
   title: string;
   tasks: RecurringTask[];
@@ -772,6 +852,7 @@ function RecurringSection({
   setSelectedItem: (value: { kind: 'recurring' | 'adhoc'; id: string } | null) => void;
   onChangeStatus: (id: string, status: SprintStatus, action: string) => Promise<void>;
   onPatchTask: (taskId: string, patch: { notes?: string; ownerName?: string | null }) => Promise<void>;
+  nowTs: number;
 }) {
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
@@ -785,6 +866,7 @@ function RecurringSection({
             onSelect={() => setSelectedItem({ kind: 'recurring', id: task.id })}
             onChangeStatus={onChangeStatus}
             onPatchTask={onPatchTask}
+            nowTs={nowTs}
           />
         ))}
       </div>
@@ -798,12 +880,14 @@ function RecurringCard({
   onSelect,
   onChangeStatus,
   onPatchTask,
+  nowTs,
 }: {
   task: RecurringTask;
   selected: boolean;
   onSelect: () => void;
   onChangeStatus: (id: string, status: SprintStatus, action: string) => Promise<void>;
   onPatchTask: (taskId: string, patch: { notes?: string; ownerName?: string | null }) => Promise<void>;
+  nowTs: number;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [note, setNote] = useState(() => task.notes ?? '');
@@ -817,11 +901,9 @@ function RecurringCard({
             <div className="text-sm font-semibold">{task.title_snapshot}</div>
             <StatusPill status={task.status} />
           </div>
-          <div className="mt-1 text-xs text-[var(--muted)]">Owner: {task.owner_name ?? '—'} · Due: {task.due_hint ?? '—'} · Updated: {fmtDate(task.updated_at)}</div>
+          <div className="mt-1 text-xs text-[var(--muted)]">Owner: {task.owner_name ?? '—'} · Due: {task.due_hint ?? '—'} · Updated: {fmtDate(task.updated_at)} · {daysSince(task.updated_at, nowTs)}d ago</div>
         </div>
-        <button className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-black/10" onClick={(event) => { event.stopPropagation(); setExpanded((v) => !v); }}>
-          {expanded ? 'Hide' : 'Details'}
-        </button>
+        <button className="rounded-md border border-[var(--border)] px-2 py-1 text-xs hover:bg-black/10" onClick={(event) => { event.stopPropagation(); setExpanded((v) => !v); }}>{expanded ? 'Hide' : 'Details'}</button>
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
