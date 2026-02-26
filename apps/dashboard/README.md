@@ -29,6 +29,10 @@ Ce face:
 - taskuri recurente generate automat din template-uri;
 - ad-hoc rapid (`+ Add ad-hoc`, plus shortcut `N`);
 - status colorat clar (`NOT_STARTED`, `IN_PROGRESS`, `DONE`, `BLOCKED`);
+- Daily View default + `Sprint Settings` collapsible;
+- `Focus` mode pentru scan rapid (fara zgomot);
+- bloc `Needs attention` cu itemele critice;
+- filtre Ad-hoc (`Active`, `Only P0/P1`, `Done`, `All`);
 - owner editabil pe taskuri recurente si ad-hoc;
 - delete pentru ad-hoc;
 - reset sprint curent (reseteaza statusurile + reporneste sprintul de azi);
@@ -42,6 +46,16 @@ Ruleaza fisierul SQL:
 
 ```bash
 # din SQL editor Supabase, ruleaza continutul:
+apps/dashboard/supabase/sprintpulse.sql
+```
+
+Reset complet SprintPulse (fara impact pe alte tabele):
+
+```bash
+# 1) nuke sprintpulse tables
+apps/dashboard/supabase/sprintpulse_reset.sql
+
+# 2) recreate schema
 apps/dashboard/supabase/sprintpulse.sql
 ```
 

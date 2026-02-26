@@ -151,7 +151,7 @@ export async function ensureDefaultTemplates(client: SupabaseClient) {
     },
     {
       owner_id: SPRINTPULSE_OWNER,
-      title: 'Update Node.js utils across microservices',
+      title: 'Update xc1-nodejs-utils across services',
       category: 'Dependencies',
       cadence_type: 'ONCE_PER_SPRINT',
       reminder_rules: [{ day: 8 }],

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type SprintStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE' | 'BLOCKED';
 type Priority = 'P0' | 'P1' | 'P2' | 'P3';
+type AdhocView = 'ACTIVE' | 'P01' | 'DONE' | 'ALL';
 
 type Sprint = {
   id: string;
@@ -13,45 +14,34 @@ type Sprint = {
   start_date: string;
   end_date: string;
   duration_days: number;
-  created_at: string;
 };
 
 type Template = {
   id: string;
   title: string;
-  category: string;
-  cadence_type: 'ONCE_PER_SPRINT' | 'MULTI_PER_SPRINT';
-  reminder_rules: unknown;
   is_active: boolean;
   default_owner_name?: string | null;
 };
 
 type RecurringTask = {
   id: string;
-  sprint_id: string;
-  template_id: string | null;
   title_snapshot: string;
   category_snapshot: string;
   owner_name: string | null;
   status: SprintStatus;
-  priority: Priority | null;
   notes: string | null;
   due_hint: string | null;
   updated_at: string;
-  completed_at: string | null;
 };
 
 type AdhocTask = {
   id: string;
-  sprint_id: string;
   title: string;
   note: string | null;
   owner_name: string | null;
   status: SprintStatus;
   priority: Priority;
   created_at: string;
-  updated_at: string;
-  completed_at: string | null;
 };
 
 type Summary = {
@@ -66,8 +56,6 @@ type Summary = {
 type ReminderHit = {
   instanceId: string;
   title: string;
-  category: string;
-  status: SprintStatus;
   dayOfSprint: number;
   matchedRule: string;
 };
@@ -91,13 +79,6 @@ const PRIORITY_CLASSES: Record<Priority, string> = {
   P1: 'border-orange-500/50 bg-orange-500/20 text-orange-100',
   P2: 'border-sky-500/50 bg-sky-500/20 text-sky-100',
   P3: 'border-slate-500/50 bg-slate-500/20 text-slate-100',
-};
-
-const PRIORITY_HINTS: Record<Priority, string> = {
-  P0: 'Critical now',
-  P1: 'High priority',
-  P2: 'Normal priority',
-  P3: 'Low priority',
 };
 
 function fmtDate(iso: string | null) {
@@ -152,6 +133,9 @@ export default function SprintPulsePage() {
 
   const [search, setSearch] = useState('');
   const [showAddAdhoc, setShowAddAdhoc] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+
   const [addTitle, setAddTitle] = useState('');
   const [addNote, setAddNote] = useState('');
   const [addPriority, setAddPriority] = useState<Priority>('P2');
@@ -161,6 +145,7 @@ export default function SprintPulsePage() {
   const [durationDays, setDurationDays] = useState(10);
   const [carryMode, setCarryMode] = useState<'carry_unfinished' | 'keep_old' | 'convert_to_template'>('carry_unfinished');
   const [convertTaskIds, setConvertTaskIds] = useState<string[]>([]);
+  const [adhocView, setAdhocView] = useState<AdhocView>('ACTIVE');
 
   const [selectedItem, setSelectedItem] = useState<{ kind: 'recurring' | 'adhoc'; id: string } | null>(null);
   const [activeReminderHits, setActiveReminderHits] = useState<ReminderHit[]>([]);
@@ -199,8 +184,7 @@ export default function SprintPulsePage() {
   }, []);
 
   const ownerOptions = useMemo(() => {
-    const set = new Set<string>();
-    set.add('Me');
+    const set = new Set<string>(['Me']);
     templates.forEach((t) => t.default_owner_name && set.add(t.default_owner_name));
     recurring.forEach((r) => r.owner_name && set.add(r.owner_name));
     adhoc.forEach((a) => a.owner_name && set.add(a.owner_name));
@@ -208,12 +192,13 @@ export default function SprintPulsePage() {
   }, [templates, recurring, adhoc]);
 
   const sprintProgress = useMemo(() => {
-    if (!selectedSprint) return { dayOfSprint: 0, remainingDays: 0, started: false };
+    if (!selectedSprint) return { dayOfSprint: 0, totalDays: 0, remainingDays: 0, started: false };
     const today = new Date().toISOString().slice(0, 10);
     const dayOfSprint = Math.max(1, workingDaysBetween(selectedSprint.start_date, today));
+    const totalDays = Math.max(1, workingDaysBetween(selectedSprint.start_date, selectedSprint.end_date));
     const remainingDays = Math.max(0, workingDaysBetween(today, selectedSprint.end_date) - 1);
     const started = today >= selectedSprint.start_date;
-    return { dayOfSprint, remainingDays, started };
+    return { dayOfSprint, totalDays, remainingDays, started };
   }, [selectedSprint]);
 
   const filteredRecurring = useMemo(() => {
@@ -243,9 +228,13 @@ export default function SprintPulsePage() {
 
   const filteredAdhoc = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const rows = !q
+    let rows = !q
       ? adhoc
       : adhoc.filter((task) => `${task.title} ${task.note ?? ''}`.toLowerCase().includes(q));
+
+    if (adhocView === 'ACTIVE') rows = rows.filter((task) => task.status !== 'DONE');
+    if (adhocView === 'DONE') rows = rows.filter((task) => task.status === 'DONE');
+    if (adhocView === 'P01') rows = rows.filter((task) => (task.priority === 'P0' || task.priority === 'P1') && task.status !== 'DONE');
 
     return [...rows].sort((a, b) => {
       const p = prioritySort(a.priority) - prioritySort(b.priority);
@@ -254,9 +243,22 @@ export default function SprintPulsePage() {
       if (s !== 0) return s;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [adhoc, search]);
+  }, [adhoc, search, adhocView]);
 
   const incompleteAdhoc = useMemo(() => adhoc.filter((task) => task.status !== 'DONE'), [adhoc]);
+
+  const needsAttention = useMemo(() => {
+    const recurringHot = recurring.filter((task) => task.status !== 'DONE');
+    const adhocHot = adhoc.filter(
+      (task) => task.status !== 'DONE' && (task.priority === 'P0' || task.priority === 'P1')
+    );
+
+    return {
+      count: recurringHot.length + adhocHot.length,
+      recurringHot: recurringHot.slice(0, 4),
+      adhocHot: adhocHot.slice(0, 4),
+    };
+  }, [recurring, adhoc]);
 
   const changeRecurringStatus = useCallback(async (taskId: string, status: SprintStatus, action: string) => {
     const previous = recurring;
@@ -366,12 +368,7 @@ export default function SprintPulsePage() {
     const res = await fetch('/api/sprintpulse/sprints/start', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        startDate,
-        durationDays,
-        carryOverMode: carryMode,
-        convertTaskIds,
-      }),
+      body: JSON.stringify({ startDate, durationDays, carryOverMode: carryMode, convertTaskIds }),
     });
 
     const payload = await res.json();
@@ -386,6 +383,7 @@ export default function SprintPulsePage() {
     setAdhoc(payload.adhoc ?? []);
     setSummary(payload.summary ?? null);
     setConvertTaskIds([]);
+    setShowSettings(false);
   }
 
   async function resetCurrentSprint() {
@@ -410,6 +408,7 @@ export default function SprintPulsePage() {
     setRecurring(payload.recurring ?? []);
     setAdhoc(payload.adhoc ?? []);
     setSummary(payload.summary ?? null);
+    setShowSettings(false);
   }
 
   async function checkReminders() {
@@ -494,7 +493,9 @@ export default function SprintPulsePage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
-        <div className="mx-auto max-w-7xl rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6">Loading SprintPulse...</div>
+        <div className="mx-auto max-w-7xl rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6">
+          Loading SprintPulse...
+        </div>
       </main>
     );
   }
@@ -506,22 +507,17 @@ export default function SprintPulsePage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold">SprintPulse</h1>
-              <p className="mt-1 text-sm text-[var(--muted)]">Rosu = te doare, portocaliu = e pe teava, verde = ai scapat.</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">Attention radar for sprint rituals.</p>
             </div>
             <div className="flex items-center gap-2">
               <Link className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm font-semibold hover:bg-black/10" href="/">← Dashboard</Link>
               <button className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-2 text-sm font-semibold hover:bg-emerald-500/30" onClick={() => setShowAddAdhoc(true)}>+ Add ad-hoc</button>
+              <button className={`rounded-md border px-3 py-2 text-sm font-semibold ${focusMode ? 'border-sky-500/50 bg-sky-500/20' : 'border-[var(--border)] bg-[var(--panel-2)]'}`} onClick={() => setFocusMode((v) => !v)}>Focus</button>
+              <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm font-semibold hover:bg-black/10" onClick={() => setShowSettings((v) => !v)}>⚙ Sprint Settings</button>
             </div>
           </div>
 
-          <div className="mt-3 rounded-xl border border-sky-500/35 bg-sky-500/10 p-3 text-sm text-sky-100">
-            <div className="font-semibold">Sprint status</div>
-            <div className="mt-1">
-              {sprintProgress.started ? 'Sprint started' : 'Sprint not started yet'} · Day {sprintProgress.dayOfSprint} · {sprintProgress.remainingDays} working day(s) left
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-5">
+          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-4">
             <label className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm lg:col-span-2">
               <div className="text-[11px] uppercase text-[var(--muted)]">Sprint</div>
               <select
@@ -540,70 +536,81 @@ export default function SprintPulsePage() {
             </label>
 
             <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm">
-              <div className="text-[11px] uppercase text-[var(--muted)]">Range</div>
-              <div className="mt-1 font-semibold">{selectedSprint?.start_date ?? '—'} → {selectedSprint?.end_date ?? '—'}</div>
+              <div className="text-[11px] uppercase text-[var(--muted)]">Progress</div>
+              <div className="mt-1 font-semibold">Day {sprintProgress.dayOfSprint}/{sprintProgress.totalDays}</div>
             </div>
 
             <label className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm">
               <div className="text-[11px] uppercase text-[var(--muted)]">Search</div>
-              <input className="mt-1 w-full bg-transparent outline-none" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="title, notes..." />
+              <input className="mt-1 w-full bg-transparent outline-none" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="red items, title..." />
             </label>
+          </div>
 
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm">
-              <div className="text-[11px] uppercase text-[var(--muted)]">Working day</div>
-              <div className="mt-1 font-semibold">{sprintProgress.dayOfSprint}</div>
+          <div className="mt-3 rounded-xl border border-sky-500/35 bg-sky-500/10 p-3 text-sm text-sky-100">
+            {sprintProgress.started ? 'Sprint started' : 'Sprint not started yet'} · {sprintProgress.remainingDays} working day(s) left
+          </div>
+
+          <div className="mt-3 rounded-xl border border-rose-500/35 bg-rose-500/10 p-3 text-sm text-rose-100">
+            <div className="font-semibold">Needs attention ({needsAttention.count})</div>
+            <div className="mt-1 space-y-1 text-xs">
+              {needsAttention.recurringHot.map((task) => (
+                <div key={`r-${task.id}`}>• {task.title_snapshot} ({STATUS_LABELS[task.status]})</div>
+              ))}
+              {needsAttention.adhocHot.map((task) => (
+                <div key={`a-${task.id}`}>• [{task.priority}] {task.title}</div>
+              ))}
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-6">
-            <label className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm">
-              <div className="text-[11px] uppercase text-[var(--muted)]">Start date</div>
-              <input className="mt-1 w-full bg-transparent outline-none" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
-            </label>
+          {showSettings && !focusMode ? (
+            <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-6">
+                <label className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm">
+                  <div className="text-[11px] uppercase text-[var(--muted)]">Start date</div>
+                  <input className="mt-1 w-full bg-transparent outline-none" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+                </label>
 
-            <label className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm">
-              <div className="text-[11px] uppercase text-[var(--muted)]">Working days</div>
-              <input className="mt-1 w-full bg-transparent outline-none" type="number" min={1} max={60} value={durationDays} onChange={(event) => setDurationDays(Number(event.target.value || 10))} />
-            </label>
+                <label className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm">
+                  <div className="text-[11px] uppercase text-[var(--muted)]">Working days</div>
+                  <input className="mt-1 w-full bg-transparent outline-none" type="number" min={1} max={60} value={durationDays} onChange={(event) => setDurationDays(Number(event.target.value || 10))} />
+                </label>
 
-            <label className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm lg:col-span-2">
-              <div className="text-[11px] uppercase text-[var(--muted)]">Carry-over unfinished ad-hoc</div>
-              <select className="mt-1 w-full bg-transparent outline-none" value={carryMode} onChange={(event) => setCarryMode(event.target.value as typeof carryMode)}>
-                <option value="carry_unfinished">Carry over unfinished (default)</option>
-                <option value="keep_old">Keep in old sprint</option>
-                <option value="convert_to_template">Convert selected to recurring template</option>
-              </select>
-            </label>
+                <label className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm lg:col-span-2">
+                  <div className="text-[11px] uppercase text-[var(--muted)]">Carry-over unfinished ad-hoc</div>
+                  <select className="mt-1 w-full bg-transparent outline-none" value={carryMode} onChange={(event) => setCarryMode(event.target.value as typeof carryMode)}>
+                    <option value="carry_unfinished">Carry over unfinished (default)</option>
+                    <option value="keep_old">Keep in old sprint</option>
+                    <option value="convert_to_template">Convert selected to recurring template</option>
+                  </select>
+                </label>
 
-            <button className="rounded-xl border border-sky-500/40 bg-sky-500/20 px-3 py-2 text-sm font-semibold hover:bg-sky-500/30" onClick={startNewSprint}>Start New Sprint</button>
-            <button className="rounded-xl border border-rose-500/40 bg-rose-500/20 px-3 py-2 text-sm font-semibold hover:bg-rose-500/30" onClick={resetCurrentSprint}>Reset Current Sprint</button>
-          </div>
+                <button className="rounded-lg border border-sky-500/40 bg-sky-500/20 px-3 py-2 text-sm font-semibold hover:bg-sky-500/30" onClick={startNewSprint}>Start New Sprint</button>
+                <button className="rounded-lg border border-rose-500/40 bg-rose-500/20 px-3 py-2 text-sm font-semibold hover:bg-rose-500/30" onClick={resetCurrentSprint}>Reset Current Sprint</button>
+              </div>
 
-          {carryMode === 'convert_to_template' && incompleteAdhoc.length ? (
-            <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-sm">
-              <div className="text-[11px] uppercase text-[var(--muted)]">Select unfinished ad-hoc to convert</div>
-              <div className="mt-2 grid grid-cols-1 gap-2 lg:grid-cols-2">
-                {incompleteAdhoc.map((task) => (
-                  <label key={task.id} className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-2 py-1">
-                    <input type="checkbox" checked={convertTaskIds.includes(task.id)} onChange={(event) => setConvertTaskIds((ids) => event.target.checked ? [...ids, task.id] : ids.filter((id) => id !== task.id))} />
-                    <span>[{task.priority}] {task.title}</span>
-                  </label>
-                ))}
+              {carryMode === 'convert_to_template' && incompleteAdhoc.length ? (
+                <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3 text-sm">
+                  <div className="text-[11px] uppercase text-[var(--muted)]">Select unfinished ad-hoc to convert</div>
+                  <div className="mt-2 grid grid-cols-1 gap-2 lg:grid-cols-2">
+                    {incompleteAdhoc.map((task) => (
+                      <label key={task.id} className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-2 py-1">
+                        <input type="checkbox" checked={convertTaskIds.includes(task.id)} onChange={(event) => setConvertTaskIds((ids) => event.target.checked ? [...ids, task.id] : ids.filter((id) => id !== task.id))} />
+                        <span>[{task.priority}] {task.title}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-3 py-1.5 text-xs font-semibold hover:bg-black/10" onClick={checkReminders}>Check reminders</button>
+                <button className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-3 py-1.5 text-xs font-semibold hover:bg-black/10" onClick={exportSummaryMarkdown}>Copy review markdown</button>
+                <div className="text-xs text-[var(--muted)]">P0 critical, P1 high, P2 normal, P3 low · Shortcuts: N / D / I</div>
               </div>
             </div>
           ) : null}
 
-          <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-xs text-[var(--muted)]">
-            Priorities: P0 = critical now, P1 = high, P2 = normal, P3 = low.
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-xs font-semibold hover:bg-black/10" onClick={checkReminders}>Check reminders</button>
-            <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-xs font-semibold hover:bg-black/10" onClick={exportSummaryMarkdown}>Copy review markdown</button>
-            <div className="text-xs text-[var(--muted)]">Shortcuts: N (new), D (done), I (in progress)</div>
-          </div>
-
-          {activeReminderHits.length ? (
+          {activeReminderHits.length && !focusMode ? (
             <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/15 p-3 text-sm text-amber-100">
               <div className="font-semibold">Reminder hits ({activeReminderHits.length})</div>
               <div className="mt-1 space-y-1">
@@ -638,59 +645,73 @@ export default function SprintPulsePage() {
 
         <section className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="space-y-3 lg:col-span-2">
-            <RecurringSection title="Start of Sprint" tasks={filteredRecurring.start} selectedItem={selectedItem} setSelectedItem={setSelectedItem} onStatusChange={changeRecurringStatus} onPatchTask={patchRecurring} />
-            <RecurringSection title="Weekly / Once per sprint (Update Node.js utils)" tasks={filteredRecurring.middle} selectedItem={selectedItem} setSelectedItem={setSelectedItem} onStatusChange={changeRecurringStatus} onPatchTask={patchRecurring} />
-            <RecurringSection title="Higher cadence near release" tasks={filteredRecurring.highCadence} selectedItem={selectedItem} setSelectedItem={setSelectedItem} onStatusChange={changeRecurringStatus} onPatchTask={patchRecurring} />
+            <RecurringSection
+              title="Start of Sprint"
+              tasks={filteredRecurring.start}
+              selectedItem={selectedItem}
+              setSelectedItem={setSelectedItem}
+              onChangeStatus={changeRecurringStatus}
+              onPatchTask={patchRecurring}
+            />
+            <RecurringSection
+              title="Weekly / Once per sprint (Update xc1-nodejs-utils across services)"
+              tasks={filteredRecurring.middle}
+              selectedItem={selectedItem}
+              setSelectedItem={setSelectedItem}
+              onChangeStatus={changeRecurringStatus}
+              onPatchTask={patchRecurring}
+            />
+            <RecurringSection
+              title="Higher cadence near release"
+              tasks={filteredRecurring.highCadence}
+              selectedItem={selectedItem}
+              setSelectedItem={setSelectedItem}
+              onChangeStatus={changeRecurringStatus}
+              onPatchTask={patchRecurring}
+            />
           </div>
 
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
-              <h2 className="text-lg font-semibold">Ad-hoc & Notes</h2>
-              <div className="mt-3 space-y-2">
-                {filteredAdhoc.map((task) => (
-                  <button
-                    key={task.id}
-                    className={`w-full rounded-xl border p-3 text-left ${selectedItem?.kind === 'adhoc' && selectedItem.id === task.id ? 'border-sky-500/60 bg-sky-500/10' : 'border-[var(--border)] bg-[var(--panel-2)]'}`}
-                    onClick={() => setSelectedItem({ kind: 'adhoc', id: task.id })}
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${PRIORITY_CLASSES[task.priority]}`} title={PRIORITY_HINTS[task.priority]}>{task.priority}</span>
-                      <span className="text-sm font-semibold">{task.title}</span>
-                    </div>
-                    <div className="mt-1 text-xs text-[var(--muted)]">{task.note || '—'}</div>
-                    <div className="mt-1 text-xs text-[var(--muted)]">Owner: {task.owner_name ?? '—'} · Created: {fmtDate(task.created_at)}</div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <StatusPill status={task.status} />
-                      <button className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2 py-1 text-[11px] font-semibold hover:bg-emerald-500/30" onClick={(event) => { event.stopPropagation(); patchAdhoc(task.id, { status: task.status === 'DONE' ? 'NOT_STARTED' : 'DONE' }); }}>
-                        {task.status === 'DONE' ? 'Reset' : 'Quick done'}
-                      </button>
-                      <button className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-[11px] font-semibold hover:bg-black/10" onClick={(event) => { event.stopPropagation(); const owner = window.prompt('Owner name', task.owner_name ?? ''); if (owner !== null) patchAdhoc(task.id, { owner_name: owner.trim() || null }); }}>
-                        Owner
-                      </button>
-                      <button className="rounded-md border border-rose-500/40 bg-rose-500/20 px-2 py-1 text-[11px] font-semibold hover:bg-rose-500/30" onClick={(event) => { event.stopPropagation(); deleteAdhoc(task.id); }}>
-                        Delete
-                      </button>
-                    </div>
-                  </button>
-                ))}
+          {!focusMode ? (
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
+                <h2 className="text-lg font-semibold">Ad-hoc & Notes</h2>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <ViewChip label="Active" active={adhocView === 'ACTIVE'} onClick={() => setAdhocView('ACTIVE')} />
+                  <ViewChip label="Only P0/P1" active={adhocView === 'P01'} onClick={() => setAdhocView('P01')} />
+                  <ViewChip label="Done" active={adhocView === 'DONE'} onClick={() => setAdhocView('DONE')} />
+                  <ViewChip label="All" active={adhocView === 'ALL'} onClick={() => setAdhocView('ALL')} />
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  {filteredAdhoc.map((task) => (
+                    <article key={task.id} className={`rounded-xl border p-3 ${selectedItem?.kind === 'adhoc' && selectedItem.id === task.id ? 'border-sky-500/60 bg-sky-500/10' : 'border-[var(--border)] bg-[var(--panel-2)]'}`} onClick={() => setSelectedItem({ kind: 'adhoc', id: task.id })}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${PRIORITY_CLASSES[task.priority]}`}>{task.priority}</span>
+                        <span className="text-sm font-semibold">{task.title}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-[var(--muted)]">{task.note || '—'}</div>
+                      <div className="mt-1 text-xs text-[var(--muted)]">Owner: {task.owner_name ?? '—'} · {fmtDate(task.created_at)}</div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <StatusSelect status={task.status} onChange={(status) => patchAdhoc(task.id, { status })} />
+                        <button className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-[11px] font-semibold hover:bg-black/10" onClick={(event) => { event.stopPropagation(); const owner = window.prompt('Owner name', task.owner_name ?? ''); if (owner !== null) patchAdhoc(task.id, { owner_name: owner.trim() || null }); }}>Owner</button>
+                        <button className="rounded-md border border-rose-500/40 bg-rose-500/20 px-2 py-1 text-[11px] font-semibold hover:bg-rose-500/30" onClick={(event) => { event.stopPropagation(); deleteAdhoc(task.id); }}>Delete</button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
+                <h2 className="text-lg font-semibold">Sprint Review</h2>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <Metric label="Recurring %" value={`${summary?.recurringPercent ?? 0}%`} />
+                  <Metric label="Recurring done" value={`${summary?.recurringDone ?? 0}/${summary?.recurringTotal ?? 0}`} />
+                  <Metric label="Ad-hoc done" value={`${summary?.adhocCompleted ?? 0}/${summary?.adhocTotal ?? 0}`} />
+                  <Metric label="Leftover" value={`${summary?.adhocLeftover ?? 0}`} />
+                </div>
               </div>
             </div>
-
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
-              <h2 className="text-lg font-semibold">Sprint Review</h2>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                <Metric label="Recurring %" value={`${summary?.recurringPercent ?? 0}%`} />
-                <Metric label="Recurring done" value={`${summary?.recurringDone ?? 0}/${summary?.recurringTotal ?? 0}`} />
-                <Metric label="Ad-hoc done" value={`${summary?.adhocCompleted ?? 0}/${summary?.adhocTotal ?? 0}`} />
-                <Metric label="Leftover" value={`${summary?.adhocLeftover ?? 0}`} />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm text-xs text-[var(--muted)]">
-              <div>Templates active: {templates.filter((template) => template.is_active).length}</div>
-              <div className="mt-1">Total templates: {templates.length}</div>
-            </div>
-          </div>
+          ) : null}
         </section>
 
         <datalist id="owners-list">
@@ -701,8 +722,31 @@ export default function SprintPulsePage() {
   );
 }
 
+function ViewChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${active ? 'border-sky-500/50 bg-sky-500/20 text-sky-100' : 'border-[var(--border)] bg-[var(--panel-2)] text-[var(--muted)]'}`} onClick={onClick}>
+      {label}
+    </button>
+  );
+}
+
 function StatusPill({ status }: { status: SprintStatus }) {
   return <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${STATUS_CLASSES[status]}`}>{STATUS_LABELS[status]}</span>;
+}
+
+function StatusSelect({ status, onChange }: { status: SprintStatus; onChange: (status: SprintStatus) => void }) {
+  return (
+    <select
+      value={status}
+      onChange={(event) => onChange(event.target.value as SprintStatus)}
+      className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold outline-none ${STATUS_CLASSES[status]}`}
+    >
+      <option value="NOT_STARTED">Not started</option>
+      <option value="IN_PROGRESS">In progress</option>
+      <option value="DONE">Done</option>
+      <option value="BLOCKED">Blocked</option>
+    </select>
+  );
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
@@ -719,14 +763,14 @@ function RecurringSection({
   tasks,
   selectedItem,
   setSelectedItem,
-  onStatusChange,
+  onChangeStatus,
   onPatchTask,
 }: {
   title: string;
   tasks: RecurringTask[];
   selectedItem: { kind: 'recurring' | 'adhoc'; id: string } | null;
   setSelectedItem: (value: { kind: 'recurring' | 'adhoc'; id: string } | null) => void;
-  onStatusChange: (id: string, status: SprintStatus, action: string) => Promise<void>;
+  onChangeStatus: (id: string, status: SprintStatus, action: string) => Promise<void>;
   onPatchTask: (taskId: string, patch: { notes?: string; ownerName?: string | null }) => Promise<void>;
 }) {
   return (
@@ -739,7 +783,7 @@ function RecurringSection({
             task={task}
             selected={selectedItem?.kind === 'recurring' && selectedItem.id === task.id}
             onSelect={() => setSelectedItem({ kind: 'recurring', id: task.id })}
-            onStatusChange={onStatusChange}
+            onChangeStatus={onChangeStatus}
             onPatchTask={onPatchTask}
           />
         ))}
@@ -752,13 +796,13 @@ function RecurringCard({
   task,
   selected,
   onSelect,
-  onStatusChange,
+  onChangeStatus,
   onPatchTask,
 }: {
   task: RecurringTask;
   selected: boolean;
   onSelect: () => void;
-  onStatusChange: (id: string, status: SprintStatus, action: string) => Promise<void>;
+  onChangeStatus: (id: string, status: SprintStatus, action: string) => Promise<void>;
   onPatchTask: (taskId: string, patch: { notes?: string; ownerName?: string | null }) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -780,16 +824,13 @@ function RecurringCard({
         </button>
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-2">
-        <button className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2 py-1 text-xs font-semibold hover:bg-emerald-500/30" onClick={(event) => { event.stopPropagation(); onStatusChange(task.id, 'DONE', 'QUICK_DONE'); }}>Done</button>
-        <button className="rounded-md border border-amber-500/40 bg-amber-500/20 px-2 py-1 text-xs font-semibold hover:bg-amber-500/30" onClick={(event) => { event.stopPropagation(); onStatusChange(task.id, 'IN_PROGRESS', 'QUICK_PROGRESS'); }}>In progress</button>
-        <button className="rounded-md border border-rose-500/40 bg-rose-500/20 px-2 py-1 text-xs font-semibold hover:bg-rose-500/30" onClick={(event) => { event.stopPropagation(); onStatusChange(task.id, 'NOT_STARTED', 'QUICK_RESET'); }}>Reset</button>
-        <button className="rounded-md border border-violet-500/40 bg-violet-500/20 px-2 py-1 text-xs font-semibold hover:bg-violet-500/30" onClick={(event) => { event.stopPropagation(); onStatusChange(task.id, 'BLOCKED', 'QUICK_BLOCKED'); }}>Blocked</button>
+      <div className="mt-2 flex flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
+        <StatusSelect status={task.status} onChange={(status) => onChangeStatus(task.id, status, 'STATUS_DROPDOWN')} />
       </div>
 
       {expanded ? (
         <div className="mt-3 grid grid-cols-1 gap-2" onClick={(event) => event.stopPropagation()}>
-          <input list="owners-list" className="rounded-lg border border-[var(--border)] bg-[var(--panel)] p-2 text-sm outline-none" value={ownerInput} onChange={(event) => setOwnerInput(event.target.value)} placeholder="Owner" />
+          <input className="rounded-lg border border-[var(--border)] bg-[var(--panel)] p-2 text-sm outline-none" value={ownerInput} onChange={(event) => setOwnerInput(event.target.value)} placeholder="Owner" />
           <button className="w-fit rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs font-semibold hover:bg-black/10" onClick={() => onPatchTask(task.id, { ownerName: ownerInput.trim() || null })}>Save owner</button>
 
           <textarea className="h-20 w-full rounded-lg border border-[var(--border)] bg-[var(--panel)] p-2 text-sm outline-none" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Add note..." />
