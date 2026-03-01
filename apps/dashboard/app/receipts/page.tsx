@@ -139,6 +139,89 @@ function buildSourceHash({
   return `auto_${hashString(base)}`;
 }
 
+const ITEM_CORE_KEYS = new Set([
+  'name',
+  'quantity',
+  'unit',
+  'unit_price',
+  'paid_amount',
+  'discount',
+  'needs_review',
+  'is_food',
+  'food_quality',
+  'meta',
+]);
+
+function extractItemMeta(item: any) {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return {};
+  const meta: Record<string, any> = {};
+  Object.entries(item).forEach(([key, value]) => {
+    if (!ITEM_CORE_KEYS.has(key)) {
+      meta[key] = value;
+    }
+  });
+  return meta;
+}
+
+function buildJsonExport(selected: ReceiptRow, items: ReceiptItemRow[]) {
+  const sourceHash =
+    (selected.source_hash && selected.source_hash.trim()) ||
+    buildSourceHash({
+      store: selected.store,
+      receiptDate: selected.receipt_date,
+      sourceFileName: selected.source_file_name,
+    }) ||
+    null;
+  const warnings = Array.isArray(selected.processing_warnings) ? selected.processing_warnings : [];
+  const exportedItems = items.map((item) => {
+    const itemMeta =
+      item.meta && typeof item.meta === 'object' && !Array.isArray(item.meta) ? item.meta : {};
+    const isFood = item.is_food === null || item.is_food === undefined ? true : Boolean(item.is_food);
+    return {
+      ...itemMeta,
+      name: item.name ?? '',
+      quantity: item.quantity ?? 1,
+      unit: item.unit ?? 'BUC',
+      unit_price: item.unit_price ?? null,
+      paid_amount: item.paid_amount ?? null,
+      discount: Number(item.discount ?? 0),
+      needs_review: Boolean(item.needs_review),
+      is_food: isFood,
+      food_quality: isFood ? item.food_quality ?? null : null,
+    };
+  });
+  return {
+    schema_version: Number(selected.schema_version ?? 3),
+    store: selected.store ?? 'lidl',
+    timestamp: selected.receipt_date ?? null,
+    currency: selected.currency ?? 'RON',
+    total: Number(selected.total_amount ?? 0),
+    discount_total: Number(selected.discount_total ?? 0),
+    sgr_bottle_charge: Number(selected.sgr_bottle_charge ?? 0),
+    sgr_recovered_amount: Number(selected.sgr_recovered_amount ?? 0),
+    merchant: {
+      name: selected.merchant_name ?? null,
+      address: null,
+      city: selected.merchant_city ?? null,
+      cif: selected.merchant_cif ?? null,
+    },
+    items: exportedItems,
+    processing: {
+      status: selected.processing_status ?? 'ok',
+      warnings,
+      error: null,
+      ocr_engine: null,
+    },
+    source: {
+      file_name: selected.source_file_name ?? null,
+      store_folder: selected.store ?? null,
+      rel_path: selected.source_rel_path ?? null,
+      source_hash: sourceHash,
+    },
+    raw_text: null,
+  };
+}
+
 export default function ReceiptsPage() {
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [items, setItems] = useState<ReceiptItemRow[]>([]);
@@ -448,6 +531,8 @@ export default function ReceiptsPage() {
       const isFood = item?.is_food === false ? false : true;
       const foodQuality =
         isFood && item?.food_quality ? (item.food_quality as FoodQuality) : null;
+      const importedMeta =
+        item?.meta && typeof item.meta === 'object' && !Array.isArray(item.meta) ? item.meta : {};
       return {
       receipt_id: '',
       name: item?.name ?? '',
@@ -459,7 +544,7 @@ export default function ReceiptsPage() {
       needs_review: Boolean(item?.needs_review),
       is_food: isFood,
       food_quality: foodQuality,
-      meta: {},
+      meta: { ...importedMeta, ...extractItemMeta(item) },
       };
     });
     setItems(nextItems);
@@ -985,6 +1070,34 @@ export default function ReceiptsPage() {
                   onClick={saveChanges}
                 >
                   {saving ? 'Se salvează…' : 'Save'}
+                </button>
+                <button
+                  className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50"
+                  disabled={!selected}
+                  onClick={() => {
+                    if (!selected) return;
+                    try {
+                      const payload = buildJsonExport(selected, items);
+                      const json = JSON.stringify(payload, null, 2);
+                      const blob = new Blob([json], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      const datePart = (selected.receipt_date ?? new Date().toISOString()).slice(0, 10);
+                      link.href = url;
+                      link.download = `receipt-${selected.store || 'export'}-${datePart}.json`;
+                      document.body.appendChild(link);
+                      link.click();
+                      link.remove();
+                      URL.revokeObjectURL(url);
+                      setSuccess('JSON exportat.');
+                      setErr(null);
+                    } catch {
+                      setErr('Nu am putut exporta JSON-ul.');
+                    }
+                  }}
+                  type="button"
+                >
+                  Export JSON
                 </button>
                 <button
                   className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-sm text-[var(--text)]"
