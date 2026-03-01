@@ -48,6 +48,13 @@ type ReceiptItemRow = {
   meta: any;
 };
 
+type ReceiptDeleteStep = 'armed' | 'ready';
+
+type PendingReceiptDelete = {
+  id: string;
+  step: ReceiptDeleteStep;
+};
+
 function fmtDate(ts: string | null) {
   if (!ts) return '—';
   return new Date(ts).toLocaleString('ro-RO');
@@ -234,6 +241,9 @@ export default function ReceiptsPage() {
   const [saving, setSaving] = useState(false);
   const [populatingFood, setPopulatingFood] = useState(false);
   const [pendingDeleteKey, setPendingDeleteKey] = useState<string | null>(null);
+  const [pendingReceiptDelete, setPendingReceiptDelete] = useState<PendingReceiptDelete | null>(null);
+  const [confirmDeleteReceipt, setConfirmDeleteReceipt] = useState<ReceiptRow | null>(null);
+  const [deletingReceipt, setDeletingReceipt] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showJsonImport, setShowJsonImport] = useState(false);
@@ -521,6 +531,8 @@ export default function ReceiptsPage() {
       source_hash: fallbackHash ?? '',
       schema_version: Number(payload?.schema_version ?? 3),
     });
+    setPendingReceiptDelete(null);
+    setConfirmDeleteReceipt(null);
 
     const parsedItems = Array.isArray(payload?.items) ? payload.items : [];
     const nextItems: ReceiptItemRow[] = parsedItems.map((item: any) => {
@@ -829,6 +841,61 @@ export default function ReceiptsPage() {
     await loadReceipts(storeFilter);
   }
 
+  async function deleteReceiptNow() {
+    if (!confirmDeleteReceipt) return;
+    if (!selected?.id) return;
+    if (metaLocked) return;
+
+    const target = confirmDeleteReceipt;
+    if (selected.id !== target.id) {
+      setErr('Selecția s-a schimbat. Reia ștergerea pentru bonul selectat.');
+      setPendingReceiptDelete(null);
+      setConfirmDeleteReceipt(null);
+      return;
+    }
+
+    setDeletingReceipt(true);
+    setErr(null);
+    setSuccess(null);
+
+    const { error: itemsErr } = await supabase
+      .from('receipt_items')
+      .delete()
+      .eq('receipt_id', target.id);
+
+    if (itemsErr) {
+      setErr(itemsErr.message);
+      setDeletingReceipt(false);
+      return;
+    }
+
+    const receiptDeleteQuery = supabase
+      .from('receipts')
+      .delete()
+      .eq('id', target.id);
+
+    if (target.owner_id) {
+      receiptDeleteQuery.eq('owner_id', target.owner_id);
+    }
+
+    const { error: receiptErr } = await receiptDeleteQuery;
+
+    if (receiptErr) {
+      setErr(receiptErr.message);
+      setDeletingReceipt(false);
+      return;
+    }
+
+    setConfirmDeleteReceipt(null);
+    setPendingReceiptDelete(null);
+    setSelected(null);
+    setItems([]);
+    setMetaLocked(true);
+    setSuccess('Bonul a fost șters.');
+    await loadReceipts(storeFilter);
+    setDeletingReceipt(false);
+  }
+
   return (
     <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
       <div className="mx-auto max-w-7xl">
@@ -865,11 +932,11 @@ export default function ReceiptsPage() {
                   </option>
                 ))}
               </select>
-              <button
-                className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
-                onClick={() => {
-                  prevSelectionRef.current = selected;
-                  const nowIso = new Date().toISOString();
+                <button
+                  className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
+                  onClick={() => {
+                    prevSelectionRef.current = selected;
+                    const nowIso = new Date().toISOString();
                   setSelected({
                     id: '',
                     owner_id: ownerId ?? '',
@@ -889,12 +956,14 @@ export default function ReceiptsPage() {
                     source_rel_path: '',
                     source_hash: '',
                     schema_version: 3,
-                  });
-                  setItems([]);
-                  setSuccess(null);
-                  setMetaLocked(false);
-                }}
-              >
+                    });
+                    setItems([]);
+                    setSuccess(null);
+                    setMetaLocked(false);
+                    setPendingReceiptDelete(null);
+                    setConfirmDeleteReceipt(null);
+                  }}
+                >
                 + Add receipt
               </button>
               <button
@@ -1008,12 +1077,14 @@ export default function ReceiptsPage() {
                           ? 'border-white bg-[#1f504a] ring-2 ring-white/90'
                           : ''
                       }`}
-                      onClick={() => {
-                        setSelected(r);
-                        setSuccess(null);
-                        setMetaLocked(true);
-                      }}
-                    >
+                        onClick={() => {
+                          setSelected(r);
+                          setSuccess(null);
+                          setMetaLocked(true);
+                          setPendingReceiptDelete(null);
+                          setConfirmDeleteReceipt(null);
+                        }}
+                      >
                       <div className="relative flex items-start gap-3">
                         {!selected ? (
                           <span
@@ -1052,22 +1123,65 @@ export default function ReceiptsPage() {
             ))}
           </div>
 
-          {selected ? (
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="text-xl font-semibold">Editor bon</div>
-              <div className="flex items-center gap-2">
-                <button
-                  className="rounded-full border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-xs text-[var(--text)]"
-                  onClick={() => setMetaLocked((prev) => !prev)}
-                  type="button"
-                >
+            {selected ? (
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="text-xl font-semibold">Editor bon</div>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="rounded-full border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-xs text-[var(--text)]"
+                    onClick={() =>
+                      setMetaLocked((prev) => {
+                        const next = !prev;
+                        if (next) {
+                          setPendingReceiptDelete(null);
+                          setConfirmDeleteReceipt(null);
+                        }
+                        return next;
+                      })
+                    }
+                    type="button"
+                  >
                   {metaLocked ? '🔒 Unlock' : '✏️ Lock'}
                 </button>
-                <button
-                  className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50"
-                  disabled={!selected || saving}
-                  onClick={saveChanges}
+                  <button
+                    className={`rounded-md border border-[var(--border)] px-2 py-1 text-sm disabled:opacity-50 ${
+                      pendingReceiptDelete?.id === selected.id && pendingReceiptDelete.step === 'ready'
+                        ? 'bg-rose-500/20 text-rose-200'
+                        : pendingReceiptDelete?.id === selected.id && pendingReceiptDelete.step === 'armed'
+                          ? 'bg-amber-400/20 text-amber-200'
+                          : 'bg-[var(--panel-2)] text-[var(--text)]'
+                    }`}
+                    disabled={!selected.id || saving || deletingReceipt || metaLocked}
+                    onClick={() => {
+                      if (!selected.id || saving || deletingReceipt || metaLocked) return;
+                      if (!pendingReceiptDelete || pendingReceiptDelete.id !== selected.id) {
+                        setPendingReceiptDelete({ id: selected.id, step: 'armed' });
+                        return;
+                      }
+                      if (pendingReceiptDelete.step === 'armed') {
+                        setPendingReceiptDelete({ id: selected.id, step: 'ready' });
+                        return;
+                      }
+                      setConfirmDeleteReceipt(selected);
+                    }}
+                    title={
+                      metaLocked
+                        ? 'Unlock editor ca să poți șterge'
+                        : pendingReceiptDelete?.id === selected.id && pendingReceiptDelete.step === 'ready'
+                          ? 'Deschide confirmarea finală'
+                          : pendingReceiptDelete?.id === selected.id
+                            ? 'Pasul 2: încă un click pentru armare finală'
+                            : 'Pasul 1: armează ștergerea'
+                    }
+                    type="button"
+                  >
+                    🗑️
+                  </button>
+                  <button
+                    className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50"
+                    disabled={!selected || saving}
+                    onClick={saveChanges}
                 >
                   {saving ? 'Se salvează…' : 'Save'}
                 </button>
@@ -1099,20 +1213,22 @@ export default function ReceiptsPage() {
                 >
                   Export JSON
                 </button>
-                <button
-                  className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-sm text-[var(--text)]"
-                  onClick={() => {
+                  <button
+                    className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-sm text-[var(--text)]"
+                    onClick={() => {
                     if (selected?.id === '' && prevSelectionRef.current) {
                       setSelected(prevSelectionRef.current);
                     } else {
                       setSelected(null);
                     }
-                    setItems([]);
-                    setSuccess(null);
-                    setMetaLocked(true);
-                  }}
-                  title="Închide editor"
-                  type="button"
+                      setItems([]);
+                      setSuccess(null);
+                      setMetaLocked(true);
+                      setPendingReceiptDelete(null);
+                      setConfirmDeleteReceipt(null);
+                    }}
+                    title="Închide editor"
+                    type="button"
                 >
                   ✕
                 </button>
@@ -1612,10 +1728,53 @@ export default function ReceiptsPage() {
                 </div>
               </fieldset>
             </div>
+              </div>
+            ) : null}
           </div>
-          ) : null}
         </div>
-      </div>
-    </main>
-  );
+        {confirmDeleteReceipt ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <div className="w-full max-w-md rounded-2xl border border-rose-500/40 bg-[var(--panel)] p-4 shadow-xl">
+              <div className="text-lg font-semibold text-rose-200">Confirmare ștergere bon</div>
+              <div className="mt-2 text-sm text-[var(--muted)]">
+                Ești sigur că vrei să ștergi acest bon? Acțiunea este ireversibilă.
+              </div>
+              <div className="mt-3 space-y-1 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3 text-xs text-[var(--text)]">
+                <div>
+                  <span className="text-[var(--muted)]">Magazin:</span> {confirmDeleteReceipt.store || '—'}
+                </div>
+                <div>
+                  <span className="text-[var(--muted)]">Data:</span> {fmtDate(confirmDeleteReceipt.receipt_date)}
+                </div>
+                <div>
+                  <span className="text-[var(--muted)]">Total:</span>{' '}
+                  {Number(confirmDeleteReceipt.total_amount || 0).toFixed(2)}{' '}
+                  {confirmDeleteReceipt.currency || 'RON'}
+                </div>
+                <div>
+                  <span className="text-[var(--muted)]">ID:</span> {confirmDeleteReceipt.id}
+                </div>
+              </div>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)]"
+                  onClick={() => setConfirmDeleteReceipt(null)}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  className="rounded-lg border border-rose-500/50 bg-rose-500/20 px-3 py-1 text-sm text-rose-200 disabled:opacity-50"
+                  disabled={deletingReceipt}
+                  onClick={deleteReceiptNow}
+                  type="button"
+                >
+                  {deletingReceipt ? 'Se șterge…' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </main>
+    );
 }
