@@ -3,6 +3,7 @@ import { LogoutButton } from '../components/LogoutButton';
 import { AppCards } from '@/components/AppCards';
 import { DevicesCard } from '@/components/DevicesCard';
 import { SprintPulseCard } from '@/components/SprintPulseCard';
+import { StudyCoachCard } from '@/components/StudyCoachCard';
 
 
 
@@ -21,6 +22,7 @@ export default function HomePage() {
           <ClockCard />
           <DevicesCard />
           <SprintPulseCard />
+          <StudyCoachCard />
           <AppCards />
         </section>
       </div>
