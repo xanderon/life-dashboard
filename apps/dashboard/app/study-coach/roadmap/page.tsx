@@ -16,7 +16,20 @@ type ProgressRow = {
   last_reviewed_at: string | null;
 };
 
+type SessionRow = {
+  id: string;
+  topic_id: string | null;
+  score: 'pass' | 'hard' | 'fail' | null;
+  actual_start: string | null;
+};
+
 const STATUS_ORDER: ConceptStatus[] = ['new', 'learning', 'reviewing', 'mastered'];
+const SNAPSHOT_KEY = 'study-coach-state-v2';
+const SYNCED_SESSIONS_KEY_PREFIX = 'study-roadmap-synced-sessions-v1';
+
+function normalizeText(input: string) {
+  return input.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
 
 function statusClass(status: ConceptStatus) {
   if (status === 'mastered') return 'border-emerald-500/40 bg-emerald-500/15 text-emerald-100';
@@ -30,6 +43,7 @@ export default function StudyRoadmapPage() {
   const [rows, setRows] = useState<Record<string, ProgressRow>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [sessionsPerDay, setSessionsPerDay] = useState<number>(0);
 
   const concepts = useMemo(() => flattenConcepts(), []);
 
@@ -59,13 +73,211 @@ export default function StudyRoadmapPage() {
       (data ?? []).forEach((row: ProgressRow) => {
         mapped[row.concept_id] = row as ProgressRow;
       });
-      setRows(mapped);
+      const merged = { ...mapped };
+
+      // Best-effort sync for already completed blocks from Today snapshot.
+      const rawSnapshot = window.localStorage.getItem(SNAPSHOT_KEY);
+      if (rawSnapshot) {
+        try {
+          const snapshot = JSON.parse(rawSnapshot) as {
+            plannerInput?: { date?: string };
+            blocks?: Array<{ topicId: string; objective: string }>;
+            currentBlockIdx?: number;
+          };
+          const snapshotDate = snapshot.plannerInput?.date;
+          const today = new Date().toISOString().slice(0, 10);
+          const completedBlocks = (snapshot.blocks ?? []).slice(0, snapshot.currentBlockIdx ?? 0);
+
+          if (snapshotDate === today && completedBlocks.length) {
+            const { data: sessions } = await supabase
+              .from('study_sessions')
+              .select('score,topic_id,actual_start')
+              .eq('owner_id', resolvedOwner)
+              .gte('actual_start', `${today}T00:00:00.000Z`)
+              .lt('actual_start', `${today}T23:59:59.999Z`)
+              .order('actual_start', { ascending: true });
+
+            const updates: Array<{
+              owner_id: string;
+              concept_id: string;
+              status: ConceptStatus;
+              mastery_score: number;
+              last_result: 'pass' | 'hard' | 'fail';
+              last_reviewed_at: string;
+              next_due_date: string;
+            }> = [];
+
+            const usable = Math.min(completedBlocks.length, sessions?.length ?? 0);
+            for (let i = 0; i < usable; i += 1) {
+              const block = completedBlocks[i];
+              const session = sessions?.[i] as { score: 'pass' | 'hard' | 'fail' | null } | undefined;
+              if (!session?.score) continue;
+
+              const chapterConcepts = concepts.filter((concept) => concept.chapterId === block.topicId);
+              const objectiveNorm = normalizeText(block.objective ?? '');
+              const concept = chapterConcepts.find((item) => {
+                const conceptNorm = normalizeText(item.conceptLabel);
+                return conceptNorm === objectiveNorm
+                  || conceptNorm.includes(objectiveNorm)
+                  || objectiveNorm.includes(conceptNorm);
+              });
+              if (!concept) continue;
+
+              const prev = merged[concept.conceptId];
+              const prevScore = Number(prev?.mastery_score ?? 0);
+              const delta = session.score === 'pass' ? 2 : session.score === 'hard' ? 1 : 0;
+              const nextScore = Math.max(0, Math.min(10, prevScore + delta));
+              const nextStatus: ConceptStatus = nextScore >= 6
+                ? 'mastered'
+                : nextScore >= 3
+                  ? 'reviewing'
+                  : nextScore >= 1
+                    ? 'learning'
+                    : 'new';
+              const due = new Date();
+              due.setDate(due.getDate() + (session.score === 'pass' ? 7 : session.score === 'hard' ? 3 : 1));
+
+              const nextRow: ProgressRow = {
+                concept_id: concept.conceptId,
+                status: nextStatus,
+                mastery_score: nextScore,
+                last_result: session.score,
+                last_reviewed_at: new Date().toISOString(),
+                next_due_date: due.toISOString().slice(0, 10),
+              };
+              merged[concept.conceptId] = nextRow;
+              updates.push({
+                owner_id: resolvedOwner,
+                concept_id: concept.conceptId,
+                status: nextStatus,
+                mastery_score: nextScore,
+                last_result: session.score,
+                last_reviewed_at: new Date().toISOString(),
+                next_due_date: due.toISOString().slice(0, 10),
+              });
+            }
+
+            if (updates.length) {
+              await supabase
+                .from('study_concept_progress')
+                .upsert(updates, { onConflict: 'owner_id,concept_id' });
+            }
+          }
+        } catch {
+          // ignore malformed snapshot
+        }
+      }
+
+      // Strong sync: consume study_sessions that were not yet mapped into concept progress.
+      const syncKey = `${SYNCED_SESSIONS_KEY_PREFIX}:${resolvedOwner}`;
+      const syncedIds = new Set<string>(JSON.parse(window.localStorage.getItem(syncKey) ?? '[]') as string[]);
+      const { data: sessions, error: sessionsErr } = await supabase
+        .from('study_sessions')
+        .select('id,topic_id,score,actual_start')
+        .eq('owner_id', resolvedOwner)
+        .not('score', 'is', null)
+        .order('actual_start', { ascending: true })
+        .limit(2000);
+
+      if (sessionsErr) {
+        setErr(sessionsErr.message);
+        setRows(merged);
+        return;
+      }
+
+      const updates: Array<{
+        owner_id: string;
+        concept_id: string;
+        status: ConceptStatus;
+        mastery_score: number;
+        last_result: 'pass' | 'hard' | 'fail';
+        last_reviewed_at: string;
+        next_due_date: string;
+      }> = [];
+
+      const pointerByChapter: Record<string, number> = {};
+      (sessions ?? []).forEach((sessionRow: SessionRow) => {
+        if (syncedIds.has(sessionRow.id)) return;
+        if (!sessionRow.topic_id || !sessionRow.score) return;
+
+        const chapterConcepts = concepts.filter((concept) => concept.chapterId === sessionRow.topic_id);
+        if (!chapterConcepts.length) return;
+
+        const pointer = pointerByChapter[sessionRow.topic_id] ?? 0;
+        const concept = chapterConcepts[pointer % chapterConcepts.length];
+        pointerByChapter[sessionRow.topic_id] = pointer + 1;
+
+        const prev = merged[concept.conceptId];
+        const prevScore = Number(prev?.mastery_score ?? 0);
+        const delta = sessionRow.score === 'pass' ? 2 : sessionRow.score === 'hard' ? 1 : 0;
+        const nextScore = Math.max(0, Math.min(10, prevScore + delta));
+        const nextStatus: ConceptStatus = nextScore >= 6
+          ? 'mastered'
+          : nextScore >= 3
+            ? 'reviewing'
+            : nextScore >= 1
+              ? 'learning'
+              : 'new';
+        const due = new Date();
+        due.setDate(due.getDate() + (sessionRow.score === 'pass' ? 7 : sessionRow.score === 'hard' ? 3 : 1));
+
+        merged[concept.conceptId] = {
+          concept_id: concept.conceptId,
+          status: nextStatus,
+          mastery_score: nextScore,
+          last_result: sessionRow.score,
+          last_reviewed_at: sessionRow.actual_start ?? new Date().toISOString(),
+          next_due_date: due.toISOString().slice(0, 10),
+        };
+        updates.push({
+          owner_id: resolvedOwner,
+          concept_id: concept.conceptId,
+          status: nextStatus,
+          mastery_score: nextScore,
+          last_result: sessionRow.score,
+          last_reviewed_at: sessionRow.actual_start ?? new Date().toISOString(),
+          next_due_date: due.toISOString().slice(0, 10),
+        });
+        syncedIds.add(sessionRow.id);
+      });
+
+      if (updates.length) {
+        const { error: upsertErr } = await supabase
+          .from('study_concept_progress')
+          .upsert(updates, { onConflict: 'owner_id,concept_id' });
+        if (upsertErr) {
+          setErr(upsertErr.message);
+        }
+      }
+
+      const since = new Date();
+      since.setDate(since.getDate() - 14);
+      const { data: velocityRows } = await supabase
+        .from('study_sessions')
+        .select('actual_start')
+        .eq('owner_id', resolvedOwner)
+        .gte('actual_start', since.toISOString())
+        .order('actual_start', { ascending: true });
+      const perDay: Record<string, number> = {};
+      (velocityRows ?? []).forEach((row: { actual_start: string | null }) => {
+        if (!row.actual_start) return;
+        const day = row.actual_start.slice(0, 10);
+        perDay[day] = (perDay[day] ?? 0) + 1;
+      });
+      const days = Object.keys(perDay);
+      const avg = days.length
+        ? Object.values(perDay).reduce((sum, value) => sum + value, 0) / days.length
+        : 0;
+      setSessionsPerDay(avg);
+
+      window.localStorage.setItem(syncKey, JSON.stringify([...syncedIds]));
+      setRows(merged);
     })();
 
     return () => {
       alive = false;
     };
-  }, []);
+  }, [concepts]);
 
   const overall = useMemo(() => {
     const total = concepts.length;
@@ -82,6 +294,15 @@ export default function StudyRoadmapPage() {
       completion: total ? Math.round((mastered / total) * 100) : 0,
     };
   }, [concepts, rows]);
+  const projectedFinish = useMemo(() => {
+    const remaining = Math.max(0, overall.total - overall.mastered);
+    if (!remaining) return 'Done';
+    const conceptPerDay = Math.max(0.4, sessionsPerDay / 2.5);
+    const daysNeeded = Math.ceil(remaining / conceptPerDay);
+    const eta = new Date();
+    eta.setDate(eta.getDate() + daysNeeded);
+    return `${eta.toLocaleDateString('ro-RO')} (~${daysNeeded} days)`;
+  }, [overall.mastered, overall.total, sessionsPerDay]);
 
   const chapterStats = useMemo(() => {
     return getPrioritizedChapters().map((chapter) => {
@@ -172,6 +393,10 @@ export default function StudyRoadmapPage() {
             <Tile label="Reviewing" value={String(overall.reviewing)} />
             <Tile label="Learning" value={String(overall.learning)} />
             <Tile label="Overall done" value={`${overall.completion}%`} />
+          </div>
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Tile label="Recent pace" value={`${sessionsPerDay.toFixed(1)} sessions/day`} />
+            <Tile label="Projected finish" value={projectedFinish} />
           </div>
           {err ? <p className="mt-3 text-sm text-rose-200">DB: {err}</p> : null}
         </header>

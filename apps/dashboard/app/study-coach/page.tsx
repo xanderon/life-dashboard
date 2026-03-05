@@ -203,7 +203,12 @@ function buildBlockTypes(input: PlannerInput) {
   return pool;
 }
 
-function generatePlan(input: PlannerInput, energy: EnergyMode) {
+function generatePlan(
+  input: PlannerInput,
+  energy: EnergyMode,
+  startAtIso?: string,
+  topicOffsets: Record<string, number> = {}
+) {
   const pool = buildBlockTypes(input);
   const byPriority = [...pool].sort((a, b) => {
     if (a === 'learn_concept' && b !== 'learn_concept') return -1;
@@ -212,7 +217,9 @@ function generatePlan(input: PlannerInput, energy: EnergyMode) {
   });
 
   const usedByTopic: Record<string, number> = {};
-  const start = parseTime(input.date, input.day_window.start);
+  const dayStart = parseTime(input.date, input.day_window.start);
+  const explicitStart = startAtIso ? new Date(startAtIso) : dayStart;
+  const start = explicitStart.getTime() > dayStart.getTime() ? explicitStart : dayStart;
   let cursor = new Date(start);
   let prevTopicId: string | null = null;
 
@@ -221,7 +228,8 @@ function generatePlan(input: PlannerInput, energy: EnergyMode) {
     usedByTopic[topic.id] = (usedByTopic[topic.id] ?? 0) + 1;
     prevTopicId = topic.id;
 
-    const objective = chooseObjective(topic, usedByTopic[topic.id] - 1);
+    const offset = topicOffsets[topic.id] ?? 0;
+    const objective = chooseObjective(topic, usedByTopic[topic.id] - 1 + offset);
     const stages = STAGE_TEMPLATES[type].map((stage, stageIdx) => ({
       ...stage,
       id: `${type}-${idx + 1}-stage-${stageIdx + 1}`,
@@ -286,12 +294,16 @@ function stepInstruction(stage: PlanStage | null) {
   return 'Executa etapa curenta, apoi treci la urmatoarea etapa.';
 }
 
+function normalizeText(input: string) {
+  return input.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
 export default function StudyCoachPage() {
   const todayIso = new Date().toISOString().slice(0, 10);
   const [plannerInput, setPlannerInput] = useState<PlannerInput>(FALLBACK_PLAN);
   const [rawJson, setRawJson] = useState(() => JSON.stringify(FALLBACK_PLAN, null, 2));
   const [energyMode, setEnergyMode] = useState<EnergyMode>('normal');
-  const [blocks, setBlocks] = useState<PlanBlock[]>(() => generatePlan(FALLBACK_PLAN, 'normal'));
+  const [blocks, setBlocks] = useState<PlanBlock[]>(() => generatePlan(FALLBACK_PLAN, 'normal', new Date().toISOString()));
   const [tomorrowQueue, setTomorrowQueue] = useState<PlanBlock[]>([]);
   const [adjustNotice, setAdjustNotice] = useState<string>('');
 
@@ -311,6 +323,7 @@ export default function StudyCoachPage() {
   const [todayDone, setTodayDone] = useState(0);
   const [todayPassRate, setTodayPassRate] = useState<number>(0);
   const [todayCompletedMinutes, setTodayCompletedMinutes] = useState<number>(0);
+  const [todayTopicSessions, setTodayTopicSessions] = useState<Record<string, number>>({});
   const [dbError, setDbError] = useState<string | null>(null);
   const [conceptProgress, setConceptProgress] = useState<Record<string, ConceptProgressStatus>>({});
   const [hardStopAutoMoved, setHardStopAutoMoved] = useState(false);
@@ -363,6 +376,56 @@ export default function StudyCoachPage() {
 
     return { spilledBlocks, overflowMinutes };
   }, [activeBlock, activeStage, blocks, currentBlockIdx, currentStageIdx, nowTs, plannerInput.break_policy.break_min, plannerInput.break_policy.long_break_every, plannerInput.break_policy.long_break_min, plannerInput.date, plannerInput.day_window.end, stageSecondsLeft]);
+  const recoverableToday = useMemo(
+    () => projectedSpillover.spilledBlocks <= 1 && projectedSpillover.overflowMinutes <= 20,
+    [projectedSpillover.overflowMinutes, projectedSpillover.spilledBlocks]
+  );
+  const aheadMinutes = useMemo(
+    () => Math.max(0, hardStopMinutesLeft - planMinutesLeft),
+    [hardStopMinutesLeft, planMinutesLeft]
+  );
+  const recoverableQueueCount = useMemo(() => {
+    if (!tomorrowQueue.length) return 0;
+    let budget = Math.max(0, aheadMinutes + 20);
+    let count = 0;
+    for (let i = 0; i < tomorrowQueue.length; i += 1) {
+      const block = tomorrowQueue[i];
+      const breakMinutes = (i + 1) % plannerInput.break_policy.long_break_every === 0
+        ? plannerInput.break_policy.long_break_min
+        : plannerInput.break_policy.break_min;
+      const needed = block.totalMinutes + breakMinutes;
+      if (budget < needed) break;
+      budget -= needed;
+      count += 1;
+    }
+    return count;
+  }, [aheadMinutes, plannerInput.break_policy.break_min, plannerInput.break_policy.long_break_every, plannerInput.break_policy.long_break_min, tomorrowQueue]);
+  const projectedTomorrowCount = useMemo(
+    () => {
+      const raw = recoverableToday ? tomorrowQueue.length : Math.max(tomorrowQueue.length, projectedSpillover.spilledBlocks);
+      return Math.max(0, raw - recoverableQueueCount);
+    },
+    [projectedSpillover.spilledBlocks, recoverableQueueCount, recoverableToday, tomorrowQueue.length]
+  );
+  const whereGoingLabel = useMemo(() => {
+    if (recoverableQueueCount > 0) {
+      const stillTomorrow = Math.max(0, projectedTomorrowCount);
+      if (stillTomorrow > 0) {
+        return `${stillTomorrow} block(s) remain for tomorrow (${recoverableQueueCount} can still be recovered today)`;
+      }
+      return `Forward mode: all queued blocks are recoverable today`;
+    }
+    if (recoverableToday && tomorrowQueue.length === 0) {
+      return `Forward mode: small overflow (~${projectedSpillover.overflowMinutes}m) can be recovered today`;
+    }
+    if (projectedTomorrowCount > 0) {
+      return `${projectedTomorrowCount} block(s) projected for tomorrow`;
+    }
+    if (aheadMinutes >= 30) {
+      return `Ahead by ~${aheadMinutes}m (you can add new blocks today)`;
+    }
+    return 'On track for today';
+  }, [aheadMinutes, projectedSpillover.overflowMinutes, projectedTomorrowCount, recoverableQueueCount, recoverableToday, tomorrowQueue.length]);
   const focusMinutesInBlock = useMemo(() => {
     if (!activeBlock) return 0;
     return activeBlock.stages.filter((stage) => stage.noNotes).reduce((sum, stage) => sum + stage.minutes, 0);
@@ -466,7 +529,7 @@ export default function StudyCoachPage() {
 
     const { data: sessionRows, error: sessionsErr } = await supabase
       .from('study_sessions')
-      .select('score')
+      .select('score,topic_id')
       .eq('owner_id', resolvedOwnerId)
       .eq('day_id', resolvedDayId);
 
@@ -475,12 +538,18 @@ export default function StudyCoachPage() {
       return;
     }
 
-    const rows = (sessionRows ?? []) as Array<{ score: Score | null }>;
+    const rows = (sessionRows ?? []) as Array<{ score: Score | null; topic_id: string | null }>;
     const done = rows.length;
     const graded = rows.filter((row) => row.score);
     const passCount = graded.filter((row) => row.score === 'pass').length;
+    const topicCounts = rows.reduce<Record<string, number>>((acc, row) => {
+      if (!row.topic_id) return acc;
+      acc[row.topic_id] = (acc[row.topic_id] ?? 0) + 1;
+      return acc;
+    }, {});
     setTodayDone(done);
     setTodayPassRate(graded.length ? Math.round((passCount / graded.length) * 100) : 0);
+    setTodayTopicSessions(topicCounts);
 
     const { data: dueCards, error: gapErr } = await supabase
       .from('study_gap_cards')
@@ -829,8 +898,59 @@ export default function StudyCoachPage() {
       return;
     }
 
+    const chapterConcepts = allConcepts.filter((concept) => concept.chapterId === activeBlock.topicId);
+    const normalizedObjective = normalizeText(activeBlock.objective);
+    const matched = chapterConcepts.find((concept) => {
+      const conceptNorm = normalizeText(concept.conceptLabel);
+      return conceptNorm === normalizedObjective
+        || conceptNorm.includes(normalizedObjective)
+        || normalizedObjective.includes(conceptNorm);
+    });
+
+    if (matched) {
+      const { data: existing } = await supabase
+        .from('study_concept_progress')
+        .select('mastery_score,status')
+        .eq('owner_id', ownerId)
+        .eq('concept_id', matched.conceptId)
+        .maybeSingle();
+
+      const prevScore = Number(existing?.mastery_score ?? 0);
+      const delta = sessionScore === 'pass' ? 2 : sessionScore === 'hard' ? 1 : 0;
+      const nextScore = Math.max(0, Math.min(10, prevScore + delta));
+      const nextStatus: ConceptProgressStatus = nextScore >= 6
+        ? 'mastered'
+        : nextScore >= 3
+          ? 'reviewing'
+          : nextScore >= 1
+            ? 'learning'
+            : 'new';
+      const due = new Date();
+      due.setDate(due.getDate() + (sessionScore === 'pass' ? 7 : sessionScore === 'hard' ? 3 : 1));
+
+      const { error: progressErr } = await supabase
+        .from('study_concept_progress')
+        .upsert(
+          {
+            owner_id: ownerId,
+            concept_id: matched.conceptId,
+            status: nextStatus,
+            mastery_score: nextScore,
+            last_result: sessionScore,
+            last_reviewed_at: nowIso,
+            next_due_date: due.toISOString().slice(0, 10),
+          },
+          { onConflict: 'owner_id,concept_id' }
+        );
+
+      if (progressErr) {
+        setDbError(progressErr.message);
+        return;
+      }
+    }
+
     await loadDbState(ownerId, plannerInput.date);
-  }, [activeBlock, dayId, energyMode, loadDbState, ownerId, plannerInput.date, todayCompletedMinutes]);
+  }, [activeBlock, allConcepts, dayId, energyMode, loadDbState, ownerId, plannerInput.date, todayCompletedMinutes]);
 
   const addGapCard = useCallback(async () => {
     if (!activeBlock) return;
@@ -891,7 +1011,8 @@ export default function StudyCoachPage() {
     try {
       const parsed = JSON.parse(rawJson) as PlannerInput;
       setPlannerInput(parsed);
-      const generated = generatePlan(parsed, energyMode);
+      const startAt = parsed.date === todayIso ? new Date().toISOString() : undefined;
+      const generated = generatePlan(parsed, energyMode, startAt, todayTopicSessions);
       setBlocks(generated);
       setCurrentBlockIdx(0);
       setCurrentStageIdx(0);
@@ -907,7 +1028,8 @@ export default function StudyCoachPage() {
   };
 
   const regeneratePlan = () => {
-    const generated = generatePlan(plannerInput, energyMode);
+    const startAt = plannerInput.date === todayIso ? new Date().toISOString() : undefined;
+    const generated = generatePlan(plannerInput, energyMode, startAt, todayTopicSessions);
     setBlocks(generated);
     setCurrentBlockIdx(0);
     setCurrentStageIdx(0);
@@ -918,7 +1040,30 @@ export default function StudyCoachPage() {
   };
 
   const applyRoadmapAutoPlan = () => {
-    const topics = buildDefaultPlannerTopics(10).filter((topic) => recommendedChapterIds.includes(topic.id));
+    const prioritized = getPrioritizedChapters().filter((chapter) => recommendedChapterIds.includes(chapter.id));
+    const denominator = (prioritized.length * (prioritized.length + 1)) / 2 || 1;
+    const topics = prioritized.map((chapter, idx) => {
+      const chapterConcepts = allConcepts.filter((concept) => concept.chapterId === chapter.id);
+      const weak = chapterConcepts.filter((concept) => {
+        const status = conceptProgress[concept.conceptId] ?? 'new';
+        return status === 'new' || status === 'learning';
+      });
+      const review = chapterConcepts.filter((concept) => {
+        const status = conceptProgress[concept.conceptId] ?? 'new';
+        return status === 'reviewing' || status === 'mastered';
+      });
+      const reviewTake = Math.min(review.length, Math.max(2, Math.ceil(weak.length * 0.35)));
+      const mixed = [...weak.map((c) => c.conceptLabel), ...review.slice(0, reviewTake).map((c) => c.conceptLabel)];
+      const objectives = [...new Set(mixed.length ? mixed : chapterConcepts.map((concept) => concept.conceptLabel))];
+
+      return {
+        id: chapter.id,
+        name: chapter.title,
+        weight: Number(((prioritized.length - idx) / denominator).toFixed(2)),
+        modes: ['explain_like_interview', 'blank_page', 'flash_prompts'],
+        objectives,
+      };
+    });
     const updated: PlannerInput = {
       ...plannerInput,
       day_window: {
@@ -934,7 +1079,7 @@ export default function StudyCoachPage() {
       },
     };
     setPlannerInput(updated);
-    const generated = generatePlan(updated, energyMode);
+    const generated = generatePlan(updated, energyMode, new Date().toISOString(), todayTopicSessions);
     setBlocks(generated);
     setCurrentBlockIdx(0);
     setCurrentStageIdx(0);
@@ -1190,7 +1335,7 @@ export default function StudyCoachPage() {
                       </div>
                       <span className="text-xs text-[var(--muted)]">{shortTime(row.start)} - {shortTime(row.end)}</span>
                     </div>
-                    {new Date(row.end).getTime() < nowTs && row.status !== 'done' ? (
+                    {new Date(row.end).getTime() < nowTs && row.status === 'next' ? (
                       <p className="mt-1 text-xs text-amber-200">In urma fata de plan (va fi decalat automat).</p>
                     ) : null}
                   </div>
@@ -1246,7 +1391,7 @@ export default function StudyCoachPage() {
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2">
                   <span>Where we are going</span>
-                  <strong>{tomorrowQueue.length} in tomorrow queue</strong>
+                  <strong>{whereGoingLabel}</strong>
                 </div>
               </div>
             </article>
