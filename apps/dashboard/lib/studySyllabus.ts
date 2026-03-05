@@ -357,6 +357,75 @@ export function getPrioritizedChapters() {
   return [...STUDY_CHAPTERS].sort((a, b) => a.priority - b.priority);
 }
 
+export const INTERVIEW_CORE_CHAPTER_IDS = [
+  'core-cs-fundamentals',
+  'oop',
+  'dsa',
+  'database-fundamentals',
+  'backend-system-basics',
+] as const;
+
+export const NICE_TO_HAVE_CHAPTER_IDS = [
+  'networking-fundamentals',
+  'distributed-systems',
+  'containers-deployment',
+  'security-fundamentals',
+  'ai-llm-optional',
+] as const;
+
+export const TOP_CRITICAL_CONCEPTS = [
+  'Stack vs Heap',
+  'Call Stack',
+  'Memory Allocation',
+  'Garbage Collection',
+  'Memory Leaks',
+  'Event Loop',
+  'Async vs Blocking',
+  'Promises / async-await',
+  'Microtask vs Macrotask',
+  'Worker Threads',
+  'Big-O Notation',
+  'Time Complexity',
+  'Space Complexity',
+  'Array / Vector',
+  'HashMap / Dictionary',
+  'Stack',
+  'Queue',
+  'BFS',
+  'DFS',
+  'What is an Index',
+  'Index vs Full Table Scan',
+  'Atomicity',
+  'Consistency',
+  'Isolation',
+  'Durability',
+  'N+1 Query Problem',
+  'REST principles',
+  'Idempotency',
+  'Why caching exists',
+] as const;
+
+export const HARD_CONCEPTS = [
+  'Microtask vs Macrotask',
+  'Worker Threads',
+  'Promise.all vs Sequential execution',
+  'Race Conditions',
+  'Synchronization Basics',
+  'Deadlock (concept)',
+  'Big-O Notation',
+  'Time Complexity',
+  'Space Complexity',
+  'Time vs Space Tradeoffs',
+  'BFS',
+  'DFS',
+  'N+1 Query Problem',
+  'Index vs Full Table Scan',
+  'Isolation',
+  'Serializable',
+  'Idempotency',
+  'Cache invalidation problem',
+] as const;
+
 export function flattenConcepts(chapterIds?: string[]) {
   const chapterSet = chapterIds ? new Set(chapterIds) : null;
   const out: FlatConcept[] = [];
@@ -394,6 +463,60 @@ export function buildDefaultPlannerTopics(chapterLimit = 4) {
       weight: Number(((total - idx) / ((total * (total + 1)) / 2)).toFixed(2)),
       modes: ['explain_like_interview', 'blank_page', 'flash_prompts'],
       objectives: concepts,
+    };
+  });
+}
+
+export function buildInterviewCorePlannerTopics(chapterLimit = 5) {
+  const chapterSet = new Set<string>(INTERVIEW_CORE_CHAPTER_IDS);
+  const chapters = getPrioritizedChapters()
+    .filter((chapter) => chapterSet.has(chapter.id))
+    .slice(0, chapterLimit);
+  const total = chapters.length || 1;
+  const criticalSet = new Set<string>(TOP_CRITICAL_CONCEPTS);
+
+  return chapters.map((chapter, idx) => {
+    const allConcepts = chapter.subchapters.flatMap((subchapter) => subchapter.concepts);
+    const critical = allConcepts.filter((concept) => criticalSet.has(concept));
+    const remaining = allConcepts.filter((concept) => !criticalSet.has(concept));
+    const objectives = [...critical, ...remaining];
+    return {
+      id: chapter.id,
+      name: chapter.title,
+      weight: Number(((total - idx) / ((total * (total + 1)) / 2)).toFixed(2)),
+      modes: ['explain_like_interview', 'blank_page', 'flash_prompts'],
+      objectives,
+    };
+  });
+}
+
+export function buildDeadlineSprintTopics() {
+  const chapterOrder = [
+    'core-cs-fundamentals',
+    'dsa',
+    'database-fundamentals',
+    'backend-system-basics',
+    'oop',
+  ];
+  const chapters = getPrioritizedChapters()
+    .filter((chapter) => chapterOrder.includes(chapter.id))
+    .sort((a, b) => chapterOrder.indexOf(a.id) - chapterOrder.indexOf(b.id));
+  const hardSet = new Set<string>(HARD_CONCEPTS);
+  const criticalSet = new Set<string>(TOP_CRITICAL_CONCEPTS);
+  const total = chapters.length || 1;
+
+  return chapters.map((chapter, idx) => {
+    const allConcepts = chapter.subchapters.flatMap((subchapter) => subchapter.concepts);
+    const hard = allConcepts.filter((concept) => hardSet.has(concept));
+    const critical = allConcepts.filter((concept) => !hardSet.has(concept) && criticalSet.has(concept));
+    const rest = allConcepts.filter((concept) => !hardSet.has(concept) && !criticalSet.has(concept));
+
+    return {
+      id: chapter.id,
+      name: chapter.title,
+      weight: Number(((total - idx) / ((total * (total + 1)) / 2)).toFixed(2)),
+      modes: ['explain_like_interview', 'blank_page', 'flash_prompts'],
+      objectives: [...hard, ...critical, ...rest],
     };
   });
 }

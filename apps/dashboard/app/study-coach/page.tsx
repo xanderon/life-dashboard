@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { buildDefaultPlannerTopics, chapterConceptCount, flattenConcepts, getPrioritizedChapters } from '@/lib/studySyllabus';
+import { buildDeadlineSprintTopics, buildInterviewCorePlannerTopics, chapterConceptCount, flattenConcepts, getPrioritizedChapters, INTERVIEW_CORE_CHAPTER_IDS } from '@/lib/studySyllabus';
 
 type EnergyMode = 'normal' | 'low' | 'focus';
 type Score = 'pass' | 'hard' | 'fail';
@@ -84,8 +84,11 @@ type GapCard = {
   last_result: 'pass' | 'fail' | null;
 };
 
-const DEFAULT_TOPICS = buildDefaultPlannerTopics(4);
+const DEFAULT_TOPICS = buildInterviewCorePlannerTopics(5);
 const SNAPSHOT_KEY = 'study-coach-state-v2';
+const PHASE1_CHAPTERS = ['oop', 'dsa'];
+const PHASE2_CHAPTERS = ['core-cs-fundamentals', 'database-fundamentals', 'backend-system-basics'];
+const PHASE3_CHAPTERS = ['networking-fundamentals', 'distributed-systems', 'containers-deployment', 'security-fundamentals', 'ai-llm-optional'];
 
 const FALLBACK_PLAN: PlannerInput = {
   date: new Date().toISOString().slice(0, 10),
@@ -300,6 +303,7 @@ function normalizeText(input: string) {
 
 export default function StudyCoachPage() {
   const todayIso = new Date().toISOString().slice(0, 10);
+  const sprintCutoff = '2026-03-10';
   const [plannerInput, setPlannerInput] = useState<PlannerInput>(FALLBACK_PLAN);
   const [rawJson, setRawJson] = useState(() => JSON.stringify(FALLBACK_PLAN, null, 2));
   const [energyMode, setEnergyMode] = useState<EnergyMode>('normal');
@@ -330,6 +334,7 @@ export default function StudyCoachPage() {
   const [daySummary, setDaySummary] = useState<DaySummary | null>(null);
   const [hydratedFromSnapshot, setHydratedFromSnapshot] = useState(false);
   const [nowTs, setNowTs] = useState(() => Date.now());
+  const [deadlineSprint, setDeadlineSprint] = useState(() => todayIso <= sprintCutoff);
 
   const activeBlock = blocks[currentBlockIdx] ?? null;
   const activeStage = activeBlock?.stages[currentStageIdx] ?? null;
@@ -449,19 +454,24 @@ export default function StudyCoachPage() {
   const inRecallFocus = Boolean(activeStage?.noNotes && runState === 'running' && focusAssist);
   const recommendedChapterIds = useMemo(() => {
     const prioritized = getPrioritizedChapters();
-    const top = prioritized.slice(0, 4).map((chapter) => chapter.id);
-
-    const topMasteryGood = top.every((chapterId) => {
+    const chapterMastery = (chapterId: string) => {
       const chapterConcepts = allConcepts.filter((concept) => concept.chapterId === chapterId);
-      if (!chapterConcepts.length) return false;
+      if (!chapterConcepts.length) return 0;
       const mastered = chapterConcepts.filter((concept) => conceptProgress[concept.conceptId] === 'mastered').length;
-      return mastered / chapterConcepts.length >= 0.7;
-    });
+      return mastered / chapterConcepts.length;
+    };
 
-    if (!topMasteryGood) return top;
-    const next = prioritized.find((chapter) => !top.includes(chapter.id));
-    if (!next) return top;
-    return [...top.slice(0, 3), next.id];
+    const phase1Ready = PHASE1_CHAPTERS.every((chapterId) => chapterMastery(chapterId) >= 0.6);
+    if (!phase1Ready) return PHASE1_CHAPTERS;
+
+    const phase2Ready = PHASE2_CHAPTERS.every((chapterId) => chapterMastery(chapterId) >= 0.55);
+    if (!phase2Ready) return [...PHASE1_CHAPTERS, ...PHASE2_CHAPTERS];
+
+    const core = prioritized
+      .filter((chapter) => INTERVIEW_CORE_CHAPTER_IDS.includes(chapter.id as (typeof INTERVIEW_CORE_CHAPTER_IDS)[number]))
+      .map((chapter) => chapter.id);
+    const phase3Top = PHASE3_CHAPTERS.slice(0, 2);
+    return [...core, ...phase3Top];
   }, [allConcepts, conceptProgress]);
 
   const timelineRows = useMemo(() => {
@@ -634,6 +644,7 @@ export default function StudyCoachPage() {
         focusAssist: boolean;
         hardStopAutoMoved: boolean;
         daySummary: DaySummary | null;
+        deadlineSprint: boolean;
       };
 
       if (parsed.plannerInput.date !== todayIso) {
@@ -655,6 +666,7 @@ export default function StudyCoachPage() {
       setFocusAssist(parsed.focusAssist);
       setHardStopAutoMoved(parsed.hardStopAutoMoved);
       setDaySummary(parsed.daySummary);
+      setDeadlineSprint(typeof parsed.deadlineSprint === 'boolean' ? parsed.deadlineSprint : todayIso <= sprintCutoff);
 
       const elapsed = Math.max(0, Math.floor((Date.now() - new Date(parsed.savedAt).getTime()) / 1000));
       const remaining = Math.max(0, parsed.stageSecondsLeft - elapsed);
@@ -687,9 +699,10 @@ export default function StudyCoachPage() {
       focusAssist,
       hardStopAutoMoved,
       daySummary,
+      deadlineSprint,
     };
     window.localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot));
-  }, [adjustNotice, answerText, blocks, currentBlockIdx, currentStageIdx, daySummary, energyMode, focusAssist, gapReasons, hardStopAutoMoved, hydratedFromSnapshot, plannerInput, rawJson, runState, score, stageSecondsLeft, tomorrowQueue]);
+  }, [adjustNotice, answerText, blocks, currentBlockIdx, currentStageIdx, daySummary, deadlineSprint, energyMode, focusAssist, gapReasons, hardStopAutoMoved, hydratedFromSnapshot, plannerInput, rawJson, runState, score, stageSecondsLeft, tomorrowQueue]);
 
   useEffect(() => {
     if (!activeStage || runState !== 'running') return;
@@ -1040,9 +1053,12 @@ export default function StudyCoachPage() {
   };
 
   const applyRoadmapAutoPlan = () => {
-    const prioritized = getPrioritizedChapters().filter((chapter) => recommendedChapterIds.includes(chapter.id));
+    const topicBase = deadlineSprint ? buildDeadlineSprintTopics() : buildInterviewCorePlannerTopics(5);
+    const prioritized = topicBase.filter((topic) => recommendedChapterIds.includes(topic.id));
     const denominator = (prioritized.length * (prioritized.length + 1)) / 2 || 1;
-    const topics = prioritized.map((chapter, idx) => {
+    const topics = prioritized.map((topic, idx) => {
+      const chapter = getPrioritizedChapters().find((item) => item.id === topic.id);
+      if (!chapter) return topic;
       const chapterConcepts = allConcepts.filter((concept) => concept.chapterId === chapter.id);
       const weak = chapterConcepts.filter((concept) => {
         const status = conceptProgress[concept.conceptId] ?? 'new';
@@ -1057,11 +1073,11 @@ export default function StudyCoachPage() {
       const objectives = [...new Set(mixed.length ? mixed : chapterConcepts.map((concept) => concept.conceptLabel))];
 
       return {
-        id: chapter.id,
-        name: chapter.title,
+        id: topic.id,
+        name: topic.name,
         weight: Number(((prioritized.length - idx) / denominator).toFixed(2)),
         modes: ['explain_like_interview', 'blank_page', 'flash_prompts'],
-        objectives,
+        objectives: [...objectives, ...topic.objectives.filter((objective) => !objectives.includes(objective))],
       };
     });
     const updated: PlannerInput = {
@@ -1075,7 +1091,16 @@ export default function StudyCoachPage() {
       topics,
       blocks: {
         ...plannerInput.blocks,
-        target_count: Math.max(plannerInput.blocks.target_count, 8),
+        target_count: Math.max(plannerInput.blocks.target_count, deadlineSprint ? 10 : 8),
+        templates: deadlineSprint ? [
+          { type: 'learn_concept', min: 4, max: 6 },
+          { type: 'learn_coding', min: 1, max: 2 },
+          { type: 'review_spaced', min: 3, max: 4 },
+        ] : [
+          { type: 'learn_concept', min: 3, max: 5 },
+          { type: 'learn_coding', min: 1, max: 2 },
+          { type: 'review_spaced', min: 2, max: 3 },
+        ],
       },
     };
     setPlannerInput(updated);
@@ -1086,7 +1111,9 @@ export default function StudyCoachPage() {
     setRunState('idle');
     setTomorrowQueue([]);
     setHardStopAutoMoved(false);
-    setAdjustNotice('Auto-plan generated from roadmap priority and current mastery.');
+    setAdjustNotice(deadlineSprint
+      ? 'Deadline sprint plan: heavy concepts first + spaced repetition interleaved.'
+      : 'Auto-plan generated from roadmap priority and current mastery.');
   };
 
   useEffect(() => {
@@ -1124,6 +1151,12 @@ export default function StudyCoachPage() {
 
   const nowBlock = activeBlock;
   const recommendedChapters = getPrioritizedChapters().filter((chapter) => recommendedChapterIds.includes(chapter.id));
+  const focusPhaseLabel = useMemo(() => {
+    const key = recommendedChapterIds.join('|');
+    if (key === PHASE1_CHAPTERS.join('|')) return 'Phase 1: OOP + DSA (max priority)';
+    if (recommendedChapterIds.includes('core-cs-fundamentals')) return 'Phase 2: OOP/DSA + Core CS/DB/Backend';
+    return 'Phase 3: extend to remaining chapters';
+  }, [recommendedChapterIds]);
 
   return (
     <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
@@ -1144,7 +1177,16 @@ export default function StudyCoachPage() {
               <p className="mt-1 text-xs text-[var(--muted)]">
                 Capitole active azi: {recommendedChapters.map((chapter) => chapter.title).join(' · ')}
               </p>
-            </div>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Scope: interview core. Nice-to-have list: `apps/dashboard/data/study_nice_to_have.json`
+            </p>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Mode: {deadlineSprint ? 'Deadline sprint (greu + spaced repetition)' : 'Balanced progression'}
+            </p>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Priority phase: {focusPhaseLabel}
+            </p>
+          </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Metric label="Until hard stop" value={`${hardStopMinutesLeft}m`} />
               <Metric label="Blocks remaining" value={String(blocksRemaining)} />
@@ -1186,6 +1228,12 @@ export default function StudyCoachPage() {
             </button>
             <button className="rounded-md border border-indigo-500/40 bg-indigo-500/20 px-3 py-1.5 text-sm font-semibold" onClick={applyRoadmapAutoPlan}>
               Auto plan by progress
+            </button>
+            <button
+              className={`rounded-md border px-3 py-1.5 text-sm font-semibold ${deadlineSprint ? 'border-rose-400/60 bg-rose-500/20' : 'border-[var(--border)] bg-[var(--panel-2)]'}`}
+              onClick={() => setDeadlineSprint((prev) => !prev)}
+            >
+              Deadline sprint {deadlineSprint ? 'ON' : 'OFF'}
             </button>
             <Link className="rounded-md border border-sky-500/40 bg-sky-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach/roadmap">
               Open roadmap

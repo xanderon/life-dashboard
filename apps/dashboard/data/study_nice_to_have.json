@@ -1,0 +1,31 @@
+{
+  "scope": "nice_to_have",
+  "notes": "Teme scoase din focusul principal pentru deadline-ul apropiat.",
+  "chapters": [
+    {
+      "id": "ai-llm-optional",
+      "title": "AI / LLM (optional)",
+      "concept_count": 10
+    },
+    {
+      "id": "networking-fundamentals",
+      "title": "Networking Fundamentals",
+      "concept_count": 10
+    },
+    {
+      "id": "containers-deployment",
+      "title": "Containers & Deployment",
+      "concept_count": 16
+    },
+    {
+      "id": "security-fundamentals",
+      "title": "Security Fundamentals",
+      "concept_count": 10
+    },
+    {
+      "id": "distributed-systems",
+      "title": "Distributed Systems Fundamentals",
+      "concept_count": 9
+    }
+  ]
+}

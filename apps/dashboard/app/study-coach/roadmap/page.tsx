@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { chapterConceptCount, flattenConcepts, getPrioritizedChapters } from '@/lib/studySyllabus';
+import { chapterConceptCount, flattenConcepts, getPrioritizedChapters, INTERVIEW_CORE_CHAPTER_IDS } from '@/lib/studySyllabus';
 
 type ConceptStatus = 'new' | 'learning' | 'reviewing' | 'mastered';
 
@@ -26,6 +26,7 @@ type SessionRow = {
 const STATUS_ORDER: ConceptStatus[] = ['new', 'learning', 'reviewing', 'mastered'];
 const SNAPSHOT_KEY = 'study-coach-state-v2';
 const SYNCED_SESSIONS_KEY_PREFIX = 'study-roadmap-synced-sessions-v1';
+const INTERVIEW_DEADLINE = '2026-03-16';
 
 function normalizeText(input: string) {
   return input.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -44,8 +45,17 @@ export default function StudyRoadmapPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [sessionsPerDay, setSessionsPerDay] = useState<number>(0);
+  const [scope, setScope] = useState<'core' | 'all'>('core');
 
-  const concepts = useMemo(() => flattenConcepts(), []);
+  const allConcepts = useMemo(() => flattenConcepts(), []);
+  const coreChapterSet = useMemo(
+    () => new Set<string>(INTERVIEW_CORE_CHAPTER_IDS),
+    []
+  );
+  const concepts = useMemo(
+    () => (scope === 'core' ? allConcepts.filter((concept) => coreChapterSet.has(concept.chapterId)) : allConcepts),
+    [allConcepts, coreChapterSet, scope]
+  );
 
   useEffect(() => {
     let alive = true;
@@ -277,7 +287,7 @@ export default function StudyRoadmapPage() {
     return () => {
       alive = false;
     };
-  }, [concepts]);
+  }, [allConcepts, concepts]);
 
   const overall = useMemo(() => {
     const total = concepts.length;
@@ -301,11 +311,38 @@ export default function StudyRoadmapPage() {
     const daysNeeded = Math.ceil(remaining / conceptPerDay);
     const eta = new Date();
     eta.setDate(eta.getDate() + daysNeeded);
-    return `${eta.toLocaleDateString('ro-RO')} (~${daysNeeded} days)`;
+    return `${eta.toLocaleDateString('ro-RO')} (in ~${daysNeeded} zile, daca mentii ritmul actual)`;
   }, [overall.mastered, overall.total, sessionsPerDay]);
+  const deadlineModel = useMemo(() => {
+    const now = new Date();
+    const deadline = new Date(`${INTERVIEW_DEADLINE}T23:59:59`);
+    const msLeft = Math.max(0, deadline.getTime() - now.getTime());
+    const daysLeft = Math.max(1, Math.ceil(msLeft / (24 * 3600 * 1000)));
+    const covered = overall.mastered + overall.reviewing + overall.learning;
+    const remainingFirstPass = Math.max(0, overall.total - covered);
+    const requiredNewPerDay = remainingFirstPass / daysLeft;
+    const newMinutesPerDay = requiredNewPerDay * 30;
+    const srMinutesPerDay = (covered * 2 * 12) / daysLeft;
+    const totalMinutesPerDay = Math.round(newMinutesPerDay + srMinutesPerDay);
+    const currentConceptsPerDay = Math.max(0.4, sessionsPerDay / 2.5);
+    const deltaConcepts = Number((currentConceptsPerDay - requiredNewPerDay).toFixed(1));
+    const paceBand = totalMinutesPerDay <= 180 ? 'steady' : totalMinutesPerDay <= 240 ? 'tight' : 'stretch';
+    return {
+      daysLeft,
+      covered,
+      remainingFirstPass,
+      requiredNewPerDay: requiredNewPerDay.toFixed(1),
+      currentConceptsPerDay: currentConceptsPerDay.toFixed(1),
+      deltaConcepts,
+      totalMinutesPerDay,
+      paceBand,
+    };
+  }, [overall.learning, overall.mastered, overall.reviewing, overall.total, sessionsPerDay]);
 
   const chapterStats = useMemo(() => {
-    return getPrioritizedChapters().map((chapter) => {
+    return getPrioritizedChapters()
+      .filter((chapter) => scope === 'all' || coreChapterSet.has(chapter.id))
+      .map((chapter) => {
       const chapterConcepts = concepts.filter((concept) => concept.chapterId === chapter.id);
       const done = chapterConcepts.filter((concept) => rows[concept.conceptId]?.status === 'mastered').length;
       const reviewing = chapterConcepts.filter((concept) => rows[concept.conceptId]?.status === 'reviewing').length;
@@ -318,8 +355,8 @@ export default function StudyRoadmapPage() {
         learning,
         completion: chapterConcepts.length ? Math.round((done / chapterConcepts.length) * 100) : 0,
       };
-    });
-  }, [concepts, rows]);
+      });
+  }, [concepts, coreChapterSet, rows, scope]);
 
   async function setStatus(conceptId: string, status: ConceptStatus) {
     setSavingId(conceptId);
@@ -384,6 +421,21 @@ export default function StudyRoadmapPage() {
               </div>
               <h1 className="text-2xl font-bold">Study Roadmap</h1>
               <p className="mt-1 text-sm text-[var(--muted)]">Capitole ordonate dupa probabilitate de interviu</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">Focus curent: interview core. Nice-to-have este separat in JSON.</p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  className={`rounded-md border px-2 py-1 text-xs font-semibold ${scope === 'core' ? 'border-sky-400 bg-sky-500/20' : 'border-[var(--border)] bg-[var(--panel-2)]'}`}
+                  onClick={() => setScope('core')}
+                >
+                  Interview core
+                </button>
+                <button
+                  className={`rounded-md border px-2 py-1 text-xs font-semibold ${scope === 'all' ? 'border-sky-400 bg-sky-500/20' : 'border-[var(--border)] bg-[var(--panel-2)]'}`}
+                  onClick={() => setScope('all')}
+                >
+                  All concepts
+                </button>
+              </div>
             </div>
           </div>
 
@@ -398,6 +450,21 @@ export default function StudyRoadmapPage() {
             <Tile label="Recent pace" value={`${sessionsPerDay.toFixed(1)} sessions/day`} />
             <Tile label="Projected finish" value={projectedFinish} />
           </div>
+          <details className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
+            <summary className="cursor-pointer text-sm font-semibold">Deadline tracker (explicat simplu)</summary>
+            <div className="mt-2 space-y-1 text-sm text-[var(--muted)]">
+              <p>1) Deadline: {INTERVIEW_DEADLINE} (mai ai {deadlineModel.daysLeft} zile).</p>
+              <p>2) Mai ai {deadlineModel.remainingFirstPass} concepte de trecut prima data.</p>
+              <p>3) Ca sa prinzi deadline-ul: ~{deadlineModel.requiredNewPerDay} concepte/zi.</p>
+              <p>4) Ritmul tau actual estimat: ~{deadlineModel.currentConceptsPerDay} concepte/zi.</p>
+              <p>
+                5) Diferenta fata de necesar: {deadlineModel.deltaConcepts >= 0 ? '+' : ''}
+                {deadlineModel.deltaConcepts} concepte/zi.
+              </p>
+              <p>6) Timp recomandat/zi (new + spaced repetition): ~{deadlineModel.totalMinutesPerDay} minute.</p>
+              <p>7) Semnal ritm: {deadlineModel.paceBand === 'steady' ? 'ok' : deadlineModel.paceBand === 'tight' ? 'strans' : 'agresiv'}.</p>
+            </div>
+          </details>
           {err ? <p className="mt-3 text-sm text-rose-200">DB: {err}</p> : null}
         </header>
 
