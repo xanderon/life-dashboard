@@ -1669,9 +1669,13 @@ export default function ReceiptsPage() {
                           }, 0);
                           const sgrCharge = Number(selected?.sgr_bottle_charge || 0);
                           const computedItemsTotal = itemsSubtotal + sgrCharge;
+                          const discountTotal = Number(selected?.discount_total || 0);
+                          const computedItemsTotalWithDiscount = computedItemsTotal - discountTotal;
                           const receiptTotal = Number(selected?.total_amount || 0);
                           if (!items.length) return null;
-                          if (Math.abs(computedItemsTotal - receiptTotal) < 0.01) {
+                          const directDelta = Math.abs(computedItemsTotal - receiptTotal);
+                          const discountedDelta = Math.abs(computedItemsTotalWithDiscount - receiptTotal);
+                          if (Math.min(directDelta, discountedDelta) < 0.01) {
                             return <span title="Total ok">✅</span>;
                           }
                           return <span title="Total diferit">⚠️</span>;
