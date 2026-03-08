@@ -23,10 +23,43 @@ type SessionRow = {
   actual_start: string | null;
 };
 
+type LeetDifficulty = 'easy' | 'medium';
+type PerceivedDifficulty = 'easy' | 'medium' | 'hard';
+type LeetCategory =
+  | 'arrays'
+  | 'binary_search'
+  | 'matrix'
+  | 'stack'
+  | 'queue'
+  | 'recursion'
+  | 'linked_list'
+  | 'binary_tree';
+
+type LeetEntryRow = {
+  id: string;
+  category: LeetCategory;
+  problem_title: string;
+  problem_url: string | null;
+  difficulty: LeetDifficulty;
+  perceived_difficulty: PerceivedDifficulty;
+  solved_at: string;
+  notes: string | null;
+};
+
 const STATUS_ORDER: ConceptStatus[] = ['new', 'learning', 'reviewing', 'mastered'];
 const SNAPSHOT_KEY = 'study-coach-state-v2';
 const SYNCED_SESSIONS_KEY_PREFIX = 'study-roadmap-synced-sessions-v1';
 const INTERVIEW_DEADLINE = '2026-03-16';
+const LEET_CATEGORIES: Array<{ id: LeetCategory; label: string }> = [
+  { id: 'arrays', label: 'Arrays' },
+  { id: 'binary_search', label: 'Binary Search' },
+  { id: 'matrix', label: 'Matrix' },
+  { id: 'stack', label: 'Stack' },
+  { id: 'queue', label: 'Queue' },
+  { id: 'recursion', label: 'Recursion' },
+  { id: 'linked_list', label: 'Linked List' },
+  { id: 'binary_tree', label: 'Binary Tree' },
+];
 
 function normalizeText(input: string) {
   return input.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -42,6 +75,23 @@ function statusClass(status: ConceptStatus) {
 export default function StudyRoadmapPage() {
   const [ownerId, setOwnerId] = useState('local');
   const [rows, setRows] = useState<Record<string, ProgressRow>>({});
+  const [leetEntries, setLeetEntries] = useState<LeetEntryRow[]>([]);
+  const [leetSaving, setLeetSaving] = useState(false);
+  const [leetForm, setLeetForm] = useState<{
+    category: LeetCategory;
+    problemTitle: string;
+    problemUrl: string;
+    difficulty: LeetDifficulty;
+    perceivedDifficulty: PerceivedDifficulty;
+    notes: string;
+  }>({
+    category: 'arrays',
+    problemTitle: '',
+    problemUrl: '',
+    difficulty: 'easy',
+    perceivedDifficulty: 'medium',
+    notes: '',
+  });
   const [savingId, setSavingId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [sessionsPerDay, setSessionsPerDay] = useState<number>(0);
@@ -280,6 +330,19 @@ export default function StudyRoadmapPage() {
         : 0;
       setSessionsPerDay(avg);
 
+      const { data: leetData, error: leetErr } = await supabase
+        .from('study_leetcode_entries')
+        .select('id,category,problem_title,problem_url,difficulty,perceived_difficulty,solved_at,notes')
+        .eq('owner_id', resolvedOwner)
+        .order('solved_at', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(400);
+      if (leetErr) {
+        setErr(leetErr.message);
+      } else {
+        setLeetEntries((leetData ?? []) as LeetEntryRow[]);
+      }
+
       window.localStorage.setItem(syncKey, JSON.stringify([...syncedIds]));
       setRows(merged);
     })();
@@ -358,6 +421,42 @@ export default function StudyRoadmapPage() {
       });
   }, [concepts, coreChapterSet, rows, scope]);
 
+  const leetStats = useMemo(() => {
+    const score = (value: LeetDifficulty | PerceivedDifficulty) => (value === 'easy' ? 1 : value === 'medium' ? 2 : 3);
+    const byCategory = LEET_CATEGORIES.map((cat) => {
+      const entries = leetEntries.filter((entry) => entry.category === cat.id);
+      const total = entries.length;
+      const easyCount = entries.filter((entry) => entry.difficulty === 'easy').length;
+      const mediumCount = entries.filter((entry) => entry.difficulty === 'medium').length;
+      const feltHard = entries.filter((entry) => entry.perceived_difficulty === 'hard').length;
+      const feltEasyOnMedium = entries.filter((entry) => entry.difficulty === 'medium' && entry.perceived_difficulty === 'easy').length;
+      const avgDelta = total
+        ? entries.reduce((sum, entry) => sum + (score(entry.perceived_difficulty) - score(entry.difficulty)), 0) / total
+        : 0;
+      return {
+        ...cat,
+        total,
+        easyCount,
+        mediumCount,
+        feltHard,
+        feltEasyOnMedium,
+        avgDelta,
+      };
+    });
+
+    const total = leetEntries.length;
+    const hardFeelingRate = total
+      ? Math.round((leetEntries.filter((entry) => entry.perceived_difficulty === 'hard').length / total) * 100)
+      : 0;
+    const mediumFeltEasyRate = leetEntries.filter((entry) => entry.difficulty === 'medium').length
+      ? Math.round(
+        (leetEntries.filter((entry) => entry.difficulty === 'medium' && entry.perceived_difficulty === 'easy').length
+          / leetEntries.filter((entry) => entry.difficulty === 'medium').length) * 100
+      )
+      : 0;
+    return { byCategory, total, hardFeelingRate, mediumFeltEasyRate };
+  }, [leetEntries]);
+
   async function setStatus(conceptId: string, status: ConceptStatus) {
     setSavingId(conceptId);
     setErr(null);
@@ -403,6 +502,62 @@ export default function StudyRoadmapPage() {
       },
     }));
     setSavingId(null);
+  }
+
+  async function addLeetEntry() {
+    const title = leetForm.problemTitle.trim();
+    if (!title) {
+      setErr('LeetCode: problem title is required.');
+      return;
+    }
+    setLeetSaving(true);
+    setErr(null);
+    const nowIso = new Date().toISOString();
+    const payload = {
+      owner_id: ownerId,
+      category: leetForm.category,
+      problem_title: title,
+      problem_url: leetForm.problemUrl.trim() || null,
+      difficulty: leetForm.difficulty,
+      perceived_difficulty: leetForm.perceivedDifficulty,
+      notes: leetForm.notes.trim() || null,
+      solved_at: nowIso.slice(0, 10),
+    };
+    const { data, error } = await supabase
+      .from('study_leetcode_entries')
+      .insert(payload)
+      .select('id,category,problem_title,problem_url,difficulty,perceived_difficulty,solved_at,notes')
+      .single();
+    if (error) {
+      setErr(error.message);
+      setLeetSaving(false);
+      return;
+    }
+    setLeetEntries((prev) => [data as LeetEntryRow, ...prev]);
+    setLeetForm((prev) => ({
+      ...prev,
+      problemTitle: '',
+      problemUrl: '',
+      notes: '',
+    }));
+    setLeetSaving(false);
+  }
+
+  async function deleteLeetEntry(id: string) {
+    setLeetSaving(true);
+    setErr(null);
+    const { error } = await supabase
+      .from('study_leetcode_entries')
+      .delete()
+      .eq('owner_id', ownerId)
+      .eq('id', id);
+    if (error) {
+      setErr(error.message);
+      setLeetSaving(false);
+      return;
+    }
+    setLeetEntries((prev) => prev.filter((entry) => entry.id !== id));
+    setLeetSaving(false);
   }
 
   return (
@@ -467,6 +622,134 @@ export default function StudyRoadmapPage() {
           </details>
           {err ? <p className="mt-3 text-sm text-rose-200">DB: {err}</p> : null}
         </header>
+
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-semibold">LeetCode Progress Tracker</h2>
+              <p className="text-sm text-[var(--muted)]">Easy + Medium, pe categoriile cheie de interviu.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+              <Tile label="Solved total" value={String(leetStats.total)} />
+              <Tile label="Felt hard rate" value={`${leetStats.hardFeelingRate}%`} />
+              <Tile label="Medium felt easy" value={`${leetStats.mediumFeltEasyRate}%`} />
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-6">
+            <select
+              className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm"
+              value={leetForm.category}
+              onChange={(event) => setLeetForm((prev) => ({ ...prev, category: event.target.value as LeetCategory }))}
+            >
+              {LEET_CATEGORIES.map((category) => (
+                <option key={category.id} value={category.id}>{category.label}</option>
+              ))}
+            </select>
+            <input
+              className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm md:col-span-2"
+              placeholder="Problem title"
+              value={leetForm.problemTitle}
+              onChange={(event) => setLeetForm((prev) => ({ ...prev, problemTitle: event.target.value }))}
+            />
+            <select
+              className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm"
+              value={leetForm.difficulty}
+              onChange={(event) => setLeetForm((prev) => ({ ...prev, difficulty: event.target.value as LeetDifficulty }))}
+            >
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+            </select>
+            <select
+              className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm"
+              value={leetForm.perceivedDifficulty}
+              onChange={(event) => setLeetForm((prev) => ({ ...prev, perceivedDifficulty: event.target.value as PerceivedDifficulty }))}
+            >
+              <option value="easy">Felt easy</option>
+              <option value="medium">Felt medium</option>
+              <option value="hard">Felt hard</option>
+            </select>
+            <button
+              className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => { void addLeetEntry(); }}
+              disabled={leetSaving}
+            >
+              Add solved problem
+            </button>
+          </div>
+
+          <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-6">
+            <input
+              className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm md:col-span-3"
+              placeholder="LeetCode link (optional)"
+              value={leetForm.problemUrl}
+              onChange={(event) => setLeetForm((prev) => ({ ...prev, problemUrl: event.target.value }))}
+            />
+            <input
+              className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm md:col-span-3"
+              placeholder="How it felt / notes (optional)"
+              value={leetForm.notes}
+              onChange={(event) => setLeetForm((prev) => ({ ...prev, notes: event.target.value }))}
+            />
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-2 lg:grid-cols-2">
+            {leetStats.byCategory.map((stat) => {
+              const signal = stat.avgDelta >= 0.6
+                ? 'Needs repetition'
+                : stat.avgDelta <= -0.3
+                  ? 'Strong zone'
+                  : 'In progress';
+              return (
+                <div key={stat.id} className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-sm font-semibold">{stat.label}</div>
+                    <span className="text-xs text-[var(--muted)]">{stat.total} solved</span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-4 gap-2 text-xs">
+                    <Tile label="Easy" value={String(stat.easyCount)} />
+                    <Tile label="Medium" value={String(stat.mediumCount)} />
+                    <Tile label="Felt hard" value={String(stat.feltHard)} />
+                    <Tile label="Med->easy" value={String(stat.feltEasyOnMedium)} />
+                  </div>
+                  <p className="mt-2 text-xs text-[var(--muted)]">Signal: {signal}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 space-y-2">
+            <div className="text-sm font-semibold">Recent solved problems</div>
+            {leetEntries.slice(0, 12).map((entry) => (
+              <div key={entry.id} className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-2 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="font-medium">{entry.problem_title}</span>
+                    <span className="ml-2 text-xs text-[var(--muted)]">[{LEET_CATEGORIES.find((item) => item.id === entry.category)?.label}]</span>
+                  </div>
+                  <div className="text-xs text-[var(--muted)]">{entry.solved_at}</div>
+                </div>
+                <div className="mt-1 text-xs text-[var(--muted)]">
+                  Difficulty: {entry.difficulty} · Felt: {entry.perceived_difficulty}
+                </div>
+                {entry.problem_url ? (
+                  <a className="mt-1 inline-block text-xs text-sky-300 underline" href={entry.problem_url} target="_blank" rel="noreferrer">
+                    Open problem
+                  </a>
+                ) : null}
+                {entry.notes ? <p className="mt-1 text-xs text-[var(--muted)]">{entry.notes}</p> : null}
+                <button
+                  className="mt-2 rounded-md border border-rose-500/40 bg-rose-500/20 px-2 py-1 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => { void deleteLeetEntry(entry.id); }}
+                  disabled={leetSaving}
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+            {!leetEntries.length ? <p className="text-sm text-[var(--muted)]">No LeetCode entries yet.</p> : null}
+          </div>
+        </section>
 
         <section className="space-y-3">
           {chapterStats.map((entry) => {
