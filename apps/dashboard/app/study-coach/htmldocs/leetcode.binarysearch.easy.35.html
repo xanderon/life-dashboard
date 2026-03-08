@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LeetCode 35 - Search Insert Position</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #f8f9fb;
+      color: #1f2937;
+    }
+
+    h1, h2, h3 {
+      color: #111827;
+    }
+
+    .section {
+      background: white;
+      padding: 20px 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      margin-bottom: 24px;
+    }
+
+    pre {
+      background: #0f172a;
+      color: #e5e7eb;
+      padding: 16px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: Consolas, Monaco, monospace;
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    .label {
+      font-weight: bold;
+      color: #2563eb;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>LeetCode 35 — Search Insert Position</h1>
+
+  <div class="section">
+    <h2>Problem</h2>
+    <p>
+      Given a sorted array of distinct integers and a target value, return the index if the target is found.
+      If not, return the index where it would be if it were inserted in order.
+    </p>
+    <p>
+      You must write an algorithm with <strong>O(log n)</strong> runtime complexity.
+    </p>
+
+    <h3>Examples</h3>
+    <ul>
+      <li><strong>Input:</strong> nums = [1,3,5,6], target = 5 → <strong>Output:</strong> 2</li>
+      <li><strong>Input:</strong> nums = [1,3,5,6], target = 2 → <strong>Output:</strong> 1</li>
+      <li><strong>Input:</strong> nums = [1,3,5,6], target = 7 → <strong>Output:</strong> 4</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Intuition</h2>
+    <p>
+      Because the array is sorted and the problem requires <strong>O(log n)</strong>,
+      the correct pattern is <strong>binary search</strong>.
+    </p>
+    <p>
+      At each step:
+    </p>
+    <ul>
+      <li>Look at the middle element.</li>
+      <li>If it matches the target, return its index.</li>
+      <li>If it is smaller than the target, search the right half.</li>
+      <li>If it is larger than the target, search the left half.</li>
+    </ul>
+    <p>
+      If the target is not found, the correct insert position is exactly where <code>left</code> ends up.
+    </p>
+  </div>
+
+  <div class="section">
+    <h2>JavaScript Solution</h2>
+    <pre><code>/**
+ * @param {number[]} nums
+ * @param {number} target
+ * @return {number}
+ */
+var searchInsert = function(nums, target) {
+    // Start of the search range
+    let left = 0;
+    let right = nums.length - 1;
+
+    // Keep searching while the range is valid
+    while (left &lt;= right) {
+        // Find the middle index of the current search range
+        let mid = Math.floor((left + right) / 2);
+
+        // If the middle value is exactly the target, return its index
+        if (nums[mid] === target) {
+            return mid;
+        }
+
+        // If the middle value is smaller than target,
+        // the target must be on the right side
+        if (nums[mid] &lt; target) {
+            left = mid + 1;
+        } 
+        // Otherwise, the middle value is greater than target,
+        // so the target must be on the left side
+        else {
+            right = mid - 1;
+        }
+    }
+
+    // If the target was not found,
+    // left is the correct insert position
+    return left;
+};</code></pre>
+  </div>
+
+  <div class="section">
+    <h2>Step-by-Step Explanation</h2>
+    <ul>
+      <li><span class="label">left</span> starts at index 0.</li>
+      <li><span class="label">right</span> starts at the last index.</li>
+      <li>We repeatedly calculate <span class="label">mid</span> as the middle of the current range.</li>
+      <li>If <code>nums[mid] === target</code>, we found the answer.</li>
+      <li>If <code>nums[mid] &lt; target</code>, the target must be to the right, so move <code>left</code>.</li>
+      <li>If <code>nums[mid] &gt; target</code>, the target must be to the left, so move <code>right</code>.</li>
+      <li>If the loop ends, the target does not exist in the array.</li>
+      <li>At that point, <code>left</code> is the exact place where the target should be inserted.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Why Return <code>left</code>?</h2>
+    <p>
+      When the loop finishes, it means the target was not found.
+    </p>
+    <p>
+      At that moment:
+    </p>
+    <ul>
+      <li>All indices before <code>left</code> contain values smaller than the target.</li>
+      <li>All indices after <code>right</code> contain values greater than the target.</li>
+      <li>So <code>left</code> is exactly the position where the target belongs.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Complexity</h2>
+    <ul>
+      <li><strong>Time Complexity:</strong> O(log n)  
+        <br />We cut the search space in half on every iteration.
+      </li>
+      <li><strong>Space Complexity:</strong> O(1)  
+        <br />We only use a few variables and no extra data structures.
+      </li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Pattern</h2>
+    <p><strong>Binary Search</strong></p>
+    <p>
+      This problem is a classic binary search problem where we either:
+    </p>
+    <ul>
+      <li>find the target, or</li>
+      <li>find the position where it should be inserted</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Common Mistakes</h2>
+    <ul>
+      <li>Comparing <code>mid</code> with <code>target</code> instead of <code>nums[mid]</code> with <code>target</code>.</li>
+      <li>Forgetting to return <code>left</code> after the loop ends.</li>
+      <li>Using linear search, which would be O(n) instead of O(log n).</li>
+      <li>Updating the pointers incorrectly, for example using <code>left = mid</code> or <code>right = mid</code> and causing an infinite loop.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Mental Model</h2>
+    <p>
+      Think of this problem as:
+    </p>
+    <p><strong>"Find the first position where the target could stand in sorted order."</strong></p>
+    <p>
+      If the number exists, return its index.  
+      If it does not exist, return the position where it should be inserted.
+    </p>
+  </div>
+
+</body>
+</html>

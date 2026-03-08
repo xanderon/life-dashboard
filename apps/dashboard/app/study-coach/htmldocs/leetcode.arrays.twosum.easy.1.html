@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LeetCode 1 - Two Sum</title>
+
+  <!-- Prism.js theme -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css"
+  />
+
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      background: #f5f7fb;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 40px auto;
+      background: #ffffff;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    h1, h2, h3 {
+      color: #0f172a;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 34px;
+    }
+
+    h2 {
+      margin-top: 34px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .box {
+      background: #f8fafc;
+      border-left: 6px solid #2563eb;
+      padding: 16px 18px;
+      margin: 16px 0;
+      border-radius: 10px;
+    }
+
+    .example {
+      background: #eff6ff;
+      border-left: 6px solid #3b82f6;
+      padding: 14px 16px;
+      margin: 12px 0;
+      border-radius: 10px;
+    }
+
+    .warning {
+      background: #fff7ed;
+      border-left: 6px solid #f59e0b;
+      padding: 14px 16px;
+      margin: 12px 0;
+      border-radius: 10px;
+    }
+
+    .success {
+      background: #ecfdf5;
+      border-left: 6px solid #10b981;
+      padding: 14px 16px;
+      margin: 12px 0;
+      border-radius: 10px;
+    }
+
+    .tag {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1d4ed8;
+      padding: 6px 10px;
+      border-radius: 999px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    code:not(pre code) {
+      background: #e5e7eb;
+      color: #111827;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 0.95em;
+    }
+
+    pre[class*="language-"] {
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+      line-height: 1.55;
+      overflow-x: auto;
+      white-space: pre;
+      margin: 16px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    table, th, td {
+      border: 1px solid #d1d5db;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+    }
+
+    th {
+      background: #f3f4f6;
+    }
+
+    ul, ol {
+      padding-left: 22px;
+    }
+
+    .footer-note {
+      margin-top: 30px;
+      font-size: 14px;
+      color: #475569;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>LeetCode 1 — Two Sum</h1>
+
+    <div>
+      <span class="tag">Array</span>
+      <span class="tag">Hash Map</span>
+      <span class="tag">Easy</span>
+      <span class="tag">Interview Classic</span>
+    </div>
+
+    <h2>Problem Statement</h2>
+    <div class="box">
+      <p>
+        Given an array of integers <code>nums</code> and an integer <code>target</code>,
+        return the indices of the two numbers such that they add up to <code>target</code>.
+      </p>
+      <p>
+        You may assume that each input has exactly one solution, and you may not use the same element twice.
+      </p>
+      <p>
+        You can return the answer in any order.
+      </p>
+    </div>
+
+    <h2>Main Idea</h2>
+    <div class="box">
+      <p>
+        For each number, compute the complement:
+      </p>
+      <pre><code class="language-javascript">const difference = target - nums[i];</code></pre>
+      <p>
+        If that complement already exists in the map, we found the answer.
+      </p>
+    </div>
+
+    <h2>Final JavaScript Solution</h2>
+    <pre><code class="language-javascript">/**
+ * @param {number[]} nums
+ * @param {number} target
+ * @return {number[]}
+ */
+var twoSum = function(nums, target) {
+    // Store previously seen numbers and their indices
+    const map = new Map();
+
+    // Iterate once through the array
+    for (let i = 0; i &lt; nums.length; i++) {
+        const current = nums[i];
+        const difference = target - current;
+
+        // If we have already seen the needed partner, return both indices
+        if (map.has(difference)) {
+            return [map.get(difference), i];
+        }
+
+        // Otherwise store current number and index
+        map.set(current, i);
+    }
+};</code></pre>
+
+    <h2>Why This Works</h2>
+    <div class="success">
+      <p>
+        Instead of comparing every pair, we remember what we have already seen.
+        That lets us check the needed partner in constant average time.
+      </p>
+    </div>
+
+    <h2>Common Mistakes</h2>
+    <div class="warning">
+      <ul>
+        <li>Saving <code>difference</code> in the map instead of the current number.</li>
+        <li>Calling <code>map.set(...)</code> before checking <code>map.has(...)</code>.</li>
+        <li>Forgetting that the map stores <strong>number → index</strong>.</li>
+      </ul>
+    </div>
+
+    <h2>Complexity</h2>
+    <div class="box">
+      <p><strong>Time Complexity:</strong> O(n)</p>
+      <p><strong>Space Complexity:</strong> O(n)</p>
+    </div>
+
+    <p class="footer-note">
+      Tip: syntax highlighting works because the code block uses
+      <code>class="language-javascript"</code> and Prism.js is loaded.
+    </p>
+  </div>
+
+  <!-- Prism.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Valid Parentheses — Technical Interview Study Page</title>
+
+  <!-- Prism.js -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#f5f7fb;
+      --card:#ffffff;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --primary:#2563eb;
+      --primary-soft:#dbeafe;
+      --success:#166534;
+      --success-bg:#dcfce7;
+      --warning:#92400e;
+      --warning-bg:#fef3c7;
+      --example-bg:#f8fafc;
+      --shadow:0 10px 30px rgba(15, 23, 42, 0.08);
+      --radius:18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body{
+      margin:0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    .page{
+      max-width: 1100px;
+      margin: 32px auto;
+      padding: 0 20px 40px;
+    }
+
+    .card{
+      background: var(--card);
+      border: 1px solid rgba(229,231,235,0.8);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero{
+      padding: 34px 34px 24px;
+      border-bottom: 1px solid var(--border);
+      background:
+        radial-gradient(circle at top right, rgba(37,99,235,0.08), transparent 28%),
+        linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    }
+
+    h1,h2,h3{
+      margin:0 0 14px 0;
+      line-height:1.2;
+      letter-spacing:-0.02em;
+    }
+
+    h1{
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    h2{
+      font-size: 1.35rem;
+      margin-top: 10px;
+    }
+
+    h3{
+      font-size: 1.05rem;
+      margin-top: 4px;
+    }
+
+    p{
+      margin: 0 0 14px 0;
+      color: var(--text);
+    }
+
+    .subtitle{
+      color: var(--muted);
+      max-width: 800px;
+      font-size: 1rem;
+    }
+
+    .tags{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top: 16px;
+    }
+
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      background: var(--primary-soft);
+      color: var(--primary);
+      border: 1px solid rgba(37,99,235,0.14);
+    }
+
+    .content{
+      padding: 28px 34px 36px;
+    }
+
+    .section{
+      margin-bottom: 28px;
+    }
+
+    .box,
+    .example,
+    .warning,
+    .success{
+      border-radius: var(--radius);
+      padding: 18px 18px 16px;
+      margin-top: 14px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .box{
+      background: #ffffff;
+    }
+
+    .example{
+      background: var(--example-bg);
+    }
+
+    .warning{
+      background: var(--warning-bg);
+      border-color: #fcd34d;
+    }
+
+    .success{
+      background: var(--success-bg);
+      border-color: #86efac;
+    }
+
+    .label{
+      display:inline-block;
+      font-size:0.8rem;
+      font-weight:700;
+      letter-spacing:0.02em;
+      text-transform:uppercase;
+      margin-bottom:10px;
+      color: var(--muted);
+    }
+
+    ul, ol{
+      margin: 10px 0 0 0;
+      padding-left: 22px;
+    }
+
+    li{
+      margin-bottom: 8px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap:16px;
+    }
+
+    .two-col{
+      display:grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 860px){
+      .two-col{
+        grid-template-columns: 1fr;
+      }
+      .hero,
+      .content{
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+    }
+
+    code:not(pre code){
+      background:#eef2ff;
+      color:#3730a3;
+      padding: 2px 7px;
+      border-radius: 8px;
+      font-size: 0.94em;
+    }
+
+    pre{
+      border-radius: 16px;
+      overflow:auto;
+      margin: 0;
+      border: 1px solid #e6eaf2;
+    }
+
+    pre[class*="language-"]{
+      padding: 18px !important;
+      font-size: 0.92rem;
+      line-height: 1.6;
+      background: #f8fafc !important;
+    }
+
+    table{
+      width:100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      overflow:hidden;
+      border-radius: 14px;
+      border:1px solid var(--border);
+    }
+
+    th, td{
+      text-align:left;
+      padding: 12px 14px;
+      border-bottom:1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th{
+      background:#f8fafc;
+      font-size:0.92rem;
+    }
+
+    tr:last-child td{
+      border-bottom:none;
+    }
+
+    .muted{
+      color: var(--muted);
+    }
+
+    .callout-title{
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .step{
+      padding: 14px 16px;
+      border:1px solid var(--border);
+      border-radius: 16px;
+      background:#fff;
+    }
+
+    .step strong{
+      color:#111827;
+    }
+
+    .footer-note{
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 8px;
+    }
+
+    @media print{
+      body{
+        background:#fff;
+      }
+      .page{
+        max-width:none;
+        margin:0;
+        padding:0;
+      }
+      .card{
+        border:none;
+        box-shadow:none;
+        border-radius:0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <article class="card">
+      <header class="hero">
+        <h1>20. Valid Parentheses</h1>
+        <p class="subtitle">
+          A classic <strong>Stack</strong> interview problem. The key idea is to track the most recent opening bracket that still needs to be closed, and verify that each closing bracket matches it in the correct order.
+        </p>
+
+        <div class="tags">
+          <span class="tag">Easy</span>
+          <span class="tag">Stack</span>
+          <span class="tag">String</span>
+          <span class="tag">Hash Map / Object</span>
+          <span class="tag">Interview Pattern</span>
+        </div>
+      </header>
+
+      <main class="content">
+        <section class="section">
+          <h2>Problem Statement</h2>
+          <div class="box">
+            <p>
+              Given a string <code>s</code> containing just the characters <code>( ) { } [ ]</code>, determine if the input string is valid.
+            </p>
+            <p>An input string is valid if:</p>
+            <ul>
+              <li>Open brackets are closed by the same type of brackets.</li>
+              <li>Open brackets are closed in the correct order.</li>
+              <li>Every closing bracket has a corresponding opening bracket.</li>
+            </ul>
+            <p class="footer-note">
+              Constraint: <code>1 &lt;= s.length &lt;= 10^4</code>
+            </p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Examples</h2>
+          <div class="grid">
+            <div class="example">
+              <span class="label">Example 1</span>
+              <p><strong>Input:</strong> <code>"()"</code></p>
+              <p><strong>Output:</strong> <code>true</code></p>
+            </div>
+            <div class="example">
+              <span class="label">Example 2</span>
+              <p><strong>Input:</strong> <code>"()[]{}"</code></p>
+              <p><strong>Output:</strong> <code>true</code></p>
+            </div>
+            <div class="example">
+              <span class="label">Example 3</span>
+              <p><strong>Input:</strong> <code>"(]"</code></p>
+              <p><strong>Output:</strong> <code>false</code></p>
+            </div>
+            <div class="example">
+              <span class="label">Example 4</span>
+              <p><strong>Input:</strong> <code>"([])"</code></p>
+              <p><strong>Output:</strong> <code>true</code></p>
+            </div>
+            <div class="example">
+              <span class="label">Example 5</span>
+              <p><strong>Input:</strong> <code>"([)]"</code></p>
+              <p><strong>Output:</strong> <code>false</code></p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Main Idea / Intuition</h2>
+          <div class="success">
+            <div class="callout-title">Mental model</div>
+            <p>
+              A stack stores opening brackets that are still waiting to be closed.
+            </p>
+            <ul>
+              <li>When we see an opening bracket, we push it onto the stack.</li>
+              <li>When we see a closing bracket, it must match the <strong>most recent</strong> opening bracket.</li>
+              <li>If it does not match, the string is invalid.</li>
+            </ul>
+          </div>
+
+          <div class="box">
+            <p>
+              This is why a <code>stack</code> is the right data structure: the last opening bracket must be the first one to close.
+            </p>
+            <p>
+              We also use a small <code>pairs</code> object to quickly check what opening bracket should match a given closing bracket.
+            </p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Step-by-step Walkthrough</h2>
+          <div class="two-col">
+            <div class="box">
+              <h3>Walkthrough for <code>"([])"</code></h3>
+              <div class="grid">
+                <div class="step">
+                  <strong>1.</strong> Read <code>(</code><br>
+                  Opening bracket → push it<br>
+                  Stack: <code>[ "(" ]</code>
+                </div>
+                <div class="step">
+                  <strong>2.</strong> Read <code>[</code><br>
+                  Opening bracket → push it<br>
+                  Stack: <code>[ "(", "[" ]</code>
+                </div>
+                <div class="step">
+                  <strong>3.</strong> Read <code>]</code><br>
+                  Closing bracket → pop stack<br>
+                  Popped: <code>"["</code><br>
+                  Match? Yes
+                </div>
+                <div class="step">
+                  <strong>4.</strong> Read <code>)</code><br>
+                  Closing bracket → pop stack<br>
+                  Popped: <code>"("</code><br>
+                  Match? Yes
+                </div>
+              </div>
+              <p style="margin-top:14px;">
+                End of string. Stack is empty → <strong>valid</strong>.
+              </p>
+            </div>
+
+            <div class="warning">
+              <h3>Why <code>"([)]"</code> fails</h3>
+              <ul>
+                <li>Push <code>(</code></li>
+                <li>Push <code>[</code></li>
+                <li>Read <code>)</code></li>
+                <li>The top of the stack is <code>[</code>, but <code>)</code> needs <code>(</code></li>
+                <li>Wrong order → invalid</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Final JavaScript Solution</h2>
+          <div class="box">
+            <pre><code class="language-javascript">/**
+ * @param {string} s
+ * @return {boolean}
+ */
+var isValid = function(s) {
+  const stack = [];
+
+  const pairs = {
+    ')': '(',
+    ']': '[',
+    '}': '{'
+  };
+
+  for (const char of s) {
+    // If it is an opening bracket, push it to the stack
+    if (char === '(' || char === '[' || char === '{') {
+      stack.push(char);
+    } else {
+      // If stack is empty, there is nothing to match
+      if (stack.length === 0) {
+        return false;
+      }
+
+      // Take the most recent opening bracket
+      const last = stack.pop();
+
+      // Check if current closing bracket matches it
+      if (pairs[char] !== last) {
+        return false;
+      }
+    }
+  }
+
+  // Valid only if no unmatched opening brackets remain
+  return stack.length === 0;
+};</code></pre>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Line-by-line Explanation</h2>
+          <div class="box">
+            <table>
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>What it does</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>const stack = [];</code></td>
+                  <td>Creates the stack used to store opening brackets.</td>
+                </tr>
+                <tr>
+                  <td><code>const pairs = { ')': '(', ']': '[', '}': '{' };</code></td>
+                  <td>Maps each closing bracket to the opening bracket it expects.</td>
+                </tr>
+                <tr>
+                  <td><code>for (const char of s)</code></td>
+                  <td>Loops through each character in the string.</td>
+                </tr>
+                <tr>
+                  <td><code>if (char === '(' || char === '[' || char === '{')</code></td>
+                  <td>Checks whether the current character is an opening bracket.</td>
+                </tr>
+                <tr>
+                  <td><code>stack.push(char)</code></td>
+                  <td>Saves the opening bracket for later matching.</td>
+                </tr>
+                <tr>
+                  <td><code>if (stack.length === 0)</code></td>
+                  <td>If a closing bracket appears and the stack is empty, the string is invalid.</td>
+                </tr>
+                <tr>
+                  <td><code>const last = stack.pop();</code></td>
+                  <td>Removes the most recent opening bracket.</td>
+                </tr>
+                <tr>
+                  <td><code>if (pairs[char] !== last)</code></td>
+                  <td>If the popped opening bracket does not match the current closing bracket, return <code>false</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>return stack.length === 0;</code></td>
+                  <td>After processing all characters, the string is valid only if all opening brackets were matched.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Common Mistakes</h2>
+          <div class="grid">
+            <div class="warning">
+              <div class="callout-title">1. Forgetting to check empty stack</div>
+              <p>
+                If the string starts with <code>)</code>, <code>]</code>, or <code>}</code>, there is nothing to match. That must return <code>false</code> immediately.
+              </p>
+            </div>
+
+            <div class="warning">
+              <div class="callout-title">2. Comparing only adjacent characters</div>
+              <p>
+                This fails for nested cases like <code>"([])"</code>. Matching is about the most recent unclosed opener, not the previous character.
+              </p>
+            </div>
+
+            <div class="warning">
+              <div class="callout-title">3. Forgetting the final stack check</div>
+              <p>
+                A string like <code>"((("</code> never mismatches during the loop, but it is still invalid because open brackets remain.
+              </p>
+            </div>
+
+            <div class="warning">
+              <div class="callout-title">4. Mixing map directions</div>
+              <p>
+                Be consistent. In this solution, the object is <code>closing -&gt; opening</code>, because the stack stores opening brackets.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Complexity</h2>
+          <div class="grid">
+            <div class="success">
+              <div class="callout-title">Time Complexity: <code>O(n)</code></div>
+              <p>
+                We scan the string once, and each bracket is pushed or popped at most one time.
+              </p>
+            </div>
+            <div class="success">
+              <div class="callout-title">Space Complexity: <code>O(n)</code></div>
+              <p>
+                In the worst case, the stack may store all opening brackets, such as <code>"((([{{"</code>.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Interview Explanation Version</h2>
+          <div class="box">
+            <p>
+              “I would solve this using a stack. As I iterate through the string, I push every opening bracket onto the stack. When I see a closing bracket, I check whether the stack is empty; if it is, the string is invalid. Otherwise, I pop the most recent opening bracket and verify that it matches the current closing bracket using a small lookup object. At the end, the string is valid only if the stack is empty.”
+            </p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Pattern to Remember</h2>
+          <div class="success">
+            <div class="callout-title">Use a stack when you need to validate nested structure</div>
+            <ul>
+              <li>Parentheses</li>
+              <li>Brackets</li>
+              <li>HTML/XML-like tag matching</li>
+              <li>Nested expressions</li>
+            </ul>
+            <p class="footer-note">
+              Short memory hook: <strong>“Last opener must be closed first.”</strong>
+            </p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Optional Brute Force Comparison</h2>
+          <div class="box">
+            <p>
+              A less structured idea would be to repeatedly remove valid pairs like <code>()</code>, <code>[]</code>, and <code>{}</code> until nothing changes.
+            </p>
+            <p>
+              That can work, but it is less elegant and usually less efficient than a stack solution. The stack approach is the standard interview answer because it is direct, clean, and scales well.
+            </p>
+          </div>
+        </section>
+      </main>
+    </article>
+  </div>
+</body>
+</html>
