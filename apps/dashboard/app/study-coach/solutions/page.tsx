@@ -42,6 +42,8 @@ export default function StudyCoachSolutionsPage() {
   const [docs, setDocs] = useState<SolutionDoc[]>([]);
   const [search, setSearch] = useState('');
   const [selectedFile, setSelectedFile] = useState<string>('');
+  const [showMenu, setShowMenu] = useState(true);
+  const [headerExpanded, setHeaderExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -97,33 +99,55 @@ export default function StudyCoachSolutionsPage() {
     <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
         <header className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
-          <div className="mb-2 flex flex-wrap gap-2">
-            <Link className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-sm font-semibold" href="/">Dashboard</Link>
-            <Link className="rounded-md border border-sky-500/40 bg-sky-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach">Today</Link>
-            <Link className="rounded-md border border-indigo-500/40 bg-indigo-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach/roadmap">Roadmap</Link>
-          </div>
-          <h1 className="text-2xl font-bold">LeetCode HTMLs</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">Cuprins complet pentru fișierele din `study-coach/htmldocs`.</p>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Link className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-sm font-semibold" href="/">Dashboard</Link>
+              <Link className="rounded-md border border-sky-500/40 bg-sky-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach">Today</Link>
+              <Link className="rounded-md border border-indigo-500/40 bg-indigo-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach/roadmap">Roadmap</Link>
+            </div>
             <button
-              className="rounded-md border border-cyan-500/40 bg-cyan-500/20 px-3 py-1.5 text-sm font-semibold disabled:opacity-60"
-              onClick={() => { void loadDocs(); }}
-              disabled={loading}
+              className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-sm font-semibold"
+              onClick={() => setHeaderExpanded((prev) => !prev)}
             >
-              {loading ? 'Loading...' : 'Refresh list'}
+              {headerExpanded ? 'Collapse' : 'Expand'}
             </button>
-            <input
-              className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1.5 text-sm"
-              placeholder="Search by title / category / file"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-            <span className="self-center text-xs text-[var(--muted)]">{filtered.length} files</span>
           </div>
-          {err ? <p className="mt-2 text-sm text-rose-200">{err}</p> : null}
+          {headerExpanded ? (
+          <>
+            <h1 className="text-2xl font-bold">LeetCode HTMLs</h1>
+            <p className="mt-1 text-sm text-[var(--muted)]">Cuprins complet pentru fișierele din `study-coach/htmldocs`.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                className="rounded-md border border-cyan-500/40 bg-cyan-500/20 px-3 py-1.5 text-sm font-semibold disabled:opacity-60"
+                onClick={() => { void loadDocs(); }}
+                disabled={loading}
+              >
+                {loading ? 'Loading...' : 'Refresh list'}
+              </button>
+              <input
+                className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1.5 text-sm"
+                placeholder="Search by title / category / file"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+              <span className="self-center text-xs text-[var(--muted)]">{filtered.length} files</span>
+            </div>
+          </>
+          ) : (
+            <div className="text-xs text-[var(--muted)]">{filtered.length} files</div>
+          )}
+          {headerExpanded ? (
+          <>
+            {err ? <p className="mt-2 text-sm text-rose-200">{err}</p> : null}
+          </>
+          ) : null}
+          {!headerExpanded && err ? (
+            <p className="mt-2 text-sm text-rose-200">{err}</p>
+          ) : null}
         </header>
 
-        <section className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+        <section className={`grid grid-cols-1 gap-4 ${showMenu ? 'xl:grid-cols-6' : ''}`}>
+          {showMenu ? (
           <div className="space-y-3 xl:col-span-2">
             {grouped.map(([category, items]) => (
               <div key={category} className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
@@ -151,28 +175,37 @@ export default function StudyCoachSolutionsPage() {
               </div>
             ) : null}
           </div>
+          ) : null}
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3 xl:col-span-3">
+          <div className={`rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3 ${showMenu ? 'xl:col-span-4' : ''}`}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="text-base font-semibold">Preview</h3>
                 <p className="text-xs text-[var(--muted)]">{selected?.file ?? 'Select a file from left.'}</p>
               </div>
-              {selected ? (
-                <a
-                  className="rounded-md border border-cyan-500/40 bg-cyan-500/20 px-3 py-1.5 text-sm font-semibold"
-                  href={previewUrl(selected.file)}
-                  target="_blank"
-                  rel="noreferrer"
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-sm font-semibold"
+                  onClick={() => setShowMenu((prev) => !prev)}
                 >
-                  Open in new tab
-                </a>
-              ) : null}
+                  {showMenu ? 'Hide menu' : 'Show menu'}
+                </button>
+                {selected ? (
+                  <a
+                    className="rounded-md border border-cyan-500/40 bg-cyan-500/20 px-3 py-1.5 text-sm font-semibold"
+                    href={previewUrl(selected.file)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open in new tab
+                  </a>
+                ) : null}
+              </div>
             </div>
             {selected ? (
               <iframe
                 title={selected.title}
-                className="mt-3 h-[70vh] w-full rounded-lg border border-[var(--border)] bg-white"
+                className="mt-3 h-[82vh] w-full rounded-lg border border-[var(--border)] bg-white"
                 src={previewUrl(selected.file)}
               />
             ) : (
