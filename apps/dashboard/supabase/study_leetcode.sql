@@ -13,6 +13,9 @@ create table if not exists public.study_leetcode_entries (
   updated_at timestamptz not null default now()
 );
 
+alter table public.study_leetcode_entries
+  add column if not exists solution_file text;
+
 create index if not exists study_leetcode_entries_owner_solved_idx
   on public.study_leetcode_entries(owner_id, solved_at desc);
 
@@ -22,9 +25,6 @@ create index if not exists study_leetcode_entries_owner_category_idx
 create unique index if not exists study_leetcode_entries_owner_solution_unique_idx
   on public.study_leetcode_entries(owner_id, solution_file)
   where solution_file is not null;
-
-alter table public.study_leetcode_entries
-  add column if not exists solution_file text;
 
 create or replace function public.study_leetcode_entries_touch_updated_at()
 returns trigger
