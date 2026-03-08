@@ -1668,10 +1668,10 @@ export default function ReceiptsPage() {
                             return sum + Math.max(0, qty * unit - disc);
                           }, 0);
                           const sgrCharge = Number(selected?.sgr_bottle_charge || 0);
-                          const itemsTotal = itemsSubtotal + sgrCharge;
+                          const computedItemsTotal = itemsSubtotal + sgrCharge;
                           const receiptTotal = Number(selected?.total_amount || 0);
                           if (!items.length) return null;
-                          if (Math.abs(itemsTotal - receiptTotal) < 0.01) {
+                          if (Math.abs(computedItemsTotal - receiptTotal) < 0.01) {
                             return <span title="Total ok">✅</span>;
                           }
                           return <span title="Total diferit">⚠️</span>;
@@ -1679,19 +1679,22 @@ export default function ReceiptsPage() {
                         <span>
                           Total items:{" "}
                           <span className="font-semibold text-[var(--text)]">
-                            {(
-                              items.reduce((sum, item) => {
-                                const paid = item.paid_amount;
-                                if (paid != null && !Number.isNaN(Number(paid))) {
-                                  return sum + Number(paid);
-                                }
-                                const qty = Number(item.quantity) || 0;
-                                const unit = Number(item.unit_price) || 0;
-                                const disc = Number(item.discount) || 0;
-                                return sum + Math.max(0, qty * unit - disc);
-                              }, 0) +
-                              Number(selected?.sgr_bottle_charge || 0)
-                            ).toFixed(2)}{" "}
+                            {(() => {
+                              const receiptTotal = Number(selected?.total_amount || 0);
+                              if (receiptTotal > 0) return receiptTotal.toFixed(2);
+                              const computedItemsTotal =
+                                items.reduce((sum, item) => {
+                                  const paid = item.paid_amount;
+                                  if (paid != null && !Number.isNaN(Number(paid))) {
+                                    return sum + Number(paid);
+                                  }
+                                  const qty = Number(item.quantity) || 0;
+                                  const unit = Number(item.unit_price) || 0;
+                                  const disc = Number(item.discount) || 0;
+                                  return sum + Math.max(0, qty * unit - disc);
+                                }, 0) + Number(selected?.sgr_bottle_charge || 0);
+                              return computedItemsTotal.toFixed(2);
+                            })()}{" "}
                             {selected?.currency ?? "RON"}
                           </span>
                         </span>
