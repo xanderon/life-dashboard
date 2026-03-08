@@ -40,10 +40,19 @@ type LeetEntryRow = {
   category: LeetCategory;
   problem_title: string;
   problem_url: string | null;
+  solution_file: string | null;
   difficulty: LeetDifficulty;
   perceived_difficulty: PerceivedDifficulty;
   solved_at: string;
   notes: string | null;
+};
+
+type SolutionDoc = {
+  file: string;
+  title: string;
+  category: LeetCategory;
+  difficulty: LeetDifficulty;
+  problemNumber: number | null;
 };
 
 const STATUS_ORDER: ConceptStatus[] = ['new', 'learning', 'reviewing', 'mastered'];
@@ -76,11 +85,13 @@ export default function StudyRoadmapPage() {
   const [ownerId, setOwnerId] = useState('local');
   const [rows, setRows] = useState<Record<string, ProgressRow>>({});
   const [leetEntries, setLeetEntries] = useState<LeetEntryRow[]>([]);
+  const [solutionDocs, setSolutionDocs] = useState<SolutionDoc[]>([]);
   const [leetSaving, setLeetSaving] = useState(false);
   const [leetForm, setLeetForm] = useState<{
     category: LeetCategory;
     problemTitle: string;
     problemUrl: string;
+    solutionFile: string;
     difficulty: LeetDifficulty;
     perceivedDifficulty: PerceivedDifficulty;
     notes: string;
@@ -88,10 +99,21 @@ export default function StudyRoadmapPage() {
     category: 'arrays',
     problemTitle: '',
     problemUrl: '',
+    solutionFile: '',
     difficulty: 'easy',
     perceivedDifficulty: 'medium',
     notes: '',
   });
+  const [editingLeetId, setEditingLeetId] = useState<string | null>(null);
+  const [editLeetForm, setEditLeetForm] = useState<{
+    category: LeetCategory;
+    problemTitle: string;
+    problemUrl: string;
+    solutionFile: string;
+    difficulty: LeetDifficulty;
+    perceivedDifficulty: PerceivedDifficulty;
+    notes: string;
+  } | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [sessionsPerDay, setSessionsPerDay] = useState<number>(0);
@@ -106,6 +128,24 @@ export default function StudyRoadmapPage() {
     () => (scope === 'core' ? allConcepts.filter((concept) => coreChapterSet.has(concept.chapterId)) : allConcepts),
     [allConcepts, coreChapterSet, scope]
   );
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/study-coach/leetcode-solutions', { cache: 'no-store' });
+        if (!res.ok) return;
+        const payload = (await res.json()) as { docs?: SolutionDoc[] };
+        if (!alive) return;
+        setSolutionDocs(Array.isArray(payload.docs) ? payload.docs : []);
+      } catch {
+        // optional feature; ignore
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -332,7 +372,7 @@ export default function StudyRoadmapPage() {
 
       const { data: leetData, error: leetErr } = await supabase
         .from('study_leetcode_entries')
-        .select('id,category,problem_title,problem_url,difficulty,perceived_difficulty,solved_at,notes')
+        .select('id,category,problem_title,problem_url,solution_file,difficulty,perceived_difficulty,solved_at,notes')
         .eq('owner_id', resolvedOwner)
         .order('solved_at', { ascending: false })
         .order('created_at', { ascending: false })
@@ -518,6 +558,7 @@ export default function StudyRoadmapPage() {
       category: leetForm.category,
       problem_title: title,
       problem_url: leetForm.problemUrl.trim() || null,
+      solution_file: leetForm.solutionFile || null,
       difficulty: leetForm.difficulty,
       perceived_difficulty: leetForm.perceivedDifficulty,
       notes: leetForm.notes.trim() || null,
@@ -526,7 +567,7 @@ export default function StudyRoadmapPage() {
     const { data, error } = await supabase
       .from('study_leetcode_entries')
       .insert(payload)
-      .select('id,category,problem_title,problem_url,difficulty,perceived_difficulty,solved_at,notes')
+      .select('id,category,problem_title,problem_url,solution_file,difficulty,perceived_difficulty,solved_at,notes')
       .single();
     if (error) {
       setErr(error.message);
@@ -538,9 +579,104 @@ export default function StudyRoadmapPage() {
       ...prev,
       problemTitle: '',
       problemUrl: '',
+      solutionFile: '',
       notes: '',
     }));
     setLeetSaving(false);
+  }
+
+  function startEditLeet(entry: LeetEntryRow) {
+    setEditingLeetId(entry.id);
+    setEditLeetForm({
+      category: entry.category,
+      problemTitle: entry.problem_title,
+      problemUrl: entry.problem_url ?? '',
+      solutionFile: entry.solution_file ?? '',
+      difficulty: entry.difficulty,
+      perceivedDifficulty: entry.perceived_difficulty,
+      notes: entry.notes ?? '',
+    });
+  }
+
+  async function saveEditLeetEntry(id: string) {
+    if (!editLeetForm) return;
+    const title = editLeetForm.problemTitle.trim();
+    if (!title) {
+      setErr('LeetCode edit: problem title is required.');
+      return;
+    }
+
+    setLeetSaving(true);
+    setErr(null);
+    const payload = {
+      category: editLeetForm.category,
+      problem_title: title,
+      problem_url: editLeetForm.problemUrl.trim() || null,
+      solution_file: editLeetForm.solutionFile || null,
+      difficulty: editLeetForm.difficulty,
+      perceived_difficulty: editLeetForm.perceivedDifficulty,
+      notes: editLeetForm.notes.trim() || null,
+    };
+
+    const { error } = await supabase
+      .from('study_leetcode_entries')
+      .update(payload)
+      .eq('owner_id', ownerId)
+      .eq('id', id);
+    if (error) {
+      setErr(error.message);
+      setLeetSaving(false);
+      return;
+    }
+
+    setLeetEntries((prev) => prev.map((entry) => (entry.id === id ? { ...entry, ...payload } : entry)));
+    setEditingLeetId(null);
+    setEditLeetForm(null);
+    setLeetSaving(false);
+  }
+
+  async function importDetectedSolutions() {
+    if (!solutionDocs.length) return;
+    setLeetSaving(true);
+    setErr(null);
+
+    const linked = new Set(leetEntries.map((entry) => entry.solution_file).filter(Boolean) as string[]);
+    const now = new Date().toISOString();
+    const toInsert = solutionDocs
+      .filter((doc) => !linked.has(doc.file))
+      .map((doc) => ({
+        owner_id: ownerId,
+        category: doc.category,
+        problem_title: doc.title,
+        problem_url: null as string | null,
+        solution_file: doc.file,
+        difficulty: doc.difficulty,
+        perceived_difficulty: 'medium' as PerceivedDifficulty,
+        notes: 'Imported from htmldocs',
+        solved_at: now.slice(0, 10),
+      }));
+
+    if (!toInsert.length) {
+      setLeetSaving(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('study_leetcode_entries')
+      .insert(toInsert)
+      .select('id,category,problem_title,problem_url,solution_file,difficulty,perceived_difficulty,solved_at,notes');
+    if (error) {
+      setErr(error.message);
+      setLeetSaving(false);
+      return;
+    }
+
+    setLeetEntries((prev) => ([...((data ?? []) as LeetEntryRow[]), ...prev]));
+    setLeetSaving(false);
+  }
+
+  function solutionPreviewUrl(file: string) {
+    return `/api/study-coach/leetcode-solutions/preview?file=${encodeURIComponent(file)}`;
   }
 
   async function deleteLeetEntry(id: string) {
@@ -692,6 +828,35 @@ export default function StudyRoadmapPage() {
               onChange={(event) => setLeetForm((prev) => ({ ...prev, notes: event.target.value }))}
             />
           </div>
+          <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-6">
+            <select
+              className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm md:col-span-4"
+              value={leetForm.solutionFile}
+              onChange={(event) => {
+                const selected = event.target.value;
+                const doc = solutionDocs.find((item) => item.file === selected);
+                setLeetForm((prev) => ({
+                  ...prev,
+                  solutionFile: selected,
+                  category: doc?.category ?? prev.category,
+                  difficulty: doc?.difficulty ?? prev.difficulty,
+                  problemTitle: prev.problemTitle || doc?.title || prev.problemTitle,
+                }));
+              }}
+            >
+              <option value="">Attach HTML solution (optional)</option>
+              {solutionDocs.map((doc) => (
+                <option key={doc.file} value={doc.file}>{doc.file}</option>
+              ))}
+            </select>
+            <button
+              className="rounded-md border border-cyan-500/40 bg-cyan-500/20 px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2"
+              onClick={() => { void importDetectedSolutions(); }}
+              disabled={leetSaving || !solutionDocs.length}
+            >
+              Import detected HTML as solved
+            </button>
+          </div>
 
           <div className="mt-4 grid grid-cols-1 gap-2 lg:grid-cols-2">
             {leetStats.byCategory.map((stat) => {
@@ -737,9 +902,95 @@ export default function StudyRoadmapPage() {
                     Open problem
                   </a>
                 ) : null}
+                {entry.solution_file ? (
+                  <a
+                    className="ml-3 mt-1 inline-block text-xs text-cyan-300 underline"
+                    href={solutionPreviewUrl(entry.solution_file)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Preview solution HTML
+                  </a>
+                ) : null}
                 {entry.notes ? <p className="mt-1 text-xs text-[var(--muted)]">{entry.notes}</p> : null}
+                {editingLeetId === entry.id && editLeetForm ? (
+                  <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-6">
+                    <input
+                      className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs md:col-span-2"
+                      value={editLeetForm.problemTitle}
+                      onChange={(event) => setEditLeetForm((prev) => (prev ? { ...prev, problemTitle: event.target.value } : prev))}
+                    />
+                    <select
+                      className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs"
+                      value={editLeetForm.category}
+                      onChange={(event) => setEditLeetForm((prev) => (prev ? { ...prev, category: event.target.value as LeetCategory } : prev))}
+                    >
+                      {LEET_CATEGORIES.map((category) => (
+                        <option key={category.id} value={category.id}>{category.label}</option>
+                      ))}
+                    </select>
+                    <select
+                      className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs"
+                      value={editLeetForm.difficulty}
+                      onChange={(event) => setEditLeetForm((prev) => (prev ? { ...prev, difficulty: event.target.value as LeetDifficulty } : prev))}
+                    >
+                      <option value="easy">easy</option>
+                      <option value="medium">medium</option>
+                    </select>
+                    <select
+                      className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs"
+                      value={editLeetForm.perceivedDifficulty}
+                      onChange={(event) => setEditLeetForm((prev) => (prev ? { ...prev, perceivedDifficulty: event.target.value as PerceivedDifficulty } : prev))}
+                    >
+                      <option value="easy">felt easy</option>
+                      <option value="medium">felt medium</option>
+                      <option value="hard">felt hard</option>
+                    </select>
+                    <input
+                      className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs"
+                      placeholder="Link"
+                      value={editLeetForm.problemUrl}
+                      onChange={(event) => setEditLeetForm((prev) => (prev ? { ...prev, problemUrl: event.target.value } : prev))}
+                    />
+                    <select
+                      className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs md:col-span-3"
+                      value={editLeetForm.solutionFile}
+                      onChange={(event) => setEditLeetForm((prev) => (prev ? { ...prev, solutionFile: event.target.value } : prev))}
+                    >
+                      <option value="">No HTML solution</option>
+                      {solutionDocs.map((doc) => (
+                        <option key={doc.file} value={doc.file}>{doc.file}</option>
+                      ))}
+                    </select>
+                    <input
+                      className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs md:col-span-3"
+                      placeholder="Notes"
+                      value={editLeetForm.notes}
+                      onChange={(event) => setEditLeetForm((prev) => (prev ? { ...prev, notes: event.target.value } : prev))}
+                    />
+                    <button
+                      className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2 py-1 text-xs font-semibold"
+                      onClick={() => { void saveEditLeetEntry(entry.id); }}
+                    >
+                      Save edit
+                    </button>
+                    <button
+                      className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs font-semibold"
+                      onClick={() => { setEditingLeetId(null); setEditLeetForm(null); }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="mt-2 rounded-md border border-sky-500/40 bg-sky-500/20 px-2 py-1 text-xs font-semibold"
+                    onClick={() => startEditLeet(entry)}
+                  >
+                    Edit
+                  </button>
+                )}
                 <button
-                  className="mt-2 rounded-md border border-rose-500/40 bg-rose-500/20 px-2 py-1 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ml-2 mt-2 rounded-md border border-rose-500/40 bg-rose-500/20 px-2 py-1 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-60"
                   onClick={() => { void deleteLeetEntry(entry.id); }}
                   disabled={leetSaving}
                 >
