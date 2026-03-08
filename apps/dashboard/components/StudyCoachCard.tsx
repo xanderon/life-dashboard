@@ -76,6 +76,12 @@ export function StudyCoachCard() {
           >
             Roadmap
           </Link>
+          <Link
+            className="rounded-md border border-cyan-500/40 bg-cyan-500/20 px-2 py-1 text-xs font-semibold hover:bg-cyan-500/30"
+            href="/study-coach/solutions"
+          >
+            LeetCode HTMLs
+          </Link>
         </div>
       </div>
 

@@ -1534,6 +1534,9 @@ export default function StudyCoachPage() {
                 <Link className="rounded-md border border-indigo-500/40 bg-indigo-500/20 px-2 py-1 text-xs font-semibold" href="/study-coach/roadmap">
                   Roadmap
                 </Link>
+                <Link className="rounded-md border border-cyan-500/40 bg-cyan-500/20 px-2 py-1 text-xs font-semibold" href="/study-coach/solutions">
+                  LeetCode HTMLs
+                </Link>
               </div>
               <h1 className="text-2xl font-bold">Study Coach</h1>
               <p className="mt-1 text-sm text-[var(--muted)]">Ghid clar pe pasi: read → recall → check → feedback</p>
