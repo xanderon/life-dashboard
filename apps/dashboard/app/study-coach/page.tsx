@@ -1,15 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { buildDeadlineSprintTopics, buildInterviewCorePlannerTopics, chapterConceptCount, flattenConcepts, getPrioritizedChapters, INTERVIEW_CORE_CHAPTER_IDS } from '@/lib/studySyllabus';
+import { buildDeadlineSprintTopics, buildInterviewCorePlannerTopics, chapterConceptCount, DSA_SPRINT_PRIORITY, HARD_CONCEPTS, flattenConcepts, getPrioritizedChapters, INTERVIEW_CORE_CHAPTER_IDS } from '@/lib/studySyllabus';
 
 type EnergyMode = 'normal' | 'low' | 'focus';
 type Score = 'pass' | 'hard' | 'fail';
 type GapReason = 'concept_gap' | 'mixed_terms' | 'no_example' | 'no_code';
 type BlockType = 'learn_concept' | 'learn_coding' | 'review_spaced' | 'interleave_drill';
 type CardStatus = 'new' | 'reviewing' | 'mastered';
+type TodayFocusMode = 'auto' | 'dsa_priority' | 'graph_push' | 'oop_push' | 'mixed_hard';
 
 type PlannerInput = {
   date: string;
@@ -89,6 +90,8 @@ const SNAPSHOT_KEY = 'study-coach-state-v2';
 const PHASE1_CHAPTERS = ['oop', 'dsa'];
 const PHASE2_CHAPTERS = ['core-cs-fundamentals', 'database-fundamentals', 'backend-system-basics'];
 const PHASE3_CHAPTERS = ['networking-fundamentals', 'distributed-systems', 'containers-deployment', 'security-fundamentals', 'ai-llm-optional'];
+const TNG_CHIME_URL = 'https://www.trekcore.com/audio/doors/tng_chime_clean.mp3';
+const TNG_CHIME_SLICE_MS = 1050;
 
 const FALLBACK_PLAN: PlannerInput = {
   date: new Date().toISOString().slice(0, 10),
@@ -301,6 +304,91 @@ function normalizeText(input: string) {
   return input.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+function objectiveKey(topicId: string, objective: string) {
+  return `${topicId}::${objective}`.toLowerCase();
+}
+
+function rankObjectivesForSprint(topicId: string, objectives: string[]) {
+  if (topicId !== 'dsa') return objectives;
+  const rank = new Map<string, number>(DSA_SPRINT_PRIORITY.map((item, idx) => [item, idx]));
+  return [...objectives].sort((a, b) => {
+    const ra = rank.has(a) ? rank.get(a)! : Number.MAX_SAFE_INTEGER;
+    const rb = rank.has(b) ? rank.get(b)! : Number.MAX_SAFE_INTEGER;
+    if (ra !== rb) return ra - rb;
+    return 0;
+  });
+}
+
+function prioritizeObjectivesForFocus(
+  topicId: string,
+  objectives: string[],
+  mode: TodayFocusMode,
+  isWeekend: boolean
+) {
+  const hardSet = new Set<string>(HARD_CONCEPTS);
+  const dsaGraphPriority = ['Adjacency List', 'Adjacency Matrix', 'BFS', 'DFS'];
+  const oopPriority = [
+    'Composition vs Inheritance',
+    'Interface vs Abstract Class',
+    'SRP - Single Responsibility Principle',
+    'OCP - Open/Closed Principle',
+    'LSP - Liskov Substitution Principle',
+    'ISP - Interface Segregation Principle',
+    'DIP - Dependency Inversion Principle',
+  ];
+
+  if (topicId === 'dsa') {
+    const graphBoost = mode === 'graph_push' || mode === 'dsa_priority' || (mode === 'auto' && isWeekend);
+    const rank = new Map<string, number>();
+    let idx = 0;
+    if (graphBoost) {
+      dsaGraphPriority.forEach((item) => {
+        rank.set(item, idx);
+        idx += 1;
+      });
+      ['Array / Vector', 'HashMap / Dictionary', 'Stack', 'Queue'].forEach((item) => {
+        if (!rank.has(item)) {
+          rank.set(item, idx);
+          idx += 1;
+        }
+      });
+    } else {
+      DSA_SPRINT_PRIORITY.forEach((item) => {
+        rank.set(item, idx);
+        idx += 1;
+      });
+    }
+
+    return [...objectives].sort((a, b) => {
+      const ra = rank.has(a) ? rank.get(a)! : Number.MAX_SAFE_INTEGER;
+      const rb = rank.has(b) ? rank.get(b)! : Number.MAX_SAFE_INTEGER;
+      if (ra !== rb) return ra - rb;
+      return 0;
+    });
+  }
+
+  if (topicId === 'oop' && mode === 'oop_push') {
+    const rank = new Map<string, number>(oopPriority.map((item, idx) => [item, idx]));
+    return [...objectives].sort((a, b) => {
+      const ra = rank.has(a) ? rank.get(a)! : Number.MAX_SAFE_INTEGER;
+      const rb = rank.has(b) ? rank.get(b)! : Number.MAX_SAFE_INTEGER;
+      if (ra !== rb) return ra - rb;
+      return 0;
+    });
+  }
+
+  if (mode === 'mixed_hard') {
+    return [...objectives].sort((a, b) => {
+      const ha = hardSet.has(a) ? 0 : 1;
+      const hb = hardSet.has(b) ? 0 : 1;
+      if (ha !== hb) return ha - hb;
+      return 0;
+    });
+  }
+
+  return objectives;
+}
+
 export default function StudyCoachPage() {
   const todayIso = new Date().toISOString().slice(0, 10);
   const sprintCutoff = '2026-03-10';
@@ -335,10 +423,193 @@ export default function StudyCoachPage() {
   const [hydratedFromSnapshot, setHydratedFromSnapshot] = useState(false);
   const [nowTs, setNowTs] = useState(() => Date.now());
   const [deadlineSprint, setDeadlineSprint] = useState(() => todayIso <= sprintCutoff);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [todayFocusMode, setTodayFocusMode] = useState<TodayFocusMode>('auto');
+  const [skippedObjectiveKeys, setSkippedObjectiveKeys] = useState<string[]>([]);
+  const autoSprintBootstrapDoneRef = useRef(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const chimeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const chimeStopTimerRef = useRef<number | null>(null);
+  const chimeFailedRef = useRef(false);
+  const chimeBufferRef = useRef<AudioBuffer | null>(null);
 
   const activeBlock = blocks[currentBlockIdx] ?? null;
   const activeStage = activeBlock?.stages[currentStageIdx] ?? null;
   const allConcepts = useMemo(() => flattenConcepts(), []);
+  const isWeekend = useMemo(() => {
+    const day = new Date(`${todayIso}T00:00:00`).getDay();
+    return day === 0 || day === 6;
+  }, [todayIso]);
+
+  const ensureAudioContext = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    const AudioCtor = window.AudioContext
+      ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtor) return null;
+    if (!audioCtxRef.current) audioCtxRef.current = new AudioCtor();
+    return audioCtxRef.current;
+  }, []);
+
+  const playSynthChime = useCallback(() => {
+    if (!soundEnabled || typeof window === 'undefined') return;
+    try {
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        void ctx.resume();
+      }
+      const now = ctx.currentTime;
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(0.0001, now);
+      master.gain.exponentialRampToValueAtTime(0.085, now + 0.03);
+      master.gain.exponentialRampToValueAtTime(0.0001, now + 1.05);
+      master.connect(ctx.destination);
+
+      const tones: Array<{ freq: number; start: number; duration: number; type: OscillatorType; detune?: number }> = [
+        { freq: 784, start: 0.00, duration: 0.28, type: 'triangle', detune: 3 },
+        { freq: 988, start: 0.22, duration: 0.30, type: 'triangle', detune: -2 },
+        { freq: 1175, start: 0.50, duration: 0.32, type: 'sine', detune: 2 },
+        { freq: 988, start: 0.78, duration: 0.24, type: 'sine', detune: -1 },
+      ];
+
+      tones.forEach((tone) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const t0 = now + tone.start;
+        const t1 = t0 + tone.duration;
+        osc.type = tone.type;
+        osc.frequency.setValueAtTime(tone.freq, t0);
+        osc.detune.setValueAtTime(tone.detune ?? 0, t0);
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(1.0, t0 + 0.025);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t1);
+        osc.connect(gain);
+        gain.connect(master);
+        osc.start(t0);
+        osc.stop(t1 + 0.02);
+      });
+    } catch {
+      // noop
+    }
+  }, [ensureAudioContext, soundEnabled]);
+
+  const playStageDing = useCallback(() => {
+    if (!soundEnabled || typeof window === 'undefined') return;
+    const ctx = ensureAudioContext();
+    if (chimeBufferRef.current && ctx) {
+      try {
+        if (ctx.state === 'suspended') {
+          void ctx.resume();
+        }
+        const source = ctx.createBufferSource();
+        source.buffer = chimeBufferRef.current;
+
+        const high = ctx.createBiquadFilter();
+        high.type = 'highpass';
+        high.frequency.value = 220;
+        high.Q.value = 0.8;
+
+        const low = ctx.createBiquadFilter();
+        low.type = 'lowpass';
+        low.frequency.value = 3600;
+        low.Q.value = 0.7;
+
+        const comp = ctx.createDynamicsCompressor();
+        comp.threshold.value = -22;
+        comp.knee.value = 8;
+        comp.ratio.value = 2.4;
+        comp.attack.value = 0.003;
+        comp.release.value = 0.18;
+
+        const gain = ctx.createGain();
+        const now = ctx.currentTime;
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.75, now + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.95);
+
+        source.connect(high);
+        high.connect(low);
+        low.connect(comp);
+        comp.connect(gain);
+        gain.connect(ctx.destination);
+        source.start(now, 0, Math.min(0.98, chimeBufferRef.current.duration));
+        return;
+      } catch {
+        // fallback below
+      }
+    }
+
+    if (chimeFailedRef.current) {
+      playSynthChime();
+      return;
+    }
+
+    const audio = chimeAudioRef.current;
+
+    if (audio) {
+      try {
+        if (chimeStopTimerRef.current) {
+          window.clearTimeout(chimeStopTimerRef.current);
+          chimeStopTimerRef.current = null;
+        }
+
+        audio.pause();
+        if (audio.readyState >= 1) {
+          // Avoid InvalidStateError when metadata is not loaded yet.
+          audio.currentTime = 0;
+        }
+        const playPromise = audio.play();
+        if (playPromise) {
+          playPromise.catch(() => {
+            chimeFailedRef.current = true;
+            playSynthChime();
+          });
+        }
+
+        chimeStopTimerRef.current = window.setTimeout(() => {
+          audio.pause();
+          audio.currentTime = 0;
+        }, TNG_CHIME_SLICE_MS);
+        return;
+      } catch {
+        chimeFailedRef.current = true;
+        playSynthChime();
+        return;
+      }
+    }
+  }, [ensureAudioContext, playSynthChime, soundEnabled]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const audio = new Audio(TNG_CHIME_URL);
+    audio.preload = 'auto';
+    audio.volume = 0.9;
+    chimeAudioRef.current = audio;
+
+    // Decode a clean, processable buffer so we can filter buzz and shape envelope.
+    const ctx = ensureAudioContext();
+    if (ctx) {
+      fetch(TNG_CHIME_URL)
+        .then((res) => res.arrayBuffer())
+        .then((buf) => ctx.decodeAudioData(buf.slice(0)))
+        .then((decoded) => {
+          chimeBufferRef.current = decoded;
+        })
+        .catch(() => {
+          // keep HTMLAudio + synth fallbacks
+        });
+    }
+
+    return () => {
+      if (chimeStopTimerRef.current) {
+        window.clearTimeout(chimeStopTimerRef.current);
+        chimeStopTimerRef.current = null;
+      }
+      audio.pause();
+      chimeAudioRef.current = null;
+      chimeBufferRef.current = null;
+    };
+  }, [ensureAudioContext]);
 
   const blocksRemaining = useMemo(() => Math.max(0, blocks.length - currentBlockIdx), [blocks.length, currentBlockIdx]);
   const hardStopMinutesLeft = useMemo(() => {
@@ -453,6 +724,10 @@ export default function StudyCoachPage() {
 
   const inRecallFocus = Boolean(activeStage?.noNotes && runState === 'running' && focusAssist);
   const recommendedChapterIds = useMemo(() => {
+    if (deadlineSprint && todayIso <= sprintCutoff) {
+      return PHASE1_CHAPTERS;
+    }
+
     const prioritized = getPrioritizedChapters();
     const chapterMastery = (chapterId: string) => {
       const chapterConcepts = allConcepts.filter((concept) => concept.chapterId === chapterId);
@@ -472,7 +747,7 @@ export default function StudyCoachPage() {
       .map((chapter) => chapter.id);
     const phase3Top = PHASE3_CHAPTERS.slice(0, 2);
     return [...core, ...phase3Top];
-  }, [allConcepts, conceptProgress]);
+  }, [allConcepts, conceptProgress, deadlineSprint, sprintCutoff, todayIso]);
 
   const timelineRows = useMemo(() => {
     const rows: Array<{
@@ -645,6 +920,9 @@ export default function StudyCoachPage() {
         hardStopAutoMoved: boolean;
         daySummary: DaySummary | null;
         deadlineSprint: boolean;
+        soundEnabled?: boolean;
+        todayFocusMode?: TodayFocusMode;
+        skippedObjectiveKeys?: string[];
       };
 
       if (parsed.plannerInput.date !== todayIso) {
@@ -667,6 +945,9 @@ export default function StudyCoachPage() {
       setHardStopAutoMoved(parsed.hardStopAutoMoved);
       setDaySummary(parsed.daySummary);
       setDeadlineSprint(typeof parsed.deadlineSprint === 'boolean' ? parsed.deadlineSprint : todayIso <= sprintCutoff);
+      if (typeof parsed.soundEnabled === 'boolean') setSoundEnabled(parsed.soundEnabled);
+      if (parsed.todayFocusMode) setTodayFocusMode(parsed.todayFocusMode);
+      if (Array.isArray(parsed.skippedObjectiveKeys)) setSkippedObjectiveKeys(parsed.skippedObjectiveKeys);
 
       const elapsed = Math.max(0, Math.floor((Date.now() - new Date(parsed.savedAt).getTime()) / 1000));
       const remaining = Math.max(0, parsed.stageSecondsLeft - elapsed);
@@ -700,9 +981,12 @@ export default function StudyCoachPage() {
       hardStopAutoMoved,
       daySummary,
       deadlineSprint,
+      soundEnabled,
+      todayFocusMode,
+      skippedObjectiveKeys,
     };
     window.localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot));
-  }, [adjustNotice, answerText, blocks, currentBlockIdx, currentStageIdx, daySummary, deadlineSprint, energyMode, focusAssist, gapReasons, hardStopAutoMoved, hydratedFromSnapshot, plannerInput, rawJson, runState, score, stageSecondsLeft, tomorrowQueue]);
+  }, [adjustNotice, answerText, blocks, currentBlockIdx, currentStageIdx, daySummary, deadlineSprint, energyMode, focusAssist, gapReasons, hardStopAutoMoved, hydratedFromSnapshot, plannerInput, rawJson, runState, score, skippedObjectiveKeys, soundEnabled, stageSecondsLeft, todayFocusMode, tomorrowQueue]);
 
   useEffect(() => {
     if (!activeStage || runState !== 'running') return;
@@ -710,6 +994,7 @@ export default function StudyCoachPage() {
     if (stageSecondsLeft <= 0) {
       if (activeBlock && currentStageIdx < activeBlock.stages.length - 1) {
         const nextIdx = currentStageIdx + 1;
+        playStageDing();
         setCurrentStageIdx(nextIdx);
         setStageSecondsLeft(activeBlock.stages[nextIdx].minutes * 60);
         return;
@@ -723,7 +1008,7 @@ export default function StudyCoachPage() {
     }, 1000);
 
     return () => window.clearInterval(id);
-  }, [activeBlock, activeStage, currentStageIdx, runState, stageSecondsLeft]);
+  }, [activeBlock, activeStage, currentStageIdx, playStageDing, runState, stageSecondsLeft]);
 
   const resetTimerFromCurrentStage = useCallback(() => {
     if (!activeStage) return;
@@ -821,6 +1106,39 @@ export default function StudyCoachPage() {
     setAdjustNotice('Current block moved to later.');
   };
 
+  const handleSkipToTomorrow = () => {
+    if (!activeBlock) return;
+    const next = [...blocks];
+    const [block] = next.splice(currentBlockIdx, 1);
+    if (!block) return;
+    setTomorrowQueue((prev) => [...prev, { ...block, movedToTomorrow: true }]);
+    setBlocks(next);
+    setCurrentStageIdx(0);
+    if (currentBlockIdx >= next.length) {
+      setCurrentBlockIdx(next.length);
+      setRunState(next.length ? 'idle' : 'done');
+    } else {
+      setRunState('idle');
+    }
+    setAdjustNotice(`Block moved to tomorrow: ${block.objective}`);
+  };
+
+  const handleSkipObjectiveForNextBatch = () => {
+    if (!activeBlock) return;
+    const key = objectiveKey(activeBlock.topicId, activeBlock.objective);
+    setSkippedObjectiveKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
+    handleSkip();
+    setAdjustNotice(`Objective "${activeBlock.objective}" moved later (next batch).`);
+  };
+
+  const handleSkipObjectiveToTomorrow = () => {
+    if (!activeBlock) return;
+    const key = objectiveKey(activeBlock.topicId, activeBlock.objective);
+    setSkippedObjectiveKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
+    handleSkipToTomorrow();
+    setAdjustNotice(`Objective "${activeBlock.objective}" skipped for tomorrow.`);
+  };
+
   const handleLongBreak = () => {
     setRunState('paused');
     applyAdaptiveReschedule(15);
@@ -845,6 +1163,7 @@ export default function StudyCoachPage() {
     if (!activeBlock) return;
     if (currentStageIdx < activeBlock.stages.length - 1) {
       const next = currentStageIdx + 1;
+      playStageDing();
       setCurrentStageIdx(next);
       setStageSecondsLeft(activeBlock.stages[next].minutes * 60);
       setRunState('running');
@@ -1016,8 +1335,11 @@ export default function StudyCoachPage() {
       return;
     }
 
+    // Ultimul bloc a fost trimis: mutam cursorul dupa lista, ca sa nu ramana blocul "active".
+    setCurrentBlockIdx(blocks.length);
+    setCurrentStageIdx(0);
     setRunState('done');
-    setAdjustNotice('Plan completed for today.');
+    setAdjustNotice('Done for now. Plan completed for today. Use Auto plan by progress for a new batch.');
   };
 
   const importJson = () => {
@@ -1052,10 +1374,20 @@ export default function StudyCoachPage() {
     void ensureTopics(plannerInput.topics);
   };
 
-  const applyRoadmapAutoPlan = () => {
+  const applyRoadmapAutoPlan = useCallback(() => {
     const topicBase = deadlineSprint ? buildDeadlineSprintTopics() : buildInterviewCorePlannerTopics(5);
     const prioritized = topicBase.filter((topic) => recommendedChapterIds.includes(topic.id));
     const denominator = (prioritized.length * (prioritized.length + 1)) / 2 || 1;
+    const baseWeights = prioritized.map((_, idx) => Number(((prioritized.length - idx) / denominator).toFixed(4)));
+    const focusMultiplier = (topicId: string) => {
+      if (todayFocusMode !== 'dsa_priority') return 1;
+      if (topicId === 'dsa') return 3;
+      if (topicId === 'oop') return 0.45;
+      return 0.9;
+    };
+    const weighted = prioritized.map((topic, idx) => baseWeights[idx] * focusMultiplier(topic.id));
+    const weightedSum = weighted.reduce((sum, value) => sum + value, 0) || 1;
+
     const topics = prioritized.map((topic, idx) => {
       const chapter = getPrioritizedChapters().find((item) => item.id === topic.id);
       if (!chapter) return topic;
@@ -1071,13 +1403,30 @@ export default function StudyCoachPage() {
       const reviewTake = Math.min(review.length, Math.max(2, Math.ceil(weak.length * 0.35)));
       const mixed = [...weak.map((c) => c.conceptLabel), ...review.slice(0, reviewTake).map((c) => c.conceptLabel)];
       const objectives = [...new Set(mixed.length ? mixed : chapterConcepts.map((concept) => concept.conceptLabel))];
+      const mergedObjectives = [...objectives, ...topic.objectives.filter((objective) => !objectives.includes(objective))];
+
+      let plannedObjectives = prioritizeObjectivesForFocus(
+        topic.id,
+        rankObjectivesForSprint(topic.id, mergedObjectives),
+        todayFocusMode,
+        isWeekend
+      ).sort((a, b) => {
+        const sa = skippedObjectiveKeys.includes(objectiveKey(topic.id, a)) ? 1 : 0;
+        const sb = skippedObjectiveKeys.includes(objectiveKey(topic.id, b)) ? 1 : 0;
+        if (sa !== sb) return sa - sb;
+        return 0;
+      });
+
+      if (todayFocusMode === 'dsa_priority' && topic.id === 'oop') {
+        plannedObjectives = plannedObjectives.slice(0, Math.min(8, plannedObjectives.length));
+      }
 
       return {
         id: topic.id,
         name: topic.name,
-        weight: Number(((prioritized.length - idx) / denominator).toFixed(2)),
+        weight: Number((weighted[idx] / weightedSum).toFixed(2)),
         modes: ['explain_like_interview', 'blank_page', 'flash_prompts'],
-        objectives: [...objectives, ...topic.objectives.filter((objective) => !objectives.includes(objective))],
+        objectives: plannedObjectives,
       };
     });
     const updated: PlannerInput = {
@@ -1091,11 +1440,11 @@ export default function StudyCoachPage() {
       topics,
       blocks: {
         ...plannerInput.blocks,
-        target_count: Math.max(plannerInput.blocks.target_count, deadlineSprint ? 10 : 8),
+        target_count: Math.max(plannerInput.blocks.target_count, deadlineSprint ? (todayFocusMode === 'dsa_priority' ? 12 : 10) : 8),
         templates: deadlineSprint ? [
-          { type: 'learn_concept', min: 4, max: 6 },
+          { type: 'learn_concept', min: todayFocusMode === 'dsa_priority' ? 5 : 4, max: todayFocusMode === 'dsa_priority' ? 7 : 6 },
           { type: 'learn_coding', min: 1, max: 2 },
-          { type: 'review_spaced', min: 3, max: 4 },
+          { type: 'review_spaced', min: todayFocusMode === 'dsa_priority' ? 4 : 3, max: todayFocusMode === 'dsa_priority' ? 5 : 4 },
         ] : [
           { type: 'learn_concept', min: 3, max: 5 },
           { type: 'learn_coding', min: 1, max: 2 },
@@ -1112,9 +1461,23 @@ export default function StudyCoachPage() {
     setTomorrowQueue([]);
     setHardStopAutoMoved(false);
     setAdjustNotice(deadlineSprint
-      ? 'Deadline sprint plan: heavy concepts first + spaced repetition interleaved.'
+      ? `Deadline sprint plan (${todayFocusMode}): heavy concepts first + spaced repetition interleaved.`
       : 'Auto-plan generated from roadmap priority and current mastery.');
-  };
+  }, [allConcepts, conceptProgress, deadlineSprint, energyMode, isWeekend, plannerInput, recommendedChapterIds, skippedObjectiveKeys, todayFocusMode, todayTopicSessions]);
+
+  useEffect(() => {
+    if (!(deadlineSprint && todayIso <= sprintCutoff)) return;
+    if (autoSprintBootstrapDoneRef.current) return;
+    if (todayDone > 0) return;
+    if (runState !== 'idle') return;
+
+    const current = [...plannerInput.topics.map((topic) => topic.id)].sort().join('|');
+    const target = [...recommendedChapterIds].sort().join('|');
+    if (current === target) return;
+
+    autoSprintBootstrapDoneRef.current = true;
+    applyRoadmapAutoPlan();
+  }, [applyRoadmapAutoPlan, deadlineSprint, plannerInput.topics, recommendedChapterIds, runState, sprintCutoff, todayDone, todayIso]);
 
   useEffect(() => {
     if (!ownerId) return;
@@ -1219,12 +1582,25 @@ export default function StudyCoachPage() {
             <button className="rounded-md border border-sky-500/40 bg-sky-500/20 px-3 py-1.5 text-sm font-semibold" onClick={handleResume}>Resume</button>
             <button className="rounded-md border border-violet-500/40 bg-violet-500/20 px-3 py-1.5 text-sm font-semibold" onClick={handleLongBreak}>Long break</button>
             <button className="rounded-md border border-slate-500/40 bg-slate-500/20 px-3 py-1.5 text-sm font-semibold" onClick={handleSkip}>Move block later</button>
+            <button className="rounded-md border border-orange-500/40 bg-orange-500/20 px-3 py-1.5 text-sm font-semibold" onClick={handleSkipToTomorrow}>Skip to tomorrow</button>
             <button className="rounded-md border border-rose-500/40 bg-rose-500/20 px-3 py-1.5 text-sm font-semibold" onClick={handleEndDay}>End day</button>
             <button
               className={`rounded-md border px-3 py-1.5 text-sm font-semibold ${focusAssist ? 'border-cyan-400/60 bg-cyan-500/20' : 'border-[var(--border)] bg-[var(--panel-2)]'}`}
               onClick={() => setFocusAssist((prev) => !prev)}
             >
               Focus mode {focusAssist ? 'ON' : 'OFF'}
+            </button>
+            <button
+              className={`rounded-md border px-3 py-1.5 text-sm font-semibold ${soundEnabled ? 'border-emerald-400/60 bg-emerald-500/20' : 'border-[var(--border)] bg-[var(--panel-2)]'}`}
+              onClick={() => setSoundEnabled((prev) => !prev)}
+            >
+              Ding sound {soundEnabled ? 'ON' : 'OFF'}
+            </button>
+            <button
+              className="rounded-md border border-cyan-400/60 bg-cyan-500/20 px-3 py-1.5 text-sm font-semibold"
+              onClick={playStageDing}
+            >
+              Test ding
             </button>
             <button className="rounded-md border border-indigo-500/40 bg-indigo-500/20 px-3 py-1.5 text-sm font-semibold" onClick={applyRoadmapAutoPlan}>
               Auto plan by progress
@@ -1235,6 +1611,17 @@ export default function StudyCoachPage() {
             >
               Deadline sprint {deadlineSprint ? 'ON' : 'OFF'}
             </button>
+            <select
+              className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1.5 text-sm"
+              value={todayFocusMode}
+              onChange={(event) => setTodayFocusMode(event.target.value as TodayFocusMode)}
+            >
+              <option value="auto">Today focus: Auto</option>
+              <option value="dsa_priority">Today focus: DSA heavy (recommended)</option>
+              <option value="graph_push">Today focus: Graph push (BFS/DFS)</option>
+              <option value="oop_push">Today focus: OOP/SOLID push</option>
+              <option value="mixed_hard">Today focus: Mixed hardest</option>
+            </select>
             <Link className="rounded-md border border-sky-500/40 bg-sky-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach/roadmap">
               Open roadmap
             </Link>
@@ -1347,6 +1734,18 @@ export default function StudyCoachPage() {
                     </div>
                   ) : null}
 
+                  <button
+                    className="mt-4 rounded-md border border-slate-500/40 bg-slate-500/20 px-3 py-1.5 text-sm font-semibold"
+                    onClick={handleSkipObjectiveForNextBatch}
+                  >
+                    Skip objective (next batch)
+                  </button>
+                  <button
+                    className="ml-2 mt-4 rounded-md border border-orange-500/40 bg-orange-500/20 px-3 py-1.5 text-sm font-semibold"
+                    onClick={handleSkipObjectiveToTomorrow}
+                  >
+                    Skip objective (tomorrow)
+                  </button>
                   <button
                     className="mt-4 rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-1.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!score}

@@ -80,7 +80,19 @@ export const STUDY_CHAPTERS: StudyChapter[] = [
       {
         id: 'backend-patterns',
         title: 'Common Backend Design Patterns',
-        concepts: ['Repository Pattern', 'Service Layer Pattern', 'Factory Pattern', 'Dependency Injection', 'Registry Pattern'],
+        concepts: [
+          'Dependency Injection',
+          'Repository Pattern',
+          'Service Layer Pattern',
+          'Factory Pattern',
+          'Strategy Pattern',
+          'Singleton',
+          'Observer Pattern',
+          'Adapter Pattern',
+          'Decorator Pattern',
+          'Facade Pattern',
+          'Registry Pattern',
+        ],
       },
     ],
   },
@@ -403,6 +415,16 @@ export const TOP_CRITICAL_CONCEPTS = [
   'REST principles',
   'Idempotency',
   'Why caching exists',
+  'Dependency Injection',
+  'Repository Pattern',
+  'Service Layer Pattern',
+  'Factory Pattern',
+  'Strategy Pattern',
+  'Singleton',
+  'Observer Pattern',
+  'Adapter Pattern',
+  'Decorator Pattern',
+  'Facade Pattern',
 ] as const;
 
 export const HARD_CONCEPTS = [
@@ -424,6 +446,39 @@ export const HARD_CONCEPTS = [
   'Serializable',
   'Idempotency',
   'Cache invalidation problem',
+] as const;
+
+export const DSA_SPRINT_PRIORITY = [
+  'Array / Vector',
+  'HashMap / Dictionary',
+  'Stack',
+  'Queue',
+  'Adjacency List',
+  'Adjacency Matrix',
+  'BFS',
+  'DFS',
+  'Big-O Notation',
+  'Time Complexity',
+  'Space Complexity',
+  'Time vs Space Tradeoffs',
+  'Edge Cases / Boundary Conditions',
+  'Off-by-one',
+  'Empty inputs',
+  'n = 1',
+] as const;
+
+export const BACKEND_PATTERN_INTERVIEW_PRIORITY = [
+  'Dependency Injection',
+  'Repository Pattern',
+  'Service Layer Pattern',
+  'Factory Pattern',
+  'Strategy Pattern',
+  'Singleton',
+  'Observer Pattern',
+  'Adapter Pattern',
+  'Decorator Pattern',
+  'Facade Pattern',
+  'Registry Pattern',
 ] as const;
 
 export function flattenConcepts(chapterIds?: string[]) {
@@ -479,7 +534,18 @@ export function buildInterviewCorePlannerTopics(chapterLimit = 5) {
     const allConcepts = chapter.subchapters.flatMap((subchapter) => subchapter.concepts);
     const critical = allConcepts.filter((concept) => criticalSet.has(concept));
     const remaining = allConcepts.filter((concept) => !criticalSet.has(concept));
-    const objectives = [...critical, ...remaining];
+    let objectives = [...critical, ...remaining];
+
+    if (chapter.id === 'oop') {
+      const rank = new Map<string, number>(BACKEND_PATTERN_INTERVIEW_PRIORITY.map((item, index) => [item, index]));
+      objectives = [...objectives].sort((a, b) => {
+        const ra = rank.has(a) ? rank.get(a)! : Number.MAX_SAFE_INTEGER;
+        const rb = rank.has(b) ? rank.get(b)! : Number.MAX_SAFE_INTEGER;
+        if (ra !== rb) return ra - rb;
+        return 0;
+      });
+    }
+
     return {
       id: chapter.id,
       name: chapter.title,
@@ -503,6 +569,7 @@ export function buildDeadlineSprintTopics() {
     .sort((a, b) => chapterOrder.indexOf(a.id) - chapterOrder.indexOf(b.id));
   const hardSet = new Set<string>(HARD_CONCEPTS);
   const criticalSet = new Set<string>(TOP_CRITICAL_CONCEPTS);
+  const backendPatternRank = new Map<string, number>(BACKEND_PATTERN_INTERVIEW_PRIORITY.map((item, index) => [item, index]));
   const total = chapters.length || 1;
 
   return chapters.map((chapter, idx) => {
@@ -510,13 +577,33 @@ export function buildDeadlineSprintTopics() {
     const hard = allConcepts.filter((concept) => hardSet.has(concept));
     const critical = allConcepts.filter((concept) => !hardSet.has(concept) && criticalSet.has(concept));
     const rest = allConcepts.filter((concept) => !hardSet.has(concept) && !criticalSet.has(concept));
+    let objectives = [...hard, ...critical, ...rest];
+
+    if (chapter.id === 'dsa') {
+      const rank = new Map<string, number>(DSA_SPRINT_PRIORITY.map((item, idx) => [item, idx]));
+      objectives = [...objectives].sort((a, b) => {
+        const ra = rank.has(a) ? rank.get(a)! : Number.MAX_SAFE_INTEGER;
+        const rb = rank.has(b) ? rank.get(b)! : Number.MAX_SAFE_INTEGER;
+        if (ra !== rb) return ra - rb;
+        return 0;
+      });
+    }
+
+    if (chapter.id === 'oop') {
+      objectives = [...objectives].sort((a, b) => {
+        const ra = backendPatternRank.has(a) ? backendPatternRank.get(a)! : Number.MAX_SAFE_INTEGER;
+        const rb = backendPatternRank.has(b) ? backendPatternRank.get(b)! : Number.MAX_SAFE_INTEGER;
+        if (ra !== rb) return ra - rb;
+        return 0;
+      });
+    }
 
     return {
       id: chapter.id,
       name: chapter.title,
       weight: Number(((total - idx) / ((total * (total + 1)) / 2)).toFixed(2)),
       modes: ['explain_like_interview', 'blank_page', 'flash_prompts'],
-      objectives: [...hard, ...critical, ...rest],
+      objectives,
     };
   });
 }
