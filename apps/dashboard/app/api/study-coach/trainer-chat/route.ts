@@ -55,6 +55,12 @@ function isCompletionMessage(userText: string) {
   return completionTerms.some((t) => userText.includes(t));
 }
 
+function mentionsSrpDone(userText: string) {
+  const mentionsSrp = userText.includes('srp') || userText.includes('single responsibility');
+  const doneTone = userText.includes('am facut') || userText.includes('am terminat') || userText.includes('azi');
+  return mentionsSrp && doneTone;
+}
+
 function localFallback(payload: ChatPayload): ChatResult {
   const userText = latestUserMessage(payload);
   const lastCoachText = [...payload.messages].reverse().find((m) => m.role === 'coach')?.text.toLowerCase() ?? '';
@@ -66,6 +72,44 @@ function localFallback(payload: ChatPayload): ChatResult {
   const activeTask = payload.stateSummary.tasks.find((t) => t.status === 'in_progress');
   const topTodoDealBreaker = payload.stateSummary.tasks.find((t) => t.status === 'todo' && t.type === 'deal-breaker');
   const confidence = detectConfidence(userText);
+
+  if (mentionsSrpDone(userText) && srp) {
+    const srpPendingTasks = payload.stateSummary.tasks.filter(
+      (t) => t.conceptId === srp.id && t.status !== 'done'
+    );
+    const nextDealBreaker = payload.stateSummary.concepts
+      .filter((c) => c.dealBreaker && c.id !== srp.id)
+      .sort((a, b) => a.mastery - b.mastery)[0];
+
+    const actions: Action[] = [
+      ...srpPendingTasks.map((t) => ({ type: 'mark_task', taskId: t.id, status: 'done' as const })),
+      { type: 'schedule_review', conceptId: srp.id, daysAhead: 2 },
+    ];
+
+    if (nextDealBreaker) {
+      actions.push({ type: 'focus_concept', conceptId: nextDealBreaker.id });
+      const hasTaskOnNext = payload.stateSummary.tasks.some(
+        (t) => t.conceptId === nextDealBreaker.id && t.status !== 'done'
+      );
+      if (!hasTaskOnNext) {
+        actions.push({
+          type: 'create_task',
+          title: `Active recall sprint: ${nextDealBreaker.name}`,
+          conceptId: nextDealBreaker.id,
+          estimateMin: 20,
+          taskType: 'deal-breaker',
+        });
+      }
+    }
+
+    return {
+      mode: 'local-fallback',
+      reply: nextDealBreaker
+        ? `Perfect, marcam SRP ca facut azi si il punem la review peste 2 zile. Urmatorul focus: ${nextDealBreaker.name}, sprint 20-25 min.`
+        : 'Perfect, marcam SRP ca facut azi si il punem la review peste 2 zile. Esti ok pe deal-breakers pentru moment.',
+      actions,
+    };
+  }
 
   if (isCompletionMessage(userText) && activeTask) {
     const actions: Action[] = [{ type: 'mark_task', taskId: activeTask.id, status: 'done' }];
