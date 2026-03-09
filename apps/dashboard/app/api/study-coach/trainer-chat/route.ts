@@ -32,6 +32,29 @@ function latestUserMessage(payload: ChatPayload) {
   return '';
 }
 
+function detectConfidence(userText: string): number | null {
+  const numMatch = userText.match(/\b(\d{1,3})\b/);
+  if (numMatch) {
+    const n = Number(numMatch[1]);
+    if (Number.isFinite(n)) return Math.max(0, Math.min(100, n));
+  }
+  if (userText.includes('confidence high') || userText.includes('incredere mare') || userText.includes('high confidence')) {
+    return 85;
+  }
+  if (userText.includes('confidence medium') || userText.includes('incredere medie')) {
+    return 65;
+  }
+  if (userText.includes('confidence low') || userText.includes('incredere mica')) {
+    return 40;
+  }
+  return null;
+}
+
+function isCompletionMessage(userText: string) {
+  const completionTerms = ['am facut', 'gata', 'am terminat', 'done', 'rezolvat', 'finished'];
+  return completionTerms.some((t) => userText.includes(t));
+}
+
 function localFallback(payload: ChatPayload): ChatResult {
   const userText = latestUserMessage(payload);
   const weakestDealBreaker = payload.stateSummary.concepts
@@ -39,6 +62,54 @@ function localFallback(payload: ChatPayload): ChatResult {
     .sort((a, b) => a.mastery - b.mastery)[0];
 
   const srp = payload.stateSummary.concepts.find((c) => c.id === 'srp');
+  const activeTask = payload.stateSummary.tasks.find((t) => t.status === 'in_progress');
+  const topTodoDealBreaker = payload.stateSummary.tasks.find((t) => t.status === 'todo' && t.type === 'deal-breaker');
+  const confidence = detectConfidence(userText);
+
+  if (isCompletionMessage(userText) && activeTask) {
+    const actions: Action[] = [{ type: 'mark_task', taskId: activeTask.id, status: 'done' }];
+    if (topTodoDealBreaker && topTodoDealBreaker.id !== activeTask.id) {
+      actions.push({ type: 'mark_task', taskId: topTodoDealBreaker.id, status: 'in_progress' });
+    }
+    return {
+      mode: 'local-fallback',
+      reply: topTodoDealBreaker
+        ? `Perfect, am marcat \"${activeTask.title}\" ca done. Urmatorul pas: intra pe \"${topTodoDealBreaker.title}\" pentru 20-25 min.`
+        : `Perfect, am marcat \"${activeTask.title}\" ca done. Urmatorul pas: da-mi urmatorul concept pe care vrei sa-l atacam.`,
+      actions,
+    };
+  }
+
+  if (confidence !== null && confidence >= 75 && activeTask) {
+    return {
+      mode: 'local-fallback',
+      reply: `Confidence ${confidence}% e bun. Confirmi sa marchez \"${activeTask.title}\" ca done? Scrie: \"da, marcheaza done\".`,
+      actions: [],
+    };
+  }
+
+  if (userText.includes('marcheaza done') || userText.includes('mark done')) {
+    if (activeTask) {
+      return {
+        mode: 'local-fallback',
+        reply: `Done. Am marcat \"${activeTask.title}\" si te mut pe urmatorul task relevant.`,
+        actions: [
+          { type: 'mark_task', taskId: activeTask.id, status: 'done' },
+          ...(topTodoDealBreaker ? [{ type: 'mark_task' as const, taskId: topTodoDealBreaker.id, status: 'in_progress' as const }] : []),
+        ],
+      };
+    }
+  }
+
+  if (userText.includes('ce urmeaza') || userText.includes('what next') || userText.includes('next?')) {
+    if (topTodoDealBreaker) {
+      return {
+        mode: 'local-fallback',
+        reply: `Urmatorul pas: \"${topTodoDealBreaker.title}\" (20-25 min), apoi check-in cu definitie + exemplu + confidence.`,
+        actions: [{ type: 'mark_task', taskId: topTodoDealBreaker.id, status: 'in_progress' }],
+      };
+    }
+  }
 
   if (userText.includes('ce sa fac') && (userText.includes('srp') || userText.includes('single responsibility'))) {
     return {
@@ -150,6 +221,8 @@ export async function POST(request: Request) {
       'Always react directly to the latest user message in your first sentence.',
       'If user says they want to finish another task first, acknowledge and set a follow-up checkpoint.',
       'If user asks what to do for a concept, give concrete numbered steps, not generic advice.',
+      'If user says they finished a task or gives high confidence, propose marking task done and move to next concrete task.',
+      'If user asks "ce urmeaza", answer with one concrete next sprint and expected output.',
       'If user is behind, say it directly and propose one concrete sprint now.',
       'Return strict JSON with keys: reply (string), actions (array).',
       'Action types allowed: focus_concept, create_task, mark_task, schedule_review.',
