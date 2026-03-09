@@ -1534,6 +1534,9 @@ export default function StudyCoachPage() {
                 <Link className="rounded-md border border-indigo-500/40 bg-indigo-500/20 px-2 py-1 text-xs font-semibold" href="/study-coach/roadmap">
                   Roadmap
                 </Link>
+                <Link className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2 py-1 text-xs font-semibold" href="/study-coach/trainer">
+                  Trainer
+                </Link>
                 <Link className="rounded-md border border-cyan-500/40 bg-cyan-500/20 px-2 py-1 text-xs font-semibold" href="/study-coach/solutions">
                   LeetCode HTMLs
                 </Link>
@@ -1627,6 +1630,9 @@ export default function StudyCoachPage() {
             </select>
             <Link className="rounded-md border border-sky-500/40 bg-sky-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach/roadmap">
               Open roadmap
+            </Link>
+            <Link className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach/trainer">
+              Open trainer
             </Link>
           </div>
 

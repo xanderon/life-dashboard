@@ -712,6 +712,9 @@ export default function StudyRoadmapPage() {
                 <Link className="rounded-md border border-cyan-500/40 bg-cyan-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach/solutions">
                   LeetCode HTMLs
                 </Link>
+                <Link className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach/trainer">
+                  Trainer
+                </Link>
               </div>
               <h1 className="text-2xl font-bold">Study Roadmap</h1>
               <p className="mt-1 text-sm text-[var(--muted)]">Capitole ordonate dupa probabilitate de interviu</p>

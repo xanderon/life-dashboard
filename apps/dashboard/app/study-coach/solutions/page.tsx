@@ -104,6 +104,7 @@ export default function StudyCoachSolutionsPage() {
               <Link className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-sm font-semibold" href="/">Dashboard</Link>
               <Link className="rounded-md border border-sky-500/40 bg-sky-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach">Today</Link>
               <Link className="rounded-md border border-indigo-500/40 bg-indigo-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach/roadmap">Roadmap</Link>
+              <Link className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach/trainer">Trainer</Link>
             </div>
             <button
               className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-sm font-semibold"

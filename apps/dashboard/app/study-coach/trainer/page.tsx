@@ -1,0 +1,412 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+
+type TaskStatus = 'todo' | 'in_progress' | 'done';
+
+type Concept = {
+  id: string;
+  name: string;
+  mastery: number;
+  dealBreaker: boolean;
+  lastReviewedAt: string | null;
+  nextReview: string;
+};
+
+type Task = {
+  id: string;
+  title: string;
+  conceptId: string;
+  status: TaskStatus;
+  estimateMin: number;
+  type: 'new' | 'recall' | 'deal-breaker' | 'nice';
+};
+
+type TrainerState = {
+  schedule: Record<string, Array<[string, string]>>;
+  concepts: Concept[];
+  tasks: Task[];
+  meta: {
+    lastStudyAt: string | null;
+  };
+};
+
+type Feedback = {
+  mode: 'openai' | 'local-fallback';
+  verdict: 'all_good' | 'mixed' | 'needs_work';
+  strengths: string[];
+  gaps: string[];
+  nextActions: string[];
+};
+
+const STORAGE_KEY = 'study-coach-trainer-v1';
+const TZ = 'Europe/Bucharest';
+
+const DEFAULT_STATE: TrainerState = {
+  schedule: {
+    monday: [['09:00', '21:30']],
+    tuesday: [['16:00', '22:00']],
+    wednesday: [['16:00', '22:00']],
+    thursday: [['16:00', '22:00']],
+    friday: [['18:00', '21:00']],
+    saturday: [['10:00', '14:00']],
+    sunday: [['10:00', '13:00']],
+  },
+  concepts: [
+    { id: 'inheritance', name: 'Inheritance', mastery: 62, dealBreaker: true, lastReviewedAt: '2026-03-03', nextReview: '2026-03-10' },
+    { id: 'composition-di', name: 'Composition vs DI', mastery: 68, dealBreaker: true, lastReviewedAt: '2026-03-04', nextReview: '2026-03-09' },
+    { id: 'encapsulation', name: 'Encapsulation', mastery: 64, dealBreaker: true, lastReviewedAt: '2026-03-03', nextReview: '2026-03-10' },
+    { id: 'abstraction', name: 'Abstraction', mastery: 65, dealBreaker: true, lastReviewedAt: '2026-03-03', nextReview: '2026-03-10' },
+    { id: 'polymorphism', name: 'Polymorphism', mastery: 61, dealBreaker: true, lastReviewedAt: '2026-03-03', nextReview: '2026-03-09' },
+    { id: 'di-dip', name: 'DI vs DIP', mastery: 72, dealBreaker: true, lastReviewedAt: '2026-03-04', nextReview: '2026-03-11' },
+    { id: 'srp', name: 'Single Responsibility Principle', mastery: 35, dealBreaker: true, lastReviewedAt: null, nextReview: '2026-03-09' },
+    { id: 'singleton', name: 'Singleton', mastery: 28, dealBreaker: false, lastReviewedAt: null, nextReview: '2026-03-09' },
+  ],
+  tasks: [
+    { id: 't1', title: 'Active recall: Composition vs DI', conceptId: 'composition-di', status: 'todo', estimateMin: 20, type: 'recall' },
+    { id: 't2', title: 'Explain DIP in 2 practical examples', conceptId: 'di-dip', status: 'todo', estimateMin: 25, type: 'deal-breaker' },
+    { id: 't3', title: 'SRP first pass', conceptId: 'srp', status: 'todo', estimateMin: 25, type: 'new' },
+    { id: 't4', title: 'Singleton pitfalls', conceptId: 'singleton', status: 'todo', estimateMin: 15, type: 'nice' },
+  ],
+  meta: {
+    lastStudyAt: null,
+  },
+};
+
+function parseHm(hm: string) {
+  const [h, m] = hm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function nowDayAndMinutes() {
+  const now = new Date();
+  const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: TZ }).format(now).toLowerCase();
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: TZ,
+  }).formatToParts(now);
+  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
+  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
+  return { weekday, minutes: hour * 60 + minute };
+}
+
+function inLearningWindow(schedule: TrainerState['schedule']) {
+  const { weekday, minutes } = nowDayAndMinutes();
+  const windows = schedule[weekday] || [];
+  return windows.some(([s, e]) => minutes >= parseHm(s) && minutes <= parseHm(e));
+}
+
+function hoursSince(iso: string | null) {
+  if (!iso) return Number.POSITIVE_INFINITY;
+  const ms = Date.now() - new Date(iso).getTime();
+  return ms / (1000 * 60 * 60);
+}
+
+function toDateYmd(daysAhead: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  return d.toISOString().slice(0, 10);
+}
+
+export default function StudyCoachTrainerPage() {
+  const [state, setState] = useState<TrainerState>(DEFAULT_STATE);
+  const [conceptId, setConceptId] = useState<string>(DEFAULT_STATE.concepts[0]?.id ?? '');
+  const [confidence, setConfidence] = useState<number>(60);
+  const [recallAnswer, setRecallAnswer] = useState('');
+  const [summary, setSummary] = useState('');
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [isSending, setIsSending] = useState(false);
+
+  useEffect(() => {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as TrainerState;
+        setState(parsed);
+        if (parsed.concepts[0]?.id) setConceptId(parsed.concepts[0].id);
+      } catch {
+        // keep default
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, [state]);
+
+  const readiness = useMemo(() => {
+    const core = state.concepts.filter((c) => c.dealBreaker || c.id !== 'singleton');
+    if (!core.length) return 0;
+    return Math.round(core.reduce((sum, c) => sum + c.mastery, 0) / core.length);
+  }, [state.concepts]);
+
+  const dealBreakerCoverage = useMemo(() => {
+    const db = state.concepts.filter((c) => c.dealBreaker);
+    if (!db.length) return 0;
+    const mastered = db.filter((c) => c.mastery >= 70).length;
+    return Math.round((mastered / db.length) * 100);
+  }, [state.concepts]);
+
+  const learningWindowOpen = useMemo(() => inLearningWindow(state.schedule), [state.schedule]);
+  const hoursGap = useMemo(() => hoursSince(state.meta.lastStudyAt), [state.meta.lastStudyAt]);
+  const reminders = useMemo(() => {
+    const arr: string[] = [];
+    if (learningWindowOpen && hoursGap >= 2) {
+      arr.push(`Nu ai mai lucrat de ${hoursGap.toFixed(1)} ore. Fa un sprint de 20-25 min.`);
+    }
+    const weakDealBreakers = state.concepts.filter((c) => c.dealBreaker && c.mastery < 70);
+    if (weakDealBreakers.length) {
+      arr.push(`Deal-breakers sub 70%: ${weakDealBreakers.map((c) => c.name).join(', ')}`);
+    }
+    return arr;
+  }, [learningWindowOpen, hoursGap, state.concepts]);
+
+  useEffect(() => {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    if (reminders.length) {
+      const n = new Notification('Study Coach Trainer', { body: reminders[0] });
+      setTimeout(() => n.close(), 4000);
+    }
+  }, [reminders]);
+
+  function moveTask(taskId: string, status: TaskStatus) {
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, status } : t)),
+    }));
+  }
+
+  async function sendCheckin() {
+    const concept = state.concepts.find((c) => c.id === conceptId);
+    if (!concept) return;
+
+    setIsSending(true);
+    try {
+      const r = await fetch('/api/study-coach/trainer-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conceptId,
+          conceptName: concept.name,
+          confidence,
+          recallAnswer,
+          summary,
+          dealBreaker: concept.dealBreaker,
+        }),
+      });
+
+      if (!r.ok) {
+        throw new Error(`Feedback failed (${r.status})`);
+      }
+
+      const ai = (await r.json()) as Feedback;
+      setFeedback(ai);
+
+      setState((prev) => {
+        const repeatDays = confidence >= 75 ? 3 : confidence >= 60 ? 2 : 1;
+        return {
+          ...prev,
+          concepts: prev.concepts.map((c) => {
+            if (c.id !== conceptId) return c;
+            const updatedMastery = Math.max(0, Math.min(100, Math.round(c.mastery * 0.7 + confidence * 0.3)));
+            return {
+              ...c,
+              mastery: updatedMastery,
+              lastReviewedAt: new Date().toISOString().slice(0, 10),
+              nextReview: toDateYmd(repeatDays),
+            };
+          }),
+          tasks: prev.tasks.map((t) => {
+            if (t.conceptId === conceptId && t.status !== 'done' && confidence >= 70) {
+              return { ...t, status: 'done' };
+            }
+            return t;
+          }),
+          meta: {
+            ...prev.meta,
+            lastStudyAt: new Date().toISOString(),
+          },
+        };
+      });
+    } finally {
+      setIsSending(false);
+    }
+  }
+
+  const byStatus = (status: TaskStatus) => state.tasks.filter((t) => t.status === status);
+
+  const nowLabel = new Intl.DateTimeFormat('ro-RO', {
+    dateStyle: 'full',
+    timeStyle: 'short',
+    timeZone: TZ,
+  }).format(new Date());
+
+  return (
+    <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
+      <div className="mx-auto max-w-7xl space-y-4">
+        <header className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Link className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-sm font-semibold" href="/">Dashboard</Link>
+              <Link className="rounded-md border border-sky-500/40 bg-sky-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach">Today</Link>
+              <Link className="rounded-md border border-indigo-500/40 bg-indigo-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach/roadmap">Roadmap</Link>
+              <Link className="rounded-md border border-cyan-500/40 bg-cyan-500/20 px-3 py-1.5 text-sm font-semibold" href="/study-coach/solutions">LeetCode HTMLs</Link>
+            </div>
+            <button
+              className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-sm font-semibold"
+              onClick={() => {
+                if (!('Notification' in window)) return;
+                void Notification.requestPermission();
+              }}
+            >
+              Enable notifications
+            </button>
+          </div>
+          <h1 className="text-2xl font-bold">Study Coach · Trainer Mode</h1>
+          <p className="mt-1 text-sm text-[var(--muted)]">{nowLabel} · focus pe 20% topics cu probabilitate mare la interviu.</p>
+        </header>
+
+        <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
+            <div className="text-xs uppercase text-[var(--muted)]">Readiness</div>
+            <div className="mt-1 text-xl font-bold">{readiness}%</div>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
+            <div className="text-xs uppercase text-[var(--muted)]">Deal-breaker coverage</div>
+            <div className="mt-1 text-xl font-bold">{dealBreakerCoverage}%</div>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
+            <div className="text-xs uppercase text-[var(--muted)]">Hours since last study</div>
+            <div className="mt-1 text-xl font-bold">{Number.isFinite(hoursGap) ? hoursGap.toFixed(1) : 'N/A'}</div>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
+            <div className="text-xs uppercase text-[var(--muted)]">Learning window</div>
+            <div className="mt-1 text-xl font-bold">{learningWindowOpen ? 'OPEN' : 'CLOSED'}</div>
+          </div>
+        </section>
+
+        {reminders.length ? (
+          <section className="space-y-2">
+            {reminders.map((r) => (
+              <div key={r} className="rounded-xl border border-amber-500/40 bg-amber-500/15 p-3 text-sm">
+                {r}
+              </div>
+            ))}
+          </section>
+        ) : null}
+
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <article className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
+            <h2 className="text-lg font-semibold">Today plan board</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">Muta task-urile intre coloane pe masura ce lucrezi.</p>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+              {(['todo', 'in_progress', 'done'] as TaskStatus[]).map((status) => (
+                <div key={status} className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
+                  <div className="mb-2 text-sm font-semibold uppercase">{status.replace('_', ' ')}</div>
+                  <div className="space-y-2">
+                    {byStatus(status).map((task) => (
+                      <div key={task.id} className="rounded-lg border border-[var(--border)] bg-[var(--panel)] p-2 text-sm">
+                        <div className="font-semibold">{task.title}</div>
+                        <div className="mt-1 text-xs text-[var(--muted)]">{task.type} · {task.estimateMin} min</div>
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-xs" onClick={() => moveTask(task.id, 'todo')}>todo</button>
+                          <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-xs" onClick={() => moveTask(task.id, 'in_progress')}>doing</button>
+                          <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-xs" onClick={() => moveTask(task.id, 'done')}>done</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
+            <h2 className="text-lg font-semibold">AI coach loop</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">Fa active recall, trimite check-in, primesti verdict + next actions.</p>
+
+            <label className="mt-3 block text-sm">Concept</label>
+            <select
+              className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm"
+              value={conceptId}
+              onChange={(event) => setConceptId(event.target.value)}
+            >
+              {state.concepts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.mastery}%) {c.dealBreaker ? '• deal-breaker' : ''}
+                </option>
+              ))}
+            </select>
+
+            <label className="mt-3 block text-sm">Confidence (0-100)</label>
+            <input
+              className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm"
+              type="number"
+              min={0}
+              max={100}
+              value={confidence}
+              onChange={(event) => setConfidence(Number(event.target.value || 0))}
+            />
+
+            <label className="mt-3 block text-sm">Active recall answer</label>
+            <textarea
+              className="mt-1 min-h-[90px] w-full rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm"
+              value={recallAnswer}
+              onChange={(event) => setRecallAnswer(event.target.value)}
+              placeholder="Definitie, exemplu, tradeoff, pitfalls."
+            />
+
+            <label className="mt-3 block text-sm">Session summary</label>
+            <textarea
+              className="mt-1 min-h-[90px] w-full rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm"
+              value={summary}
+              onChange={(event) => setSummary(event.target.value)}
+              placeholder="Ce ai facut azi + unde ai blocaje."
+            />
+
+            <button
+              className="mt-3 rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-2 text-sm font-semibold"
+              onClick={() => void sendCheckin()}
+              disabled={isSending}
+            >
+              {isSending ? 'Sending...' : 'Send to AI coach'}
+            </button>
+
+            <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-sm">
+              {!feedback ? (
+                <p className="text-[var(--muted)]">Feedback-ul apare aici dupa primul check-in.</p>
+              ) : (
+                <div className="space-y-2">
+                  <p><strong>Verdict:</strong> {feedback.verdict} ({feedback.mode})</p>
+                  <div>
+                    <strong>Strengths</strong>
+                    <ul className="ml-5 list-disc">
+                      {feedback.strengths.length ? feedback.strengths.map((s) => <li key={s}>{s}</li>) : <li>n/a</li>}
+                    </ul>
+                  </div>
+                  <div>
+                    <strong>Gaps</strong>
+                    <ul className="ml-5 list-disc">
+                      {feedback.gaps.length ? feedback.gaps.map((g) => <li key={g}>{g}</li>) : <li>n/a</li>}
+                    </ul>
+                  </div>
+                  <div>
+                    <strong>Next actions</strong>
+                    <ul className="ml-5 list-disc">
+                      {feedback.nextActions.length ? feedback.nextActions.map((n) => <li key={n}>{n}</li>) : <li>n/a</li>}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+          </article>
+        </section>
+      </div>
+    </main>
+  );
+}

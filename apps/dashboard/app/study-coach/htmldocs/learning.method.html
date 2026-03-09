@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Layered Recall — Technical Interview Study Page</title>
+
+  <!-- Prism.js -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" rel="stylesheet" />
+  <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #5b6472;
+      --line: #dbe3ef;
+      --blue: #2563eb;
+      --blue-soft: #eaf2ff;
+      --green: #15803d;
+      --green-soft: #e8f8ee;
+      --amber: #b45309;
+      --amber-soft: #fff4df;
+      --red: #b91c1c;
+      --red-soft: #fdecec;
+      --violet: #6d28d9;
+      --violet-soft: #f2ebff;
+      --shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.42;
+    }
+
+    body {
+      padding: 20px;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      background: var(--card);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 20mm 16mm 16mm;
+      overflow: hidden;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 8px 0;
+      line-height: 1.15;
+    }
+
+    h1 {
+      font-size: 28px;
+      letter-spacing: -0.03em;
+    }
+
+    h2 {
+      font-size: 17px;
+      margin-top: 14px;
+      color: #0f172a;
+    }
+
+    h3 {
+      font-size: 14px;
+      margin-top: 10px;
+      color: #111827;
+    }
+
+    p {
+      margin: 6px 0;
+      font-size: 12.5px;
+      color: var(--text);
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .header {
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      max-width: 900px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #3730a3;
+      border: 1px solid #d9defe;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .box, .example, .warning, .success, .violet {
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      background: #fbfdff;
+      margin-top: 10px;
+    }
+
+    .box {
+      background: #fbfdff;
+    }
+
+    .example {
+      background: var(--blue-soft);
+      border-color: #cfe0ff;
+    }
+
+    .warning {
+      background: var(--amber-soft);
+      border-color: #f2d39a;
+    }
+
+    .success {
+      background: var(--green-soft);
+      border-color: #bde6ca;
+    }
+
+    .violet {
+      background: var(--violet-soft);
+      border-color: #dac8ff;
+    }
+
+    .label {
+      display: inline-block;
+      margin-bottom: 6px;
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .label.blue { color: var(--blue); }
+    .label.green { color: var(--green); }
+    .label.amber { color: var(--amber); }
+    .label.red { color: var(--red); }
+    .label.violet { color: var(--violet); }
+
+    ul {
+      margin: 6px 0 0 18px;
+      padding: 0;
+      font-size: 12.5px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.95em;
+      background: #eef2f7;
+      border: 1px solid #dde6f0;
+      padding: 1px 5px;
+      border-radius: 6px;
+    }
+
+    pre {
+      margin: 8px 0 0 0 !important;
+      border-radius: 14px;
+      font-size: 11.2px !important;
+      line-height: 1.38 !important;
+      border: 1px solid #e5e7eb;
+      overflow: auto;
+      max-height: 270px;
+    }
+
+    pre code {
+      background: transparent !important;
+      border: 0 !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+      font-size: inherit !important;
+    }
+
+    .two-col-note {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .mini {
+      font-size: 11.5px;
+    }
+
+    .steps {
+      counter-reset: item;
+      margin-top: 6px;
+    }
+
+    .step {
+      display: flex;
+      gap: 10px;
+      margin: 8px 0;
+    }
+
+    .step-num {
+      flex: 0 0 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: #e7efff;
+      color: var(--blue);
+      font-weight: 800;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+
+    .table-wrap {
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      margin-top: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11.5px;
+    }
+
+    th, td {
+      padding: 8px 9px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fbff;
+      color: #334155;
+      font-weight: 800;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .footer-note {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--line);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+
+      .page {
+        box-shadow: none;
+        border-radius: 0;
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0;
+        padding: 14mm 12mm 12mm;
+      }
+
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <div style="margin:0 auto 14px;max-width:210mm;background:#e7f8ef;border:1px solid #9ad7b0;border-radius:12px;padding:10px 12px;font-family:Inter,system-ui,sans-serif;font-size:13px;">
+    Trainer Mode is now available in dashboard: <a href="/study-coach/trainer" target="_blank" rel="noreferrer">/study-coach/trainer</a>
+  </div>
+  <main class="page">
+    <section class="header">
+      <h1>Layered Recall for Technical Interviews</h1>
+      <p class="subtitle">
+        A practical memory system for interview prep: keep the <strong>concept skeleton</strong> stable,
+        identify the <strong>missing detail</strong>, then patch only that detail instead of restarting the whole explanation.
+        This is applied below to <strong>Linked List</strong>, exactly in the style you are using now: active recall, correction, and spaced repetition.
+      </p>
+      <div class="tags">
+        <span class="tag">Interview Prep</span>
+        <span class="tag">Active Recall</span>
+        <span class="tag">Spaced Repetition</span>
+        <span class="tag">Memory Technique</span>
+        <span class="tag">Data Structures</span>
+        <span class="tag">Linked List</span>
+      </div>
+    </section>
+
+    <section class="grid-2">
+      <div class="box">
+        <div class="label blue">Problem Statement</div>
+        <h2>What is the real issue?</h2>
+        <p>
+          You usually do <strong>active recall correctly</strong>: you explain a concept from memory, then check what you missed.
+          The problem is not that you forget the whole thing. The problem is that you sometimes forget
+          <strong>specific details inside the definition or mechanism</strong>.
+        </p>
+        <p>
+          Example: you remember what a Linked List is in general, but you forget details like:
+          <code>nodes are not contiguous in memory</code>, <code>access by index is O(n)</code>, or
+          <code>insertion becomes O(1) only when you already have the node reference</code>.
+        </p>
+      </div>
+
+      <div class="success">
+        <div class="label green">Main Idea / Intuition</div>
+        <h2>Layered Recall</h2>
+        <p>
+          Do not re-study the entire concept every time a detail is missing.
+          Split the concept into:
+        </p>
+        <ul>
+          <li><strong>Layer 1 — Skeleton:</strong> definition, how it works, example, complexity</li>
+          <li><strong>Layer 2 — Critical details:</strong> 3–4 exact facts that make the explanation sharp</li>
+        </ul>
+        <p>
+          When a detail is missing, apply a <strong>micro-patch</strong>: correct only that detail,
+          then revisit the full concept later after a pause.
+        </p>
+      </div>
+    </section>
+
+    <section class="grid-3">
+      <div class="example">
+        <div class="label blue">What you already do well</div>
+        <p class="mini">
+          You explain from memory.<br>
+          You check what is missing.<br>
+          You correct it.
+        </p>
+      </div>
+      <div class="warning">
+        <div class="label amber">What to avoid</div>
+        <p class="mini">
+          Explaining the whole concept 5 times in a row with no spacing.
+        </p>
+      </div>
+      <div class="violet">
+        <div class="label violet">Best use</div>
+        <p class="mini">
+          Recall → patch missing detail → pause → recall later.
+        </p>
+      </div>
+    </section>
+
+    <section class="box">
+      <div class="label blue">Step-by-step walkthrough</div>
+      <h2>How to apply it in your study flow</h2>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <p><strong>Explain the concept from memory</strong> using a fixed structure.</p>
+            <p class="mini">Example structure: <code>definition → how it works → example → complexity</code></p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <p><strong>Check only what you missed.</strong></p>
+            <p class="mini">Do not judge yourself by the forgotten detail. The missing detail is the learning target.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <p><strong>Patch the detail, not the whole concept.</strong></p>
+            <p class="mini">Say the exact missing line 2–3 times, then stop.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">4</div>
+          <div>
+            <p><strong>Return later.</strong></p>
+            <p class="mini">After 10–30 minutes, a few hours, or the next day, explain the full concept again.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid-2">
+      <div class="example">
+        <div class="label blue">Concept Example</div>
+        <h2>Linked List — Layer 1 Skeleton</h2>
+        <ul>
+          <li><strong>Definition:</strong> A linked list is a linear data structure made of nodes.</li>
+          <li><strong>How it works:</strong> Each node stores a value and a reference to the next node.</li>
+          <li><strong>Example:</strong> Useful when inserting at the head is frequent.</li>
+          <li><strong>Complexity:</strong> Access by index is <code>O(n)</code>.</li>
+        </ul>
+      </div>
+
+      <div class="success">
+        <div class="label green">Critical Details</div>
+        <h2>Linked List — Layer 2 Details</h2>
+        <ul>
+          <li>Nodes are <strong>not contiguous in memory</strong>.</li>
+          <li>Traversal requires following pointers one by one.</li>
+          <li>Insertion is <code>O(1)</code> only when you already have the needed node reference.</li>
+          <li>Compared with arrays, linked lists trade fast indexed access for flexible pointer-based insertion.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="warning">
+      <div class="label amber">Micro-patch example</div>
+      <h2>What to do when you forget one detail</h2>
+      <p>
+        Suppose you explained Linked List well, but you forgot this detail:
+        <code>nodes are not contiguous in memory</code>.
+      </p>
+      <p>
+        Do <strong>not</strong> restart the whole explanation.
+        Just patch the missing detail like this:
+      </p>
+      <pre><code class="language-javascript">// Missing detail patch
+// Say only the exact forgotten line 2-3 times:
+
+// "In a linked list, nodes are not stored contiguously in memory."
+// "In a linked list, nodes are not stored contiguously in memory."
+// "In a linked list, nodes are not stored contiguously in memory."
+
+// Then stop and move on.
+// Re-test the full concept later, not immediately 10 times in a row.</code></pre>
+    </section>
+
+    <section class="box">
+      <div class="label blue">Final JavaScript Example</div>
+      <h2>Linked List concept + simple implementation</h2>
+      <pre><code class="language-javascript">class ListNode {
+  constructor(value, next = null) {
+    this.value = value;
+    this.next = next;
+  }
+}
+
+class LinkedList {
+  constructor() {
+    this.head = null;
+  }
+
+  prepend(value) {
+    // O(1): add a node at the beginning
+    this.head = new ListNode(value, this.head);
+  }
+
+  append(value) {
+    const newNode = new ListNode(value);
+
+    // If the list is empty, the new node becomes the head
+    if (!this.head) {
+      this.head = newNode;
+      return;
+    }
+
+    // Otherwise, walk to the last node
+    let current = this.head;
+    while (current.next) {
+      current = current.next;
+    }
+
+    current.next = newNode;
+  }
+
+  toArray() {
+    const result = [];
+    let current = this.head;
+
+    while (current) {
+      result.push(current.value);
+      current = current.next;
+    }
+
+    return result;
+  }
+}
+
+// Example usage
+const list = new LinkedList();
+list.prepend(20);
+list.prepend(10);
+list.append(30);
+
+console.log(list.toArray()); // [10, 20, 30]</code></pre>
+    </section>
+
+    <section class="grid-2">
+      <div class="box">
+        <div class="label blue">Line-by-line Explanation</div>
+        <ul>
+          <li><code>ListNode</code> represents one node in the list.</li>
+          <li>Each node stores a <code>value</code> and a <code>next</code> reference.</li>
+          <li><code>head</code> points to the first node.</li>
+          <li><code>prepend</code> is <code>O(1)</code> because it only changes the head pointer.</li>
+          <li><code>append</code> is <code>O(n)</code> here because we must walk to the end.</li>
+          <li><code>toArray</code> traverses the list node by node, so it is <code>O(n)</code>.</li>
+        </ul>
+      </div>
+
+      <div class="warning">
+        <div class="label amber">Common Mistakes</div>
+        <ul>
+          <li>Saying a linked list is “just like an array but dynamic.” It is not.</li>
+          <li>Forgetting that indexed access is <code>O(n)</code>, not <code>O(1)</code>.</li>
+          <li>Saying insertion is always <code>O(1)</code>. That is only true in specific cases.</li>
+          <li>Confusing the structure with memory layout. Arrays are contiguous; linked lists are pointer-based.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Section</th>
+            <th>What to remember for interview</th>
+            <th>Why it matters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Definition</td>
+            <td>A linked list is a sequence of nodes connected by references.</td>
+            <td>Gives a clean opening sentence.</td>
+          </tr>
+          <tr>
+            <td>How it works</td>
+            <td>Each node points to the next one; traversal follows references.</td>
+            <td>Shows mechanism, not just memorized wording.</td>
+          </tr>
+          <tr>
+            <td>Example</td>
+            <td>Frequent head insertion or pointer-based manipulation.</td>
+            <td>Makes the concept practical.</td>
+          </tr>
+          <tr>
+            <td>Complexity</td>
+            <td>Access <code>O(n)</code>, prepend <code>O(1)</code>, search <code>O(n)</code>.</td>
+            <td>Interviews often test trade-offs.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="grid-2">
+      <div class="success">
+        <div class="label green">Interview Explanation Version</div>
+        <p>
+          “A linked list is a linear data structure made of nodes. Each node stores a value and a reference to the next node.
+          Unlike arrays, nodes are not stored contiguously in memory, so indexed access is slower — usually <code>O(n)</code>.
+          Its strength is flexible insertion and deletion when you already have the right node reference.”
+        </p>
+      </div>
+
+      <div class="violet">
+        <div class="label violet">Pattern to Remember</div>
+        <p><strong>Layer 1:</strong> definition, mechanism, example, complexity</p>
+        <p><strong>Layer 2:</strong> 3–4 critical details</p>
+        <p><strong>Rule:</strong> if one detail is missing, patch only that detail.</p>
+      </div>
+    </section>
+
+    <section class="box">
+      <div class="label blue">Optional brute-force comparison</div>
+      <h2>Why Layered Recall is better than brute repetition</h2>
+      <div class="two-col-note">
+        <div class="warning">
+          <h3>Brute repetition</h3>
+          <ul>
+            <li>Repeat full concept immediately 5 times</li>
+            <li>Feels productive</li>
+            <li>Often stays in short-term memory</li>
+          </ul>
+        </div>
+        <div class="success">
+          <h3>Layered Recall</h3>
+          <ul>
+            <li>Recall full concept once</li>
+            <li>Identify exact missing detail</li>
+            <li>Patch that detail</li>
+            <li>Retest later with spacing</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="footer-note">
+      Use this page exactly for your current workflow: explain to GPT from memory, detect the missing detail, patch only that detail,
+      then revisit the concept later. That is how details become stable without wasting energy on restarting from zero every time.
+    </section>
+  </main>
+</body>
+</html>
