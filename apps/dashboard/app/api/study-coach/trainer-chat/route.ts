@@ -57,6 +57,7 @@ function isCompletionMessage(userText: string) {
 
 function localFallback(payload: ChatPayload): ChatResult {
   const userText = latestUserMessage(payload);
+  const lastCoachText = [...payload.messages].reverse().find((m) => m.role === 'coach')?.text.toLowerCase() ?? '';
   const weakestDealBreaker = payload.stateSummary.concepts
     .filter((c) => c.dealBreaker)
     .sort((a, b) => a.mastery - b.mastery)[0];
@@ -109,6 +110,35 @@ function localFallback(payload: ChatPayload): ChatResult {
         actions: [{ type: 'mark_task', taskId: topTodoDealBreaker.id, status: 'in_progress' }],
       };
     }
+  }
+
+  const asksAlgorithms = userText.includes('algoritm') || userText.includes('algorithm') || userText.includes('leetcode') || userText.includes('dsa');
+  if (asksAlgorithms) {
+    const hasAlgoTask = payload.stateSummary.tasks.some((t) => t.title.toLowerCase().includes('linked list') || t.title.toLowerCase().includes('two pointers') || t.title.toLowerCase().includes('binary search'));
+    return {
+      mode: 'local-fallback',
+      reply: hasAlgoTask
+        ? 'Da, dupa DIP intram pe algoritmi. Plan concret: 1) termini DIP acum, 2) 25 min Linked List, 3) 20 min recap patterns, 4) check-in scurt.'
+        : 'Da, dupa DIP incepem algoritmi. Plan concret: 1) termini DIP (20-25 min), 2) sprint Linked List 25 min, 3) sprint Binary Search 20 min, 4) recap 10 min.',
+      actions: hasAlgoTask
+        ? []
+        : [
+          {
+            type: 'create_task',
+            title: 'Algorithms sprint: Linked List (1 problem + explain)',
+            conceptId: 'polymorphism',
+            estimateMin: 25,
+            taskType: 'new',
+          },
+          {
+            type: 'create_task',
+            title: 'Algorithms sprint: Binary Search recap',
+            conceptId: 'polymorphism',
+            estimateMin: 20,
+            taskType: 'new',
+          },
+        ],
+    };
   }
 
   if (userText.includes('ce sa fac') && (userText.includes('srp') || userText.includes('single responsibility'))) {
@@ -172,7 +202,14 @@ function localFallback(payload: ChatPayload): ChatResult {
     (t) => t.status !== 'done' && t.type === 'deal-breaker'
   );
 
-    if (todoDealBreaker) {
+  if (todoDealBreaker) {
+    if (lastCoachText.includes(todoDealBreaker.title.toLowerCase())) {
+      return {
+        mode: 'local-fallback',
+        reply: `Ca sa nu stam blocati: fie incepi acum \"${todoDealBreaker.title}\", fie imi spui explicit \"skip\" si iti dau alternativa pe algoritmi.`,
+        actions: [],
+      };
+    }
     return {
       mode: 'local-fallback',
       reply: `Plan concret: ia task-ul \"${todoDealBreaker.title}\", lucreaza 20-25 min, apoi da-mi: definitie + exemplu + confidence.`,
@@ -223,6 +260,8 @@ export async function POST(request: Request) {
       'If user asks what to do for a concept, give concrete numbered steps, not generic advice.',
       'If user says they finished a task or gives high confidence, propose marking task done and move to next concrete task.',
       'If user asks "ce urmeaza", answer with one concrete next sprint and expected output.',
+      'If user asks about algorithms timing, provide a sequence (after current task) with exact durations.',
+      'Avoid repeating the exact previous coach message; if repeated context, offer two options.',
       'If user is behind, say it directly and propose one concrete sprint now.',
       'Return strict JSON with keys: reply (string), actions (array).',
       'Action types allowed: focus_concept, create_task, mark_task, schedule_review.',
