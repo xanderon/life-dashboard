@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type TaskStatus = 'todo' | 'in_progress' | 'done';
 
@@ -23,16 +23,29 @@ type Task = {
   type: 'new' | 'recall' | 'deal-breaker' | 'nice';
 };
 
+type ChatRole = 'user' | 'coach';
+
+type ChatMessage = {
+  id: string;
+  role: ChatRole;
+  text: string;
+  createdAt: string;
+  source: 'manual' | 'proactive' | 'checkin';
+};
+
 type TrainerState = {
   schedule: Record<string, Array<[string, string]>>;
   concepts: Concept[];
   tasks: Task[];
+  chat: ChatMessage[];
   meta: {
     lastStudyAt: string | null;
+    lastInteractionAt: string | null;
+    lastNudgeAt: string | null;
   };
 };
 
-type Feedback = {
+type CheckinFeedback = {
   mode: 'openai' | 'local-fallback';
   verdict: 'all_good' | 'mixed' | 'needs_work';
   strengths: string[];
@@ -40,7 +53,19 @@ type Feedback = {
   nextActions: string[];
 };
 
-const STORAGE_KEY = 'study-coach-trainer-v1';
+type CoachAction =
+  | { type: 'focus_concept'; conceptId: string }
+  | { type: 'create_task'; title: string; conceptId: string; estimateMin: number; taskType: 'new' | 'recall' | 'deal-breaker' | 'nice' }
+  | { type: 'mark_task'; taskId: string; status: TaskStatus }
+  | { type: 'schedule_review'; conceptId: string; daysAhead: number };
+
+type CoachChatResponse = {
+  mode: 'openai' | 'local-fallback';
+  reply: string;
+  actions: CoachAction[];
+};
+
+const STORAGE_KEY = 'study-coach-trainer-v2';
 const TZ = 'Europe/Bucharest';
 
 const DEFAULT_STATE: TrainerState = {
@@ -69,8 +94,19 @@ const DEFAULT_STATE: TrainerState = {
     { id: 't3', title: 'SRP first pass', conceptId: 'srp', status: 'todo', estimateMin: 25, type: 'new' },
     { id: 't4', title: 'Singleton pitfalls', conceptId: 'singleton', status: 'todo', estimateMin: 15, type: 'nice' },
   ],
+  chat: [
+    {
+      id: 'boot-1',
+      role: 'coach',
+      text: 'Salut. Azi te duc pe high-probability topics. Incepem cu un sprint de 20 min pe un deal-breaker, apoi imi dai active recall.',
+      createdAt: new Date().toISOString(),
+      source: 'manual',
+    },
+  ],
   meta: {
     lastStudyAt: null,
+    lastInteractionAt: null,
+    lastNudgeAt: null,
   },
 };
 
@@ -79,14 +115,11 @@ function parseHm(hm: string) {
   return h * 60 + m;
 }
 
-function nowDayAndMinutes() {
+function dayAndMinutesNow() {
   const now = new Date();
   const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: TZ }).format(now).toLowerCase();
   const parts = new Intl.DateTimeFormat('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: TZ,
+    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ,
   }).formatToParts(now);
   const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
   const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
@@ -94,42 +127,46 @@ function nowDayAndMinutes() {
 }
 
 function inLearningWindow(schedule: TrainerState['schedule']) {
-  const { weekday, minutes } = nowDayAndMinutes();
+  const { weekday, minutes } = dayAndMinutesNow();
   const windows = schedule[weekday] || [];
   return windows.some(([s, e]) => minutes >= parseHm(s) && minutes <= parseHm(e));
 }
 
 function hoursSince(iso: string | null) {
   if (!iso) return Number.POSITIVE_INFINITY;
-  const ms = Date.now() - new Date(iso).getTime();
-  return ms / (1000 * 60 * 60);
+  return (Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60);
 }
 
-function toDateYmd(daysAhead: number) {
+function addDaysYmd(daysAhead: number) {
   const d = new Date();
   d.setDate(d.getDate() + daysAhead);
   return d.toISOString().slice(0, 10);
 }
 
+function randomId(prefix: string) {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export default function StudyCoachTrainerPage() {
   const [state, setState] = useState<TrainerState>(DEFAULT_STATE);
+  const [chatInput, setChatInput] = useState('');
+  const [chatBusy, setChatBusy] = useState(false);
+
   const [conceptId, setConceptId] = useState<string>(DEFAULT_STATE.concepts[0]?.id ?? '');
   const [confidence, setConfidence] = useState<number>(60);
   const [recallAnswer, setRecallAnswer] = useState('');
   const [summary, setSummary] = useState('');
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const [isSending, setIsSending] = useState(false);
+  const [checkinBusy, setCheckinBusy] = useState(false);
 
   useEffect(() => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as TrainerState;
-        setState(parsed);
-        if (parsed.concepts[0]?.id) setConceptId(parsed.concepts[0].id);
-      } catch {
-        // keep default
-      }
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as TrainerState;
+      setState(parsed);
+      if (parsed.concepts[0]?.id) setConceptId(parsed.concepts[0].id);
+    } catch {
+      // keep defaults
     }
   }, []);
 
@@ -138,7 +175,7 @@ export default function StudyCoachTrainerPage() {
   }, [state]);
 
   const readiness = useMemo(() => {
-    const core = state.concepts.filter((c) => c.dealBreaker || c.id !== 'singleton');
+    const core = state.concepts.filter((c) => c.id !== 'singleton');
     if (!core.length) return 0;
     return Math.round(core.reduce((sum, c) => sum + c.mastery, 0) / core.length);
   }, [state.concepts]);
@@ -152,39 +189,152 @@ export default function StudyCoachTrainerPage() {
 
   const learningWindowOpen = useMemo(() => inLearningWindow(state.schedule), [state.schedule]);
   const hoursGap = useMemo(() => hoursSince(state.meta.lastStudyAt), [state.meta.lastStudyAt]);
+
   const reminders = useMemo(() => {
-    const arr: string[] = [];
+    const out: string[] = [];
     if (learningWindowOpen && hoursGap >= 2) {
-      arr.push(`Nu ai mai lucrat de ${hoursGap.toFixed(1)} ore. Fa un sprint de 20-25 min.`);
+      out.push(`Nu ai mai studiat de ${hoursGap.toFixed(1)} ore. Intra pe un sprint de 20-25 min.`);
     }
-    const weakDealBreakers = state.concepts.filter((c) => c.dealBreaker && c.mastery < 70);
-    if (weakDealBreakers.length) {
-      arr.push(`Deal-breakers sub 70%: ${weakDealBreakers.map((c) => c.name).join(', ')}`);
+    const weak = state.concepts.filter((c) => c.dealBreaker && c.mastery < 70);
+    if (weak.length) {
+      out.push(`Deal-breakers sub 70%: ${weak.map((c) => c.name).join(', ')}`);
     }
-    return arr;
+    return out;
   }, [learningWindowOpen, hoursGap, state.concepts]);
 
-  useEffect(() => {
+  function notify(message: string) {
     if (!('Notification' in window)) return;
     if (Notification.permission !== 'granted') return;
-    if (reminders.length) {
-      const n = new Notification('Study Coach Trainer', { body: reminders[0] });
-      setTimeout(() => n.close(), 4000);
-    }
-  }, [reminders]);
+    const n = new Notification('Study Coach Trainer', { body: message });
+    setTimeout(() => n.close(), 4500);
+  }
 
-  function moveTask(taskId: string, status: TaskStatus) {
+  function appendChat(role: ChatRole, text: string, source: ChatMessage['source']) {
+    const msg: ChatMessage = {
+      id: randomId('msg'),
+      role,
+      text,
+      createdAt: new Date().toISOString(),
+      source,
+    };
     setState((prev) => ({
       ...prev,
-      tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, status } : t)),
+      chat: [...prev.chat, msg].slice(-120),
+      meta: {
+        ...prev.meta,
+        lastInteractionAt: new Date().toISOString(),
+      },
     }));
+  }
+
+  function applyCoachActions(actions: CoachAction[]) {
+    if (!actions.length) return;
+
+    setState((prev) => {
+      const next = { ...prev, concepts: [...prev.concepts], tasks: [...prev.tasks] };
+
+      for (const action of actions) {
+        if (action.type === 'focus_concept') {
+          setConceptId(action.conceptId);
+          continue;
+        }
+
+        if (action.type === 'create_task') {
+          const exists = next.tasks.some(
+            (t) => t.title.toLowerCase() === action.title.toLowerCase() && t.status !== 'done'
+          );
+          if (!exists) {
+            next.tasks = [
+              {
+                id: randomId('task'),
+                title: action.title,
+                conceptId: action.conceptId,
+                status: 'todo',
+                estimateMin: Math.max(5, Math.min(90, Math.round(action.estimateMin || 20))),
+                type: action.taskType,
+              },
+              ...next.tasks,
+            ];
+          }
+          continue;
+        }
+
+        if (action.type === 'mark_task') {
+          next.tasks = next.tasks.map((t) => (t.id === action.taskId ? { ...t, status: action.status } : t));
+          continue;
+        }
+
+        if (action.type === 'schedule_review') {
+          next.concepts = next.concepts.map((c) =>
+            c.id === action.conceptId ? { ...c, nextReview: addDaysYmd(Math.max(1, action.daysAhead)) } : c
+          );
+        }
+      }
+
+      return next;
+    });
+  }
+
+  const callCoach = useCallback(async (trigger: 'user_message' | 'proactive_nudge', userText?: string) => {
+    const recentMessages = state.chat.slice(-10).map((m) => ({ role: m.role, text: m.text }));
+    const payload = {
+      nowIso: new Date().toISOString(),
+      learningWindowOpen,
+      readiness,
+      dealBreakerCoverage,
+      stateSummary: {
+        concepts: state.concepts,
+        tasks: state.tasks,
+      },
+      messages: userText ? [...recentMessages, { role: 'user' as const, text: userText }] : recentMessages,
+      trigger,
+    };
+
+    const r = await fetch('/api/study-coach/trainer-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!r.ok) {
+      throw new Error(`Coach chat failed (${r.status})`);
+    }
+
+    const data = (await r.json()) as CoachChatResponse;
+    appendChat('coach', data.reply, trigger === 'proactive_nudge' ? 'proactive' : 'manual');
+    applyCoachActions(data.actions || []);
+
+    if (trigger === 'proactive_nudge') {
+      setState((prev) => ({
+        ...prev,
+        meta: {
+          ...prev.meta,
+          lastNudgeAt: new Date().toISOString(),
+        },
+      }));
+      notify(data.reply);
+    }
+  }, [state.chat, state.concepts, state.tasks, learningWindowOpen, readiness, dealBreakerCoverage]);
+
+  async function sendChatMessage() {
+    const text = chatInput.trim();
+    if (!text || chatBusy) return;
+
+    setChatInput('');
+    appendChat('user', text, 'manual');
+    setChatBusy(true);
+    try {
+      await callCoach('user_message', text);
+    } finally {
+      setChatBusy(false);
+    }
   }
 
   async function sendCheckin() {
     const concept = state.concepts.find((c) => c.id === conceptId);
-    if (!concept) return;
+    if (!concept || checkinBusy) return;
 
-    setIsSending(true);
+    setCheckinBusy(true);
     try {
       const r = await fetch('/api/study-coach/trainer-feedback', {
         method: 'POST',
@@ -199,12 +349,17 @@ export default function StudyCoachTrainerPage() {
         }),
       });
 
-      if (!r.ok) {
-        throw new Error(`Feedback failed (${r.status})`);
-      }
+      if (!r.ok) throw new Error(`Feedback failed (${r.status})`);
+      const ai = (await r.json()) as CheckinFeedback;
 
-      const ai = (await r.json()) as Feedback;
-      setFeedback(ai);
+      const recap = [
+        `Check-in ${concept.name} (${confidence}%) -> ${ai.verdict}`,
+        ai.strengths.length ? `Strength: ${ai.strengths[0]}` : '',
+        ai.gaps.length ? `Gap: ${ai.gaps[0]}` : '',
+        ai.nextActions.length ? `Next: ${ai.nextActions[0]}` : '',
+      ].filter(Boolean).join(' | ');
+
+      appendChat('coach', recap, 'checkin');
 
       setState((prev) => {
         const repeatDays = confidence >= 75 ? 3 : confidence >= 60 ? 2 : 1;
@@ -212,12 +367,12 @@ export default function StudyCoachTrainerPage() {
           ...prev,
           concepts: prev.concepts.map((c) => {
             if (c.id !== conceptId) return c;
-            const updatedMastery = Math.max(0, Math.min(100, Math.round(c.mastery * 0.7 + confidence * 0.3)));
+            const mastery = Math.max(0, Math.min(100, Math.round(c.mastery * 0.7 + confidence * 0.3)));
             return {
               ...c,
-              mastery: updatedMastery,
+              mastery,
               lastReviewedAt: new Date().toISOString().slice(0, 10),
-              nextReview: toDateYmd(repeatDays),
+              nextReview: addDaysYmd(repeatDays),
             };
           }),
           tasks: prev.tasks.map((t) => {
@@ -232,18 +387,36 @@ export default function StudyCoachTrainerPage() {
           },
         };
       });
+
+      setRecallAnswer('');
+      setSummary('');
     } finally {
-      setIsSending(false);
+      setCheckinBusy(false);
     }
   }
 
-  const byStatus = (status: TaskStatus) => state.tasks.filter((t) => t.status === status);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const inWindow = inLearningWindow(state.schedule);
+      const inactiveHours = hoursSince(state.meta.lastInteractionAt);
+      const sinceLastNudge = hoursSince(state.meta.lastNudgeAt);
+
+      // Proactive initiative: if user is inactive in learning window, coach re-engages.
+      if (inWindow && inactiveHours >= 2 && sinceLastNudge >= 1.5 && !chatBusy) {
+        void callCoach('proactive_nudge');
+      }
+    }, 60_000);
+
+    return () => window.clearInterval(id);
+  }, [state.schedule, state.meta.lastInteractionAt, state.meta.lastNudgeAt, chatBusy, callCoach]);
 
   const nowLabel = new Intl.DateTimeFormat('ro-RO', {
     dateStyle: 'full',
     timeStyle: 'short',
     timeZone: TZ,
   }).format(new Date());
+
+  const byStatus = (status: TaskStatus) => state.tasks.filter((t) => t.status === status);
 
   return (
     <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
@@ -267,44 +440,71 @@ export default function StudyCoachTrainerPage() {
             </button>
           </div>
           <h1 className="text-2xl font-bold">Study Coach · Trainer Mode</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">{nowLabel} · focus pe 20% topics cu probabilitate mare la interviu.</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">{nowLabel} · coach conversațional + inițiativă automată.</p>
         </header>
 
         <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
-            <div className="text-xs uppercase text-[var(--muted)]">Readiness</div>
-            <div className="mt-1 text-xl font-bold">{readiness}%</div>
-          </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
-            <div className="text-xs uppercase text-[var(--muted)]">Deal-breaker coverage</div>
-            <div className="mt-1 text-xl font-bold">{dealBreakerCoverage}%</div>
-          </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
-            <div className="text-xs uppercase text-[var(--muted)]">Hours since last study</div>
-            <div className="mt-1 text-xl font-bold">{Number.isFinite(hoursGap) ? hoursGap.toFixed(1) : 'N/A'}</div>
-          </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
-            <div className="text-xs uppercase text-[var(--muted)]">Learning window</div>
-            <div className="mt-1 text-xl font-bold">{learningWindowOpen ? 'OPEN' : 'CLOSED'}</div>
-          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3"><div className="text-xs uppercase text-[var(--muted)]">Readiness</div><div className="mt-1 text-xl font-bold">{readiness}%</div></div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3"><div className="text-xs uppercase text-[var(--muted)]">Deal-breaker coverage</div><div className="mt-1 text-xl font-bold">{dealBreakerCoverage}%</div></div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3"><div className="text-xs uppercase text-[var(--muted)]">Hours since study</div><div className="mt-1 text-xl font-bold">{Number.isFinite(hoursGap) ? hoursGap.toFixed(1) : 'N/A'}</div></div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3"><div className="text-xs uppercase text-[var(--muted)]">Learning window</div><div className="mt-1 text-xl font-bold">{learningWindowOpen ? 'OPEN' : 'CLOSED'}</div></div>
         </section>
 
-        {reminders.length ? (
+        {reminders.length > 0 ? (
           <section className="space-y-2">
             {reminders.map((r) => (
-              <div key={r} className="rounded-xl border border-amber-500/40 bg-amber-500/15 p-3 text-sm">
-                {r}
-              </div>
+              <div key={r} className="rounded-xl border border-amber-500/40 bg-amber-500/15 p-3 text-sm">{r}</div>
             ))}
           </section>
         ) : null}
 
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <article className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
-            <h2 className="text-lg font-semibold">Today plan board</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">Muta task-urile intre coloane pe masura ce lucrezi.</p>
+            <h2 className="text-lg font-semibold">Coach Chat</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">Scrie normal ca aici in chat. Coach-ul raspunde si poate lua initiative.</p>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="mt-3 h-[360px] space-y-2 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
+              {state.chat.map((m) => (
+                <div
+                  key={m.id}
+                  className={`rounded-lg border px-3 py-2 text-sm ${m.role === 'coach'
+                    ? 'border-emerald-500/30 bg-emerald-500/10'
+                    : 'border-sky-500/30 bg-sky-500/10'}`}
+                >
+                  <div className="mb-1 text-xs uppercase text-[var(--muted)]">{m.role} · {m.source}</div>
+                  <div>{m.text}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 flex gap-2">
+              <input
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Ex: sunt blocat la DIP, da-mi 2 exercitii si plan pe azi"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void sendChatMessage();
+                  }
+                }}
+              />
+              <button
+                className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-2 text-sm font-semibold"
+                onClick={() => void sendChatMessage()}
+                disabled={chatBusy}
+              >
+                {chatBusy ? 'Thinking...' : 'Send'}
+              </button>
+            </div>
+          </article>
+
+          <article className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
+            <h2 className="text-lg font-semibold">Plan + Quick Check-in</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">Board vizual + evaluare rapida dupa fiecare sprint.</p>
+
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
               {(['todo', 'in_progress', 'done'] as TaskStatus[]).map((status) => (
                 <div key={status} className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
                   <div className="mb-2 text-sm font-semibold uppercase">{status.replace('_', ' ')}</div>
@@ -314,9 +514,9 @@ export default function StudyCoachTrainerPage() {
                         <div className="font-semibold">{task.title}</div>
                         <div className="mt-1 text-xs text-[var(--muted)]">{task.type} · {task.estimateMin} min</div>
                         <div className="mt-2 flex flex-wrap gap-1">
-                          <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-xs" onClick={() => moveTask(task.id, 'todo')}>todo</button>
-                          <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-xs" onClick={() => moveTask(task.id, 'in_progress')}>doing</button>
-                          <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-xs" onClick={() => moveTask(task.id, 'done')}>done</button>
+                          <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-xs" onClick={() => setState((prev) => ({ ...prev, tasks: prev.tasks.map((t) => (t.id === task.id ? { ...t, status: 'todo' } : t)) }))}>todo</button>
+                          <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-xs" onClick={() => setState((prev) => ({ ...prev, tasks: prev.tasks.map((t) => (t.id === task.id ? { ...t, status: 'in_progress' } : t)) }))}>doing</button>
+                          <button className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-xs" onClick={() => setState((prev) => ({ ...prev, tasks: prev.tasks.map((t) => (t.id === task.id ? { ...t, status: 'done' } : t)) }))}>done</button>
                         </div>
                       </div>
                     ))}
@@ -324,85 +524,27 @@ export default function StudyCoachTrainerPage() {
                 </div>
               ))}
             </div>
-          </article>
 
-          <article className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
-            <h2 className="text-lg font-semibold">AI coach loop</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">Fa active recall, trimite check-in, primesti verdict + next actions.</p>
+            <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
+              <label className="block text-sm">Concept</label>
+              <select className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-2 text-sm" value={conceptId} onChange={(e) => setConceptId(e.target.value)}>
+                {state.concepts.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.mastery}%) {c.dealBreaker ? '• deal-breaker' : ''}</option>
+                ))}
+              </select>
 
-            <label className="mt-3 block text-sm">Concept</label>
-            <select
-              className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm"
-              value={conceptId}
-              onChange={(event) => setConceptId(event.target.value)}
-            >
-              {state.concepts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.mastery}%) {c.dealBreaker ? '• deal-breaker' : ''}
-                </option>
-              ))}
-            </select>
+              <label className="mt-3 block text-sm">Confidence</label>
+              <input className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-2 text-sm" type="number" min={0} max={100} value={confidence} onChange={(e) => setConfidence(Number(e.target.value || 0))} />
 
-            <label className="mt-3 block text-sm">Confidence (0-100)</label>
-            <input
-              className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm"
-              type="number"
-              min={0}
-              max={100}
-              value={confidence}
-              onChange={(event) => setConfidence(Number(event.target.value || 0))}
-            />
+              <label className="mt-3 block text-sm">Recall</label>
+              <textarea className="mt-1 min-h-[80px] w-full rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-2 text-sm" value={recallAnswer} onChange={(e) => setRecallAnswer(e.target.value)} placeholder="definitie + exemplu + tradeoff" />
 
-            <label className="mt-3 block text-sm">Active recall answer</label>
-            <textarea
-              className="mt-1 min-h-[90px] w-full rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm"
-              value={recallAnswer}
-              onChange={(event) => setRecallAnswer(event.target.value)}
-              placeholder="Definitie, exemplu, tradeoff, pitfalls."
-            />
+              <label className="mt-3 block text-sm">Session summary</label>
+              <textarea className="mt-1 min-h-[80px] w-full rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-2 text-sm" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="ce ai facut si unde ai blocaje" />
 
-            <label className="mt-3 block text-sm">Session summary</label>
-            <textarea
-              className="mt-1 min-h-[90px] w-full rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-2 text-sm"
-              value={summary}
-              onChange={(event) => setSummary(event.target.value)}
-              placeholder="Ce ai facut azi + unde ai blocaje."
-            />
-
-            <button
-              className="mt-3 rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-2 text-sm font-semibold"
-              onClick={() => void sendCheckin()}
-              disabled={isSending}
-            >
-              {isSending ? 'Sending...' : 'Send to AI coach'}
-            </button>
-
-            <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-sm">
-              {!feedback ? (
-                <p className="text-[var(--muted)]">Feedback-ul apare aici dupa primul check-in.</p>
-              ) : (
-                <div className="space-y-2">
-                  <p><strong>Verdict:</strong> {feedback.verdict} ({feedback.mode})</p>
-                  <div>
-                    <strong>Strengths</strong>
-                    <ul className="ml-5 list-disc">
-                      {feedback.strengths.length ? feedback.strengths.map((s) => <li key={s}>{s}</li>) : <li>n/a</li>}
-                    </ul>
-                  </div>
-                  <div>
-                    <strong>Gaps</strong>
-                    <ul className="ml-5 list-disc">
-                      {feedback.gaps.length ? feedback.gaps.map((g) => <li key={g}>{g}</li>) : <li>n/a</li>}
-                    </ul>
-                  </div>
-                  <div>
-                    <strong>Next actions</strong>
-                    <ul className="ml-5 list-disc">
-                      {feedback.nextActions.length ? feedback.nextActions.map((n) => <li key={n}>{n}</li>) : <li>n/a</li>}
-                    </ul>
-                  </div>
-                </div>
-              )}
+              <button className="mt-3 rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-2 text-sm font-semibold" onClick={() => void sendCheckin()} disabled={checkinBusy}>
+                {checkinBusy ? 'Sending...' : 'Send quick check-in'}
+              </button>
             </div>
           </article>
         </section>

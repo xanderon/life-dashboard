@@ -18,3 +18,4 @@ If missing, trainer feedback falls back to local heuristic mode.
 
 - UI: `/study-coach/trainer`
 - API: `/api/study-coach/trainer-feedback`
+- API chat: `/api/study-coach/trainer-chat`
