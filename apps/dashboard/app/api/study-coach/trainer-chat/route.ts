@@ -25,10 +25,52 @@ type ChatResult = {
   actions: Action[];
 };
 
+function latestUserMessage(payload: ChatPayload) {
+  for (let i = payload.messages.length - 1; i >= 0; i -= 1) {
+    if (payload.messages[i].role === 'user') return payload.messages[i].text.toLowerCase();
+  }
+  return '';
+}
+
 function localFallback(payload: ChatPayload): ChatResult {
+  const userText = latestUserMessage(payload);
   const weakestDealBreaker = payload.stateSummary.concepts
     .filter((c) => c.dealBreaker)
     .sort((a, b) => a.mastery - b.mastery)[0];
+
+  const srp = payload.stateSummary.concepts.find((c) => c.id === 'srp');
+
+  if (userText.includes('ce sa fac') && (userText.includes('srp') || userText.includes('single responsibility'))) {
+    return {
+      mode: 'local-fallback',
+      reply: [
+        'Bun, pentru SRP fa asa in 20 minute:',
+        '1) Defineste SRP in 2 fraze.',
+        '2) Da un exemplu prost (o clasa care face SQL + email + business).',
+        '3) Refactor mental in 3 componente (repo, service, notifier).',
+        '4) Spune un pitfall: \"SRP nu inseamna o metoda per clasa\".',
+        'Dupa sprint, trimite-mi confidence + un exemplu concret din codul tau.'
+      ].join(' '),
+      actions: [
+        ...(srp ? [{ type: 'focus_concept', conceptId: srp.id } as const] : []),
+        ...(srp ? [{
+          type: 'create_task' as const,
+          title: 'SRP 20m: definitie + exemplu prost + refactor',
+          conceptId: srp.id,
+          estimateMin: 20,
+          taskType: 'deal-breaker' as const,
+        }] : []),
+      ],
+    };
+  }
+
+  if (userText.includes('stai') || userText.includes('termin') || userText.includes('acum')) {
+    return {
+      mode: 'local-fallback',
+      reply: 'Perfect, termina problema curenta. Cand ai inchis-o, da-mi \"gata\" si intram imediat pe un sprint SRP de 20 minute.',
+      actions: [],
+    };
+  }
 
   if (!payload.learningWindowOpen) {
     return {
@@ -38,10 +80,10 @@ function localFallback(payload: ChatPayload): ChatResult {
     };
   }
 
-  if (payload.trigger === 'proactive_nudge' && weakestDealBreaker) {
+    if (payload.trigger === 'proactive_nudge' && weakestDealBreaker) {
     return {
       mode: 'local-fallback',
-      reply: `Ping de la trainer: esti in fereastra de invatare. Fa acum 1 task pe ${weakestDealBreaker.name} (deal-breaker).`,
+      reply: `Ping de la trainer: esti in fereastra de invatare. Propun acum un sprint scurt pe ${weakestDealBreaker.name} (deal-breaker).`,
       actions: [
         { type: 'focus_concept', conceptId: weakestDealBreaker.id },
         {
@@ -59,10 +101,10 @@ function localFallback(payload: ChatPayload): ChatResult {
     (t) => t.status !== 'done' && t.type === 'deal-breaker'
   );
 
-  if (todoDealBreaker) {
+    if (todoDealBreaker) {
     return {
       mode: 'local-fallback',
-      reply: `Plan imediat: incepe cu task-ul deal-breaker \"${todoDealBreaker.title}\". Dupa 20-25 min, da-mi un recall summary + confidence.`,
+      reply: `Plan concret: ia task-ul \"${todoDealBreaker.title}\", lucreaza 20-25 min, apoi da-mi: definitie + exemplu + confidence.`,
       actions: [
         { type: 'mark_task', taskId: todoDealBreaker.id, status: 'in_progress' },
       ],
@@ -105,6 +147,9 @@ export async function POST(request: Request) {
     const systemPrompt = [
       'You are a proactive Romanian study coach for SWE interviews.',
       'Be concise and directive. Push deal-breaker topics first.',
+      'Always react directly to the latest user message in your first sentence.',
+      'If user says they want to finish another task first, acknowledge and set a follow-up checkpoint.',
+      'If user asks what to do for a concept, give concrete numbered steps, not generic advice.',
       'If user is behind, say it directly and propose one concrete sprint now.',
       'Return strict JSON with keys: reply (string), actions (array).',
       'Action types allowed: focus_concept, create_task, mark_task, schedule_review.',
