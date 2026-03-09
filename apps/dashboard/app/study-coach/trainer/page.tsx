@@ -224,6 +224,33 @@ function mergeTasksWithToday(baseTasks: Task[], todayTasks: Task[]): Task[] {
   return [...todayTasks, ...trainerTasks];
 }
 
+function todayContextFromSnapshot(snapshot: TodaySnapshot | null, concepts: Concept[]) {
+  if (!snapshot?.blocks?.length) {
+    return {
+      completedBlocks: 0,
+      totalBlocks: 0,
+      currentObjective: null as string | null,
+      doneTodayConceptIds: [] as string[],
+    };
+  }
+
+  const blocks = snapshot.blocks;
+  const currentBlockIdx = Math.max(0, Number(snapshot.currentBlockIdx ?? 0));
+  const completed = Math.min(currentBlockIdx, blocks.length);
+  const currentObjective = blocks[currentBlockIdx]?.objective ?? null;
+
+  const doneConceptIds = blocks
+    .slice(0, completed)
+    .map((b) => inferConceptId(b, concepts));
+
+  return {
+    completedBlocks: completed,
+    totalBlocks: blocks.length,
+    currentObjective,
+    doneTodayConceptIds: Array.from(new Set(doneConceptIds)),
+  };
+}
+
 export default function StudyCoachTrainerPage() {
   const [state, setState] = useState<TrainerState>(DEFAULT_STATE);
   const [chatInput, setChatInput] = useState('');
@@ -410,6 +437,8 @@ export default function StudyCoachTrainerPage() {
 
   const callCoach = useCallback(async (trigger: 'user_message' | 'proactive_nudge', userText?: string) => {
     const recentMessages = state.chat.slice(-10).map((m) => ({ role: m.role, text: m.text }));
+    const todaySnapshot = readTodaySnapshot();
+    const todayContext = todayContextFromSnapshot(todaySnapshot, state.concepts);
     const payload = {
       nowIso: new Date().toISOString(),
       learningWindowOpen,
@@ -419,6 +448,7 @@ export default function StudyCoachTrainerPage() {
         concepts: state.concepts,
         tasks: state.tasks,
       },
+      todayContext,
       messages: userText ? [...recentMessages, { role: 'user' as const, text: userText }] : recentMessages,
       trigger,
     };

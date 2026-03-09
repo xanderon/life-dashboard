@@ -16,6 +16,12 @@ type ChatPayload = {
     tasks: Array<{ id: string; title: string; conceptId: string; status: 'todo' | 'in_progress' | 'done'; estimateMin: number; type: 'new' | 'recall' | 'deal-breaker' | 'nice' }>;
   };
   messages: Array<{ role: 'user' | 'coach'; text: string }>;
+  todayContext?: {
+    completedBlocks: number;
+    totalBlocks: number;
+    currentObjective: string | null;
+    doneTodayConceptIds: string[];
+  };
   trigger?: 'user_message' | 'proactive_nudge';
 };
 
@@ -69,6 +75,7 @@ function localFallback(payload: ChatPayload): ChatResult {
     .sort((a, b) => a.mastery - b.mastery)[0];
 
   const srp = payload.stateSummary.concepts.find((c) => c.id === 'srp');
+  const doneTodaySet = new Set(payload.todayContext?.doneTodayConceptIds ?? []);
   const activeTask = payload.stateSummary.tasks.find((t) => t.status === 'in_progress');
   const topTodoDealBreaker = payload.stateSummary.tasks.find((t) => t.status === 'todo' && t.type === 'deal-breaker');
   const confidence = detectConfidence(userText);
@@ -147,10 +154,12 @@ function localFallback(payload: ChatPayload): ChatResult {
   }
 
   if (userText.includes('ce urmeaza') || userText.includes('what next') || userText.includes('next?')) {
+    const done = payload.todayContext?.completedBlocks ?? 0;
+    const total = payload.todayContext?.totalBlocks ?? 0;
     if (topTodoDealBreaker) {
       return {
         mode: 'local-fallback',
-        reply: `Urmatorul pas: \"${topTodoDealBreaker.title}\" (20-25 min), apoi check-in cu definitie + exemplu + confidence.`,
+        reply: `Progres Today: ${done}/${total} blocuri. Urmatorul pas: \"${topTodoDealBreaker.title}\" (20-25 min), apoi check-in cu definitie + exemplu + confidence.`,
         actions: [{ type: 'mark_task', taskId: topTodoDealBreaker.id, status: 'in_progress' }],
       };
     }
@@ -206,6 +215,20 @@ function localFallback(payload: ChatPayload): ChatResult {
           taskType: 'deal-breaker' as const,
         }] : []),
       ],
+    };
+  }
+
+  if (doneTodaySet.has('srp') && srp && (userText.includes('srp') || userText.includes('single responsibility'))) {
+    const nextDealBreaker = payload.stateSummary.concepts
+      .filter((c) => c.dealBreaker && c.id !== srp.id)
+      .sort((a, b) => a.mastery - b.mastery)[0];
+
+    return {
+      mode: 'local-fallback',
+      reply: nextDealBreaker
+        ? `Confirm, SRP apare deja ca facut in Today. Nu mai insistam pe el acum. Trecem pe ${nextDealBreaker.name}.`
+        : 'Confirm, SRP apare facut in Today. Trecem pe algoritmi ca next focus.',
+      actions: nextDealBreaker ? [{ type: 'focus_concept', conceptId: nextDealBreaker.id }] : [],
     };
   }
 
