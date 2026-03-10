@@ -149,50 +149,55 @@ export default function StudyCoachSolutionsPage() {
           ) : null}
         </header>
 
-        <section className={`grid grid-cols-1 gap-4 ${showMenu ? 'xl:grid-cols-6' : ''}`}>
-          {showMenu ? (
-          <div className="space-y-3 xl:col-span-2">
-            {grouped.map(([category, items]) => (
-              <div key={category} className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-semibold">{CATEGORY_LABEL[category]}</h2>
-                  <span className="text-xs text-[var(--muted)]">{items.length}</span>
-                </div>
-                <div className="mt-2 space-y-1">
-                  {items.map((doc) => (
-                    <button
-                      key={doc.file}
-                      className={`w-full rounded-md border px-2 py-1.5 text-left text-xs ${selectedFile === doc.file ? 'border-sky-400 bg-sky-500/20' : 'border-[var(--border)] bg-[var(--panel-2)]'}`}
-                      onClick={() => setSelectedFile(doc.file)}
-                    >
-                      <div className="font-semibold">{doc.title}</div>
-                      <div className="text-[var(--muted)]">{doc.difficulty} · {doc.file}</div>
-                    </button>
-                  ))}
-                </div>
+        <section className="space-y-4">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold">Cuprins</h2>
+              <button
+                className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-sm font-semibold"
+                onClick={() => setShowMenu((prev) => !prev)}
+              >
+                {showMenu ? 'Ascunde cuprins' : 'Arata cuprins'}
+              </button>
+            </div>
+            {showMenu ? (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {grouped.map(([category, items]) => (
+                  <div key={category} className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold">{CATEGORY_LABEL[category]}</h3>
+                      <span className="text-xs text-[var(--muted)]">{items.length}</span>
+                    </div>
+                    <div className="mt-2 max-h-48 space-y-1 overflow-auto pr-1">
+                      {items.map((doc) => (
+                        <button
+                          key={doc.file}
+                          className={`w-full rounded-md border px-2 py-1.5 text-left text-xs ${selectedFile === doc.file ? 'border-sky-400 bg-sky-500/20' : 'border-[var(--border)] bg-[var(--panel)]'}`}
+                          onClick={() => setSelectedFile(doc.file)}
+                        >
+                          <div className="font-semibold">{doc.title}</div>
+                          <div className="text-[var(--muted)]">{doc.difficulty} · {doc.file}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : null}
             {!grouped.length && !loading ? (
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3 text-sm text-[var(--muted)]">
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-sm text-[var(--muted)]">
                 No HTML files found. Add files in `apps/dashboard/app/study-coach/htmldocs` and press Refresh list.
               </div>
             ) : null}
           </div>
-          ) : null}
 
-          <div className={`rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3 ${showMenu ? 'xl:col-span-4' : ''}`}>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h3 className="text-base font-semibold">Preview</h3>
-                <p className="text-xs text-[var(--muted)]">{selected?.file ?? 'Select a file from left.'}</p>
+                <h3 className="text-base font-semibold">Preview mare</h3>
+                <p className="text-xs text-[var(--muted)]">{selected?.file ?? 'Alege un fisier din cuprins.'}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button
-                  className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-sm font-semibold"
-                  onClick={() => setShowMenu((prev) => !prev)}
-                >
-                  {showMenu ? 'Hide menu' : 'Show menu'}
-                </button>
                 {selected ? (
                   <a
                     className="rounded-md border border-cyan-500/40 bg-cyan-500/20 px-3 py-1.5 text-sm font-semibold"
@@ -208,7 +213,7 @@ export default function StudyCoachSolutionsPage() {
             {selected ? (
               <iframe
                 title={selected.title}
-                className="mt-3 h-[82vh] w-full rounded-lg border border-[var(--border)] bg-white"
+                className="mt-3 h-[74vh] w-full rounded-lg border border-[var(--border)] bg-white sm:h-[78vh] lg:h-[84vh]"
                 src={previewUrl(selected.file)}
               />
             ) : (
