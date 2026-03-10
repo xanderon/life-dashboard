@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Merge Two Sorted Lists — Interview Study Page</title>
+
+  <!-- Prism.js -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      --blue: #2563eb;
+      --blue-soft: #eff6ff;
+      --green: #059669;
+      --green-soft: #ecfdf5;
+      --amber: #d97706;
+      --amber-soft: #fffbeb;
+      --red: #dc2626;
+      --red-soft: #fef2f2;
+      --purple: #7c3aed;
+      --tag-bg: #eef2ff;
+      --inline: #f3f4f6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+    }
+
+    body {
+      padding: 32px 18px;
+    }
+
+    .page {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding: 32px;
+    }
+
+    .hero {
+      margin-bottom: 26px;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 14px 0;
+      line-height: 1.2;
+    }
+
+    h1 {
+      font-size: 2rem;
+      letter-spacing: -0.02em;
+    }
+
+    h2 {
+      margin-top: 34px;
+      font-size: 1.35rem;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h3 {
+      margin-top: 22px;
+      font-size: 1.02rem;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 1rem;
+      margin-top: 10px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 7px 12px;
+      background: var(--tag-bg);
+      color: #3730a3;
+      border: 1px solid #c7d2fe;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .box,
+    .example,
+    .warning,
+    .success {
+      border-radius: 16px;
+      padding: 18px 18px;
+      margin: 16px 0;
+      border: 1px solid var(--border);
+    }
+
+    .box {
+      background: #f8fafc;
+    }
+
+    .example {
+      background: var(--blue-soft);
+      border-color: #bfdbfe;
+    }
+
+    .warning {
+      background: var(--amber-soft);
+      border-color: #fcd34d;
+    }
+
+    .success {
+      background: var(--green-soft);
+      border-color: #86efac;
+    }
+
+    .label {
+      display: inline-block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .example .label {
+      color: var(--blue);
+    }
+
+    .warning .label {
+      color: var(--amber);
+    }
+
+    .success .label {
+      color: var(--green);
+    }
+
+    .box .label {
+      color: var(--purple);
+    }
+
+    code:not(pre code) {
+      background: var(--inline);
+      padding: 2px 7px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      font-size: 0.95em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    pre[class*="language-"] {
+      border-radius: 16px;
+      padding: 18px !important;
+      border: 1px solid var(--border);
+      overflow-x: auto;
+      margin: 14px 0 18px 0;
+      font-size: 0.93rem;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin: 16px 0;
+    }
+
+    .step {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #fcfdff;
+      margin-bottom: 14px;
+    }
+
+    .step-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #0f172a;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+    }
+
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: #f8fafc;
+      font-weight: 700;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    ul {
+      margin: 10px 0 10px 20px;
+      padding: 0;
+    }
+
+    li {
+      margin: 7px 0;
+    }
+
+    .footer-note {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+
+      .page {
+        max-width: none;
+      }
+
+      .card {
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
+        padding: 0;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .card {
+        padding: 22px;
+      }
+
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 1.65rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <section class="hero">
+        <h1>21. Merge Two Sorted Lists</h1>
+        <p class="subtitle">
+          Technical interview study page — linked list fundamentals, intuition, walkthrough, final JavaScript solution, and common interview mistakes.
+        </p>
+
+        <div class="tags">
+          <span class="tag">Easy</span>
+          <span class="tag">Linked List</span>
+          <span class="tag">Two Pointers</span>
+          <span class="tag">Pointer Manipulation</span>
+          <span class="tag">Merge Pattern</span>
+        </div>
+      </section>
+
+      <h2>1. Problem Statement</h2>
+      <div class="box">
+        <div class="label">Problem</div>
+        <p>
+          You are given the heads of two sorted linked lists <code>list1</code> and <code>list2</code>.
+        </p>
+        <p>
+          Merge the two lists into one sorted list. The list should be made by splicing together the nodes of the first two lists.
+        </p>
+        <p>
+          Return the head of the merged linked list.
+        </p>
+      </div>
+
+      <h2>2. Examples</h2>
+      <div class="grid-2">
+        <div class="example">
+          <div class="label">Example 1</div>
+          <p><strong>Input:</strong> <code>list1 = [1,2,4]</code>, <code>list2 = [1,3,4]</code></p>
+          <p><strong>Output:</strong> <code>[1,1,2,3,4,4]</code></p>
+        </div>
+
+        <div class="example">
+          <div class="label">Example 2</div>
+          <p><strong>Input:</strong> <code>list1 = []</code>, <code>list2 = []</code></p>
+          <p><strong>Output:</strong> <code>[]</code></p>
+        </div>
+      </div>
+
+      <div class="example">
+        <div class="label">Example 3</div>
+        <p><strong>Input:</strong> <code>list1 = []</code>, <code>list2 = [0]</code></p>
+        <p><strong>Output:</strong> <code>[0]</code></p>
+      </div>
+
+      <h2>3. Main Idea / Intuition</h2>
+      <div class="success">
+        <div class="label">Core Idea</div>
+        <p>
+          We keep one pointer on the current node of <code>list1</code> and one pointer on the current node of <code>list2</code>.
+          At each step, we take the smaller current node and attach it to the result.
+        </p>
+        <p>
+          Because both input lists are already sorted, choosing the smaller front node each time guarantees that the final result stays sorted.
+        </p>
+      </div>
+
+      <div class="box">
+        <div class="label">Important Concept</div>
+        <p>
+          The input shown as <code>[1,2,4]</code> is only a friendly display format.
+          In the actual function, <code>list1</code> and <code>list2</code> are <strong>not arrays</strong>.
+          They are linked lists, which means chains of nodes.
+        </p>
+        <p>Each node looks like this:</p>
+<pre><code class="language-javascript">{
+  val: 1,
+  next: {
+    val: 2,
+    next: {
+      val: 4,
+      next: null
+    }
+  }
+}</code></pre>
+      </div>
+
+      <h2>4. Step-by-step Walkthrough</h2>
+      <div class="box">
+        <div class="label">Setup</div>
+        <p>We use a <code>dummy</code> node so we can build the result list easily without special handling for the first real node.</p>
+        <p class="mono">dummy(0) -&gt; null
+tail points to dummy
+
+list1: 1 -&gt; 2 -&gt; 4 -&gt; null
+list2: 1 -&gt; 3 -&gt; 4 -&gt; null</p>
+      </div>
+
+      <div class="step">
+        <div class="step-title">Step 1 — Compare 1 and 1</div>
+        <p><code>list1.val &lt;= list2.val</code> is true, so attach the node from <code>list1</code>.</p>
+        <p class="mono">Result: dummy -&gt; 1
+tail moves to that 1
+
+list1: 2 -&gt; 4
+list2: 1 -&gt; 3 -&gt; 4</p>
+      </div>
+
+      <div class="step">
+        <div class="step-title">Step 2 — Compare 2 and 1</div>
+        <p>This time <code>list2</code> is smaller, so attach the node from <code>list2</code>.</p>
+        <p class="mono">Result: dummy -&gt; 1 -&gt; 1
+tail moves to the second 1
+
+list1: 2 -&gt; 4
+list2: 3 -&gt; 4</p>
+      </div>
+
+      <div class="step">
+        <div class="step-title">Step 3 — Compare 2 and 3</div>
+        <p>Take the node from <code>list1</code>.</p>
+        <p class="mono">Result: dummy -&gt; 1 -&gt; 1 -&gt; 2
+
+list1: 4
+list2: 3 -&gt; 4</p>
+      </div>
+
+      <div class="step">
+        <div class="step-title">Step 4 — Compare 4 and 3</div>
+        <p>Take the node from <code>list2</code>.</p>
+        <p class="mono">Result: dummy -&gt; 1 -&gt; 1 -&gt; 2 -&gt; 3
+
+list1: 4
+list2: 4</p>
+      </div>
+
+      <div class="step">
+        <div class="step-title">Step 5 — Compare 4 and 4</div>
+        <p>Take the node from <code>list1</code> because we used <code>&lt;=</code>.</p>
+        <p class="mono">Result: dummy -&gt; 1 -&gt; 1 -&gt; 2 -&gt; 3 -&gt; 4
+
+list1: null
+list2: 4</p>
+      </div>
+
+      <div class="step">
+        <div class="step-title">Step 6 — One list is finished</div>
+        <p>
+          The loop stops because <code>list1 === null</code>. The remaining nodes in <code>list2</code> are already sorted, so we attach them directly.
+        </p>
+        <p class="mono">Final: dummy -&gt; 1 -&gt; 1 -&gt; 2 -&gt; 3 -&gt; 4 -&gt; 4</p>
+      </div>
+
+      <div class="success">
+        <div class="label">Why return <code>dummy.next</code>?</div>
+        <p>
+          <code>dummy</code> is only a fake helper node. The real merged list starts at the first node after it, which is <code>dummy.next</code>.
+        </p>
+      </div>
+
+      <h2>5. Final JavaScript Solution</h2>
+<pre><code class="language-javascript">/**
+ * Definition for singly-linked list.
+ * function ListNode(val, next) {
+ *     this.val = (val === undefined ? 0 : val);
+ *     this.next = (next === undefined ? null : next);
+ * }
+ */
+
+/**
+ * @param {ListNode} list1
+ * @param {ListNode} list2
+ * @return {ListNode}
+ */
+var mergeTwoLists = function(list1, list2) {
+    // Create a fake starting node to simplify result building
+    let dummy = new ListNode(0);
+
+    // tail always points to the last node in the merged list
+    let tail = dummy;
+
+    // Compare current nodes while both lists still have nodes
+    while (list1 !== null && list2 !== null) {
+        if (list1.val &lt;= list2.val) {
+            // Attach the current node from list1
+            tail.next = list1;
+
+            // Move forward in list1
+            list1 = list1.next;
+        } else {
+            // Attach the current node from list2
+            tail.next = list2;
+
+            // Move forward in list2
+            list2 = list2.next;
+        }
+
+        // Move tail to the node we just attached
+        tail = tail.next;
+    }
+
+    // Attach the remaining nodes from whichever list is not empty
+    tail.next = list1 || list2;
+
+    // Skip the fake node and return the real head
+    return dummy.next;
+};</code></pre>
+
+      <h2>6. Line-by-line Explanation</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Explanation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>let dummy = new ListNode(0);</code></td>
+            <td>Create a helper node so we can attach nodes easily without worrying about how to initialize the head of the result.</td>
+          </tr>
+          <tr>
+            <td><code>let tail = dummy;</code></td>
+            <td><code>tail</code> tracks the last node in the merged list.</td>
+          </tr>
+          <tr>
+            <td><code>while (list1 !== null &amp;&amp; list2 !== null)</code></td>
+            <td>Keep merging while both lists still have a current node available.</td>
+          </tr>
+          <tr>
+            <td><code>if (list1.val &lt;= list2.val)</code></td>
+            <td>Compare the values of the two current nodes and choose the smaller one.</td>
+          </tr>
+          <tr>
+            <td><code>tail.next = list1;</code></td>
+            <td>Attach the current <code>list1</code> node to the merged list.</td>
+          </tr>
+          <tr>
+            <td><code>list1 = list1.next;</code></td>
+            <td>Move the <code>list1</code> pointer to its next node.</td>
+          </tr>
+          <tr>
+            <td><code>tail.next = list2;</code></td>
+            <td>Attach the current <code>list2</code> node when it is smaller.</td>
+          </tr>
+          <tr>
+            <td><code>list2 = list2.next;</code></td>
+            <td>Move the <code>list2</code> pointer forward.</td>
+          </tr>
+          <tr>
+            <td><code>tail = tail.next;</code></td>
+            <td>Advance <code>tail</code> because the merged list has grown by one node.</td>
+          </tr>
+          <tr>
+            <td><code>tail.next = list1 || list2;</code></td>
+            <td>Once one list ends, attach the remaining nodes from the other list directly.</td>
+          </tr>
+          <tr>
+            <td><code>return dummy.next;</code></td>
+            <td>Return the first real node, not the fake helper node.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>7. Common Mistakes</h2>
+      <div class="warning">
+        <div class="label">Mistakes to Watch For</div>
+        <ul>
+          <li><strong>Treating the input like arrays.</strong> These are linked lists, not arrays. You move with <code>.next</code>, not with indexes.</li>
+          <li><strong>Using a <code>for</code> loop.</strong> A linked list does not give you direct indexed access like <code>arr[i]</code>.</li>
+          <li><strong>Forgetting to move <code>tail</code>.</strong> If you skip <code>tail = tail.next</code>, you keep writing in the same place.</li>
+          <li><strong>Moving the wrong pointer.</strong> If you attach a node from <code>list1</code>, you must move <code>list1</code>, not <code>list2</code>.</li>
+          <li><strong>Returning <code>dummy</code> instead of <code>dummy.next</code>.</strong> That would include the fake starting node.</li>
+          <li><strong>Forgetting the leftover nodes.</strong> After the loop, one list may still contain nodes that must be attached.</li>
+        </ul>
+      </div>
+
+      <h2>8. Complexity</h2>
+      <div class="grid-2">
+        <div class="success">
+          <div class="label">Time Complexity</div>
+          <p><code>O(n + m)</code></p>
+          <p>
+            Each node from both lists is visited once.
+            If <code>n</code> is the size of <code>list1</code> and <code>m</code> is the size of <code>list2</code>, total work is proportional to <code>n + m</code>.
+          </p>
+        </div>
+
+        <div class="success">
+          <div class="label">Space Complexity</div>
+          <p><code>O(1)</code></p>
+          <p>
+            We only use a few pointers like <code>dummy</code> and <code>tail</code>.
+            We are reusing the existing nodes instead of building a large extra structure.
+          </p>
+        </div>
+      </div>
+
+      <h2>9. Interview Explanation Version</h2>
+      <div class="box">
+        <div class="label">How to say it out loud</div>
+        <p>
+          “I use two pointers, one for each sorted linked list, and a dummy node to simplify building the merged result.
+          While both lists still have nodes, I compare their current values, attach the smaller node to the result,
+          move the pointer of the list I took from, and then move the tail of the merged list.
+          When one list ends, I attach the rest of the other list directly because it is already sorted.
+          Finally, I return <code>dummy.next</code> because <code>dummy</code> is only a helper node.”
+        </p>
+      </div>
+
+      <h2>10. Pattern to Remember</h2>
+      <div class="success">
+        <div class="label">Mental Model</div>
+        <p>
+          Think of three pointers:
+        </p>
+        <ul>
+          <li><code>list1</code> points to the current node in the first list</li>
+          <li><code>list2</code> points to the current node in the second list</li>
+          <li><code>tail</code> points to the last node in the merged result</li>
+        </ul>
+        <p>
+          At each step:
+        </p>
+        <ul>
+          <li>compare <code>list1.val</code> and <code>list2.val</code></li>
+          <li>attach the smaller node to <code>tail.next</code></li>
+          <li>move that list’s pointer forward</li>
+          <li>move <code>tail</code> forward</li>
+        </ul>
+      </div>
+
+      <h2>11. Optional Brute Force Comparison</h2>
+      <div class="warning">
+        <div class="label">Less Interview-Friendly Approach</div>
+        <p>
+          A brute-force style approach would be:
+        </p>
+        <ul>
+          <li>read all node values into an array</li>
+          <li>sort the array</li>
+          <li>build a new linked list from the sorted values</li>
+        </ul>
+        <p>
+          This works, but it is weaker for interviews because:
+        </p>
+        <ul>
+          <li>it ignores the linked list structure</li>
+          <li>it uses extra space</li>
+          <li>it misses the intended pointer manipulation pattern</li>
+        </ul>
+      </div>
+
+<pre><code class="language-javascript">// Brute force idea only - not the preferred interview solution
+var mergeTwoLists = function(list1, list2) {
+    let values = [];
+
+    while (list1 !== null) {
+        values.push(list1.val);
+        list1 = list1.next;
+    }
+
+    while (list2 !== null) {
+        values.push(list2.val);
+        list2 = list2.next;
+    }
+
+    values.sort((a, b) =&gt; a - b);
+
+    let dummy = new ListNode(0);
+    let current = dummy;
+
+    for (const value of values) {
+        current.next = new ListNode(value);
+        current = current.next;
+    }
+
+    return dummy.next;
+};</code></pre>
+
+      <h2>12. Final Takeaway</h2>
+      <div class="box">
+        <div class="label">What to Remember</div>
+        <p>
+          This problem is not really about sorting from scratch. It is about understanding how linked lists work:
+          each variable like <code>list1</code> or <code>list2</code> points to the <strong>current node</strong>, not to an array.
+        </p>
+        <p>
+          Once that clicks, the rest becomes a clean merge process with a <code>dummy</code> node and a <code>tail</code> pointer.
+        </p>
+      </div>
+
+      <div class="footer-note">
+        Study page generated for interview prep — focused on intuition, implementation details, and repeatable interview explanation.
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>

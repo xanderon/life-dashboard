@@ -728,9 +728,35 @@ function StatCard({
 
   const trendClass =
     trend.startsWith('+') ? 'text-emerald-300' : trend === '—' ? 'text-[var(--muted)]' : 'text-rose-300';
+  const isIncrease = trend.startsWith('+');
+  const isDecrease = trend.startsWith('-');
+  const isNoComparison = trend === '—';
+
+  let hoverMessage = `Comparatie fata de luna trecuta: ${trend}.`;
+  if (isNoComparison) {
+    hoverMessage = 'Nu exista suficiente date pentru comparatia cu luna trecuta.';
+  } else if (label === 'Healthy') {
+    hoverMessage = isIncrease
+      ? `Semnal bun: ponderea Healthy a crescut (${trend}) fata de luna trecuta.`
+      : `Atentie: ponderea Healthy a scazut (${trend}) fata de luna trecuta.`;
+  } else if (label === 'Junk ratio') {
+    hoverMessage = isDecrease
+      ? `Semnal bun: ponderea Junk a scazut (${trend}) fata de luna trecuta.`
+      : `Atentie: ponderea Junk a crescut (${trend}) fata de luna trecuta.`;
+  } else if (label === 'Alimentare' || label === 'Non-alimentare') {
+    hoverMessage = isDecrease
+      ? `Cheltuiala a scazut cu ${trend.replace('-', '')} fata de luna trecuta. Interpretarea depinde de obiectivul tau.`
+      : `Cheltuiala a crescut cu ${trend.replace('+', '')} fata de luna trecuta. Interpretarea depinde de obiectivul tau.`;
+  } else if (isDecrease) {
+    hoverMessage = `Valoarea a scazut (${trend}) fata de luna trecuta.`;
+  }
 
   return (
-    <div className={`rounded-2xl border p-4 shadow-sm ${accentClass}`}>
+    <div
+      className={`group relative overflow-hidden rounded-2xl border p-4 shadow-sm ${accentClass}`}
+      tabIndex={0}
+      aria-label={hoverMessage}
+    >
       <div className="flex items-center justify-between text-xs uppercase tracking-wide">
         <span>{label}</span>
         <span className={trendClass}>{trend}</span>
@@ -738,6 +764,9 @@ function StatCard({
       <div className="mt-3 flex items-center justify-between">
         <div className="text-2xl font-semibold">{value}</div>
         <div className="text-xl">{icon}</div>
+      </div>
+      <div className="pointer-events-none absolute inset-x-2 bottom-2 translate-y-4 rounded-md border border-white/20 bg-black/35 px-2 py-1 text-[10px] normal-case leading-snug text-white opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100">
+        {hoverMessage}
       </div>
     </div>
   );

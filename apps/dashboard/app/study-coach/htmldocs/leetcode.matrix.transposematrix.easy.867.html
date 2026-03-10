@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>867. Transpose Matrix — Interview Study Page</title>
+
+  <!-- Prism.js -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #5b6472;
+      --border: #e5e7eb;
+      --primary: #2563eb;
+      --primary-soft: #dbeafe;
+      --success: #166534;
+      --success-soft: #dcfce7;
+      --warning: #92400e;
+      --warning-soft: #fef3c7;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+      --code-bg: #f8fafc;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      padding: 32px 18px 60px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(229, 231, 235, 0.95);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 40px 36px 26px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 2.2rem;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.02rem;
+      max-width: 760px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: #1d4ed8;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .content {
+      padding: 34px 36px 40px;
+    }
+
+    section + section {
+      margin-top: 26px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 1.35rem;
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+    }
+
+    h3 {
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+      line-height: 1.3;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    ul, ol {
+      margin: 10px 0 0 22px;
+      padding: 0;
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    .box,
+    .example,
+    .warning,
+    .success {
+      border-radius: var(--radius);
+      padding: 18px 18px 16px;
+      border: 1px solid var(--border);
+      background: #fff;
+      margin-top: 12px;
+    }
+
+    .box {
+      background: #fcfdff;
+    }
+
+    .example {
+      background: #f8fbff;
+      border-color: #dbeafe;
+    }
+
+    .warning {
+      background: var(--warning-soft);
+      border-color: #fcd34d;
+    }
+
+    .success {
+      background: var(--success-soft);
+      border-color: #86efac;
+    }
+
+    .label {
+      display: inline-block;
+      margin-bottom: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .box .label {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .example .label {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .warning .label {
+      background: #fde68a;
+      color: #92400e;
+    }
+
+    .success .label {
+      background: #bbf7d0;
+      color: #166534;
+    }
+
+    code:not(pre code) {
+      background: #eef2f7;
+      border: 1px solid #d8e0ea;
+      padding: 0.14em 0.42em;
+      border-radius: 8px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 12px 0 0;
+      padding: 18px !important;
+      border-radius: 16px;
+      overflow-x: auto;
+      background: var(--code-bg) !important;
+      border: 1px solid var(--border);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+
+    pre code {
+      font-size: 0.95rem;
+      line-height: 1.65;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 14px;
+      margin-top: 10px;
+      font-size: 0.97rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 12px 14px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: #f8fafc;
+      font-weight: 700;
+    }
+
+    .mono-block {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+
+    .footer-note {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      text-align: center;
+    }
+
+    @media (max-width: 760px) {
+      .hero,
+      .content {
+        padding: 24px 18px 26px;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+      }
+
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+
+      .card {
+        box-shadow: none;
+        border: none;
+      }
+
+      .hero,
+      .content {
+        padding-left: 0;
+        padding-right: 0;
+      }
+
+      pre {
+        white-space: pre-wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <article class="card">
+      <header class="hero">
+        <h1>867. Transpose Matrix</h1>
+        <p class="subtitle">
+          A clean interview-focused explanation of the matrix transpose problem, with intuition,
+          implementation details, common JavaScript pitfalls, and a polished final solution.
+        </p>
+
+        <div class="tags">
+          <span class="tag">Easy</span>
+          <span class="tag">Matrix</span>
+          <span class="tag">Array</span>
+          <span class="tag">2D Traversal</span>
+          <span class="tag">Coordinate Mapping</span>
+          <span class="tag">JavaScript</span>
+        </div>
+      </header>
+
+      <main class="content">
+        <section>
+          <h2>1. Problem Statement</h2>
+          <div class="box">
+            <span class="label">Prompt</span>
+            <p>Given a 2D integer array <code>matrix</code>, return the transpose of <code>matrix</code>.</p>
+            <p>
+              The transpose of a matrix is the matrix flipped over its main diagonal,
+              switching the matrix's row and column indices.
+            </p>
+
+            <pre><code class="language-javascript">/**
+ * @param {number[][]} matrix
+ * @return {number[][]}
+ */
+var transpose = function(matrix) {
+
+};</code></pre>
+          </div>
+        </section>
+
+        <section>
+          <h2>2. Examples</h2>
+
+          <div class="example">
+            <span class="label">Example 1</span>
+            <p><strong>Input:</strong> <code>[[1,2,3],[4,5,6],[7,8,9]]</code></p>
+            <p><strong>Output:</strong> <code>[[1,4,7],[2,5,8],[3,6,9]]</code></p>
+            <div class="mono-block">Original:
+1 2 3
+4 5 6
+7 8 9
+
+Transposed:
+1 4 7
+2 5 8
+3 6 9</div>
+          </div>
+
+          <div class="example">
+            <span class="label">Example 2</span>
+            <p><strong>Input:</strong> <code>[[1,2,3],[4,5,6]]</code></p>
+            <p><strong>Output:</strong> <code>[[1,4],[2,5],[3,6]]</code></p>
+            <div class="mono-block">Original (2 x 3):
+1 2 3
+4 5 6
+
+Transposed (3 x 2):
+1 4
+2 5
+3 6</div>
+          </div>
+        </section>
+
+        <section>
+          <h2>3. Main Idea / Intuition</h2>
+          <div class="success">
+            <span class="label">Core Rule</span>
+            <p>The whole problem is based on one mapping:</p>
+            <p><code>matrix[row][col] -&gt; result[col][row]</code></p>
+          </div>
+
+          <div class="box">
+            <span class="label">Think About It</span>
+            <p>
+              In a transpose, every value keeps its identity, but its position changes.
+              The row index becomes the column index, and the column index becomes the row index.
+            </p>
+            <p>
+              So if a value is at <code>[0][2]</code> in the original matrix,
+              it must go to <code>[2][0]</code> in the transposed matrix.
+            </p>
+          </div>
+
+          <div class="grid-2">
+            <div class="box">
+              <span class="label">Original Position</span>
+              <p><code>matrix[1][2] = 6</code></p>
+              <p>This means: row <code>1</code>, column <code>2</code>.</p>
+            </div>
+            <div class="box">
+              <span class="label">New Position</span>
+              <p><code>result[2][1] = 6</code></p>
+              <p>The indices are swapped.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>4. Step-by-step Walkthrough</h2>
+
+          <div class="box">
+            <span class="label">Step 1</span>
+            <p>Get the size of the original matrix.</p>
+            <ul>
+              <li><code>rows = matrix.length</code></li>
+              <li><code>cols = matrix[0].length</code></li>
+            </ul>
+          </div>
+
+          <div class="box">
+            <span class="label">Step 2</span>
+            <p>Create a new matrix with reversed dimensions.</p>
+            <p>
+              If the original matrix is <code>rows x cols</code>, then the transpose must be
+              <code>cols x rows</code>.
+            </p>
+          </div>
+
+          <div class="box">
+            <span class="label">Step 3</span>
+            <p>Visit every element in the original matrix using nested loops.</p>
+          </div>
+
+          <div class="box">
+            <span class="label">Step 4</span>
+            <p>Place each value into the swapped coordinate:</p>
+            <p><code>result[col][row] = matrix[row][col]</code></p>
+          </div>
+
+          <div class="example">
+            <span class="label">Detailed Walkthrough</span>
+            <p>Using <code>matrix = [[1,2,3],[4,5,6]]</code>:</p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Current Position</th>
+                  <th>Value</th>
+                  <th>Moved To</th>
+                  <th>Why</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>[0][0]</code></td>
+                  <td><code>1</code></td>
+                  <td><code>[0][0]</code></td>
+                  <td>Swap row and column: <code>(0,0)</code> stays <code>(0,0)</code></td>
+                </tr>
+                <tr>
+                  <td><code>[0][1]</code></td>
+                  <td><code>2</code></td>
+                  <td><code>[1][0]</code></td>
+                  <td>Row <code>0</code>, col <code>1</code> becomes row <code>1</code>, col <code>0</code></td>
+                </tr>
+                <tr>
+                  <td><code>[0][2]</code></td>
+                  <td><code>3</code></td>
+                  <td><code>[2][0]</code></td>
+                  <td>Again, swap indices</td>
+                </tr>
+                <tr>
+                  <td><code>[1][0]</code></td>
+                  <td><code>4</code></td>
+                  <td><code>[0][1]</code></td>
+                  <td>Row <code>1</code>, col <code>0</code> becomes row <code>0</code>, col <code>1</code></td>
+                </tr>
+                <tr>
+                  <td><code>[1][1]</code></td>
+                  <td><code>5</code></td>
+                  <td><code>[1][1]</code></td>
+                  <td>Same value, mirrored on diagonal</td>
+                </tr>
+                <tr>
+                  <td><code>[1][2]</code></td>
+                  <td><code>6</code></td>
+                  <td><code>[2][1]</code></td>
+                  <td>Indices swapped</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2>5. Final JavaScript Solution</h2>
+          <pre><code class="language-javascript">/**
+ * @param {number[][]} matrix
+ * @return {number[][]}
+ */
+var transpose = function(matrix) {
+    const rows = matrix.length;
+    const cols = matrix[0].length;
+
+    // The transposed matrix has reversed dimensions:
+    // original: rows x cols
+    // result:   cols x rows
+    const result = Array.from({ length: cols }, () =&gt; Array(rows));
+
+    for (let row = 0; row &lt; rows; row++) {
+        for (let col = 0; col &lt; cols; col++) {
+            result[col][row] = matrix[row][col];
+        }
+    }
+
+    return result;
+};</code></pre>
+        </section>
+
+        <section>
+          <h2>6. Line-by-line Explanation</h2>
+
+          <div class="box">
+            <span class="label">Line 1</span>
+            <p><code>const rows = matrix.length;</code></p>
+            <p>This gets how many rows the original matrix has.</p>
+          </div>
+
+          <div class="box">
+            <span class="label">Line 2</span>
+            <p><code>const cols = matrix[0].length;</code></p>
+            <p>This gets how many columns each row has.</p>
+          </div>
+
+          <div class="box">
+            <span class="label">Line 3</span>
+            <p><code>const result = Array.from({ length: cols }, () =&gt; Array(rows));</code></p>
+            <p>
+              This creates the output matrix with reversed dimensions.
+              We use <code>Array.from</code> so each row in <code>result</code> is a different array.
+            </p>
+          </div>
+
+          <div class="box">
+            <span class="label">Nested Loops</span>
+            <p>
+              We go through every cell in the original matrix. Since every value must appear in the answer,
+              we cannot skip any cell.
+            </p>
+          </div>
+
+          <div class="box">
+            <span class="label">Key Assignment</span>
+            <p><code>result[col][row] = matrix[row][col];</code></p>
+            <p>
+              This is the transpose rule. It swaps the coordinates.
+              That is the exact definition of matrix transposition.
+            </p>
+          </div>
+
+          <div class="box">
+            <span class="label">Return</span>
+            <p><code>return result;</code></p>
+            <p>We return the newly built transposed matrix.</p>
+          </div>
+        </section>
+
+        <section>
+          <h2>7. Common Mistakes</h2>
+
+          <div class="warning">
+            <span class="label">Mistake 1</span>
+            <p><strong>Using the same dimensions for the result.</strong></p>
+            <pre><code class="language-javascript">const result = Array.from({ length: rows }, () =&gt; Array(cols));</code></pre>
+            <p>
+              This is wrong because the transpose of a <code>rows x cols</code> matrix must be
+              <code>cols x rows</code>.
+            </p>
+          </div>
+
+          <div class="warning">
+            <span class="label">Mistake 2</span>
+            <p><strong>Copying instead of transposing.</strong></p>
+            <pre><code class="language-javascript">result[row][col] = matrix[row][col];</code></pre>
+            <p>
+              This just recreates the original matrix. It does not swap row and column positions.
+            </p>
+          </div>
+
+          <div class="warning">
+            <span class="label">Mistake 3</span>
+            <p><strong>Creating the 2D array incorrectly with <code>fill</code>.</strong></p>
+            <pre><code class="language-javascript">const result = new Array(cols).fill(new Array(rows));</code></pre>
+            <p>
+              This makes every row reference the exact same array object.
+              Updating one row updates all rows.
+            </p>
+          </div>
+
+          <div class="example">
+            <span class="label">Why the fill bug happens</span>
+            <pre><code class="language-javascript">const result = new Array(3).fill(new Array(2));
+
+result[0][0] = 99;
+
+console.log(result);
+// [
+//   [99, undefined],
+//   [99, undefined],
+//   [99, undefined]
+// ]</code></pre>
+            <p>
+              The issue is not syntax. The issue is references.
+              All three rows point to the same inner array.
+            </p>
+          </div>
+
+          <div class="success">
+            <span class="label">Correct Version</span>
+            <pre><code class="language-javascript">const result = Array.from({ length: cols }, () =&gt; Array(rows));</code></pre>
+            <p>Now each row is created separately.</p>
+          </div>
+        </section>
+
+        <section>
+          <h2>8. Complexity</h2>
+
+          <div class="box">
+            <span class="label">Time Complexity</span>
+            <p><code>O(m * n)</code></p>
+            <p>
+              We visit every element exactly once, where <code>m</code> is the number of rows and
+              <code>n</code> is the number of columns.
+            </p>
+          </div>
+
+          <div class="box">
+            <span class="label">Space Complexity</span>
+            <p><code>O(m * n)</code></p>
+            <p>
+              We create a new matrix to store all values. The output holds the same total number of elements
+              as the input.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>9. Interview Explanation Version</h2>
+          <div class="box">
+            <span class="label">30-Second Answer</span>
+            <p>
+              First, I get the number of rows and columns from the input matrix.
+              Since transposition swaps row and column indices, the result matrix must have reversed dimensions:
+              <code>cols x rows</code>.
+              Then I iterate through every cell and place each value at
+              <code>result[col][row]</code>.
+              That gives me the transposed matrix in <code>O(m * n)</code> time with
+              <code>O(m * n)</code> extra space.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>10. Pattern to Remember</h2>
+          <div class="success">
+            <span class="label">Mental Model</span>
+            <p><strong>Transpose means:</strong> swap row and column.</p>
+            <p><code>(r, c) -&gt; (c, r)</code></p>
+            <p>
+              If you remember that one rule, you can rebuild the whole solution during an interview.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>11. Optional Brute Force Comparison</h2>
+          <div class="box">
+            <span class="label">Is there a simpler brute force?</span>
+            <p>
+              The direct nested-loop solution is already the practical brute force and also the correct optimal approach here.
+              Since every value must move to a new coordinate, you must inspect every cell.
+            </p>
+            <p>
+              There is no meaningful faster-than-<code>O(m * n)</code> solution because the matrix contains
+              <code>m * n</code> values and all of them matter.
+            </p>
+          </div>
+
+          <div class="example">
+            <span class="label">Compact JavaScript Variant</span>
+            <pre><code class="language-javascript">var transpose = function(matrix) {
+    return matrix[0].map((_, col) =&gt; matrix.map(row =&gt; row[col]));
+};</code></pre>
+            <p>
+              This is elegant, but for interviews the nested-loop version is usually better because it makes the logic more explicit.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>12. Final Takeaway</h2>
+          <div class="success">
+            <span class="label">Remember</span>
+            <ul>
+              <li>The output dimensions are reversed.</li>
+              <li>The key mapping is <code>matrix[row][col] -&gt; result[col][row]</code>.</li>
+              <li>Use a fresh 2D array, not <code>fill(new Array(...))</code>.</li>
+              <li>This is a matrix traversal problem, not a hash map or two pointers problem.</li>
+            </ul>
+          </div>
+        </section>
+
+        <p class="footer-note">
+          Study focus: understand the coordinate swap, not just the final code.
+        </p>
+      </main>
+    </article>
+  </div>
+</body>
+</html>

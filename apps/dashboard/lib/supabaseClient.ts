@@ -2,6 +2,16 @@ import { createBrowserClient } from '@supabase/ssr';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const ONE_YEAR_IN_SECONDS = 60 * 60 * 24 * 365;
+
+type CookieOptions = {
+  path?: string;
+  maxAge?: number;
+  expires?: Date | string;
+  sameSite?: 'Lax' | 'Strict' | 'None' | string;
+  secure?: boolean;
+  domain?: string;
+};
 
 function parseCookies(): Record<string, string> {
   if (typeof document === 'undefined') return {};
@@ -19,7 +29,7 @@ function parseCookies(): Record<string, string> {
     }, {});
 }
 
-function setCookie(name: string, value: string, options?: any) {
+function setCookie(name: string, value: string, options?: CookieOptions) {
   if (typeof document === 'undefined') return;
 
   const parts: string[] = [];
@@ -29,21 +39,28 @@ function setCookie(name: string, value: string, options?: any) {
   const path = options?.path ?? '/';
   parts.push(`Path=${path}`);
 
-  if (options?.maxAge != null) parts.push(`Max-Age=${options.maxAge}`);
+  const maxAge = options?.maxAge ?? ONE_YEAR_IN_SECONDS;
+  if (maxAge != null) parts.push(`Max-Age=${maxAge}`);
   if (options?.expires) parts.push(`Expires=${options.expires.toUTCString?.() ?? options.expires}`);
   if (options?.domain) parts.push(`Domain=${options.domain}`);
 
   // SameSite
-  const sameSite = options?.sameSite;
+  const sameSite = options?.sameSite ?? 'Lax';
   if (sameSite) parts.push(`SameSite=${String(sameSite)}`);
 
   // Secure
-  if (options?.secure) parts.push(`Secure`);
+  const secure = options?.secure ?? window.location.protocol === 'https:';
+  if (secure) parts.push(`Secure`);
 
   document.cookie = parts.join('; ');
 }
 
 export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
   cookies: {
     getAll() {
       const all = parseCookies();
