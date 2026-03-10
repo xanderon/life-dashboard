@@ -27,14 +27,15 @@ const DOCS_ROOT = path.join(process.cwd(), 'app', 'study-coach', 'htmldocs');
 
 const CATEGORY_HINTS: Array<{ id: LeetCategory; hints: string[] }> = [
   { id: 'study_guides', hints: ['learning.method', 'learning method'] },
-  { id: 'arrays', hints: ['array', 'arrays'] },
+  // Keep more specific groups before generic "arrays" to avoid false matches.
+  { id: 'linked_list', hints: ['linkedlist', 'linked_list', 'linked-list'] },
   { id: 'binary_search', hints: ['binarysearch', 'binary_search', 'binary-search'] },
+  { id: 'binary_tree', hints: ['binarytree', 'binary_tree', 'binary-tree', 'tree'] },
   { id: 'matrix', hints: ['matrix', 'matrices'] },
   { id: 'stack', hints: ['stack', 'stacks'] },
   { id: 'queue', hints: ['queue', 'queues'] },
   { id: 'recursion', hints: ['recursion', 'recursive'] },
-  { id: 'linked_list', hints: ['linkedlist', 'linked_list', 'linked-list'] },
-  { id: 'binary_tree', hints: ['binarytree', 'binary_tree', 'binary-tree', 'tree'] },
+  { id: 'arrays', hints: ['array', 'arrays'] },
 ];
 
 async function walkHtmlFiles(root: string, current = ''): Promise<string[]> {
