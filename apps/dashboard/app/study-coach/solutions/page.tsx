@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type LeetCategory =
+  | 'study_guides'
   | 'arrays'
   | 'binary_search'
   | 'matrix'
@@ -24,6 +25,7 @@ type SolutionDoc = {
 };
 
 const CATEGORY_LABEL: Record<LeetCategory, string> = {
+  study_guides: 'Study Guides',
   arrays: 'Arrays',
   binary_search: 'Binary Search',
   matrix: 'Matrix',

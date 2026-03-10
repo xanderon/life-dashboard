@@ -3,6 +3,7 @@ import path from 'path';
 import { NextResponse } from 'next/server';
 
 type LeetCategory =
+  | 'study_guides'
   | 'arrays'
   | 'binary_search'
   | 'matrix'
@@ -25,6 +26,7 @@ type SolutionDoc = {
 const DOCS_ROOT = path.join(process.cwd(), 'app', 'study-coach', 'htmldocs');
 
 const CATEGORY_HINTS: Array<{ id: LeetCategory; hints: string[] }> = [
+  { id: 'study_guides', hints: ['learning.method', 'learning method'] },
   { id: 'arrays', hints: ['array', 'arrays'] },
   { id: 'binary_search', hints: ['binarysearch', 'binary_search', 'binary-search'] },
   { id: 'matrix', hints: ['matrix', 'matrices'] },
@@ -63,6 +65,7 @@ function inferCategory(parts: string[]): LeetCategory {
 }
 
 function inferDifficulty(parts: string[]): LeetDifficulty {
+  if (parts.some((part) => part.toLowerCase() === 'learning' || part.toLowerCase() === 'method')) return 'easy';
   if (parts.some((part) => part.toLowerCase() === 'medium')) return 'medium';
   return 'easy';
 }
@@ -73,8 +76,30 @@ function inferNumber(parts: string[]): number | null {
 }
 
 function prettifyTitle(parts: string[], num: number | null) {
+  const REPLACEMENTS: Record<string, string> = {
+    binarysearch: 'binary search',
+    linkedlist: 'linked list',
+    twosum: 'two sum',
+    mergetwosortedarrays: 'merge two sorted arrays',
+    transposematrix: 'transpose matrix',
+    validparantheses: 'valid parentheses',
+    learning: 'learning',
+    method: 'method',
+  };
+
   const filtered = parts.filter((part) => !/^\d+$/.test(part) && !['leetcode', 'easy', 'medium', 'html'].includes(part.toLowerCase()));
-  const raw = filtered.join(' ').replace(/[_-]+/g, ' ').trim();
+  const normalized = filtered
+    .map((part) => {
+      const key = part.toLowerCase();
+      const replaced = REPLACEMENTS[key] ?? key;
+      return replaced
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/[_-]+/g, ' ')
+        .trim();
+    })
+    .join(' ');
+
+  const raw = normalized.trim();
   const title = raw
     .split(' ')
     .filter(Boolean)
