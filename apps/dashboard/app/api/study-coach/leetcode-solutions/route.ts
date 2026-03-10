@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 
 type LeetCategory =
   | 'study_guides'
+  | 'theory'
   | 'arrays'
   | 'binary_search'
   | 'matrix'
@@ -24,10 +25,10 @@ type SolutionDoc = {
 };
 
 const DOCS_ROOT = path.join(process.cwd(), 'app', 'study-coach', 'htmldocs');
+const THEORY_ROOT = path.join(process.cwd(), 'app', 'study-coach', 'htmldocstheory');
 
 const CATEGORY_HINTS: Array<{ id: LeetCategory; hints: string[] }> = [
   { id: 'study_guides', hints: ['learning.method', 'learning method'] },
-  // Keep more specific groups before generic "arrays" to avoid false matches.
   { id: 'linked_list', hints: ['linkedlist', 'linked_list', 'linked-list'] },
   { id: 'binary_search', hints: ['binarysearch', 'binary_search', 'binary-search'] },
   { id: 'binary_tree', hints: ['binarytree', 'binary_tree', 'binary-tree', 'tree'] },
@@ -57,28 +58,27 @@ async function walkHtmlFiles(root: string, current = ''): Promise<string[]> {
   return out;
 }
 
-function inferCategory(parts: string[]): LeetCategory {
-  const joined = parts.join('.').toLowerCase();
+function inferCategory(file: string, parts: string[]): LeetCategory {
+  const joined = file.toLowerCase();
 
-  // Strong guards for ambiguous names like "...mergetwosortedarrays" under linked list.
-  if (joined.includes('linkedlist') || joined.includes('linked_list') || joined.includes('linked-list')) {
-    return 'linked_list';
-  }
-  if (joined.includes('binarysearch') || joined.includes('binary_search') || joined.includes('binary-search')) {
-    return 'binary_search';
-  }
-  if (joined.includes('learning.method') || joined.includes('learning method')) {
-    return 'study_guides';
-  }
+  if (joined.startsWith('theory/')) return 'theory';
+  if (joined.includes('linkedlist') || joined.includes('linked_list') || joined.includes('linked-list')) return 'linked_list';
+  if (joined.includes('binarysearch') || joined.includes('binary_search') || joined.includes('binary-search')) return 'binary_search';
+  if (joined.includes('learning.method') || joined.includes('learning method')) return 'study_guides';
 
   for (const category of CATEGORY_HINTS) {
     if (category.hints.some((hint) => joined.includes(hint))) return category.id;
   }
+
+  const partsJoined = parts.join('.').toLowerCase();
+  if (partsJoined.includes('singleton') || partsJoined.includes('solid') || partsJoined.includes('dependency')) {
+    return 'theory';
+  }
+
   return 'arrays';
 }
 
 function inferDifficulty(parts: string[]): LeetDifficulty {
-  if (parts.some((part) => part.toLowerCase() === 'learning' || part.toLowerCase() === 'method')) return 'easy';
   if (parts.some((part) => part.toLowerCase() === 'medium')) return 'medium';
   return 'easy';
 }
@@ -98,6 +98,7 @@ function prettifyTitle(parts: string[], num: number | null) {
     validparantheses: 'valid parentheses',
     learning: 'learning',
     method: 'method',
+    singleton: 'singleton',
   };
 
   const filtered = parts.filter((part) => !/^\d+$/.test(part) && !['leetcode', 'easy', 'medium', 'html'].includes(part.toLowerCase()));
@@ -110,14 +111,15 @@ function prettifyTitle(parts: string[], num: number | null) {
         .replace(/[_-]+/g, ' ')
         .trim();
     })
-    .join(' ');
+    .join(' ')
+    .trim();
 
-  const raw = normalized.trim();
-  const title = raw
+  const title = normalized
     .split(' ')
     .filter(Boolean)
     .map((word) => word[0].toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
+
   if (title) return num ? `#${num} ${title}` : title;
   return num ? `LeetCode #${num}` : 'LeetCode Solution';
 }
@@ -125,7 +127,7 @@ function prettifyTitle(parts: string[], num: number | null) {
 function parseDoc(file: string): SolutionDoc {
   const base = path.basename(file, '.html');
   const parts = base.split('.').filter(Boolean);
-  const category = inferCategory(parts);
+  const category = inferCategory(file, parts);
   const difficulty = inferDifficulty(parts);
   const problemNumber = inferNumber(parts);
   const title = prettifyTitle(parts, problemNumber);
@@ -141,18 +143,25 @@ function parseDoc(file: string): SolutionDoc {
 
 export async function GET() {
   try {
-    const stat = await fs.stat(DOCS_ROOT).catch(() => null);
-    if (!stat || !stat.isDirectory()) {
-      return NextResponse.json({ docs: [] as SolutionDoc[] });
+    const docs: string[] = [];
+
+    const docsStat = await fs.stat(DOCS_ROOT).catch(() => null);
+    if (docsStat?.isDirectory()) {
+      const files = await walkHtmlFiles(DOCS_ROOT);
+      docs.push(...files.map((f) => f.replace(/\\/g, '/')));
     }
 
-    const files = await walkHtmlFiles(DOCS_ROOT);
-    const docs = files
-      .map((file) => file.replace(/\\/g, '/'))
+    const theoryStat = await fs.stat(THEORY_ROOT).catch(() => null);
+    if (theoryStat?.isDirectory()) {
+      const files = await walkHtmlFiles(THEORY_ROOT);
+      docs.push(...files.map((f) => `theory/${f.replace(/\\/g, '/')}`));
+    }
+
+    const parsed = docs
       .sort((a, b) => a.localeCompare(b))
       .map(parseDoc);
 
-    return NextResponse.json({ docs });
+    return NextResponse.json({ docs: parsed });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to list HTML docs';
     return NextResponse.json({ error: message }, { status: 500 });

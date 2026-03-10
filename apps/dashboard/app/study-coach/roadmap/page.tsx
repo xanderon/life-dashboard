@@ -50,7 +50,7 @@ type LeetEntryRow = {
 type SolutionDoc = {
   file: string;
   title: string;
-  category: LeetCategory;
+  category: LeetCategory | 'study_guides' | 'theory';
   difficulty: LeetDifficulty;
   problemNumber: number | null;
 };
@@ -79,6 +79,10 @@ function statusClass(status: ConceptStatus) {
   if (status === 'reviewing') return 'border-cyan-500/40 bg-cyan-500/15 text-cyan-100';
   if (status === 'learning') return 'border-amber-500/40 bg-amber-500/15 text-amber-100';
   return 'border-slate-500/40 bg-slate-500/15 text-slate-100';
+}
+
+function isLeetCategory(value: SolutionDoc['category']): value is LeetCategory {
+  return LEET_CATEGORIES.some((c) => c.id === value);
 }
 
 export default function StudyRoadmapPage() {
@@ -643,7 +647,7 @@ export default function StudyRoadmapPage() {
     const linked = new Set(leetEntries.map((entry) => entry.solution_file).filter(Boolean) as string[]);
     const now = new Date().toISOString();
     const toInsert = solutionDocs
-      .filter((doc) => !linked.has(doc.file))
+      .filter((doc) => !linked.has(doc.file) && isLeetCategory(doc.category))
       .map((doc) => ({
         owner_id: ownerId,
         category: doc.category,
@@ -844,7 +848,7 @@ export default function StudyRoadmapPage() {
                 setLeetForm((prev) => ({
                   ...prev,
                   solutionFile: selected,
-                  category: doc?.category ?? prev.category,
+                  category: doc && isLeetCategory(doc.category) ? doc.category : prev.category,
                   difficulty: doc?.difficulty ?? prev.difficulty,
                   problemTitle: prev.problemTitle || doc?.title || prev.problemTitle,
                 }));
