@@ -8,7 +8,7 @@ type CookieOptions = {
   path?: string;
   maxAge?: number;
   expires?: Date | string;
-  sameSite?: 'Lax' | 'Strict' | 'None' | string;
+  sameSite?: boolean | 'Lax' | 'Strict' | 'None' | 'lax' | 'strict' | 'none' | string;
   secure?: boolean;
   domain?: string;
 };
@@ -41,12 +41,22 @@ function setCookie(name: string, value: string, options?: CookieOptions) {
 
   const maxAge = options?.maxAge ?? ONE_YEAR_IN_SECONDS;
   if (maxAge != null) parts.push(`Max-Age=${maxAge}`);
-  if (options?.expires) parts.push(`Expires=${options.expires.toUTCString?.() ?? options.expires}`);
+
+  const expires = options?.expires;
+  if (expires) {
+    const expiresValue = expires instanceof Date ? expires.toUTCString() : expires;
+    parts.push(`Expires=${expiresValue}`);
+  }
+
   if (options?.domain) parts.push(`Domain=${options.domain}`);
 
-  // SameSite
+  // SameSite poate fi string sau boolean (din unele serialize options)
   const sameSite = options?.sameSite ?? 'Lax';
-  if (sameSite) parts.push(`SameSite=${String(sameSite)}`);
+  if (typeof sameSite === 'string' && sameSite) {
+    parts.push(`SameSite=${sameSite}`);
+  } else if (sameSite === true) {
+    parts.push('SameSite=Lax');
+  }
 
   // Secure
   const secure = options?.secure ?? window.location.protocol === 'https:';
