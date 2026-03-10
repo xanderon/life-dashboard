@@ -89,7 +89,7 @@ function localFallback(payload: ChatPayload): ChatResult {
       .sort((a, b) => a.mastery - b.mastery)[0];
 
     const actions: Action[] = [
-      ...srpPendingTasks.map((t) => ({ type: 'mark_task', taskId: t.id, status: 'done' as const })),
+      ...srpPendingTasks.map<Action>((t) => ({ type: 'mark_task', taskId: t.id, status: 'done' })),
       { type: 'schedule_review', conceptId: srp.id, daysAhead: 2 },
     ];
 
