@@ -59,6 +59,18 @@ async function walkHtmlFiles(root: string, current = ''): Promise<string[]> {
 
 function inferCategory(parts: string[]): LeetCategory {
   const joined = parts.join('.').toLowerCase();
+
+  // Strong guards for ambiguous names like "...mergetwosortedarrays" under linked list.
+  if (joined.includes('linkedlist') || joined.includes('linked_list') || joined.includes('linked-list')) {
+    return 'linked_list';
+  }
+  if (joined.includes('binarysearch') || joined.includes('binary_search') || joined.includes('binary-search')) {
+    return 'binary_search';
+  }
+  if (joined.includes('learning.method') || joined.includes('learning method')) {
+    return 'study_guides';
+  }
+
   for (const category of CATEGORY_HINTS) {
     if (category.hints.some((hint) => joined.includes(hint))) return category.id;
   }
