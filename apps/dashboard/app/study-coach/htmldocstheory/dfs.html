@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DFS Interview Study Page</title>
+
+  <!-- Filename: dfs.html -->
+
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css"
+  />
+
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #5b6472;
+      --border: #e5e7eb;
+      --shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+      --blue: #2563eb;
+      --blue-soft: #eff6ff;
+      --green: #15803d;
+      --green-soft: #ecfdf3;
+      --amber: #b45309;
+      --amber-soft: #fff7ed;
+      --red: #b91c1c;
+      --red-soft: #fef2f2;
+      --purple: #7c3aed;
+      --purple-soft: #f5f3ff;
+      --code-bg: #0f172a;
+      --chip: #eef2ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 22%),
+        radial-gradient(circle at top right, rgba(124, 58, 237, 0.08), transparent 20%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 36px 18px 64px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid rgba(229, 231, 235, 0.85);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 42px 42px 28px;
+      background: linear-gradient(135deg, #ffffff 0%, #f8fbff 55%, #f7f5ff 100%);
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1, h2, h3 {
+      line-height: 1.2;
+      margin: 0 0 14px;
+      letter-spacing: -0.02em;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 3rem);
+    }
+
+    h2 {
+      font-size: 1.55rem;
+      margin-top: 0;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      margin-bottom: 10px;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--text);
+    }
+
+    .subtitle {
+      font-size: 1.06rem;
+      color: var(--muted);
+      max-width: 860px;
+    }
+
+    .filename {
+      display: inline-block;
+      margin-top: 18px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #111827;
+      color: #fff;
+      font-size: 0.92rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .tag {
+      background: var(--chip);
+      color: #3730a3;
+      border: 1px solid #c7d2fe;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .content {
+      padding: 34px 42px 46px;
+    }
+
+    .section {
+      margin-bottom: 34px;
+      scroll-margin-top: 24px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+    .box,
+    .example,
+    .warning,
+    .success {
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .box {
+      background: #fafafa;
+    }
+
+    .example {
+      background: var(--blue-soft);
+      border-color: #bfdbfe;
+    }
+
+    .warning {
+      background: var(--amber-soft);
+      border-color: #fed7aa;
+    }
+
+    .success {
+      background: var(--green-soft);
+      border-color: #bbf7d0;
+    }
+
+    .box-title,
+    .mini-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: 0.01em;
+    }
+
+    .box-title {
+      text-transform: uppercase;
+      color: var(--muted);
+      font-size: 0.79rem;
+    }
+
+    .cols-compare {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .compare-card {
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 18px;
+    }
+
+    .compare-card h3 {
+      margin-bottom: 8px;
+    }
+
+    .compare-card ul,
+    .box ul,
+    .example ul,
+    .warning ul,
+    .success ul {
+      margin: 8px 0 0 18px;
+      padding: 0;
+    }
+
+    .compare-card li,
+    .box li,
+    .example li,
+    .warning li,
+    .success li {
+      margin-bottom: 8px;
+    }
+
+    .flow {
+      border-radius: 18px;
+      background: linear-gradient(180deg, #fbfdff, #f8fafc);
+      border: 1px dashed #cbd5e1;
+      padding: 18px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      white-space: pre;
+      color: #0f172a;
+      font-size: 0.95rem;
+    }
+
+    .steps {
+      counter-reset: step;
+      display: grid;
+      gap: 14px;
+    }
+
+    .step {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px 16px 14px 18px;
+      background: #fff;
+      position: relative;
+    }
+
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: white;
+      background: var(--blue);
+    }
+
+    .step h3 {
+      margin-right: 42px;
+    }
+
+    code:not([class*="language-"]) {
+      background: #eef2ff;
+      color: #312e81;
+      border: 1px solid #c7d2fe;
+      padding: 0.16rem 0.4rem;
+      border-radius: 8px;
+      font-size: 0.92em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    pre[class*="language-"] {
+      background: var(--code-bg) !important;
+      border-radius: 18px;
+      padding: 18px !important;
+      overflow-x: auto;
+      border: 1px solid #1e293b;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+    }
+
+    pre[class*="language-"] code {
+      font-size: 0.92rem;
+    }
+
+    .callout-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .pill-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .pill {
+      padding: 7px 11px;
+      background: #f8fafc;
+      border: 1px solid #dbeafe;
+      color: #1d4ed8;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .interview-answer {
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--purple-soft), #fff);
+      border: 1px solid #ddd6fe;
+      padding: 18px;
+      font-size: 1rem;
+    }
+
+    .footer-note {
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .tiny {
+      color: var(--muted);
+      font-size: 0.93rem;
+    }
+
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+
+      .container {
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
+      }
+
+      .hero,
+      .content {
+        padding-left: 0;
+        padding-right: 0;
+      }
+
+      pre[class*="language-"] {
+        white-space: pre-wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="hero">
+      <h1>DFS — Depth-First Search</h1>
+      <p class="subtitle">
+        Interview-focused study page based on the discussion in this chat:
+        what DFS is, how it compares to BFS, why stack vs queue matters,
+        why recursion is only an implementation detail, and why grid DFS is one
+        of the most common interview patterns.
+      </p>
+
+      <div class="tags">
+        <span class="tag">Graphs</span>
+        <span class="tag">Trees</span>
+        <span class="tag">Traversal</span>
+        <span class="tag">DFS vs BFS</span>
+        <span class="tag">Grid Problems</span>
+        <span class="tag">Interview Prep</span>
+      </div>
+
+      <div class="filename">Filename: dfs.html</div>
+    </header>
+
+    <div class="content">
+      <section class="section">
+        <h2>Definition</h2>
+        <div class="success">
+          <div class="mini-title">Simple definition</div>
+          <p>
+            <strong>DFS (Depth-First Search)</strong> is a traversal algorithm for graphs or trees
+            that goes <strong>as deep as possible on one path</strong> before coming back and trying another path.
+          </p>
+          <p>
+            In practice, DFS is driven by a <strong>stack</strong> — either an explicit stack in code
+            or the language's <strong>call stack</strong> when using recursion.
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>The core intuition</h2>
+        <div class="grid two">
+          <div class="box">
+            <div class="box-title">Mental model</div>
+            <p>
+              Think of exploring a cave or maze. You pick one tunnel, keep going until you hit a dead end,
+              then backtrack and try the next tunnel.
+            </p>
+          </div>
+          <div class="box">
+            <div class="box-title">Why it exists</div>
+            <p>
+              When a structure branches, you need a systematic way to visit all reachable nodes.
+              DFS gives you a disciplined "go deep, then come back" strategy.
+            </p>
+          </div>
+        </div>
+
+        <div class="flow" aria-label="DFS mental model">
+Start
+ |
+ A
+ |
+ B
+ |
+ C
+ |
+ D
+
+Go deep → hit dead end → backtrack → explore another branch
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>DFS vs BFS — the interview-friendly explanation</h2>
+        <div class="interview-answer">
+          <p>
+            <strong>Good interview explanation:</strong><br />
+            DFS and BFS are both traversal algorithms for graphs or trees.
+            <strong>BFS</strong> explores <strong>level by level</strong> using a <strong>queue (FIFO)</strong>,
+            while <strong>DFS</strong> explores <strong>as deep as possible</strong> using a
+            <strong>stack (LIFO)</strong> or recursion.
+            Conceptually, they are very similar — the big difference is the
+            <strong>data structure</strong> that controls the order of exploration.
+          </p>
+        </div>
+
+        <div class="cols-compare" style="margin-top: 16px;">
+          <div class="compare-card">
+            <h3>BFS</h3>
+            <ul>
+              <li>Uses a <code>queue</code></li>
+              <li>FIFO behavior</li>
+              <li>Explores level by level</li>
+              <li>Best when you need shortest path in an unweighted graph</li>
+            </ul>
+          </div>
+
+          <div class="compare-card">
+            <h3>DFS</h3>
+            <ul>
+              <li>Uses a <code>stack</code></li>
+              <li>LIFO behavior</li>
+              <li>Explores one path deeply first</li>
+              <li>Great for traversal, backtracking, cycle detection, components</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="warning" style="margin-top: 16px;">
+          <div class="mini-title">Important interview nuance</div>
+          <p>
+            Do <strong>not</strong> say "<code>DFS = recursion</code>". That is incomplete.
+            The correct idea is:
+            <strong>DFS is a traversal strategy based on stack behavior</strong>.
+            Recursion is just one way to implement that stack behavior.
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Visual intuition</h2>
+        <div class="flow" aria-label="DFS traversal tree">
+      A
+     / \
+    B   C
+   / \   \
+  D   E   F
+
+Possible DFS order:
+A → B → D → E → C → F
+        </div>
+
+        <div class="callout-row">
+          <div class="example">
+            <div class="mini-title">Why that order?</div>
+            <p>
+              DFS picks one branch and keeps going until it cannot continue.
+              Only then does it return and explore remaining branches.
+            </p>
+          </div>
+
+          <div class="example">
+            <div class="mini-title">Backtracking</div>
+            <p>
+              Backtracking is not something extra added later. It is built into DFS:
+              when you finish a branch, you naturally return to the previous node.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Iterative DFS is basically BFS with a different container</h2>
+        <p>
+          This was one of the key insights from the discussion:
+          <strong>yes, DFS can be implemented almost exactly like BFS</strong>,
+          as long as you change the data structure from a queue to a stack.
+        </p>
+
+        <pre><code class="language-javascript">// BFS
+function bfs(graph, start) {
+  const visited = new Set();
+  const queue = [start];
+
+  while (queue.length) {
+    const node = queue.shift();
+
+    if (visited.has(node)) continue;
+    visited.add(node);
+
+    for (const neighbor of graph[node]) {
+      queue.push(neighbor);
+    }
+  }
+}</code></pre>
+
+        <pre><code class="language-javascript">// DFS (iterative)
+function dfs(graph, start) {
+  const visited = new Set();
+  const stack = [start];
+
+  while (stack.length) {
+    const node = stack.pop();
+
+    if (visited.has(node)) continue;
+    visited.add(node);
+
+    for (const neighbor of graph[node]) {
+      stack.push(neighbor);
+    }
+  }
+}</code></pre>
+
+        <div class="success">
+          <div class="mini-title">Key takeaway</div>
+          <p>
+            The code shape is very similar. The real difference is:
+            <code>queue.shift()</code> for BFS vs <code>stack.pop()</code> for DFS.
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Step-by-step example</h2>
+        <div class="flow" aria-label="Simple graph">
+A
+| \
+B  C
+|
+D
+        </div>
+
+        <div class="steps">
+          <div class="step">
+            <h3>Start</h3>
+            <p><code>stack = [A]</code></p>
+            <p><code>visited = {}</code></p>
+            <p class="tiny">We begin with the start node on the stack.</p>
+          </div>
+
+          <div class="step">
+            <h3>Pop A</h3>
+            <p>Visit <code>A</code>, mark it visited, push its neighbors.</p>
+            <p><code>stack = [B, C]</code> or similar depending on push order.</p>
+            <p class="tiny">The stack controls which branch goes next.</p>
+          </div>
+
+          <div class="step">
+            <h3>Pop top element</h3>
+            <p>
+              Because this is <strong>LIFO</strong>, the most recently added neighbor is explored first.
+            </p>
+            <p class="tiny">
+              This is why DFS order can vary depending on neighbor ordering.
+            </p>
+          </div>
+
+          <div class="step">
+            <h3>Keep going deep</h3>
+            <p>
+              Each time you pop a node, you visit it and push its unvisited neighbors.
+            </p>
+            <p class="tiny">That creates the "go deep first" behavior.</p>
+          </div>
+
+          <div class="step">
+            <h3>Backtrack naturally</h3>
+            <p>
+              When a node has no new neighbors, the algorithm just keeps popping older nodes.
+            </p>
+            <p class="tiny">That automatic return is the essence of backtracking in DFS.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Recursive DFS</h2>
+        <p>
+          Recursive DFS is often simpler to write because the language stack behaves like the DFS stack.
+        </p>
+
+        <pre><code class="language-javascript">function dfs(node, graph, visited) {
+  if (visited.has(node)) return;
+
+  visited.add(node);
+
+  for (const neighbor of graph[node]) {
+    dfs(neighbor, graph, visited);
+  }
+}</code></pre>
+
+        <div class="box">
+          <div class="box-title">Conceptual translation</div>
+          <p>
+            Each recursive call means "go one level deeper".
+            When that call finishes, execution returns to the caller — that return is backtracking.
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Complexity</h2>
+        <div class="grid two">
+          <div class="success">
+            <div class="mini-title">Time complexity</div>
+            <p><code>O(V + E)</code></p>
+            <p>
+              You visit each vertex at most once and inspect each edge at most once.
+            </p>
+          </div>
+          <div class="success">
+            <div class="mini-title">Space complexity</div>
+            <p><code>O(V)</code></p>
+            <p>
+              For the visited set and for the stack / recursion depth in the worst case.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Why grid DFS feels much easier than graph DFS</h2>
+        <div class="grid two">
+          <div class="example">
+            <div class="mini-title">General graph</div>
+            <p>
+              In a general graph, you must explicitly store the neighbors,
+              usually using an adjacency list like <code>{ A: ['B', 'C'] }</code>.
+            </p>
+          </div>
+          <div class="example">
+            <div class="mini-title">Grid</div>
+            <p>
+              In a grid, neighbors are implicit. From <code>(r, c)</code>,
+              you can derive neighbors mathematically:
+              <code>(r+1,c)</code>, <code>(r-1,c)</code>, <code>(r,c+1)</code>, <code>(r,c-1)</code>.
+            </p>
+          </div>
+        </div>
+
+        <div class="success" style="margin-top: 16px;">
+          <div class="mini-title">Why interviewers love grid DFS</div>
+          <p>
+            Grid problems are easier to set up, easier to visualize, and they test the same core skills:
+            recursion, boundary checks, visited marking, connected components, and complexity reasoning.
+          </p>
+        </div>
+
+        <div class="pill-line">
+          <span class="pill">Number of Islands</span>
+          <span class="pill">Flood Fill</span>
+          <span class="pill">Max Area of Island</span>
+          <span class="pill">Surrounded Regions</span>
+          <span class="pill">Connected Cells</span>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Reusable grid DFS template</h2>
+        <p>
+          One big reason grid DFS is common in interviews is that the template is almost reusable across many problems.
+        </p>
+
+        <pre><code class="language-javascript">function dfs(grid, r, c) {
+  const rows = grid.length;
+  const cols = grid[0].length;
+
+  if (
+    r &lt; 0 ||
+    c &lt; 0 ||
+    r &gt;= rows ||
+    c &gt;= cols ||
+    grid[r][c] === 0
+  ) {
+    return;
+  }
+
+  // mark visited
+  grid[r][c] = 0;
+
+  dfs(grid, r + 1, c);
+  dfs(grid, r - 1, c);
+  dfs(grid, r, c + 1);
+  dfs(grid, r, c - 1);
+}</code></pre>
+
+        <div class="box">
+          <div class="box-title">Pattern to remember</div>
+          <p>
+            Most grid DFS problems are some version of:
+            <code>boundary check → invalid cell check → mark visited → explore neighbors</code>.
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Line-by-line explanation of the grid template</h2>
+        <div class="steps">
+          <div class="step">
+            <h3>Boundary checks</h3>
+            <p>
+              Stop if the cell is outside the matrix. This prevents invalid memory access and infinite wandering.
+            </p>
+          </div>
+
+          <div class="step">
+            <h3>Invalid-cell check</h3>
+            <p>
+              Stop if the current cell is not part of the structure you care about
+              (for example water instead of land, or already visited instead of fresh).
+            </p>
+          </div>
+
+          <div class="step">
+            <h3>Mark visited</h3>
+            <p>
+              This is essential. Without it, you can revisit the same cell forever.
+              In grid problems, people often mutate the grid itself instead of using a separate visited set.
+            </p>
+          </div>
+
+          <div class="step">
+            <h3>Explore neighbors</h3>
+            <p>
+              The recursive calls implement the actual DFS expansion:
+              down, up, right, left — or whatever direction list the problem requires.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Common mistakes / confusions</h2>
+        <div class="warning">
+          <ul>
+            <li><strong>Confusing DFS with recursion.</strong> DFS can be recursive or iterative.</li>
+            <li><strong>Forgetting the visited check.</strong> This can cause infinite loops in graphs with cycles.</li>
+            <li><strong>Forgetting boundary checks in grids.</strong> This causes index errors.</li>
+            <li><strong>Thinking DFS always gives shortest path.</strong> It does not. BFS does for unweighted graphs.</li>
+            <li><strong>Ignoring neighbor order.</strong> DFS order depends on the order in which neighbors are pushed.</li>
+            <li><strong>Recursive stack overflow.</strong> On very deep inputs, iterative DFS may be safer.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Real-world use cases</h2>
+        <div class="grid two">
+          <div class="box">
+            <div class="box-title">Backend / systems</div>
+            <ul>
+              <li>Dependency exploration</li>
+              <li>Cycle detection in dependency graphs</li>
+              <li>Configuration tree traversal</li>
+              <li>File system traversal</li>
+            </ul>
+          </div>
+
+          <div class="box">
+            <div class="box-title">Apps / algorithms</div>
+            <ul>
+              <li>Maze solving / path exploration</li>
+              <li>Connected component detection</li>
+              <li>Flood fill / image region detection</li>
+              <li>Backtracking problems like combinations or permutations</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Brute force comparison</h2>
+        <div class="example">
+          <div class="mini-title">Without DFS</div>
+          <p>
+            You would often end up manually exploring paths, duplicating checks,
+            and risking missed nodes or repeated work.
+          </p>
+        </div>
+
+        <div class="success" style="margin-top: 14px;">
+          <div class="mini-title">With DFS</div>
+          <p>
+            You get a reusable traversal strategy:
+            choose a node, mark it, recursively or iteratively explore reachable neighbors,
+            and let the algorithm systematically cover the structure.
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Interview explanation version</h2>
+        <div class="interview-answer">
+          <p>
+            <strong>30-second answer:</strong><br />
+            DFS, or Depth-First Search, is a traversal algorithm for graphs and trees that explores one path as deeply
+            as possible before backtracking. It is typically implemented using a stack or recursion.
+            Compared with BFS, which uses a queue and explores level by level, DFS uses stack behavior and explores in depth.
+            Its time complexity is <code>O(V + E)</code>, and it is commonly used for traversal, connected components,
+            cycle detection, and many grid-based interview problems.
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Pattern to remember</h2>
+        <div class="flow" aria-label="DFS pattern">
+DFS = "Go deep first"
+
+General graph:
+visit node
+mark visited
+for each neighbor:
+  if not visited:
+    dfs(neighbor)
+
+Grid:
+if out of bounds or invalid:
+  return
+mark visited
+dfs in 4 directions
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Final takeaway</h2>
+        <div class="success">
+          <p>
+            The cleanest theoretical explanation is:
+            <strong>DFS and BFS are similar traversal frameworks, but BFS is controlled by a queue and explores by levels,
+            while DFS is controlled by a stack and explores by depth.</strong>
+          </p>
+          <p>
+            That is a strong interview answer because it is simple, accurate, and shows that you understand both
+            the conceptual similarity and the practical difference.
+          </p>
+        </div>
+
+        <div class="footer-note">
+          Suggested filename: <code>dfs.html</code>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+</body>
+</html>

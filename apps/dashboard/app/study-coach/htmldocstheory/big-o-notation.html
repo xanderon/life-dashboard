@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Big O Notation Study Page</title>
+  <!-- Filename: big-o-notation.html -->
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" />
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+      --blue: #2563eb;
+      --blue-soft: #eff6ff;
+      --green: #15803d;
+      --green-soft: #f0fdf4;
+      --yellow: #a16207;
+      --yellow-soft: #fffbeb;
+      --red: #b91c1c;
+      --red-soft: #fef2f2;
+      --purple: #7c3aed;
+      --purple-soft: #f5f3ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, #eef4ff 0%, transparent 28%),
+        radial-gradient(circle at top right, #f3f0ff 0%, transparent 22%),
+        var(--bg);
+      line-height: 1.65;
+    }
+
+    .page {
+      max-width: 1020px;
+      margin: 40px auto;
+      padding: 0 20px 60px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(229, 231, 235, 0.9);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 42px 42px 28px;
+      background:
+        linear-gradient(135deg, rgba(37,99,235,0.06), rgba(124,58,237,0.04)),
+        #fff;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1, h2, h3 {
+      line-height: 1.2;
+      margin: 0 0 14px;
+      letter-spacing: -0.02em;
+    }
+
+    h1 {
+      font-size: 2.35rem;
+    }
+
+    h2 {
+      font-size: 1.45rem;
+      margin-top: 38px;
+    }
+
+    h3 {
+      font-size: 1.08rem;
+      margin-top: 24px;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    .subtitle {
+      font-size: 1.02rem;
+      color: var(--muted);
+      max-width: 820px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      padding: 8px 12px;
+      font-size: 0.86rem;
+      border-radius: 999px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      color: #334155;
+      font-weight: 600;
+    }
+
+    .content {
+      padding: 18px 42px 42px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 16px;
+    }
+
+    .box, .example, .warning, .success, .note {
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+      border: 1px solid var(--border);
+      margin: 16px 0;
+    }
+
+    .box {
+      background: #fafafa;
+    }
+
+    .example {
+      background: var(--blue-soft);
+      border-color: #cfe0ff;
+    }
+
+    .success {
+      background: var(--green-soft);
+      border-color: #cfeecf;
+    }
+
+    .warning {
+      background: var(--yellow-soft);
+      border-color: #f5df9c;
+    }
+
+    .note {
+      background: var(--purple-soft);
+      border-color: #ddd2ff;
+    }
+
+    .box-title {
+      font-weight: 800;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .mini-list {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .mini-list li {
+      margin: 6px 0;
+    }
+
+    .steps {
+      counter-reset: step;
+      display: grid;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .step {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: #fff;
+    }
+
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      width: 30px;
+      height: 30px;
+      flex: 0 0 30px;
+      border-radius: 999px;
+      background: #111827;
+      color: white;
+      display: grid;
+      place-items: center;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .complexity-table-wrap {
+      overflow-x: auto;
+      margin-top: 14px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+      background: white;
+    }
+
+    th, td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      font-size: 0.9rem;
+      color: #334155;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .formula {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: #111827;
+      color: white;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.95rem;
+      margin: 6px 6px 6px 0;
+    }
+
+    code:not([class]) {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 0.14em 0.42em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      color: #111827;
+    }
+
+    pre {
+      border-radius: 18px !important;
+      border: 1px solid var(--border);
+      overflow-x: auto !important;
+      padding: 18px !important;
+      margin: 14px 0 18px !important;
+      background: #fbfcff !important;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .memory-cards {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .memory-card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 15px;
+      background: #fff;
+    }
+
+    .memory-card strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .quote {
+      border-left: 4px solid var(--blue);
+      padding: 10px 16px;
+      background: #f8fbff;
+      border-radius: 0 14px 14px 0;
+      margin: 16px 0;
+      color: #1e3a8a;
+      font-weight: 600;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .pill.good {
+      background: var(--green-soft);
+      color: var(--green);
+      border: 1px solid #cfeecf;
+    }
+
+    .pill.mid {
+      background: var(--yellow-soft);
+      color: var(--yellow);
+      border: 1px solid #f5df9c;
+    }
+
+    .pill.bad {
+      background: var(--red-soft);
+      color: var(--red);
+      border: 1px solid #fecaca;
+    }
+
+    .footer {
+      margin-top: 34px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    @media (max-width: 860px) {
+      .hero, .content {
+        padding-left: 22px;
+        padding-right: 22px;
+      }
+
+      .grid-2, .split {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 1.95rem;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+      .page {
+        margin: 0;
+        max-width: none;
+        padding: 0;
+      }
+      .card {
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
+      }
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <article class="card">
+      <header class="hero">
+        <h1>Big O Notation</h1>
+        <p class="subtitle">
+          Interview-focused study page for understanding <strong>time complexity</strong>, <strong>space complexity</strong>,
+          the common Big-O order, real intuition for <code>log n</code> and <code>n log n</code>, and the classic mistakes
+          people make when explaining complexity out loud.
+        </p>
+
+        <div class="tags">
+          <span class="tag">Algorithms</span>
+          <span class="tag">Big O</span>
+          <span class="tag">Time Complexity</span>
+          <span class="tag">Space Complexity</span>
+          <span class="tag">Interview Prep</span>
+          <span class="tag">Theory</span>
+        </div>
+      </header>
+
+      <main class="content">
+        <section>
+          <h2>Definition</h2>
+          <div class="box">
+            <span class="box-title">What Big O means</span>
+            <p>
+              Big O notation describes how the cost of an algorithm grows as the input size <code>n</code> grows.
+              In interviews, this usually means <strong>time complexity</strong>, but it can also mean
+              <strong>space complexity</strong>.
+            </p>
+            <div class="pill-row">
+              <span class="pill good">Time = how long it runs</span>
+              <span class="pill mid">Space = how much extra memory it uses</span>
+            </div>
+          </div>
+
+          <div class="quote">
+            Big O is not about the exact runtime in milliseconds. It is about how the algorithm scales when the input gets large.
+          </div>
+        </section>
+
+        <section>
+          <h2>Correct Order of the Common Complexities</h2>
+          <div class="complexity-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Complexity</th>
+                  <th>Meaning</th>
+                  <th>Typical Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td><code>O(1)</code></td>
+                  <td>Constant time</td>
+                  <td>Array index access, stack push/pop, queue enqueue/dequeue, hash map get/set average case</td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td><code>O(log n)</code></td>
+                  <td>Input keeps getting cut in half</td>
+                  <td>Binary search</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td><code>O(n)</code></td>
+                  <td>Linear scan</td>
+                  <td>Single loop through all elements</td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td><code>O(n log n)</code></td>
+                  <td>Divide + process everything</td>
+                  <td>Merge sort, quicksort average case</td>
+                </tr>
+                <tr>
+                  <td>5</td>
+                  <td><code>O(n²)</code></td>
+                  <td>Nested iteration</td>
+                  <td>Loop inside loop, bubble sort</td>
+                </tr>
+                <tr>
+                  <td>6</td>
+                  <td><code>O(2^n)</code></td>
+                  <td>Exponential growth</td>
+                  <td>Naive Fibonacci, generate all subsets</td>
+                </tr>
+                <tr>
+                  <td>7</td>
+                  <td><code>O(n!)</code></td>
+                  <td>Factorial explosion</td>
+                  <td>Generate all permutations, brute-force TSP</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="warning">
+            <span class="box-title">Important ordering reminder</span>
+            <p>
+              <code>O(n log n)</code> is <strong>better</strong> than <code>O(n²)</code>. A very common mistake is to mix these up.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Mental Model</h2>
+          <div class="grid-2">
+            <div class="example">
+              <span class="box-title">How to think about <code>log n</code></span>
+              <p>
+                You do <strong>not</strong> need advanced logarithm math for interviews.
+                Just think:
+              </p>
+              <p><span class="formula">How many times can I divide by 2 until I reach 1?</span></p>
+              <p>
+                Example for <code>n = 8</code>:
+              </p>
+              <p><span class="formula">8 → 4 → 2 → 1</span></p>
+              <p>That is <strong>3 steps</strong>, so <code>log₂(8) = 3</code>.</p>
+            </div>
+
+            <div class="example">
+              <span class="box-title">How to think about the “double the input” trick</span>
+              <p>
+                This is just an intuition trick:
+                <strong>If the input becomes twice as big, how much worse does the algorithm become?</strong>
+              </p>
+              <ul class="mini-list">
+                <li><code>O(1)</code> → almost no change</li>
+                <li><code>O(log n)</code> → only a tiny increase</li>
+                <li><code>O(n)</code> → about 2x</li>
+                <li><code>O(n²)</code> → about 4x</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Step-by-Step Explanation of the Core Cases</h2>
+
+          <div class="steps">
+            <div class="step">
+              <div>
+                <h3><code>O(1)</code> — Constant time</h3>
+                <p>
+                  The operation does not grow with input size. It stays effectively the same size of work.
+                </p>
+                <p>
+                  Good examples: <code>arr[i]</code>, stack <code>push()</code>, stack <code>pop()</code>,
+                  queue <code>enqueue()</code>, queue <code>dequeue()</code>, hash map lookup average case.
+                </p>
+              </div>
+            </div>
+
+            <div class="step">
+              <div>
+                <h3><code>O(log n)</code> — Keep cutting in half</h3>
+                <p>
+                  If each step removes half of the remaining work, the number of steps grows logarithmically.
+                </p>
+                <p>
+                  Classic example: binary search on a sorted array.
+                </p>
+              </div>
+            </div>
+
+            <div class="step">
+              <div>
+                <h3><code>O(n)</code> — Visit everything once</h3>
+                <p>
+                  If you scan every item once, runtime grows linearly with input size.
+                </p>
+                <p>
+                  Typical example: a single <code>for</code> loop over all elements.
+                </p>
+              </div>
+            </div>
+
+            <div class="step">
+              <div>
+                <h3><code>O(n log n)</code> — Divide, then process all</h3>
+                <p>
+                  This is the most important interview pattern after <code>O(n)</code>.
+                  Merge sort is the classic example.
+                </p>
+                <p>
+                  You have:
+                </p>
+                <p>
+                  <span class="formula">log n levels</span>
+                  <span class="formula">n work per level</span>
+                </p>
+                <p>
+                  So total work becomes:
+                </p>
+                <p><span class="formula">O(n log n)</span></p>
+              </div>
+            </div>
+
+            <div class="step">
+              <div>
+                <h3><code>O(n²)</code> — Nested work</h3>
+                <p>
+                  If for each element you iterate across all elements again, that is usually quadratic.
+                </p>
+                <p>
+                  Typical example: a loop inside another loop over the same input.
+                </p>
+              </div>
+            </div>
+
+            <div class="step">
+              <div>
+                <h3><code>O(2^n)</code> — Exponential growth</h3>
+                <p>
+                  This happens when each choice branches into two more choices.
+                  A much more realistic interview example than naive Fibonacci is:
+                  <strong>generate all subsets</strong>.
+                </p>
+                <p>
+                  For each element, you decide:
+                </p>
+                <p><span class="formula">include it</span> <span class="formula">exclude it</span></p>
+              </div>
+            </div>
+
+            <div class="step">
+              <div>
+                <h3><code>O(n!)</code> — Factorial explosion</h3>
+                <p>
+                  This appears when you generate every possible ordering of items.
+                </p>
+                <p>
+                  The standard example is permutations.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Examples</h2>
+
+          <h3><code>O(1)</code> examples</h3>
+          <pre><code class="language-javascript">const value = arr[5];          // O(1)
+
+stack.push(10);                // O(1)
+stack.pop();                   // O(1)
+
+queue.enqueue(10);             // O(1)
+queue.dequeue();               // O(1)
+
+map.get("userId");             // O(1) average
+map.set("userId", user);       // O(1) average</code></pre>
+
+          <h3><code>O(log n)</code> example — Binary Search</h3>
+          <pre><code class="language-javascript">function binarySearch(arr, target) {
+  let left = 0;
+  let right = arr.length - 1;
+
+  while (left &lt;= right) {
+    const mid = Math.floor((left + right) / 2);
+
+    if (arr[mid] === target) return mid;
+    if (arr[mid] &lt; target) left = mid + 1;
+    else right = mid - 1;
+  }
+
+  return -1;
+}</code></pre>
+
+          <h3><code>O(n)</code> example — Single loop</h3>
+          <pre><code class="language-javascript">function sumArray(arr) {
+  let total = 0;
+
+  for (let i = 0; i &lt; arr.length; i++) {
+    total += arr[i];
+  }
+
+  return total;
+}</code></pre>
+
+          <h3><code>O(n log n)</code> example idea — Merge Sort pattern</h3>
+          <pre><code class="language-javascript">// Conceptual view:
+// 1. Split array in half
+// 2. Split each half again
+// 3. Merge them back while scanning all elements
+
+// log n = number of split levels
+// n = work done per level
+// total = O(n log n)</code></pre>
+
+          <h3><code>O(n²)</code> example — Nested loops</h3>
+          <pre><code class="language-javascript">function printPairs(arr) {
+  for (let i = 0; i &lt; arr.length; i++) {
+    for (let j = 0; j &lt; arr.length; j++) {
+      console.log(arr[i], arr[j]);
+    }
+  }
+}</code></pre>
+
+          <h3><code>O(2^n)</code> example — All subsets</h3>
+          <pre><code class="language-javascript">function subsets(nums, index = 0, current = [], result = []) {
+  if (index === nums.length) {
+    result.push([...current]);
+    return result;
+  }
+
+  // Exclude current element
+  subsets(nums, index + 1, current, result);
+
+  // Include current element
+  current.push(nums[index]);
+  subsets(nums, index + 1, current, result);
+  current.pop();
+
+  return result;
+}</code></pre>
+
+          <h3><code>O(n!)</code> example — Permutations</h3>
+          <pre><code class="language-javascript">function permutations(nums, start = 0, result = []) {
+  if (start === nums.length) {
+    result.push([...nums]);
+    return result;
+  }
+
+  for (let i = start; i &lt; nums.length; i++) {
+    [nums[start], nums[i]] = [nums[i], nums[start]];
+    permutations(nums, start + 1, result);
+    [nums[start], nums[i]] = [nums[i], nums[start]];
+  }
+
+  return result;
+}</code></pre>
+        </section>
+
+        <section>
+          <h2>Time Complexity vs Space Complexity</h2>
+          <div class="split">
+            <div>
+              <div class="success">
+                <span class="box-title">Time complexity</span>
+                <p>
+                  Measures how runtime grows as the input grows.
+                </p>
+              </div>
+
+              <div class="success">
+                <span class="box-title">Space complexity</span>
+                <p>
+                  Measures how much <strong>extra memory</strong> an algorithm uses as the input grows.
+                </p>
+              </div>
+
+              <div class="note">
+                <span class="box-title">Important interview nuance</span>
+                <p>
+                  Space complexity usually means <strong>auxiliary space</strong>, not the memory of the input itself.
+                </p>
+              </div>
+            </div>
+
+            <div class="memory-cards">
+              <div class="memory-card">
+                <strong><code>sumArray(arr)</code></strong>
+                <div><code>Time: O(n)</code></div>
+                <div><code>Space: O(1)</code></div>
+                <p class="muted">It scans the array once and uses only a few variables.</p>
+              </div>
+
+              <div class="memory-card">
+                <strong><code>copyArray(arr)</code></strong>
+                <div><code>Time: O(n)</code></div>
+                <div><code>Space: O(n)</code></div>
+                <p class="muted">It creates a new array of size <code>n</code>.</p>
+              </div>
+
+              <div class="memory-card">
+                <strong><code>mergeSort(arr)</code></strong>
+                <div><code>Time: O(n log n)</code></div>
+                <div><code>Space: O(n)</code></div>
+                <p class="muted">It needs extra memory for merging.</p>
+              </div>
+            </div>
+          </div>
+
+          <pre><code class="language-javascript">function sumArray(arr) {
+  let total = 0;
+
+  for (let i = 0; i &lt; arr.length; i++) {
+    total += arr[i];
+  }
+
+  return total;
+}
+// Time: O(n)
+// Space: O(1)</code></pre>
+
+          <pre><code class="language-javascript">function copyArray(arr) {
+  const result = [];
+
+  for (let i = 0; i &lt; arr.length; i++) {
+    result.push(arr[i]);
+  }
+
+  return result;
+}
+// Time: O(n)
+// Space: O(n)</code></pre>
+        </section>
+
+        <section>
+          <h2>Real Interview Clarifications</h2>
+
+          <div class="box">
+            <span class="box-title">Why is array access <code>O(1)</code>?</span>
+            <p>
+              Because arrays allow direct access by index. The runtime does not depend on how many elements are in the array.
+            </p>
+          </div>
+
+          <div class="box">
+            <span class="box-title">Why is array insertion not always <code>O(1)</code>?</span>
+            <p>
+              Appending at the end is usually <code>O(1)</code> amortized, but inserting at the beginning or middle is
+              <code>O(n)</code> because elements must be shifted.
+            </p>
+          </div>
+
+          <div class="box">
+            <span class="box-title">Why is hash map lookup only average <code>O(1)</code>?</span>
+            <p>
+              In the worst case, many keys collide into the same bucket, and then lookup becomes linear inside that bucket.
+              So the formal answer is:
+            </p>
+            <p><span class="formula">Average: O(1)</span> <span class="formula">Worst case: O(n)</span></p>
+          </div>
+
+          <div class="box">
+            <span class="box-title">Why is merge sort <code>O(n log n)</code>?</span>
+            <p>
+              Because it has <code>log n</code> levels of splitting, and each level processes all <code>n</code> elements.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Common Mistakes / Confusions</h2>
+
+          <div class="warning">
+            <span class="box-title">Mistake 1: Thinking <code>O(n log n)</code> is worse than <code>O(n²)</code></span>
+            <p>It is not. <code>O(n log n)</code> scales much better than <code>O(n²)</code>.</p>
+          </div>
+
+          <div class="warning">
+            <span class="box-title">Mistake 2: Saying all array insertions are <code>O(1)</code></span>
+            <p>Only appending to the end is typically <code>O(1)</code> amortized. Inserting in the middle or front is <code>O(n)</code>.</p>
+          </div>
+
+          <div class="warning">
+            <span class="box-title">Mistake 3: Forgetting worst case vs average case</span>
+            <p>Hash maps are the classic example: average <code>O(1)</code>, worst case <code>O(n)</code>.</p>
+          </div>
+
+          <div class="warning">
+            <span class="box-title">Mistake 4: Mixing time and space</span>
+            <p>
+              A function may be fast but use more memory, or use little memory but be slower. This is a classic trade-off.
+            </p>
+          </div>
+
+          <div class="warning">
+            <span class="box-title">Mistake 5: Thinking Big O means exact runtime</span>
+            <p>
+              Big O ignores constants and focuses on growth. <code>2n</code>, <code>3n</code>, and <code>10n</code> are all still <code>O(n)</code>.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Complexity Cheat Sheet</h2>
+          <div class="complexity-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Structure / Pattern</th>
+                  <th>Time</th>
+                  <th>Space</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Array access <code>arr[i]</code></td>
+                  <td><code>O(1)</code></td>
+                  <td><code>O(1)</code></td>
+                  <td>Direct indexed lookup</td>
+                </tr>
+                <tr>
+                  <td>Array append</td>
+                  <td><code>O(1)</code> amortized</td>
+                  <td><code>O(1)</code></td>
+                  <td>Occasionally resize happens</td>
+                </tr>
+                <tr>
+                  <td>Array insert at front / middle</td>
+                  <td><code>O(n)</code></td>
+                  <td><code>O(1)</code></td>
+                  <td>Elements shift</td>
+                </tr>
+                <tr>
+                  <td>Hash map get / set</td>
+                  <td><code>O(1)</code> average</td>
+                  <td><code>O(1)</code> per operation</td>
+                  <td>Worst case can degrade to <code>O(n)</code></td>
+                </tr>
+                <tr>
+                  <td>Single loop</td>
+                  <td><code>O(n)</code></td>
+                  <td><code>O(1)</code></td>
+                  <td>Visit each item once</td>
+                </tr>
+                <tr>
+                  <td>Nested loops</td>
+                  <td><code>O(n²)</code></td>
+                  <td><code>O(1)</code></td>
+                  <td>All pairs</td>
+                </tr>
+                <tr>
+                  <td>Binary search</td>
+                  <td><code>O(log n)</code></td>
+                  <td><code>O(1)</code></td>
+                  <td>Sorted input required</td>
+                </tr>
+                <tr>
+                  <td>Merge sort</td>
+                  <td><code>O(n log n)</code></td>
+                  <td><code>O(n)</code></td>
+                  <td>Extra merge array</td>
+                </tr>
+                <tr>
+                  <td>All subsets</td>
+                  <td><code>O(2^n)</code></td>
+                  <td><code>O(n)</code> recursion depth</td>
+                  <td>Include / exclude branching</td>
+                </tr>
+                <tr>
+                  <td>Permutations</td>
+                  <td><code>O(n!)</code></td>
+                  <td><code>O(n)</code> recursion depth</td>
+                  <td>All orderings</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2>Interview Explanation Version</h2>
+
+          <div class="success">
+            <span class="box-title">30-second answer</span>
+            <p>
+              Big O notation describes how the cost of an algorithm grows as input size grows.
+              Usually we talk about time complexity, but it can also describe space complexity.
+              Common examples are <code>O(1)</code> for direct access, <code>O(log n)</code> for binary search,
+              <code>O(n)</code> for a single scan, <code>O(n log n)</code> for merge sort, <code>O(n²)</code> for nested loops,
+              <code>O(2^n)</code> for subset-style recursion, and <code>O(n!)</code> for permutations.
+            </p>
+          </div>
+
+          <div class="success">
+            <span class="box-title">Why we care</span>
+            <p>
+              We care about Big O because it helps us compare algorithms based on scalability, not just on small examples.
+            </p>
+          </div>
+
+          <div class="success">
+            <span class="box-title">Time vs space</span>
+            <p>
+              Time complexity tells us how runtime grows. Space complexity tells us how much additional memory is needed.
+              Sometimes we trade memory for speed, like using a hash map for faster lookup.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Pattern to Remember</h2>
+          <div class="note">
+            <span class="box-title">Fast recognition rules</span>
+            <ul class="mini-list">
+              <li><strong>Direct access</strong> → usually <code>O(1)</code></li>
+              <li><strong>Keep dividing by 2</strong> → usually <code>O(log n)</code></li>
+              <li><strong>Visit everything once</strong> → usually <code>O(n)</code></li>
+              <li><strong>Divide + process all</strong> → usually <code>O(n log n)</code></li>
+              <li><strong>Loop inside loop</strong> → usually <code>O(n²)</code></li>
+              <li><strong>Two recursive choices per element</strong> → usually <code>O(2^n)</code></li>
+              <li><strong>All permutations</strong> → usually <code>O(n!)</code></li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h2>Real-World Use Cases</h2>
+          <div class="grid-2">
+            <div class="box">
+              <span class="box-title">Why <code>O(log n)</code> matters</span>
+              <p>
+                Fast searching in sorted data, database indexes, balanced trees, and any problem where each decision cuts the remaining search space.
+              </p>
+            </div>
+
+            <div class="box">
+              <span class="box-title">Why <code>O(n log n)</code> matters</span>
+              <p>
+                Efficient sorting is one of the most practical algorithmic tasks in software engineering.
+              </p>
+            </div>
+
+            <div class="box">
+              <span class="box-title">Why <code>O(2^n)</code> appears in real interviews</span>
+              <p>
+                Backtracking problems: subsets, combinations, decisions where every element creates a yes/no branch.
+              </p>
+            </div>
+
+            <div class="box">
+              <span class="box-title">Why <code>O(n!)</code> matters</span>
+              <p>
+                It is the warning sign that brute force becomes impossible very fast when trying every ordering.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Final Explanation</h2>
+          <div class="box">
+            <p>
+              Big O notation is the language we use to describe scalability.
+              The most important interview skill is not memorizing symbols, but recognizing the pattern:
+              direct access, halving, scanning, nested loops, divide-and-process, exponential branching, or permutations.
+            </p>
+            <p>
+              If you can explain <code>O(1)</code>, <code>O(log n)</code>, <code>O(n)</code>, <code>O(n log n)</code>,
+              <code>O(n²)</code>, <code>O(2^n)</code>, and <code>O(n!)</code> with one intuitive example each,
+              you are already in a very strong place for technical interviews.
+            </p>
+          </div>
+        </section>
+
+        <footer class="footer">
+          Suggested filename: <strong>big-o-notation.html</strong>
+        </footer>
+      </main>
+    </article>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>

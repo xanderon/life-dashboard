@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dependency Inversion Principle (DIP) — Study Page</title>
+
+  <!-- Filename: dip.html -->
+
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #5b6472;
+      --line: #dbe3ee;
+      --primary: #2563eb;
+      --primary-soft: #eaf2ff;
+      --success: #eaf8ef;
+      --warning: #fff7e8;
+      --danger: #fff0f0;
+      --shadow: 0 10px 30px rgba(31, 41, 55, 0.08);
+      --radius: 18px;
+      --radius-sm: 12px;
+      --mono-bg: #f8fafc;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(180deg, #f7faff 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    .page {
+      max-width: 1080px;
+      margin: 40px auto;
+      padding: 0 20px 48px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(219, 227, 238, 0.9);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 36px 36px 24px;
+      border-bottom: 1px solid var(--line);
+      background:
+        radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 30%),
+        linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--primary);
+      background: var(--primary-soft);
+      border: 1px solid #cfe0ff;
+      padding: 6px 10px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 12px;
+      line-height: 1.2;
+      color: #0f172a;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      max-width: 820px;
+      color: var(--muted);
+      font-size: 1.02rem;
+      margin: 0 0 20px;
+    }
+
+    .tags {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .tag {
+      font-size: 0.88rem;
+      color: #1e3a8a;
+      background: #eff6ff;
+      border: 1px solid #dbeafe;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    .content {
+      padding: 28px 28px 36px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .section {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: 22px;
+    }
+
+    .section h2 {
+      font-size: 1.2rem;
+      margin-bottom: 14px;
+    }
+
+    .section p {
+      margin: 0 0 12px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .box,
+    .example,
+    .warning,
+    .success {
+      border-radius: 14px;
+      padding: 16px;
+      margin-top: 14px;
+      border: 1px solid var(--line);
+    }
+
+    .box {
+      background: #f8fbff;
+    }
+
+    .example {
+      background: #f8fafc;
+    }
+
+    .warning {
+      background: var(--warning);
+      border-color: #fde7b0;
+    }
+
+    .success {
+      background: var(--success);
+      border-color: #cfe8d7;
+    }
+
+    ul {
+      margin: 10px 0 0 18px;
+      padding: 0;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    code:not(pre code) {
+      background: var(--mono-bg);
+      border: 1px solid #e5e7eb;
+      color: #0f172a;
+      padding: 0.12rem 0.38rem;
+      border-radius: 8px;
+      font-size: 0.92em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    pre {
+      margin: 0;
+      overflow-x: auto;
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+      background: #fafafa;
+    }
+
+    pre code {
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    .diagram {
+      background: #fbfdff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      overflow-x: auto;
+    }
+
+    .diagram pre {
+      background: transparent;
+      border: 0;
+      padding: 0;
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    .comparison .col {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      background: #fcfdff;
+    }
+
+    .comparison .col h3 {
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+
+    .step {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 12px 0;
+      border-top: 1px dashed var(--line);
+    }
+
+    .step:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .step-num {
+      flex: 0 0 auto;
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: var(--primary);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .callout-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #0f172a;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 860px) {
+      .grid-2,
+      .comparison {
+        grid-template-columns: 1fr;
+      }
+
+      .hero,
+      .content {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .page {
+        max-width: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .card,
+      .section {
+        box-shadow: none;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <article class="card">
+      <header class="hero">
+        <div class="eyebrow">Technical Interview Study Page</div>
+        <h1>Dependency Inversion Principle (DIP)</h1>
+        <p class="subtitle">
+          A core SOLID principle that says high-level business logic should depend on abstractions, not concrete implementations.
+          This makes code easier to change, test, and extend.
+        </p>
+
+        <div class="tags">
+          <span class="tag">OOP</span>
+          <span class="tag">SOLID</span>
+          <span class="tag">Design Principles</span>
+          <span class="tag">Architecture</span>
+          <span class="tag">Interview Theory</span>
+        </div>
+      </header>
+
+      <section class="content">
+        <section class="section">
+          <h2>Definition</h2>
+          <p>
+            The <strong>Dependency Inversion Principle</strong> says that <strong>high-level modules should not depend on low-level modules</strong>.
+            Instead, <strong>both should depend on abstractions</strong>.
+          </p>
+          <div class="box">
+            <div class="callout-title">In one line</div>
+            <p style="margin:0;">Depend on <code>interfaces / contracts</code>, not directly on concrete classes.</p>
+          </div>
+        </section>
+
+        <section class="section grid-2">
+          <div>
+            <h2>Intuition</h2>
+            <ul>
+              <li>Business logic changes for business reasons.</li>
+              <li>Infrastructure code changes for technical reasons.</li>
+              <li>These two should not be tightly glued together.</li>
+              <li>Without DIP, changing a database, logger, or payment provider can force changes in core logic.</li>
+            </ul>
+
+            <div class="warning">
+              <div class="callout-title">Without DIP</div>
+              <p style="margin:0;">
+                Your service becomes tightly coupled to implementation details like <code>MySQLDatabase</code>,
+                <code>StripeAPI</code>, or <code>ConsoleLogger</code>.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <h2>Mental Model</h2>
+            <p>
+              Think about a <strong>wall socket</strong>.
+              Your laptop does not connect directly to the electric grid internals.
+              It connects through a <strong>standard interface</strong>.
+            </p>
+            <div class="success">
+              <div class="callout-title">Remember</div>
+              <p style="margin:0;">
+                <strong>Socket = abstraction</strong><br />
+                <strong>Device = high-level module</strong><br />
+                <strong>Power source details = low-level implementation</strong>
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>How It Works</h2>
+
+          <div class="step">
+            <div class="step-num">1</div>
+            <div>
+              <strong>Define an abstraction</strong><br />
+              Create an interface or contract that describes what the dependency should do.
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-num">2</div>
+            <div>
+              <strong>Implement that abstraction</strong><br />
+              Concrete classes like <code>MySQLDatabase</code> or <code>MongoDatabase</code> implement the same contract.
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-num">3</div>
+            <div>
+              <strong>Inject the dependency</strong><br />
+              The high-level module receives the dependency from outside instead of creating it with <code>new</code> inside itself.
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-num">4</div>
+            <div>
+              <strong>Use the abstraction</strong><br />
+              The business logic works against the contract, so implementations can be replaced without changing the core logic.
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Visual Diagram</h2>
+          <div class="diagram">
+<pre>Without DIP
+───────────
+OrderService ─────▶ MySQLDatabase
+
+Problem:
+If MySQL changes to MongoDB, OrderService may also need changes.
+
+
+With DIP
+────────
+                  DatabaseInterface
+                   ▲            ▲
+                   │            │
+            MySQLDatabase   MongoDatabase
+                   ▲
+                   │
+              OrderService
+
+Key idea:
+- Control flow still goes from OrderService to the database.
+- But the dependency is now on the abstraction, not the concrete class.</pre>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Example</h2>
+          <div class="example">
+<pre><code class="language-javascript">class MySQLDatabase {
+  save(order) {
+    console.log("Saved to MySQL");
+  }
+}
+
+class OrderServiceBad {
+  constructor() {
+    this.db = new MySQLDatabase();
+  }
+
+  createOrder(order) {
+    this.db.save(order);
+  }
+}</code></pre>
+          </div>
+
+          <div class="warning">
+            <div class="callout-title">Why this is bad</div>
+            <ul>
+              <li><code>OrderServiceBad</code> is tightly coupled to <code>MySQLDatabase</code>.</li>
+              <li>Harder to switch to another storage implementation.</li>
+              <li>Harder to unit test because the dependency is created internally.</li>
+            </ul>
+          </div>
+
+          <div class="example" style="margin-top:16px;">
+<pre><code class="language-javascript">class MySQLDatabase {
+  save(order) {
+    console.log("Saved to MySQL");
+  }
+}
+
+class MongoDatabase {
+  save(order) {
+    console.log("Saved to MongoDB");
+  }
+}
+
+class OrderService {
+  constructor(database) {
+    this.db = database;
+  }
+
+  createOrder(order) {
+    this.db.save(order);
+  }
+}
+
+const db = new MySQLDatabase();
+const service = new OrderService(db);
+service.createOrder({ id: 1 });</code></pre>
+          </div>
+
+          <div class="success">
+            <div class="callout-title">Why this is better</div>
+            <ul>
+              <li><code>OrderService</code> no longer decides which database to create.</li>
+              <li>You can inject <code>MySQLDatabase</code>, <code>MongoDatabase</code>, or a fake test double.</li>
+              <li>The high-level module depends on behavior, not on details.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Step-by-Step Explanation</h2>
+
+          <div class="box">
+            <ol style="margin:0 0 0 18px; padding:0;">
+              <li style="margin:10px 0;">
+                <strong>The service needs to save an order.</strong><br />
+                That is business logic.
+              </li>
+              <li style="margin:10px 0;">
+                <strong>Saving is a technical detail.</strong><br />
+                It could be MySQL, MongoDB, Redis, or even an external API.
+              </li>
+              <li style="margin:10px 0;">
+                <strong>If the service directly creates the database object</strong>, it becomes tightly coupled to one implementation.
+              </li>
+              <li style="margin:10px 0;">
+                <strong>If the dependency is injected from outside</strong>, the service only cares that the object has the required behavior.
+              </li>
+              <li style="margin:10px 0;">
+                <strong>This separation is what DIP protects.</strong><br />
+                Business logic stays stable while details can change more freely.
+              </li>
+            </ol>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Comparison</h2>
+          <div class="comparison">
+            <div class="col">
+              <h3>DIP vs Dependency Injection</h3>
+              <ul>
+                <li><strong>DIP</strong> = design principle</li>
+                <li><strong>Dependency Injection</strong> = implementation technique</li>
+                <li>DIP says <em>what kind of design you want</em></li>
+                <li>DI is one common way to achieve it</li>
+              </ul>
+            </div>
+            <div class="col">
+              <h3>DIP vs Direct Instantiation</h3>
+              <ul>
+                <li><strong>Direct instantiation:</strong> <code>new MySQLDatabase()</code> inside the class</li>
+                <li><strong>DIP style:</strong> receive dependency from outside</li>
+                <li>Direct instantiation is simpler at first</li>
+                <li>DIP is more flexible and testable long-term</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Common Mistakes / Confusions</h2>
+
+          <div class="warning">
+            <div class="callout-title">1. Confusing DIP with DI</div>
+            <p style="margin:0;">
+              They are related, but they are not the same thing.
+              DIP is the principle. DI is a way to implement it.
+            </p>
+          </div>
+
+          <div class="warning">
+            <div class="callout-title">2. Creating the dependency inside the class</div>
+            <p style="margin:0;">
+              If your class does <code>this.db = new MySQLDatabase()</code>, you usually lost the main benefit of DIP.
+            </p>
+          </div>
+
+          <div class="warning">
+            <div class="callout-title">3. Making interfaces for everything</div>
+            <p style="margin:0;">
+              DIP is useful when you want flexibility, replacement, or easier testing.
+              Not every tiny class needs an abstraction.
+            </p>
+          </div>
+
+          <div class="warning">
+            <div class="callout-title">4. Thinking DIP changes runtime flow</div>
+            <p style="margin:0;">
+              The service still calls the dependency at runtime.
+              What changes is the <strong>design dependency direction</strong>.
+            </p>
+          </div>
+        </section>
+
+        <section class="section grid-2">
+          <div>
+            <h2>Real-World Use Cases</h2>
+            <ul>
+              <li>Repository pattern in backend services</li>
+              <li>Swapping database providers</li>
+              <li>Payment gateway abstraction</li>
+              <li>Logging through a logger interface</li>
+              <li>Email / SMS / push notification providers</li>
+              <li>Mocking dependencies in unit tests</li>
+            </ul>
+
+            <div class="box">
+              <div class="callout-title">Backend example</div>
+              <p style="margin:0;">
+                <code>UserService</code> depends on <code>UserRepository</code>, not directly on MongoDB code.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <h2>Interview Insights</h2>
+            <ul>
+              <li>Be able to define DIP clearly in one sentence.</li>
+              <li>Know the difference between abstractions and implementations.</li>
+              <li>Explain why DIP improves testability.</li>
+              <li>Explain why DIP reduces coupling.</li>
+              <li>Know that DI frameworks often help implement DIP.</li>
+              <li>Know the trade-off: more flexibility, but sometimes more boilerplate.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Interview Explanation Version</h2>
+          <div class="success">
+            <p style="margin:0;">
+              The Dependency Inversion Principle says that high-level business logic should not depend directly on low-level implementation details.
+              Both should depend on abstractions, such as interfaces.
+              This reduces coupling and makes the code easier to test, extend, and change.
+              For example, a service should depend on a repository interface, not directly on MongoDB or MySQL code.
+            </p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Pattern to Remember</h2>
+          <div class="diagram">
+<pre>Bad
+───
+High-level module ─────▶ Concrete implementation
+
+Good
+────
+High-level module ─────▶ Abstraction ◀───── Concrete implementation
+
+Memorize:
+"Depend on abstractions, not details."</pre>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Summary</h2>
+          <ul>
+            <li>DIP is about <strong>depending on abstractions instead of concrete classes</strong>.</li>
+            <li>It reduces coupling between business logic and technical details.</li>
+            <li>It makes code easier to test because you can inject mocks or fakes.</li>
+            <li>It is closely related to Dependency Injection, but it is not the same thing.</li>
+            <li>It is most useful where implementations may change or where testability matters.</li>
+            <li>In interviews, emphasize flexibility, testability, and separation of concerns.</li>
+          </ul>
+
+          <p class="footer-note">
+            Suggested filename: <strong>dip.html</strong>
+          </p>
+        </section>
+      </section>
+    </article>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>

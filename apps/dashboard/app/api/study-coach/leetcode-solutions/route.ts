@@ -4,7 +4,9 @@ import { NextResponse } from 'next/server';
 
 type LeetCategory =
   | 'study_guides'
-  | 'theory'
+  | 'theory_oop_solid'
+  | 'theory_dsa'
+  | 'theory_runtime'
   | 'arrays'
   | 'binary_search'
   | 'matrix'
@@ -39,6 +41,46 @@ const CATEGORY_HINTS: Array<{ id: LeetCategory; hints: string[] }> = [
   { id: 'arrays', hints: ['array', 'arrays'] },
 ];
 
+const THEORY_OOP_SOLID_HINTS = [
+  'abstraction',
+  'encapsulation',
+  'polymorphism',
+  'singleton',
+  'dip',
+  'dependency-inversion',
+  'dependency-injection',
+  'lsp',
+  'interface-segregation',
+  'nterface-segregation',
+  'solid',
+];
+
+const THEORY_DSA_HINTS = [
+  'array',
+  'vector',
+  'hash-map',
+  'hashmap',
+  'stack',
+  'queue',
+  'bfs',
+  'dfs',
+  'big-o',
+  'big-o-notation',
+  'complexity',
+];
+
+const THEORY_RUNTIME_HINTS = [
+  'garbage-collector',
+  'memory-allocation',
+  'stack-vs-heap',
+  'stack-frame',
+  'nodejs-process-thread-event-loop',
+  'event-loop',
+  'process-thread',
+  'runtime',
+  'heap',
+];
+
 async function walkHtmlFiles(root: string, current = ''): Promise<string[]> {
   const dir = path.join(root, current);
   const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -58,10 +100,20 @@ async function walkHtmlFiles(root: string, current = ''): Promise<string[]> {
   return out;
 }
 
+function inferTheoryCategory(file: string): LeetCategory {
+  const lower = file.toLowerCase();
+
+  if (THEORY_RUNTIME_HINTS.some((hint) => lower.includes(hint))) return 'theory_runtime';
+  if (THEORY_OOP_SOLID_HINTS.some((hint) => lower.includes(hint))) return 'theory_oop_solid';
+  if (THEORY_DSA_HINTS.some((hint) => lower.includes(hint))) return 'theory_dsa';
+
+  return 'theory_oop_solid';
+}
+
 function inferCategory(file: string, parts: string[]): LeetCategory {
   const joined = file.toLowerCase();
 
-  if (joined.startsWith('theory/')) return 'theory';
+  if (joined.startsWith('theory/')) return inferTheoryCategory(joined);
   if (joined.includes('linkedlist') || joined.includes('linked_list') || joined.includes('linked-list')) return 'linked_list';
   if (joined.includes('binarysearch') || joined.includes('binary_search') || joined.includes('binary-search')) return 'binary_search';
   if (joined.includes('learning.method') || joined.includes('learning method')) return 'study_guides';
@@ -72,7 +124,7 @@ function inferCategory(file: string, parts: string[]): LeetCategory {
 
   const partsJoined = parts.join('.').toLowerCase();
   if (partsJoined.includes('singleton') || partsJoined.includes('solid') || partsJoined.includes('dependency')) {
-    return 'theory';
+    return 'theory_oop_solid';
   }
 
   return 'arrays';
@@ -99,6 +151,10 @@ function prettifyTitle(parts: string[], num: number | null) {
     learning: 'learning',
     method: 'method',
     singleton: 'singleton',
+    dip: 'dependency inversion principle',
+    lsp: 'liskov substitution principle',
+    nterface: 'interface',
+    polymorphisma: 'polymorphism',
   };
 
   const filtered = parts.filter((part) => !/^\d+$/.test(part) && !['leetcode', 'easy', 'medium', 'html'].includes(part.toLowerCase()));

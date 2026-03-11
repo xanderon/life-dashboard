@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Polymorphism - Interview Study Page</title>
+
+  <!-- Prism.js -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+      --blue: #2563eb;
+      --blue-soft: #eff6ff;
+      --green: #047857;
+      --green-soft: #ecfdf5;
+      --amber: #b45309;
+      --amber-soft: #fffbeb;
+      --red: #b91c1c;
+      --red-soft: #fef2f2;
+      --purple: #7c3aed;
+      --purple-soft: #f5f3ff;
+      --code-bg: #0f172a;
+      --inline: #eef2ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.06), transparent 28%),
+        radial-gradient(circle at top right, rgba(124, 58, 237, 0.06), transparent 24%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 40px 20px;
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(229, 231, 235, 0.9);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 42px 42px 24px;
+      background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(124, 58, 237, 0.04));
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--blue);
+      background: var(--blue-soft);
+      border: 1px solid #dbeafe;
+      padding: 6px 10px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 1.06rem;
+      color: var(--muted);
+      max-width: 800px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .tag {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      color: #334155;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    .content {
+      padding: 34px 42px 46px;
+    }
+
+    section + section {
+      margin-top: 30px;
+    }
+
+    h2 {
+      font-size: 1.45rem;
+      margin: 0 0 14px;
+      letter-spacing: -0.02em;
+    }
+
+    h3 {
+      font-size: 1.08rem;
+      margin: 0 0 10px;
+      letter-spacing: -0.01em;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    ul {
+      margin: 10px 0 0 0;
+      padding-left: 22px;
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    code {
+      background: var(--inline);
+      color: #3730a3;
+      padding: 0.16em 0.42em;
+      border-radius: 8px;
+      font-size: 0.95em;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    pre {
+      margin: 0;
+      overflow-x: auto;
+      border-radius: 18px;
+      padding: 0 !important;
+      background: var(--code-bg) !important;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 24px !important;
+      display: block;
+      min-width: max-content;
+      font-size: 0.95rem;
+      line-height: 1.75;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .box,
+    .example,
+    .warning,
+    .success {
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+      border: 1px solid var(--border);
+    }
+
+    .box {
+      background: #f8fafc;
+    }
+
+    .example {
+      background: var(--blue-soft);
+      border-color: #dbeafe;
+    }
+
+    .warning {
+      background: var(--amber-soft);
+      border-color: #fde68a;
+    }
+
+    .success {
+      background: var(--green-soft);
+      border-color: #bbf7d0;
+    }
+
+    .mini-title {
+      display: inline-block;
+      margin-bottom: 8px;
+      font-weight: 800;
+      font-size: 0.9rem;
+      letter-spacing: 0.01em;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .compare {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .compare th,
+    .compare td {
+      text-align: left;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .compare th {
+      background: #f8fafc;
+      font-size: 0.95rem;
+    }
+
+    .compare tr:last-child td {
+      border-bottom: none;
+    }
+
+    .flow {
+      display: grid;
+      gap: 10px;
+    }
+
+    .flow-step {
+      padding: 14px 16px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      font-weight: 600;
+    }
+
+    .flow-step span {
+      display: block;
+      color: var(--muted);
+      font-weight: 500;
+      margin-top: 4px;
+      font-size: 0.95rem;
+    }
+
+    .footer-note {
+      margin-top: 34px;
+      padding-top: 18px;
+      border-top: 1px dashed var(--border);
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .filename {
+      margin-top: 14px;
+      font-weight: 700;
+      color: var(--purple);
+    }
+
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      .card {
+        box-shadow: none;
+        border: none;
+      }
+      .hero {
+        background: white;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+    }
+
+    @media (max-width: 800px) {
+      .hero,
+      .content {
+        padding: 24px;
+      }
+
+      .grid,
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <article class="card">
+      <header class="hero">
+        <div class="eyebrow">Interview Study Page</div>
+        <h1>Polymorphism</h1>
+        <p class="subtitle">
+          Same method call, different behavior depending on the concrete object. This is one of the most important OOP ideas to explain clearly in interviews, especially without mixing it up with inheritance or abstraction.
+        </p>
+
+        <div class="tags">
+          <span class="tag">OOP</span>
+          <span class="tag">JavaScript</span>
+          <span class="tag">TypeScript / JS Thinking</span>
+          <span class="tag">Interview Theory</span>
+          <span class="tag">Polymorphism vs Inheritance</span>
+        </div>
+      </header>
+
+      <div class="content">
+        <section>
+          <h2>Definition</h2>
+          <div class="success">
+            <div class="mini-title">Core idea</div>
+            <p>
+              <strong>Polymorphism</strong> means that different objects can be treated through the
+              <em>same interface</em>, while each object can provide its <em>own implementation</em> of the behavior.
+            </p>
+            <p>
+              In simple interview language: <strong>same call, different result based on the real object</strong>.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>What is correct and what is not</h2>
+          <div class="grid">
+            <div class="success">
+              <div class="mini-title">Correct intuition</div>
+              <p>
+                If you have a function that receives an <code>Animal</code> and calls <code>animal.speak()</code>,
+                that function does not need to know whether it got a dog or a cat.
+              </p>
+            </div>
+            <div class="warning">
+              <div class="mini-title">Important correction</div>
+              <p>
+                Polymorphism is <strong>not the same thing</strong> as inheritance.
+                Inheritance may help you implement polymorphism, but polymorphism is really about
+                <strong>one common contract + multiple concrete behaviors</strong>.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Intuition</h2>
+          <div class="box">
+            <p>
+              Think like this: a program says <code>payment.pay()</code>. It does not care if the payment
+              is card, Apple Pay, Google Pay, or something else.
+            </p>
+            <p>
+              The caller uses a <strong>generic contract</strong>. Each concrete payment type handles the
+              details differently inside, but the outside interaction remains the same.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Mental model</h2>
+          <div class="two-col">
+            <div class="flow">
+              <div class="flow-step">
+                1. Define a common behavior
+                <span>Example: <code>speak()</code> or <code>pay()</code></span>
+              </div>
+              <div class="flow-step">
+                2. Create multiple concrete implementations
+                <span><code>Dog.speak()</code>, <code>Cat.speak()</code>, <code>CardPayment.pay()</code></span>
+              </div>
+              <div class="flow-step">
+                3. Use them through the common shape
+                <span>The caller works with <code>Animal</code> or <code>PaymentMethod</code></span>
+              </div>
+              <div class="flow-step">
+                4. Runtime picks the real behavior
+                <span>The actual object decides what happens</span>
+              </div>
+            </div>
+
+            <div class="example">
+              <div class="mini-title">One-line memory hook</div>
+              <p>
+                <strong>Polymorphism = one interface, many forms.</strong>
+              </p>
+              <p>
+                Or even shorter:
+                <br />
+                <strong>same method call → different behavior</strong>
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Main interview example: Animal</h2>
+          <pre><code class="language-javascript">class Animal {
+  speak() {
+    console.log("Some generic sound");
+  }
+}
+
+class Dog extends Animal {
+  speak() {
+    console.log("Woof");
+  }
+}
+
+class Cat extends Animal {
+  speak() {
+    console.log("Meow");
+  }
+}
+
+function makeAnimalSpeak(animal) {
+  animal.speak();
+}
+
+makeAnimalSpeak(new Dog());
+makeAnimalSpeak(new Cat());</code></pre>
+
+          <div class="success" style="margin-top: 16px;">
+            <div class="mini-title">Why this is polymorphism</div>
+            <p>
+              The function <code>makeAnimalSpeak</code> always does the same thing:
+              it calls <code>animal.speak()</code>. But the result changes depending on the actual object.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Step-by-step explanation</h2>
+          <div class="box">
+            <ol style="margin: 0; padding-left: 22px;">
+              <li>You define a parent type or common contract.</li>
+              <li>Each subtype provides its own version of the same method.</li>
+              <li>The caller depends only on the common shape, not on the exact subtype.</li>
+              <li>At runtime, the actual object decides which method implementation runs.</li>
+            </ol>
+          </div>
+        </section>
+
+        <section>
+          <h2>Real-world example: Payment methods</h2>
+          <pre><code class="language-javascript">class PaymentMethod {
+  pay(amount) {
+    throw new Error("pay() must be implemented");
+  }
+}
+
+class CardPayment extends PaymentMethod {
+  pay(amount) {
+    console.log(`Paid ${amount} with card`);
+  }
+}
+
+class ApplePayPayment extends PaymentMethod {
+  pay(amount) {
+    console.log(`Paid ${amount} with Apple Pay`);
+  }
+}
+
+class GooglePayPayment extends PaymentMethod {
+  pay(amount) {
+    console.log(`Paid ${amount} with Google Pay`);
+  }
+}
+
+function checkout(paymentMethod, amount) {
+  paymentMethod.pay(amount);
+}
+
+checkout(new CardPayment(), 100);
+checkout(new ApplePayPayment(), 100);
+checkout(new GooglePayPayment(), 100);</code></pre>
+
+          <div class="example" style="margin-top: 16px;">
+            <div class="mini-title">Why interviewers like this example</div>
+            <p>
+              Because it shows a practical design benefit: you do <strong>not</strong> keep adding
+              <code>if</code> / <code>else</code> checks every time a new payment type appears.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Without polymorphism vs with polymorphism</h2>
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>Without polymorphism</th>
+                <th>With polymorphism</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Many <code>if</code> / <code>switch</code> branches</td>
+                <td>One common method call</td>
+              </tr>
+              <tr>
+                <td>Adding a new type means editing old code</td>
+                <td>Adding a new type usually means adding a new class/object</td>
+              </tr>
+              <tr>
+                <td>More fragile and harder to extend</td>
+                <td>Cleaner and closer to Open/Closed Principle</td>
+              </tr>
+              <tr>
+                <td>Caller needs to know concrete details</td>
+                <td>Caller only knows the shared contract</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>Line-by-line explanation of the key pattern</h2>
+          <div class="grid">
+            <div class="box">
+              <h3><code>class Dog extends Animal</code></h3>
+              <p>
+                This means <code>Dog</code> is a specialized kind of <code>Animal</code>.
+                Inheritance is being used here.
+              </p>
+            </div>
+            <div class="box">
+              <h3><code>speak()</code> inside <code>Dog</code></h3>
+              <p>
+                This overrides the inherited version and defines dog-specific behavior.
+              </p>
+            </div>
+            <div class="box">
+              <h3><code>function makeAnimalSpeak(animal)</code></h3>
+              <p>
+                The function depends on the generic type, not the concrete subtype.
+              </p>
+            </div>
+            <div class="box">
+              <h3><code>animal.speak()</code></h3>
+              <p>
+                This is the polymorphic call. Same call site, but runtime behavior changes based on the real object.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Very important distinction: inheritance vs polymorphism</h2>
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>Concept</th>
+                <th>Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Inheritance</strong></td>
+                <td>One class extends another to reuse or specialize behavior.</td>
+              </tr>
+              <tr>
+                <td><strong>Polymorphism</strong></td>
+                <td>Different objects respond to the same method call in different ways.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="warning" style="margin-top: 16px;">
+            <div class="mini-title">Interview trap</div>
+            <p>
+              Do not say: <em>"Polymorphism means reusing code through inheritance."</em>
+            </p>
+            <p>
+              That sounds more like <strong>inheritance</strong>. A better answer is:
+              <strong>polymorphism lets us use different objects through the same interface</strong>.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Polymorphism in JavaScript</h2>
+          <div class="box">
+            <p>
+              In JavaScript, polymorphism does <strong>not always require classical inheritance</strong>.
+              Because JavaScript is flexible, any object with the expected method can work.
+            </p>
+          </div>
+
+          <pre style="margin-top: 16px;"><code class="language-javascript">function speak(entity) {
+  entity.speak();
+}
+
+const dog = {
+  speak() {
+    console.log("Woof");
+  }
+};
+
+const robot = {
+  speak() {
+    console.log("Beep");
+  }
+};
+
+speak(dog);
+speak(robot);</code></pre>
+
+          <div class="success" style="margin-top: 16px;">
+            <div class="mini-title">Why this matters</div>
+            <p>
+              This is still polymorphism. The caller uses the same method name,
+              while different objects provide different implementations.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Prototype angle in JavaScript</h2>
+          <div class="box">
+            <p>
+              When JavaScript tries to resolve a method like <code>dog.speak()</code>, it first looks on the object itself.
+              If it does not find it there, it walks up the <strong>prototype chain</strong>.
+            </p>
+          </div>
+
+          <pre style="margin-top: 16px;"><code class="language-javascript">class Animal {
+  speak() {
+    console.log("Generic sound");
+  }
+}
+
+class Dog extends Animal {}
+
+const dog = new Dog();
+dog.speak();</code></pre>
+
+          <div class="example" style="margin-top: 16px;">
+            <div class="mini-title">What happens conceptually</div>
+            <p>
+              JavaScript checks the instance first. If the method is not found there, it checks
+              <code>Dog.prototype</code>, then <code>Animal.prototype</code>, then higher in the chain.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Common mistakes / confusions</h2>
+          <div class="grid">
+            <div class="warning">
+              <div class="mini-title">Mistake 1</div>
+              <p>Confusing polymorphism with inheritance.</p>
+            </div>
+            <div class="warning">
+              <div class="mini-title">Mistake 2</div>
+              <p>Saying polymorphism exists only with classes. In JavaScript it can also happen through object shape.</p>
+            </div>
+            <div class="warning">
+              <div class="mini-title">Mistake 3</div>
+              <p>Thinking the goal is only code reuse. The bigger goal is flexible design and interchangeable behavior.</p>
+            </div>
+            <div class="warning">
+              <div class="mini-title">Mistake 4</div>
+              <p>Using too many type checks like <code>instanceof</code> instead of relying on a shared contract.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Interview explanation version</h2>
+          <div class="success">
+            <div class="mini-title">Good 20-30 second answer</div>
+            <p>
+              Polymorphism means that different objects can be treated through the same interface,
+              while each object can implement the behavior differently. For example,
+              if I call <code>animal.speak()</code>, a dog can say <code>"Woof"</code> and a cat can say <code>"Meow"</code>.
+              The caller uses the same method, but the runtime behavior depends on the real object.
+            </p>
+          </div>
+
+          <div class="box" style="margin-top: 16px;">
+            <div class="mini-title">Even shorter version</div>
+            <p>
+              <strong>Polymorphism = same method call, different behavior depending on the concrete object.</strong>
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Pattern to remember</h2>
+          <div class="example">
+            <div class="mini-title">Memory formula</div>
+            <p>
+              <code>generic caller + shared contract + specific implementation = polymorphism</code>
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Real-world use cases</h2>
+          <div class="grid">
+            <div class="box">
+              <h3>Payments</h3>
+              <p>Card, Apple Pay, Google Pay, bank transfer — all expose <code>pay()</code>.</p>
+            </div>
+            <div class="box">
+              <h3>Storage backends</h3>
+              <p>Local file system, S3, database blob storage — all expose <code>save()</code> or <code>read()</code>.</p>
+            </div>
+            <div class="box">
+              <h3>Notifications</h3>
+              <p>Email, SMS, push notification — all expose <code>send()</code>.</p>
+            </div>
+            <div class="box">
+              <h3>UI handlers</h3>
+              <p>Different widgets respond to the same event in different ways.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Final takeaway</h2>
+          <div class="success">
+            <div class="mini-title">What you should say confidently</div>
+            <p>
+              Polymorphism is about treating different objects in a uniform way through a common contract,
+              while allowing each one to behave differently internally.
+            </p>
+            <p>
+              Inheritance can help implement it, but inheritance and polymorphism are <strong>not the same concept</strong>.
+            </p>
+          </div>
+        </section>
+
+        <div class="footer-note">
+          Best interview framing:
+          <br />
+          <strong>Inheritance</strong> is about relationship and reuse.
+          <br />
+          <strong>Polymorphism</strong> is about interchangeable behavior behind the same method call.
+          <div class="filename">Filename: polymorphism.html</div>
+        </div>
+      </div>
+    </article>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>

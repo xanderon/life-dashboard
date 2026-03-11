@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interface Segregation Principle (ISP) — Study Page</title>
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css"
+    rel="stylesheet"
+  />
+
+  <style>
+    :root{
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #667085;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --success: #166534;
+      --success-bg: #ecfdf3;
+      --warning: #92400e;
+      --warning-bg: #fffbeb;
+      --danger: #991b1b;
+      --danger-bg: #fef2f2;
+      --shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 32px 20px 60px;
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(229, 231, 235, 0.9);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 42px 42px 28px;
+      background:
+        radial-gradient(circle at top right, rgba(37, 99, 235, 0.10), transparent 28%),
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.06), transparent 22%),
+        #ffffff;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid #dbeafe;
+      padding: 6px 10px;
+      border-radius: 999px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 1.06rem;
+      color: var(--muted);
+      max-width: 760px;
+    }
+
+    .content {
+      padding: 34px 42px 42px;
+    }
+
+    h2 {
+      margin: 34px 0 14px;
+      font-size: 1.45rem;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+
+    h3 {
+      margin: 24px 0 10px;
+      font-size: 1.08rem;
+      line-height: 1.35;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    ul {
+      margin: 0 0 14px 20px;
+      padding: 0;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    code:not([class*="language-"]) {
+      background: #f3f4f6;
+      color: #111827;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 0.15rem 0.42rem;
+      font-size: 0.94em;
+      white-space: nowrap;
+    }
+
+    pre[class*="language-"] {
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+      overflow: auto;
+      padding: 18px !important;
+      font-size: 0.94rem;
+      background: #fafafa !important;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      background: #f8fafc;
+      color: #334155;
+      border: 1px solid #e2e8f0;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    .box,
+    .example,
+    .warning,
+    .success {
+      border-radius: var(--radius);
+      padding: 18px 18px 16px;
+      margin: 18px 0;
+      border: 1px solid var(--border);
+      background: #fafafa;
+    }
+
+    .box-title,
+    .example-title,
+    .warning-title,
+    .success-title {
+      display: block;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .example {
+      background: #f8fbff;
+      border-color: #dbeafe;
+    }
+
+    .example-title {
+      color: #1d4ed8;
+    }
+
+    .warning {
+      background: var(--warning-bg);
+      border-color: #fcd34d;
+    }
+
+    .warning-title {
+      color: var(--warning);
+    }
+
+    .success {
+      background: var(--success-bg);
+      border-color: #bbf7d0;
+    }
+
+    .success-title {
+      color: var(--success);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin: 18px 0;
+    }
+
+    .mini-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      background: #fff;
+    }
+
+    .mini-card h3 {
+      margin-top: 0;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 26px 0;
+    }
+
+    .step {
+      border-left: 4px solid var(--accent);
+      padding: 4px 0 4px 14px;
+      margin: 14px 0;
+    }
+
+    .step strong {
+      display: inline-block;
+      margin-bottom: 4px;
+    }
+
+    .footer-note {
+      margin-top: 28px;
+      padding-top: 22px;
+      border-top: 1px dashed var(--border);
+      color: var(--muted);
+      font-size: 0.97rem;
+    }
+
+    .print-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        padding: 16px 12px 36px;
+      }
+
+      .hero,
+      .content {
+        padding: 24px 18px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+        padding: 0;
+      }
+
+      .card {
+        box-shadow: none;
+        border: none;
+      }
+
+      .hero {
+        background: #fff;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      pre[class*="language-"] {
+        white-space: pre-wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <article class="card">
+      <header class="hero">
+        <div class="eyebrow">SOLID • OOP • Interview Prep</div>
+        <h1>Interface Segregation Principle (ISP)</h1>
+        <p class="subtitle">
+          The <strong>I</strong> in SOLID. The core idea: a class should not be forced to depend on methods it does not use.
+          Instead of one large, general-purpose interface, prefer smaller and focused interfaces that match real behavior.
+        </p>
+
+        <div class="tags">
+          <span class="tag">SOLID</span>
+          <span class="tag">OOP</span>
+          <span class="tag">Design Principles</span>
+          <span class="tag">Interfaces</span>
+          <span class="tag">Abstract Classes</span>
+          <span class="tag">Interview Theory</span>
+        </div>
+      </header>
+
+      <main class="content">
+        <section>
+          <h2>Definition</h2>
+          <div class="success">
+            <span class="success-title">Formal interview definition</span>
+            <p>
+              <strong>Interface Segregation Principle</strong> says that
+              <em>clients should not be forced to depend on methods they do not use</em>.
+              In practice, this means we should prefer <strong>small, specific interfaces</strong>
+              over large, generic ones.
+            </p>
+          </div>
+
+          <p>
+            A “client” can be a class, service, module, or implementation that consumes a contract.
+            That contract can be an <code>interface</code>, but the same idea also applies to
+            <code>abstract classes</code> and public APIs in general.
+          </p>
+        </section>
+
+        <section>
+          <h2>Intuition</h2>
+          <p>
+            Imagine you give someone a form with 10 responsibilities, but they only actually need 2.
+            The other 8 are noise, confusion, and accidental coupling.
+          </p>
+          <p>
+            ISP says: don’t design contracts around “everything this domain could ever do.”
+            Design them around <strong>what a specific client actually needs</strong>.
+          </p>
+
+          <div class="box">
+            <span class="box-title">Mental shortcut</span>
+            <p>
+              If an implementation has to write methods like <code>throw new Error("Not implemented")</code>,
+              empty bodies, fake returns, or comments like <code>// not needed here</code>,
+              that is usually a strong signal that the interface is too big.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Mental Model</h2>
+          <div class="grid">
+            <div class="mini-card">
+              <h3>Bad design</h3>
+              <p>
+                One large contract tries to describe too many behaviors at once.
+                Classes are forced to implement features they do not support.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h3>Good design</h3>
+              <p>
+                Multiple focused contracts each represent one coherent capability.
+                Classes implement only what they truly provide.
+              </p>
+            </div>
+          </div>
+
+          <div class="example">
+            <span class="example-title">Simple memory phrase</span>
+            <p>
+              <strong>Many small focused interfaces &gt; one fat interface.</strong>
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Classic Example: Printer, Scanner, Fax</h2>
+          <p>
+            This is the standard example because it shows the problem immediately.
+            Some devices can print, scan, and fax. Others can only print.
+            A single “all-in-one” contract becomes a bad fit for simpler devices.
+          </p>
+
+<pre><code class="language-javascript">class Document {}
+
+class Machine {
+  print(doc) {}
+  scan(doc) {}
+  fax(doc) {}
+}
+
+class MultiFunctionPrinter extends Machine {
+  print(doc) {
+    console.log("Printing document");
+  }
+
+  scan(doc) {
+    console.log("Scanning document");
+  }
+
+  fax(doc) {
+    console.log("Faxing document");
+  }
+}
+
+class BasicPrinter extends Machine {
+  print(doc) {
+    console.log("Printing document");
+  }
+
+  scan(doc) {
+    throw new Error("BasicPrinter cannot scan");
+  }
+
+  fax(doc) {
+    throw new Error("BasicPrinter cannot fax");
+  }
+}</code></pre>
+
+          <div class="warning">
+            <span class="warning-title">Why this violates ISP</span>
+            <p>
+              <code>BasicPrinter</code> is forced to depend on
+              <code>scan()</code> and <code>fax()</code> even though it does not use them
+              and does not support them. The contract is too broad.
+            </p>
+          </div>
+
+          <h3>Better version</h3>
+
+<pre><code class="language-javascript">class Printer {
+  print(doc) {}
+}
+
+class Scanner {
+  scan(doc) {}
+}
+
+class Fax {
+  fax(doc) {}
+}
+
+class BasicPrinter extends Printer {
+  print(doc) {
+    console.log("Printing document");
+  }
+}
+
+class MultiFunctionPrinter extends Printer {
+  print(doc) {
+    console.log("Printing document");
+  }
+
+  scan(doc) {
+    console.log("Scanning document");
+  }
+
+  fax(doc) {
+    console.log("Faxing document");
+  }
+}</code></pre>
+
+          <div class="success">
+            <span class="success-title">What improved</span>
+            <p>
+              Now each capability is separated. A simple printer only depends on printing.
+              A more advanced machine can support more behaviors without forcing all devices
+              to pretend they can do everything.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Example from This Chat: Notification System</h2>
+          <p>
+            Another example we discussed was a notification system with multiple channels:
+            email, SMS, and Slack.
+          </p>
+
+<pre><code class="language-javascript">class NotificationService {
+  sendEmail(message) {}
+  sendSMS(message) {}
+  sendSlack(message) {}
+}
+
+class EmailNotifier extends NotificationService {
+  sendEmail(message) {
+    console.log("Sending email:", message);
+  }
+
+  sendSMS(message) {
+    throw new Error("Not supported");
+  }
+
+  sendSlack(message) {
+    throw new Error("Not supported");
+  }
+}</code></pre>
+
+          <p>
+            The problem is the same. <code>EmailNotifier</code> only knows email,
+            but the contract forces it to pretend it also knows SMS and Slack.
+          </p>
+
+          <h3>Better split</h3>
+
+<pre><code class="language-javascript">class EmailSender {
+  sendEmail(message) {}
+}
+
+class SmsSender {
+  sendSMS(message) {}
+}
+
+class SlackSender {
+  sendSlack(message) {}
+}
+
+class EmailNotifier extends EmailSender {
+  sendEmail(message) {
+    console.log("Sending email:", message);
+  }
+}
+
+class SmsNotifier extends SmsSender {
+  sendSMS(message) {
+    console.log("Sending SMS:", message);
+  }
+}</code></pre>
+
+          <div class="box">
+            <span class="box-title">Important nuance</span>
+            <p>
+              The point is not “split everything into tiny pieces no matter what.”
+              The point is to split when one interface combines unrelated responsibilities
+              and starts forcing implementations to carry methods they do not need.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Step-by-Step Explanation</h2>
+
+          <div class="step">
+            <strong>Step 1 — Find the contract</strong>
+            <p>
+              Look for an <code>interface</code>, <code>abstract class</code>, or public API that defines several methods.
+            </p>
+          </div>
+
+          <div class="step">
+            <strong>Step 2 — Check the implementations</strong>
+            <p>
+              Ask: do all implementations genuinely need all of these methods?
+            </p>
+          </div>
+
+          <div class="step">
+            <strong>Step 3 — Look for pain signals</strong>
+            <p>
+              Are there empty methods, fake implementations, errors like
+              <code>Not implemented</code>, or conditional logic just to avoid unsupported behavior?
+            </p>
+          </div>
+
+          <div class="step">
+            <strong>Step 4 — Split by capability</strong>
+            <p>
+              Extract small interfaces around real responsibilities such as printing, scanning, faxing,
+              sending email, sending SMS, and so on.
+            </p>
+          </div>
+
+          <div class="step">
+            <strong>Step 5 — Let implementations depend only on what they use</strong>
+            <p>
+              Each class now implements only the contract that matches its actual behavior.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>How It Also Applies to Abstract Classes</h2>
+          <p>
+            In discussion, one subtle point was whether ISP applies only to interfaces.
+            The answer is no. It applies to <strong>contracts</strong> in general.
+          </p>
+
+          <div class="example">
+            <span class="example-title">Good interview phrasing</span>
+            <p>
+              ISP is usually explained using interfaces, but the same principle applies to
+              abstract classes too, because they can also force subclasses to depend on behavior
+              they do not need.
+            </p>
+          </div>
+
+<pre><code class="language-javascript">class AbstractNotificationService {
+  sendEmail(message) {}
+  sendSMS(message) {}
+  sendSlack(message) {}
+}
+
+class EmailOnlyService extends AbstractNotificationService {
+  sendEmail(message) {
+    console.log("Email sent:", message);
+  }
+
+  sendSMS(message) {
+    throw new Error("Not supported");
+  }
+
+  sendSlack(message) {
+    throw new Error("Not supported");
+  }
+}</code></pre>
+
+          <p>
+            Even though this is an abstract base-style design instead of an interface-style design,
+            the underlying problem is identical: the contract is too large for some clients.
+          </p>
+        </section>
+
+        <section>
+          <h2>Common Mistakes / Confusions</h2>
+
+          <div class="warning">
+            <span class="warning-title">Confusion #1 — “It means make everything tiny”</span>
+            <p>
+              Not exactly. ISP does not mean endless fragmentation.
+              It means interfaces should be <strong>cohesive</strong> and should not force unrelated behavior.
+            </p>
+          </div>
+
+          <div class="warning">
+            <span class="warning-title">Confusion #2 — “Only interfaces are affected”</span>
+            <p>
+              No. The principle applies to abstract classes and any public contract.
+            </p>
+          </div>
+
+          <div class="warning">
+            <span class="warning-title">Confusion #3 — “A large interface is always bad”</span>
+            <p>
+              Not always. A large interface is fine if every implementation truly needs and supports
+              all of it. The issue is forced dependency on unused behavior.
+            </p>
+          </div>
+
+          <div class="warning">
+            <span class="warning-title">Confusion #4 — “This is the same as SRP”</span>
+            <p>
+              They are related, but not identical.
+              <strong>SRP</strong> is about a class/module having one reason to change.
+              <strong>ISP</strong> is about clients not depending on methods they do not use.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Red Flags That Usually Mean ISP Is Violated</h2>
+          <ul>
+            <li>Methods that just throw <code>NotImplemented</code> errors.</li>
+            <li>Empty method bodies added only to satisfy a contract.</li>
+            <li>Comments like <code>// not used here</code> in implementations.</li>
+            <li>One “god interface” with many unrelated methods.</li>
+            <li>Implementations supporting only a small subset of the contract.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Interview Explanation Version</h2>
+          <div class="success">
+            <span class="success-title">20–30 second answer</span>
+            <p>
+              Interface Segregation Principle says that clients should not be forced to depend
+              on methods they do not use. Instead of one big interface, we should create smaller,
+              focused interfaces so each class only implements behavior that actually belongs to it.
+            </p>
+          </div>
+
+          <div class="box">
+            <span class="box-title">45-second version with example</span>
+            <p>
+              A classic example is a machine interface with <code>print()</code>, <code>scan()</code>,
+              and <code>fax()</code>. A multifunction printer can support all three, but a basic printer
+              can only print. If we force the basic printer to implement scan and fax too, we violate ISP.
+              The fix is to split the contract into smaller interfaces like <code>Printer</code>,
+              <code>Scanner</code>, and <code>Fax</code>, so each implementation depends only on what it needs.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Pattern to Remember</h2>
+          <div class="success">
+            <span class="success-title">Memorize this line</span>
+            <p>
+              <strong>Clients should not depend on methods they do not use.</strong>
+            </p>
+          </div>
+
+          <p>
+            And the practical version:
+          </p>
+
+          <div class="example">
+            <span class="example-title">Practical memory phrase</span>
+            <p>
+              <strong>Prefer focused interfaces over fat interfaces.</strong>
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Real-World Use Cases</h2>
+          <ul>
+            <li>
+              <strong>Notification systems:</strong> email, SMS, push, Slack, WhatsApp should not all live in one forced contract.
+            </li>
+            <li>
+              <strong>File storage:</strong> not every storage provider supports read, write, delete, versioning, and signed URLs equally.
+            </li>
+            <li>
+              <strong>Payments:</strong> some providers support refunds, some support subscriptions, some only one-time payments.
+            </li>
+            <li>
+              <strong>Microservices:</strong> one consumer may only need <code>getById()</code>, not an entire repository contract with 12 methods.
+            </li>
+            <li>
+              <strong>Device capabilities:</strong> some devices can print only, others can print and scan, others can do more.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Final Takeaway</h2>
+          <div class="success">
+            <span class="success-title">Final explanation</span>
+            <p>
+              Interface Segregation Principle is about keeping contracts aligned with real behavior.
+              If a class is forced to implement methods it does not support, the contract is too broad.
+              The fix is to split that contract into smaller, meaningful interfaces so each client depends
+              only on what it actually needs.
+            </p>
+          </div>
+
+          <p>
+            In interview terms, the cleanest answer is:
+          </p>
+
+          <div class="box">
+            <span class="box-title">Best one-liner</span>
+            <p>
+              <strong>ISP means small, focused contracts that do not force unused methods onto implementations.</strong>
+            </p>
+          </div>
+        </section>
+
+        <div class="footer-note">
+          Built as an interview-focused study page for the current topic discussed in this chat:
+          <strong>Interface Segregation Principle (ISP)</strong>.
+          <div class="print-note">Suggested filename: <strong>interface-segregation-principle.html</strong></div>
+        </div>
+      </main>
+    </article>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>

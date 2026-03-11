@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Array / Vector — Interview Study Page</title>
+
+  <!-- Filename: array-vector.html -->
+
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" />
+
+  <style>
+    :root{
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --success-bg: #ecfdf5;
+      --success-border: #a7f3d0;
+      --warning-bg: #fff7ed;
+      --warning-border: #fdba74;
+      --box-bg: #f8fafc;
+      --shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .page {
+      max-width: 1040px;
+      margin: 40px auto;
+      padding: 0 20px 60px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(229, 231, 235, 0.8);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 40px 40px 28px;
+      background:
+        radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 32%),
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 28%),
+        #ffffff;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2rem, 3vw, 3rem);
+      line-height: 1.12;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      font-size: 1.02rem;
+      color: var(--muted);
+      max-width: 780px;
+      margin: 0;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: #1d4ed8;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: 1px solid #bfdbfe;
+    }
+
+    .content {
+      padding: 10px 40px 40px;
+    }
+
+    section {
+      padding: 28px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-child {
+      border-bottom: none;
+      padding-bottom: 6px;
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 1.45rem;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+
+    h3 {
+      margin: 22px 0 10px;
+      font-size: 1.05rem;
+      line-height: 1.35;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    ul {
+      margin: 10px 0 0 0;
+      padding-left: 22px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    code:not([class*="language-"]) {
+      background: #eef2ff;
+      color: #3730a3;
+      padding: 2px 7px;
+      border-radius: 8px;
+      font-size: 0.95em;
+      border: 1px solid #dbeafe;
+      white-space: nowrap;
+    }
+
+    pre[class*="language-"] {
+      border-radius: 16px;
+      padding: 18px !important;
+      overflow-x: auto;
+      border: 1px solid #e5e7eb;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+      margin: 14px 0 0;
+      font-size: 0.94rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .box, .example, .warning, .success {
+      border-radius: 16px;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      background: var(--box-bg);
+    }
+
+    .box strong,
+    .example strong,
+    .warning strong,
+    .success strong {
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .example {
+      background: #f8fbff;
+      border-color: #cfe0ff;
+    }
+
+    .warning {
+      background: var(--warning-bg);
+      border-color: var(--warning-border);
+    }
+
+    .success {
+      background: var(--success-bg);
+      border-color: var(--success-border);
+    }
+
+    .mini-title {
+      display: inline-block;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .ascii {
+      background: #0f172a;
+      color: #e5eefc;
+      border-radius: 16px;
+      padding: 18px;
+      overflow-x: auto;
+      border: 1px solid #1e293b;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 0.94rem;
+      line-height: 1.55;
+      margin-top: 12px;
+      white-space: pre;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      margin-top: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 640px;
+      background: white;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      font-size: 0.93rem;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .steps {
+      counter-reset: step;
+      display: grid;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .step {
+      position: relative;
+      padding: 16px 16px 16px 56px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+    }
+
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 16px;
+      top: 16px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .interview {
+      border-left: 4px solid var(--accent);
+      background: #f8fbff;
+      padding: 18px 18px 18px 20px;
+      border-radius: 0 16px 16px 0;
+      margin-top: 14px;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 820px) {
+      .hero, .content {
+        padding-left: 22px;
+        padding-right: 22px;
+      }
+
+      .grid.two {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .page {
+        margin: 0;
+        max-width: none;
+        padding: 0;
+      }
+
+      .card {
+        box-shadow: none;
+        border: none;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      pre[class*="language-"],
+      .ascii,
+      .box,
+      .example,
+      .warning,
+      .success,
+      .step {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <article class="card">
+      <header class="hero">
+        <div class="tags">
+          <span class="tag">Data Structures</span>
+          <span class="tag">Algorithmic Complexity</span>
+          <span class="tag">Array / Vector</span>
+          <span class="tag">Interview Prep</span>
+        </div>
+        <h1>Array / Vector</h1>
+        <p class="subtitle">
+          A clean interview-focused study page built from the discussion in this chat. The topic here is a
+          <strong>theoretical concept with practical implications</strong>: what an array really is, why it is fast,
+          where it becomes slow, and how it compares to alternatives like linked lists and dynamic arrays.
+        </p>
+      </header>
+
+      <div class="content">
+        <section>
+          <h2>Definition</h2>
+          <div class="box">
+            <strong>Simple definition</strong>
+            <p>
+              An <strong>array</strong> is a data structure that stores elements in
+              <strong>contiguous memory</strong> and lets you access each element by its
+              <strong>index</strong>.
+            </p>
+            <p>
+              In interview language: the big idea is that arrays are fast for
+              <code>read by index</code>, but expensive when you need to insert or delete in the middle.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Intuition — Why does this exist?</h2>
+          <p>
+            If you have many values of the same kind, you need a structure that lets you store them together and
+            access them predictably. Without arrays, you would end up with many separate variables, which becomes
+            unmanageable almost immediately.
+          </p>
+
+          <div class="grid two">
+            <div class="warning">
+              <strong>Without an array</strong>
+              <p>
+                You get things like <code>score1</code>, <code>score2</code>, <code>score3</code>,
+                which do not scale and are hard to loop through.
+              </p>
+            </div>
+            <div class="success">
+              <strong>With an array</strong>
+              <p>
+                You get <code>scores[0]</code>, <code>scores[1]</code>, <code>scores[2]</code>, so the data becomes
+                organized, iterable, and easy to process.
+              </p>
+            </div>
+          </div>
+
+          <p>
+            The key benefit is this: if you know the index, the machine can usually go directly to the right memory
+            location instead of searching element by element.
+          </p>
+        </section>
+
+        <section>
+          <h2>Mental model</h2>
+          <div class="example">
+            <strong>Think of a row of numbered lockers</strong>
+            <p>
+              Each locker has a fixed position: locker 0, locker 1, locker 2, and so on.
+              If someone asks for locker 3, you go directly there.
+            </p>
+            <p>
+              That is the essence of an array: <strong>position-based access</strong>.
+            </p>
+          </div>
+
+          <div class="ascii">Index:   0     1     2     3     4
+        ┌─────┬─────┬─────┬─────┬─────┐
+Value:  │ 10  │ 25  │ 33  │ 17  │  8  │
+        └─────┴─────┴─────┴─────┴─────┘</div>
+        </section>
+
+        <section>
+          <h2>How it works conceptually</h2>
+          <p>
+            The main reason arrays are powerful is that their elements are stored in
+            <strong>consecutive memory addresses</strong>.
+          </p>
+
+          <div class="ascii">Suppose:
+base address = 1000
+element size = 4 bytes
+
+Then:
+array[0] → address 1000
+array[1] → address 1004
+array[2] → address 1008
+array[3] → address 1012</div>
+
+          <div class="box">
+            <strong>Core formula</strong>
+            <p>
+              The runtime can compute the address directly:
+            </p>
+            <p><code>address = base_address + index × element_size</code></p>
+            <p>
+              That is why reading <code>array[i]</code> is typically <code>O(1)</code>.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Visualization in memory</h2>
+          <div class="ascii">Memory addresses:
+
+1000   1004   1008   1012   1016
+ ┌───┐  ┌───┐  ┌───┐  ┌───┐  ┌───┐
+ │10 │  │20 │  │30 │  │40 │  │50 │
+ └───┘  └───┘  └───┘  └───┘  └───┘
+   0      1      2      3      4
+
+If we want array[3]:
+address = 1000 + 3 × 4 = 1012</div>
+        </section>
+
+        <section>
+          <h2>Example step by step</h2>
+
+          <pre><code class="language-javascript">const numbers = [10, 20, 30, 40];
+
+console.log(numbers[2]); // 30</code></pre>
+
+          <div class="steps">
+            <div class="step">
+              <strong>The array is created.</strong>
+              The runtime stores the values in order, one after another in memory.
+              The important idea is not the exact byte addresses in JavaScript, but the mental model:
+              arrays are treated like indexed sequences with fast positional access.
+            </div>
+
+            <div class="step">
+              <strong>You ask for <code>numbers[2]</code>.</strong>
+              That means “give me the element at index 2,” not “search for value 2.”
+            </div>
+
+            <div class="step">
+              <strong>The runtime computes where that element should be.</strong>
+              Conceptually: <code>base + index × element_size</code>.
+              <br />
+              <em>Why?</em> Because the elements are laid out in a predictable order.
+            </div>
+
+            <div class="step">
+              <strong>The value is returned immediately.</strong>
+              That is why access by index is considered <code>O(1)</code>.
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Complexity</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Operation</th>
+                  <th>Complexity</th>
+                  <th>Why</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Access by index</td>
+                  <td><code>O(1)</code></td>
+                  <td>Direct address calculation</td>
+                </tr>
+                <tr>
+                  <td>Update by index</td>
+                  <td><code>O(1)</code></td>
+                  <td>You already know where the slot is</td>
+                </tr>
+                <tr>
+                  <td>Linear search</td>
+                  <td><code>O(n)</code></td>
+                  <td>You may need to inspect many elements</td>
+                </tr>
+                <tr>
+                  <td>Insert in middle</td>
+                  <td><code>O(n)</code></td>
+                  <td>Elements after that position must be shifted</td>
+                </tr>
+                <tr>
+                  <td>Delete in middle</td>
+                  <td><code>O(n)</code></td>
+                  <td>Remaining elements must be shifted left</td>
+                </tr>
+                <tr>
+                  <td>Append at end</td>
+                  <td><code>O(1)</code> amortized</td>
+                  <td>Usually constant, but resizing occasionally makes it expensive</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="warning" style="margin-top:16px;">
+            <strong>Important interview nuance</strong>
+            <p>
+              For many modern languages, what you use in practice is often a <strong>dynamic array / vector</strong>,
+              not a raw fixed-size array. That is why append is usually described as
+              <code>O(1) amortized</code>.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Array vs Vector / Dynamic Array</h2>
+          <p>
+            This distinction matters because many candidates blur them together.
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Concept</th>
+                  <th>Array</th>
+                  <th>Vector / Dynamic Array</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Size</td>
+                  <td>Usually fixed</td>
+                  <td>Can grow automatically</td>
+                </tr>
+                <tr>
+                  <td>Memory layout</td>
+                  <td>Contiguous</td>
+                  <td>Also contiguous</td>
+                </tr>
+                <tr>
+                  <td>Append</td>
+                  <td>Only if there is space</td>
+                  <td>Usually <code>O(1)</code> amortized</td>
+                </tr>
+                <tr>
+                  <td>Resize</td>
+                  <td>Not automatic</td>
+                  <td>Reallocates to a bigger block when needed</td>
+                </tr>
+                <tr>
+                  <td>Examples</td>
+                  <td>C-style arrays</td>
+                  <td>C++ <code>vector</code>, Java <code>ArrayList</code>, JS arrays</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="example" style="margin-top:16px;">
+            <strong>Interview-safe wording</strong>
+            <p>
+              In practice, JavaScript arrays behave more like <strong>dynamic arrays</strong> than raw low-level arrays.
+              But the main array intuition still applies: indexed access is fast; middle insertions are expensive.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Comparison with an alternative: Linked List</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Property</th>
+                  <th>Array</th>
+                  <th>Linked List</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Memory layout</td>
+                  <td>Contiguous</td>
+                  <td>Scattered nodes connected by pointers</td>
+                </tr>
+                <tr>
+                  <td>Access by index</td>
+                  <td><code>O(1)</code></td>
+                  <td><code>O(n)</code></td>
+                </tr>
+                <tr>
+                  <td>Insert in middle</td>
+                  <td><code>O(n)</code></td>
+                  <td><code>O(1)</code> if node reference already known</td>
+                </tr>
+                <tr>
+                  <td>Cache friendliness</td>
+                  <td>Very good</td>
+                  <td>Worse</td>
+                </tr>
+                <tr>
+                  <td>Practical usage</td>
+                  <td>Very common</td>
+                  <td>More common in interviews than in day-to-day JS work</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="ascii">Array:
+[10][20][30][40]
+
+Linked List:
+[10|•] → [20|•] → [30|•] → [40|null]</div>
+        </section>
+
+        <section>
+          <h2>Real-world use cases</h2>
+          <div class="grid two">
+            <div class="box">
+              <span class="mini-title">Backend</span>
+              <p>
+                Lists of users, products, jobs, devices, records returned from a repository or database query.
+              </p>
+            </div>
+            <div class="box">
+              <span class="mini-title">Node.js</span>
+              <p>
+                Batch processing, loops over tasks, request results, temporary buffers of work items, collections of messages.
+              </p>
+            </div>
+            <div class="box">
+              <span class="mini-title">Web apps</span>
+              <p>
+                Rendering lists of items, mapping UI components, sorting or filtering search results.
+              </p>
+            </div>
+            <div class="box">
+              <span class="mini-title">Algorithms</span>
+              <p>
+                Two Sum, sliding window problems, sorting, binary search on sorted arrays, prefix sums.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Examples of real bugs and bad patterns</h2>
+
+          <h3>1) Unbounded in-memory array</h3>
+          <pre><code class="language-javascript">const cache = [];
+
+function add(item) {
+  cache.push(item);
+}</code></pre>
+
+          <div class="warning">
+            <strong>Why the problem appears</strong>
+            <p>
+              The array keeps growing and nothing removes old items. Memory usage rises continuously.
+            </p>
+            <p>
+              <strong>What remains in memory?</strong> Every object you pushed that still has a reference through
+              <code>cache</code>.
+            </p>
+          </div>
+
+          <h3>2) Logging requests into an array forever</h3>
+          <pre><code class="language-javascript">const logs = [];
+
+app.use((req, res, next) =&gt; {
+  logs.push(req);
+  next();
+});</code></pre>
+
+          <div class="warning">
+            <strong>What goes wrong</strong>
+            <p>
+              You retain request objects in memory. Over time that can become a memory leak or at least serious memory pressure.
+            </p>
+          </div>
+
+          <h3>3) Producer is faster than consumer</h3>
+          <pre><code class="language-javascript">const messages = [];
+
+function onMessage(msg) {
+  messages.push(msg);
+}</code></pre>
+
+          <div class="warning">
+            <strong>Why it is dangerous</strong>
+            <p>
+              If new messages arrive faster than they are processed, the array becomes a growing backlog. This is really
+              a backpressure problem, but the symptom is often “the array exploded.”
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>How this connects to other CS concepts</h2>
+          <ul>
+            <li><strong>Stack</strong> — often implemented on top of a dynamic array.</li>
+            <li><strong>Queue</strong> — can be implemented with arrays, though naive front deletion may be expensive.</li>
+            <li><strong>Matrix</strong> — conceptually an array of arrays.</li>
+            <li><strong>Hash table</strong> — internally uses array-like buckets.</li>
+            <li><strong>Binary search</strong> — becomes powerful because arrays support indexed access.</li>
+            <li><strong>CPU cache locality</strong> — arrays are often faster in practice because their data is close together in memory.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>How it appears in interviews</h2>
+          <div class="example">
+            <strong>Typical array-based interview tasks</strong>
+            <ul>
+              <li>Find the maximum or minimum</li>
+              <li>Reverse an array</li>
+              <li>Two Sum</li>
+              <li>Move zeroes</li>
+              <li>Remove duplicates from sorted array</li>
+              <li>Binary search</li>
+              <li>Sliding window problems</li>
+            </ul>
+          </div>
+
+          <p>
+            Interviewers often want to see whether you understand not just how to code with arrays, but why certain
+            operations are cheap and others are not.
+          </p>
+        </section>
+
+        <section>
+          <h2>Common interview questions</h2>
+          <div class="box">
+            <strong>Why is array access <code>O(1)</code>?</strong>
+            <p>
+              Because the address can be computed directly from the base address and the index.
+            </p>
+          </div>
+
+          <div class="box" style="margin-top:12px;">
+            <strong>Why is insertion in the middle <code>O(n)</code>?</strong>
+            <p>
+              Because all later elements may need to be shifted to make room.
+            </p>
+          </div>
+
+          <div class="box" style="margin-top:12px;">
+            <strong>What is a dynamic array?</strong>
+            <p>
+              A resizable array that grows by allocating a larger contiguous block and copying elements over when capacity is exceeded.
+            </p>
+          </div>
+
+          <div class="box" style="margin-top:12px;">
+            <strong>Why is append often described as amortized <code>O(1)</code>?</strong>
+            <p>
+              Because most appends are cheap, but occasionally a resize makes one append expensive. Spread across many operations,
+              the average cost is constant.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Trick questions / common traps</h2>
+          <div class="grid two">
+            <div class="warning">
+              <strong>“Search in an array is O(1)”</strong>
+              <p>
+                False. Access by index is <code>O(1)</code>. Searching by value is usually <code>O(n)</code>.
+              </p>
+            </div>
+            <div class="warning">
+              <strong>“Insertion is O(1)”</strong>
+              <p>
+                Only at the end in a dynamic array, and even then it is usually described as
+                <code>O(1) amortized</code>.
+              </p>
+            </div>
+            <div class="warning">
+              <strong>“Arrays are always fixed-size”</strong>
+              <p>
+                Low-level arrays often are, but many languages mostly expose dynamic arrays in daily use.
+              </p>
+            </div>
+            <div class="warning">
+              <strong>“Index means value”</strong>
+              <p>
+                No. The index is the position, not the content.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Common mistakes and confusions</h2>
+          <ul>
+            <li>Mixing up <strong>index lookup</strong> with <strong>value search</strong>.</li>
+            <li>Forgetting the difference between <strong>length</strong> and <strong>capacity</strong>.</li>
+            <li>Assuming a JavaScript array behaves exactly like a low-level C array.</li>
+            <li>Ignoring that repeated insertions near the front or middle can make an array-based solution slow.</li>
+            <li>Using arrays as unbounded storage and accidentally creating memory problems.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Feynman technique — explain it like to a 10-year-old</h2>
+          <div class="success">
+            <strong>Simple explanation</strong>
+            <p>
+              Imagine a shelf with boxes numbered 0, 1, 2, 3, 4.
+              If I ask for box number 3, you can go straight to it.
+            </p>
+            <p>
+              That is what an array does: it stores things in order, and because every spot has a number, you can
+              reach one very quickly.
+            </p>
+            <p>
+              But if you want to put a new box in the middle, you have to move the others to make space. That is why
+              some operations are fast and others are slow.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Interview explanation version</h2>
+          <div class="interview">
+            <p>
+              An array stores elements in contiguous memory, which makes access by index very fast — typically
+              <code>O(1)</code> — because the address can be computed directly.
+            </p>
+            <p>
+              The trade-off is that insertion or deletion in the middle is expensive, usually <code>O(n)</code>,
+              because elements have to be shifted.
+            </p>
+            <p>
+              In modern languages, we often work with dynamic arrays or vectors, which keep the same indexed-access
+              advantage but can resize automatically, giving append an amortized <code>O(1)</code> cost.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Pattern to remember</h2>
+          <div class="box">
+            <strong>The core pattern</strong>
+            <p>
+              <strong>Array = fast by position, expensive to reshape.</strong>
+            </p>
+            <p>
+              Or even shorter:
+            </p>
+            <p><code>Read fast. Insert in middle slow.</code></p>
+          </div>
+          <p class="footer-note">
+            Suggested filename: <code>array-vector.html</code>
+          </p>
+        </section>
+      </div>
+    </article>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>

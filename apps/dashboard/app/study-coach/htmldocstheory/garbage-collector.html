@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Garbage Collector, Reachability, Roots, Closures & Memory Leaks</title>
+  <meta name="description" content="Interview-focused study page about JavaScript garbage collection, reachability, roots, closures, call stack, heap, and memory leaks." />
+  <!-- Filename: garbage-collector.html -->
+
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" />
+
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #5b6472;
+      --border: #e5e7eb;
+      --shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+      --primary: #2563eb;
+      --primary-soft: #eaf2ff;
+      --success: #0f766e;
+      --success-soft: #e8fbf8;
+      --warning: #b45309;
+      --warning-soft: #fff7ed;
+      --danger: #b91c1c;
+      --danger-soft: #fef2f2;
+      --tag-bg: #eef2ff;
+      --tag-text: #3730a3;
+      --code-bg: #f8fafc;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, #eef4ff 0%, transparent 28%),
+        radial-gradient(circle at top right, #f3f8ff 0%, transparent 24%),
+        var(--bg);
+      line-height: 1.65;
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 20px 64px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(229, 231, 235, 0.95);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 40px 34px 26px;
+      background: linear-gradient(180deg, rgba(37, 99, 235, 0.06), rgba(37, 99, 235, 0.01));
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1, h2, h3 {
+      line-height: 1.2;
+      margin: 0 0 14px;
+      color: #111827;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      letter-spacing: -0.03em;
+    }
+
+    h2 {
+      font-size: 1.55rem;
+      margin-top: 34px;
+    }
+
+    h3 {
+      font-size: 1.15rem;
+      margin-top: 26px;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--text);
+    }
+
+    .subtitle {
+      font-size: 1.05rem;
+      color: var(--muted);
+      max-width: 900px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: var(--tag-bg);
+      color: var(--tag-text);
+      font-size: 0.88rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    .content {
+      padding: 10px 34px 38px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin: 20px 0;
+    }
+
+    .box,
+    .example,
+    .warning,
+    .success {
+      border-radius: 16px;
+      padding: 18px 18px 16px;
+      border: 1px solid var(--border);
+      background: #fff;
+      margin: 16px 0;
+    }
+
+    .box {
+      background: #fafcff;
+    }
+
+    .example {
+      background: #fbfdff;
+      border-left: 5px solid var(--primary);
+    }
+
+    .warning {
+      background: var(--warning-soft);
+      border-left: 5px solid var(--warning);
+    }
+
+    .success {
+      background: var(--success-soft);
+      border-left: 5px solid var(--success);
+    }
+
+    .label {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      color: #334155;
+    }
+
+    .mini-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #111827;
+    }
+
+    ul {
+      padding-left: 1.2rem;
+      margin: 0.4rem 0 1rem;
+    }
+
+    li {
+      margin: 0.28rem 0;
+    }
+
+    code:not([class*="language-"]) {
+      background: var(--code-bg);
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 0.14rem 0.42rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.93em;
+      color: #0f172a;
+    }
+
+    pre[class*="language-"] {
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+      background: #f8fafc !important;
+      padding: 18px !important;
+      overflow-x: auto;
+      margin: 16px 0 18px;
+    }
+
+    pre code {
+      font-size: 0.93rem;
+    }
+
+    .flow {
+      background: #f8fbff;
+      border: 1px solid #dbeafe;
+      border-radius: 16px;
+      padding: 18px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      color: #0f172a;
+      margin: 16px 0;
+    }
+
+    .steps {
+      counter-reset: step;
+      display: grid;
+      gap: 14px;
+      margin: 18px 0 12px;
+    }
+
+    .step {
+      position: relative;
+      padding: 16px 16px 16px 58px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fcfdff;
+    }
+
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: var(--primary);
+      color: white;
+      font-weight: 800;
+      font-size: 0.92rem;
+    }
+
+    .quote {
+      border-left: 4px solid var(--primary);
+      padding: 10px 0 10px 14px;
+      color: #334155;
+      margin: 12px 0 18px;
+      font-style: italic;
+      background: linear-gradient(90deg, rgba(37,99,235,0.06), transparent);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin: 18px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 700px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #0f172a;
+      font-size: 0.92rem;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .footer-note {
+      margin-top: 28px;
+      padding-top: 18px;
+      border-top: 1px dashed var(--border);
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 860px) {
+      .grid,
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+
+      .hero,
+      .content {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+
+      .page {
+        padding: 18px 12px 32px;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .page {
+        max-width: 100%;
+        padding: 0;
+      }
+
+      .card {
+        box-shadow: none;
+        border: none;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <article class="card">
+      <section class="hero">
+        <h1>Garbage Collector, Reachability, Roots, Closures &amp; Memory Leaks</h1>
+        <p class="subtitle">
+          A clean interview-focused study page for understanding how JavaScript memory cleanup really works:
+          <strong>heap vs call stack</strong>, <strong>GC roots</strong>, <strong>mark-and-sweep</strong>,
+          <strong>closures</strong>, and the most common <strong>memory leak traps</strong>.
+        </p>
+
+        <div class="tags">
+          <span class="tag">JavaScript</span>
+          <span class="tag">Garbage Collection</span>
+          <span class="tag">Heap</span>
+          <span class="tag">Call Stack</span>
+          <span class="tag">Closures</span>
+          <span class="tag">Memory Leaks</span>
+          <span class="tag">Interview Prep</span>
+        </div>
+      </section>
+
+      <section class="content">
+        <h2>Definition</h2>
+        <div class="success">
+          <div class="label">Core idea</div>
+          <p>
+            The Garbage Collector reclaims memory from the <strong>heap</strong> when objects are no longer
+            <strong>reachable</strong>. An object is reachable if there is still a valid chain of references
+            from a <strong>GC root</strong> to that object.
+          </p>
+        </div>
+
+        <div class="quote">
+          GC does <strong>not</strong> ask: “Does this object exist somewhere in memory?”
+          It asks: “Can I still reach this object starting from the roots?”
+        </div>
+
+        <h2>Tags / Category</h2>
+        <div class="box">
+          <p>
+            This topic is a <strong>theoretical concept</strong> with practical debugging implications.
+            It is very common in backend interviews because it tests whether you really understand
+            memory, references, closures, and leaks beyond surface-level definitions.
+          </p>
+        </div>
+
+        <h2>Problem Statement</h2>
+        <div class="warning">
+          <div class="label">What often confuses candidates</div>
+          <p>
+            Many people say “GC deletes objects with no references,” but they stop too early.
+            The more correct idea is:
+            <strong>GC deletes objects that are not reachable from roots</strong>.
+          </p>
+          <p>
+            That is why global arrays, event listeners, timers, and closures can keep objects alive even after a function has already finished.
+          </p>
+        </div>
+
+        <h2>Intuition</h2>
+        <div class="two-col">
+          <div>
+            <div class="example">
+              <div class="label">Mental shortcut</div>
+              <p>
+                Imagine the runtime shines a flashlight from a few starting points called <strong>roots</strong>.
+                Every object the light can reach stays alive. Everything left in the dark is garbage.
+              </p>
+            </div>
+
+            <div class="flow">ROOTS
+  │
+  ├── global variables
+  ├── variables currently on the call stack
+  ├── active closures
+  └── runtime-held references (timers, listeners, callbacks)
+       │
+       ▼
+    reachable objects in heap
+       │
+       ▼
+    more referenced objects
+
+Anything not reached by this traversal → garbage</div>
+          </div>
+
+          <div>
+            <div class="box">
+              <div class="label">Key distinction</div>
+              <p><strong>Stack</strong> is about active execution.</p>
+              <p><strong>Heap</strong> is where objects live.</p>
+              <p>
+                GC mainly cleans the <strong>heap</strong>, but it uses the <strong>call stack and other roots</strong>
+                as the starting points for deciding what is still alive.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <h2>Mental Model</h2>
+        <div class="grid">
+          <div class="box">
+            <div class="mini-title">What is a root?</div>
+            <p>
+              A root is a starting reference that the runtime knows is still accessible.
+              Common examples are global variables and local variables inside stack frames that are currently active.
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="mini-title">What is reachable?</div>
+            <p>
+              An object is reachable if the runtime can follow references from a root all the way to that object.
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="mini-title">What happens when a function returns?</div>
+            <p>
+              Its stack frame is removed. If that frame was the only thing referencing an object, the object becomes eligible for GC.
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="mini-title">Why do closures matter?</div>
+            <p>
+              A closure can keep variables alive even after the outer function has finished, because the returned function still references them.
+            </p>
+          </div>
+        </div>
+
+        <h2>Step-by-step: How Mark-and-Sweep Works</h2>
+        <div class="steps">
+          <div class="step">
+            <strong>Start from GC roots.</strong> These are the known entry points the runtime considers alive.
+          </div>
+          <div class="step">
+            <strong>Traverse references.</strong> Follow every reference from those roots into heap objects.
+          </div>
+          <div class="step">
+            <strong>Mark reachable objects.</strong> Anything visited during traversal is considered alive.
+          </div>
+          <div class="step">
+            <strong>Sweep unreachable objects.</strong> Anything not marked is considered garbage and can be reclaimed.
+          </div>
+        </div>
+
+        <div class="success">
+          <div class="label">Interview-safe wording</div>
+          <p>
+            Most modern JavaScript engines use a <strong>mark-and-sweep style approach</strong>,
+            often combined with <strong>generational garbage collection</strong>, where short-lived objects are collected more frequently.
+          </p>
+        </div>
+
+        <h2>Examples</h2>
+
+        <h3>1) Local variable becomes unreachable after function return</h3>
+        <pre><code class="language-javascript">function test() {
+  const user = { name: "Alex" };
+}
+
+test();</code></pre>
+
+        <div class="flow">During execution:
+
+Call Stack
+-----------
+test frame
+  user → 0xA1
+
+Heap
+----
+0xA1 → { name: "Alex" }
+
+After function returns:
+
+Call Stack
+-----------
+(empty / back to caller)
+
+Heap
+----
+0xA1 → { name: "Alex" }
+
+No root can reach 0xA1 anymore → eligible for GC</div>
+
+        <div class="example">
+          <div class="mini-title">What matters here</div>
+          <p>
+            The object still physically exists in heap for a while, but that does not matter.
+            Once it becomes <strong>unreachable</strong>, GC may reclaim it later.
+          </p>
+        </div>
+
+        <h3>2) Returned object survives because root still references it</h3>
+        <pre><code class="language-javascript">function test() {
+  const user = { name: "Alex" };
+  return user;
+}
+
+const u = test();</code></pre>
+
+        <div class="flow">ROOT
+ │
+ ▼
+u → 0xA1
+
+Heap
+----
+0xA1 → { name: "Alex" }</div>
+
+        <p>
+          The object does <strong>not</strong> get collected because <code>u</code> is still a root-level reference to it.
+        </p>
+
+        <h3>3) Closure keeps data alive</h3>
+        <pre><code class="language-javascript">function createUser() {
+  const user = { name: "Alex" };
+
+  return function () {
+    console.log(user.name);
+  };
+}
+
+const fn = createUser();</code></pre>
+
+        <div class="flow">ROOT
+ │
+ ▼
+fn
+ │
+ ▼
+closure function
+ │
+ ▼
+user object</div>
+
+        <div class="warning">
+          <div class="mini-title">Common confusion</div>
+          <p>
+            The outer function finished, but the closure still references <code>user</code>.
+            So <code>user</code> is still reachable and cannot be garbage collected yet.
+          </p>
+        </div>
+
+        <h3>4) Global cache can create a memory leak</h3>
+        <pre><code class="language-javascript">let cache = [];
+
+function addUser() {
+  const user = { name: "Alex" };
+  cache.push(user);
+}
+
+addUser();</code></pre>
+
+        <div class="flow">ROOT
+ │
+ ▼
+cache
+ │
+ ▼
+array
+ │
+ ▼
+user object</div>
+
+        <p>
+          Even after <code>addUser()</code> returns, the object stays alive because the global array
+          still references it. If this array keeps growing, memory usage keeps growing too.
+        </p>
+
+        <h3>5) Circular references alone are not a problem</h3>
+        <pre><code class="language-javascript">let a = {};
+let b = {};
+
+a.ref = b;
+b.ref = a;
+
+a = null;
+b = null;</code></pre>
+
+        <div class="flow">Heap
+----
+0xA1 → ref → 0xB1
+0xB1 → ref → 0xA1
+
+But no root points to either object anymore.</div>
+
+        <div class="success">
+          <div class="mini-title">Important interview point</div>
+          <p>
+            Modern mark-and-sweep collectors can still delete these objects.
+            Circular references only used to be a big issue in simple reference-counting systems.
+          </p>
+        </div>
+
+        <h2>Line-by-line Explanation of the Most Important Example</h2>
+        <pre><code class="language-javascript">let cache = [];
+
+function addUser() {
+  const user = { name: "Alex" };
+  cache.push(user);
+}
+
+addUser();</code></pre>
+
+        <div class="steps">
+          <div class="step">
+            <code>let cache = [];</code> creates a global array. Because it is global, it is reachable from a root.
+          </div>
+          <div class="step">
+            <code>const user = { name: "Alex" };</code> creates an object in heap and stores a local reference in the stack frame of <code>addUser</code>.
+          </div>
+          <div class="step">
+            <code>cache.push(user);</code> stores the same object reference inside the global array.
+          </div>
+          <div class="step">
+            The function returns, so the local variable <code>user</code> disappears from the stack.
+          </div>
+          <div class="step">
+            But the global array still holds the reference, so the object remains reachable and cannot be collected.
+          </div>
+        </div>
+
+        <h2>Call Stack vs Heap in This Topic</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Concept</th>
+                <th>What it holds</th>
+                <th>Why it matters for GC</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Call Stack</td>
+                <td>Active function frames, local variables, current execution context</td>
+                <td>Variables in active frames act like roots for reachability</td>
+              </tr>
+              <tr>
+                <td>Heap</td>
+                <td>Objects, arrays, functions, closures</td>
+                <td>This is the memory area GC reclaims when objects become unreachable</td>
+              </tr>
+              <tr>
+                <td>Global Scope</td>
+                <td>Long-lived references such as module-level arrays or caches</td>
+                <td>Can accidentally keep many heap objects alive</td>
+              </tr>
+              <tr>
+                <td>Closures</td>
+                <td>Functions plus references to outer lexical variables</td>
+                <td>Can keep data alive even after the outer function returns</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>Common Mistakes / Confusions</h2>
+        <div class="warning">
+          <div class="label">High-frequency interview traps</div>
+          <ul>
+            <li>Saying “an object is alive if it has any reference anywhere” instead of saying <strong>reachable from roots</strong>.</li>
+            <li>Confusing <strong>GC roots</strong> with <strong>young generation vs old generation</strong>.</li>
+            <li>Thinking circular references automatically mean a memory leak.</li>
+            <li>Thinking a closure lives forever. It lives only while something still references that function.</li>
+            <li>Thinking an object is destroyed immediately when a function returns. It becomes <strong>eligible</strong> for collection, but GC runs later.</li>
+            <li>Forgetting that event listeners, timers, and caches may be long-lived runtime references.</li>
+          </ul>
+        </div>
+
+        <h2>Generational GC (Relevant Bonus Point)</h2>
+        <div class="box">
+          <p>
+            A strong interview answer can mention that modern runtimes often use <strong>generational GC</strong>.
+            The key idea is:
+          </p>
+          <div class="quote">
+            Most objects die young.
+          </div>
+          <p>
+            So the engine often collects <strong>newer objects more frequently</strong> and checks older, long-lived objects less often.
+            This is a performance optimization on top of the basic reachability idea.
+          </p>
+        </div>
+
+        <h2>Interview Explanation Version</h2>
+        <div class="success">
+          <div class="label">20–30 second answer</div>
+          <p>
+            Garbage Collection in JavaScript reclaims memory from the heap when objects are no longer reachable.
+            The runtime starts from GC roots like global variables and current call stack variables, marks everything reachable from them, and removes the rest.
+            Closures, global caches, event listeners, and timers can accidentally keep objects alive and cause memory leaks.
+          </p>
+        </div>
+
+        <div class="box">
+          <div class="label">45 second stronger answer</div>
+          <p>
+            JavaScript garbage collection is based on reachability, not just raw existence in memory.
+            The runtime starts from GC roots such as global variables, active stack frames, closures, and runtime-held references.
+            It traverses all references from those roots, marks reachable objects, and then sweeps away unreachable ones.
+            This is why local objects inside finished functions usually become collectible, while objects stored in global arrays or captured by closures stay alive.
+            Modern engines also use generational GC because most objects have a short lifetime.
+          </p>
+        </div>
+
+        <h2>Pattern to Remember</h2>
+        <div class="flow">If there is a path from ROOTS to the object:
+  keep it
+
+If there is no path from ROOTS to the object:
+  collect it</div>
+
+        <h2>Real-world Use Cases / Debugging Relevance</h2>
+        <div class="grid">
+          <div class="example">
+            <div class="mini-title">Global caches</div>
+            <p>
+              Useful for performance, but dangerous if they grow without limits or eviction rules.
+            </p>
+          </div>
+
+          <div class="example">
+            <div class="mini-title">Event listeners</div>
+            <p>
+              If listeners are never removed, they can keep closures and large objects alive much longer than expected.
+            </p>
+          </div>
+
+          <div class="example">
+            <div class="mini-title">Intervals and timers</div>
+            <p>
+              A <code>setInterval</code> callback can keep references alive because the runtime still holds the callback.
+            </p>
+          </div>
+
+          <div class="example">
+            <div class="mini-title">Long-lived closures</div>
+            <p>
+              Handy for encapsulation, but easy to misuse if they retain large data structures.
+            </p>
+          </div>
+        </div>
+
+        <h2>Quick Recall Questions</h2>
+        <div class="box">
+          <ul>
+            <li>What does <strong>reachable</strong> mean?</li>
+            <li>What are the main <strong>GC roots</strong>?</li>
+            <li>Why can a local object be collected after a function returns?</li>
+            <li>Why does a closure sometimes prevent GC?</li>
+            <li>Why can a global array create a memory leak?</li>
+            <li>Why are circular references not automatically a leak in modern GC?</li>
+          </ul>
+        </div>
+
+        <h2>Final Explanation</h2>
+        <div class="success">
+          <p>
+            The cleanest way to understand garbage collection is this:
+            <strong>GC is a graph traversal problem.</strong>
+            Roots are the entry points, references are the edges, and heap objects are the nodes.
+            If the runtime can still walk from a root to a node, the node stays alive.
+            If it cannot, the node becomes garbage.
+          </p>
+        </div>
+
+        <div class="footer-note">
+          Suggested filename: <code>garbage-collector.html</code>
+        </div>
+      </section>
+    </article>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>

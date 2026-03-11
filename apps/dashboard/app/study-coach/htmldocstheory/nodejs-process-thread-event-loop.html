@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nodejs-process-thread-event-loop.html</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --primary: #2563eb;
+      --primary-soft: #eff6ff;
+      --success: #166534;
+      --success-soft: #f0fdf4;
+      --warning: #92400e;
+      --warning-soft: #fffbeb;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+      --code-bg: #0f172a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: linear-gradient(180deg, #f8fafc 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 32px 18px;
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 42px 38px 28px;
+      background:
+        radial-gradient(circle at top right, rgba(37,99,235,0.10), transparent 28%),
+        radial-gradient(circle at top left, rgba(59,130,246,0.08), transparent 25%),
+        white;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1, h2, h3, h4 {
+      line-height: 1.2;
+      margin: 0 0 14px;
+      color: #111827;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      letter-spacing: -0.03em;
+    }
+
+    h2 {
+      margin-top: 34px;
+      font-size: 1.45rem;
+      padding-top: 6px;
+    }
+
+    h3 {
+      margin-top: 24px;
+      font-size: 1.08rem;
+    }
+
+    p { margin: 0 0 14px; }
+
+    .content {
+      padding: 28px 38px 40px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 14px 0 18px;
+    }
+
+    .tag {
+      background: #f3f4f6;
+      border: 1px solid var(--border);
+      color: #374151;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 1.02rem;
+      max-width: 850px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin: 18px 0 10px;
+    }
+
+    .box, .example, .warning, .success {
+      border-radius: var(--radius);
+      padding: 18px 18px;
+      border: 1px solid var(--border);
+      margin: 16px 0;
+    }
+
+    .box {
+      background: #fafafa;
+    }
+
+    .example {
+      background: var(--primary-soft);
+      border-color: #bfdbfe;
+    }
+
+    .warning {
+      background: var(--warning-soft);
+      border-color: #fde68a;
+    }
+
+    .success {
+      background: var(--success-soft);
+      border-color: #bbf7d0;
+    }
+
+    .box-title {
+      font-weight: 800;
+      margin-bottom: 8px;
+      font-size: 0.98rem;
+    }
+
+    ul, ol {
+      margin: 10px 0 14px 22px;
+      padding: 0;
+    }
+
+    li { margin: 6px 0; }
+
+    code:not(pre code) {
+      background: #eef2ff;
+      color: #312e81;
+      padding: 0.16em 0.46em;
+      border-radius: 8px;
+      font-size: 0.95em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    pre {
+      overflow-x: auto;
+      border-radius: 16px;
+      padding: 0;
+      margin: 16px 0 18px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+
+    pre[class*="language-"] {
+      background: var(--code-bg) !important;
+      padding: 18px !important;
+      margin: 16px 0 18px !important;
+      border-radius: 16px;
+      overflow-x: auto;
+      font-size: 0.93rem;
+    }
+
+    .two-col {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin: 12px 0 8px;
+    }
+
+    .mini {
+      font-size: 0.96rem;
+      color: var(--muted);
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 28px 0;
+    }
+
+    .interview-answer {
+      border-left: 4px solid var(--primary);
+      padding: 12px 14px;
+      background: #f8fbff;
+      border-radius: 0 14px 14px 0;
+      margin: 14px 0;
+    }
+
+    .mental-model {
+      display: grid;
+      gap: 12px;
+      margin: 12px 0 16px;
+    }
+
+    .mental-step {
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: white;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin: 14px 0 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 680px;
+      font-size: 0.96rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 12px 14px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f9fafb;
+      font-weight: 700;
+    }
+
+    .footer-note {
+      margin-top: 28px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      .page {
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
+      }
+      .hero, .content {
+        padding-left: 0;
+        padding-right: 0;
+      }
+      pre[class*="language-"] {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .hero, .content { padding: 24px 18px; }
+      .grid, .two-col { grid-template-columns: 1fr; }
+      h1 { font-size: 1.85rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <h1>Node.js: Process vs Thread vs Event Loop vs Workers</h1>
+      <div class="tags">
+        <span class="tag">Node.js</span>
+        <span class="tag">Event Loop</span>
+        <span class="tag">Process vs Thread</span>
+        <span class="tag">libuv</span>
+        <span class="tag">Thread Pool</span>
+        <span class="tag">Worker Threads</span>
+        <span class="tag">Interview Prep</span>
+      </div>
+      <p class="subtitle">
+        Pagina asta rezumă clar discuția din chat: ce este un <strong>proces</strong>, ce este un <strong>thread</strong>,
+        cum se leagă asta de <strong>Node.js single-threaded</strong>, ce face <strong>event loop-ul</strong>,
+        ce înseamnă <strong>libuv thread pool</strong>, când apar <strong>worker threads</strong> și de ce la microservicii
+        auzi de multe ori de <strong>workers</strong> cu sensuri diferite.
+      </p>
+    </section>
+
+    <section class="content">
+      <h2>Definiția / Problem Statement</h2>
+      <div class="box">
+        <div class="box-title">Întrebarea centrală</div>
+        <p>
+          Într-un microserviciu Node.js, dacă limbajul e “single-threaded”, atunci:
+          <code>ce este procesul?</code>, <code>ce este thread-ul?</code>, <code>cine face I/O?</code>,
+          <code>ce face event loop-ul?</code> și <code>ce înseamnă workerii despre care vorbim în sistemele reale?</code>
+        </p>
+      </div>
+
+      <div class="two-col">
+        <div class="success">
+          <div class="box-title">Definiție scurtă</div>
+          <p><strong>Proces</strong> = instanța unei aplicații care rulează, cu memorie proprie.</p>
+          <p><strong>Thread</strong> = fir de execuție din interiorul unui proces.</p>
+        </div>
+        <div class="example">
+          <div class="box-title">Pentru Node.js</div>
+          <p>
+            Un proces Node.js are de regulă <strong>un thread principal JavaScript</strong>, pe care rulează
+            event loop-ul, plus alte thread-uri folosite în fundal de runtime pentru anumite operații.
+          </p>
+        </div>
+      </div>
+
+      <h2>Intuiția corectă</h2>
+      <div class="interview-answer">
+        <strong>Ideea mare:</strong> Node.js nu înseamnă “un singur lucru se întâmplă în tot procesul”.
+        Înseamnă că <strong>codul tău JavaScript</strong> rulează în mod normal pe <strong>un singur thread principal</strong>.
+        Dar operațiile de I/O sau unele task-uri speciale pot fi făcute în fundal, iar când sunt gata, rezultatul revine înapoi
+        la event loop.
+      </div>
+
+      <div class="warning">
+        <div class="box-title">Confuzia clasică</div>
+        <p>
+          <strong>Request-ul HTTP nu este un thread.</strong> Nici un <code>listener</code>, nici un <code>for</code>,
+          nici un callback nu sunt thread-uri.
+        </p>
+        <p>
+          Ele sunt <strong>bucăți de cod</strong> care sunt executate de thread-ul principal sau sunt reluate de acesta
+          când operația async asociată s-a terminat.
+        </p>
+      </div>
+
+      <h2>Mental Model</h2>
+      <div class="mental-model">
+        <div class="mental-step"><strong>1.</strong> Pornești microserviciul Node.js → ai un <strong>proces</strong>.</div>
+        <div class="mental-step"><strong>2.</strong> În acel proces există un <strong>thread principal</strong> care execută JavaScript.</div>
+        <div class="mental-step"><strong>3.</strong> Event loop-ul rulează pe acest thread principal și orchestrează execuția.</div>
+        <div class="mental-step"><strong>4.</strong> Dacă faci operații async, Node.js le poate delega către OS/libuv.</div>
+        <div class="mental-step"><strong>5.</strong> Când rezultatul e gata, callback-ul / promise continuation se pune în coadă.</div>
+        <div class="mental-step"><strong>6.</strong> Event loop-ul ia acea sarcină și o execută tot pe thread-ul principal.</div>
+      </div>
+
+      <h2>Comparație rapidă</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Concept</th>
+              <th>Ce este</th>
+              <th>În microserviciul tău Node.js</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Proces</td>
+              <td>Instanță de aplicație cu memorie proprie</td>
+              <td>Microserviciul pornit în runtime</td>
+            </tr>
+            <tr>
+              <td>Thread principal</td>
+              <td>Firul pe care rulează JS</td>
+              <td>Aici rulează handler-ele, callback-urile, promise-urile</td>
+            </tr>
+            <tr>
+              <td>Event loop</td>
+              <td>Mecanism de orchestration</td>
+              <td>Ia task-uri gata și le execută pe thread-ul principal</td>
+            </tr>
+            <tr>
+              <td>libuv thread pool</td>
+              <td>Thread-uri de fundal pentru anumite operații</td>
+              <td>Folosit automat pentru unele task-uri precum fs/crypto/dns</td>
+            </tr>
+            <tr>
+              <td>Worker thread</td>
+              <td>Thread JS separat, creat explicit</td>
+              <td>Util pentru task-uri CPU-intensive</td>
+            </tr>
+            <tr>
+              <td>Application worker</td>
+              <td>Concept de business / consumer / executor</td>
+              <td>Poate însemna un consumer RabbitMQ, un job worker, un proces separat etc.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Step-by-step: ce se întâmplă la o operație async</h2>
+      <div class="example">
+        <div class="box-title">Exemplu: primești un request și scrii pe disc</div>
+        <ol>
+          <li>Intră request-ul HTTP în microserviciu.</li>
+          <li>Handler-ul tău rulează pe thread-ul principal.</li>
+          <li>Apelezi ceva async, de exemplu <code>fs.promises.writeFile(...)</code>.</li>
+          <li>Node.js nu blochează thread-ul principal așteptând rezultatul.</li>
+          <li>Operația este delegată în fundal.</li>
+          <li>Thread-ul principal poate continua cu alte evenimente.</li>
+          <li>Când scrierea s-a terminat, event loop-ul primește faptul că operația e gata.</li>
+          <li>Continuarea promise-ului tău se execută pe thread-ul principal.</li>
+        </ol>
+      </div>
+
+      <h2>Event Loop: ce face de fapt</h2>
+      <div class="box">
+        <div class="box-title">Pe înțeles simplu</div>
+        <p>
+          Event loop-ul <strong>nu execută totul în paralel</strong> pe thread-ul principal. El rulează
+          <strong>pe rând</strong> task-urile care au devenit gata.
+        </p>
+        <p>
+          Deci da: <strong>event loop-ul gestionează efectiv un task JavaScript la un moment dat</strong> pe thread-ul principal.
+          Dar între timp, alte operații async pot progresa în fundal.
+        </p>
+      </div>
+
+      <div class="success">
+        <div class="box-title">Formulare bună de interviu</div>
+        <p>
+          „Event loop-ul nu face munca grea de I/O în sine. El orchestrează fluxul:
+          pornește operații async, apoi, când acestea se termină, execută callback-urile sau continuările promise pe thread-ul principal.”
+        </p>
+      </div>
+
+      <h2>Ce merge automat în fundal în Node.js</h2>
+      <p>
+        Fără să creezi tu manual thread-uri, Node.js poate folosi infrastructura din spate pentru anumite operații.
+        Pentru interviu, ideea importantă este:
+      </p>
+
+      <div class="box">
+        <ul>
+          <li><strong>Operațiile de rețea</strong> nu blochează thread-ul principal.</li>
+          <li><strong>Operațiile pe fișiere</strong> async sunt gestionate în fundal.</li>
+          <li><strong>Unele operații crypto / dns</strong> folosesc thread pool-ul din libuv.</li>
+          <li><strong>Codul tău JavaScript</strong> nu este automat mutat pe alt thread doar pentru că e lent.</li>
+        </ul>
+      </div>
+
+      <div class="warning">
+        <div class="box-title">Foarte important</div>
+        <p>
+          Dacă scrii cod <strong>CPU-bound sincron</strong> în JavaScript, de exemplu un calcul mare sau un loop greu,
+          atunci <strong>blochezi thread-ul principal</strong>. Event loop-ul nu mai poate servi alte request-uri până nu termini.
+        </p>
+      </div>
+
+      <h2>Thread Pool-ul din libuv</h2>
+      <div class="interview-answer">
+        <strong>Pe scurt:</strong> există un thread pool folosit de runtime pentru anumite categorii de operații.
+        Implicit, dimensiunea lui este adesea <code>4</code>, iar o poți influența prin <code>UV_THREADPOOL_SIZE</code>.
+      </div>
+
+      <pre><code class="language-javascript">// exemplu de setare înainte să pornești aplicația
+// macOS / Linux:
+UV_THREADPOOL_SIZE=8 node app.js
+
+// Windows PowerShell:
+$env:UV_THREADPOOL_SIZE=8; node app.js</code></pre>
+
+      <div class="box">
+        <div class="box-title">Ce să ții minte</div>
+        <p>
+          Asta <strong>nu înseamnă</strong> că tot codul tău JavaScript începe să ruleze în 8 thread-uri.
+          Înseamnă doar că anumite task-uri delegate în fundal pot avea mai multă capacitate.
+        </p>
+      </div>
+
+      <h2>Worker Threads vs “workers” în sens de aplicație</h2>
+      <div class="two-col">
+        <div class="example">
+          <div class="box-title">1) Worker Threads</div>
+          <p>
+            Sunt <strong>thread-uri reale</strong> create explicit cu modulul <code>worker_threads</code>.
+            Le folosești când vrei să rulezi cod JavaScript CPU-bound separat de thread-ul principal.
+          </p>
+        </div>
+        <div class="example">
+          <div class="box-title">2) Workers de business</div>
+          <p>
+            În multe echipe, „worker” poate însemna un <strong>consumer RabbitMQ</strong>, un <strong>job executor</strong>,
+            un <strong>process separat</strong> sau o <strong>replică de microserviciu</strong>.
+            Nu înseamnă automat <code>worker_threads</code>.
+          </p>
+        </div>
+      </div>
+
+      <div class="warning">
+        <div class="box-title">Capcana de vocabular</div>
+        <p>
+          Dacă cineva din echipă spune „avem 20 de workers”, nu presupune imediat că sunt 20 de
+          <code>worker threads</code>. Pot fi:
+        </p>
+        <ul>
+          <li>20 consumers logici pe o coadă</li>
+          <li>20 procese separate</li>
+          <li>20 pod-uri / replici</li>
+          <li>20 task-uri concurente controlate în aplicație</li>
+        </ul>
+      </div>
+
+      <h2>Exemple de cod</h2>
+
+      <h3>1. I/O async normal în Node.js</h3>
+      <pre><code class="language-javascript">const fs = require('fs/promises');
+
+async function saveLog() {
+  console.log('start');
+
+  await fs.writeFile('./app.log', 'hello world');
+
+  console.log('file written');
+}
+
+saveLog();</code></pre>
+
+      <div class="box">
+        <div class="box-title">Cum îl explici</div>
+        <p>
+          <code>saveLog</code> pornește pe thread-ul principal. Când ajunge la <code>await fs.writeFile(...)</code>,
+          operația de scriere este delegată în fundal. Thread-ul principal nu stă blocat să aștepte fizic scrierea.
+          Când operația s-a terminat, continuarea după <code>await</code> revine în event loop și se execută pe thread-ul principal.
+        </p>
+      </div>
+
+      <h3>2. CPU-bound care blochează event loop-ul</h3>
+      <pre><code class="language-javascript">function heavyCalculation() {
+  let sum = 0;
+
+  for (let i = 0; i &lt; 2_000_000_000; i++) {
+    sum += i;
+  }
+
+  return sum;
+}
+
+console.log('before');
+const result = heavyCalculation();
+console.log('after', result);</code></pre>
+
+      <div class="warning">
+        <div class="box-title">Problema</div>
+        <p>
+          Aici nu e I/O async. E calcul sincron greu în JavaScript. Totul rulează pe thread-ul principal și blochează event loop-ul.
+        </p>
+      </div>
+
+      <h3>3. Worker thread explicit</h3>
+      <pre><code class="language-javascript">// main.js
+const { Worker } = require('worker_threads');
+
+function runWorker(data) {
+  return new Promise((resolve, reject) =&gt; {
+    const worker = new Worker('./worker.js', { workerData: data });
+
+    worker.on('message', resolve);
+    worker.on('error', reject);
+    worker.on('exit', (code) =&gt; {
+      if (code !== 0) reject(new Error(`Worker stopped with code ${code}`));
+    });
+  });
+}
+
+(async () =&gt; {
+  const result = await runWorker({ n: 5_000_000 });
+  console.log('worker result:', result);
+})();</code></pre>
+
+      <pre><code class="language-javascript">// worker.js
+const { parentPort, workerData } = require('worker_threads');
+
+let sum = 0;
+for (let i = 0; i &lt; workerData.n; i++) {
+  sum += i;
+}
+
+parentPort.postMessage(sum);</code></pre>
+
+      <div class="success">
+        <div class="box-title">Ideea</div>
+        <p>
+          Aici ai creat explicit un worker thread. Asta e altceva decât I/O-ul async normal. Folosești această abordare
+          când vrei să muți calcule grele în afara thread-ului principal.
+        </p>
+      </div>
+
+      <h2>Unde apar conflictele?</h2>
+      <div class="box">
+        <div class="box-title">Răspuns nuanțat</div>
+        <p>
+          Dacă rămâi doar pe modelul clasic Node.js, mult cod JS se execută secvențial pe thread-ul principal,
+          deci nu ai aceleași conflicte de memorie ca în multe modele multi-threaded tradiționale.
+        </p>
+        <p>
+          Dar poți avea în continuare:
+        </p>
+        <ul>
+          <li><strong>race conditions de business</strong> între request-uri sau job-uri async</li>
+          <li><strong>conflicte la nivel de DB / queue / state extern</strong></li>
+          <li><strong>probleme reale de shared memory</strong> dacă folosești worker threads cu memorie partajată</li>
+        </ul>
+      </div>
+
+      <div class="example">
+        <div class="box-title">Exemplu din viața reală</div>
+        <p>
+          Două mesaje RabbitMQ pot încerca aproape simultan să proceseze același device.
+          Chiar dacă JS rulează pe un thread principal, operațiile async pot interfera logic.
+          De aceea apar lock-uri, idempotency, prefetch, batch-uri și controale de concurență.
+        </p>
+      </div>
+
+      <h2>Real-world use cases</h2>
+      <div class="grid">
+        <div class="box">
+          <div class="box-title">HTTP server clasic</div>
+          <p>Request-urile vin, handler-ele rulează pe thread-ul principal, I/O-ul se face non-blocking.</p>
+        </div>
+        <div class="box">
+          <div class="box-title">RabbitMQ consumer</div>
+          <p>Poți avea mai multe mesaje în procesare, dar trebuie controlată concurența și ordinea.</p>
+        </div>
+        <div class="box">
+          <div class="box-title">File system / logs / uploads</div>
+          <p>Operațiile pe fișiere async nu ar trebui să blocheze event loop-ul.</p>
+        </div>
+        <div class="box">
+          <div class="box-title">CPU-heavy processing</div>
+          <p>Aici intră în scenă worker threads sau alt proces / alt serviciu.</p>
+        </div>
+      </div>
+
+      <h2>Common mistakes / confusions</h2>
+      <div class="warning">
+        <ul>
+          <li>Să spui că <strong>fiecare request HTTP este un thread</strong>.</li>
+          <li>Să spui că <strong>event loop-ul face munca de I/O</strong>.</li>
+          <li>Să crezi că <strong>single-threaded înseamnă zero concurență</strong>.</li>
+          <li>Să confunzi <strong>worker threads</strong> cu <strong>workers</strong> ca termeni de business.</li>
+          <li>Să crezi că mărirea lui <code>UV_THREADPOOL_SIZE</code> accelerează orice cod lent.</li>
+          <li>Să uiți că task-urile CPU-bound în JS blochează event loop-ul.</li>
+        </ul>
+      </div>
+
+      <h2>Interview explanation version</h2>
+      <div class="interview-answer">
+        <p>
+          „În Node.js, microserviciul meu rulează ca un proces. În acel proces am, în mod normal, un thread principal
+          pe care rulează JavaScript și event loop-ul. Event loop-ul nu execută I/O-ul în sine, ci orchestrează lucrurile:
+          pornește operațiile async, iar când ele sunt gata, execută callback-urile sau continuările promise pe thread-ul principal.
+          Pentru anumite operații, Node folosește infrastructură de fundal, inclusiv libuv thread pool.
+          Dacă am workload CPU-bound, atunci folosesc explicit worker threads sau mut logica într-un alt proces ori serviciu.
+          Iar când echipa spune ‘workers’, poate însemna fie worker threads, fie consumers sau executori logici, nu neapărat thread-uri reale.”
+        </p>
+      </div>
+
+      <h2>Pattern to remember</h2>
+      <div class="success">
+        <div class="box-title">Formula scurtă</div>
+        <p>
+          <strong>Process</strong> = containerul mare al aplicației.<br />
+          <strong>Thread principal</strong> = unde rulează JS.<br />
+          <strong>Event loop</strong> = orchestratorul.<br />
+          <strong>Async I/O</strong> = progres în fundal fără blocare.<br />
+          <strong>Worker thread</strong> = thread explicit pentru task-uri grele.
+        </p>
+      </div>
+
+      <h2>Final explanation</h2>
+      <div class="box">
+        <p>
+          Da, ai gândit bine în chat: <strong>microserviciul</strong> poate fi privit ca <strong>procesul</strong>.
+          Dar „thread-ul” nu este un request sau un event listener. Thread-ul este unitatea de execuție de la nivel de runtime / OS.
+          În Node.js, codul tău JS rulează în principal pe un singur thread, iar event loop-ul îl ține ocupat cu task-urile gata de rulat.
+        </p>
+        <p>
+          Când faci I/O async, Node nu blochează acel thread: delegă operația și revine la alte lucruri.
+          Când operația s-a terminat, rezultatul se întoarce și este procesat de event loop.
+          Dacă ai nevoie de paralelism real pentru calcule grele, intri în zona de <strong>worker threads</strong> sau procese separate.
+        </p>
+      </div>
+
+      <div class="footer-note">
+        <strong>Suggested filename:</strong> <code>nodejs-process-thread-event-loop.html</code>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>

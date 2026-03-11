@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stack Frame, Call Stack, Stack vs Heap</title>
+  <meta name="description" content="Interview-focused study page about stack frames, call stack, and stack vs heap memory." />
+
+  <!-- Filename: stack-frame-stack-vs-heap.html -->
+
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" />
+
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #5b6472;
+      --border: #dbe4f0;
+      --primary: #2563eb;
+      --primary-soft: #eaf2ff;
+      --success: #0f766e;
+      --success-soft: #e8fbf7;
+      --warning: #b45309;
+      --warning-soft: #fff6e8;
+      --shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+      --code-bg: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f7f9fc 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    .page {
+      width: min(1100px, calc(100% - 32px));
+      margin: 32px auto 56px;
+    }
+
+    .hero,
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 36px;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 800px;
+      font-size: 1.05rem;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .tags li {
+      background: var(--primary-soft);
+      color: var(--primary);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      border: 1px solid #cfe0ff;
+    }
+
+    .section {
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+
+    .section h2 {
+      margin: 0 0 14px;
+      font-size: 1.55rem;
+      letter-spacing: -0.02em;
+    }
+
+    .section h3 {
+      margin: 22px 0 10px;
+      font-size: 1.1rem;
+    }
+
+    .section p {
+      margin: 0 0 14px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .box,
+    .example,
+    .warning,
+    .success {
+      border-radius: 16px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      background: #fbfdff;
+    }
+
+    .box h3,
+    .example h3,
+    .warning h3,
+    .success h3 {
+      margin-top: 0;
+    }
+
+    .example {
+      background: #f8fbff;
+      border-color: #d8e8ff;
+    }
+
+    .warning {
+      background: var(--warning-soft);
+      border-color: #f3d19f;
+    }
+
+    .success {
+      background: var(--success-soft);
+      border-color: #aee9dc;
+    }
+
+    ul,
+    ol {
+      margin: 10px 0 0 20px;
+      padding: 0;
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    code:not(pre code) {
+      background: #eef3f8;
+      border: 1px solid #d9e3ee;
+      color: #0f2f57;
+      padding: 0.15rem 0.4rem;
+      border-radius: 8px;
+      font-size: 0.95em;
+      white-space: nowrap;
+    }
+
+    pre {
+      overflow-x: auto;
+      border-radius: 14px;
+      padding: 0 !important;
+      margin: 14px 0 0;
+      border: 1px solid #1e293b;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    pre code {
+      display: block;
+      min-width: max-content;
+      padding: 18px 20px !important;
+      font-size: 0.96rem;
+      line-height: 1.6;
+    }
+
+    .diagram {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 14px;
+    }
+
+    .memory-card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      background: #fcfdff;
+    }
+
+    .memory-card .label {
+      padding: 12px 14px;
+      font-weight: 700;
+      color: #0f3c78;
+      background: linear-gradient(180deg, #eef5ff 0%, #e6f0ff 100%);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .memory-card .content {
+      padding: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      white-space: pre-wrap;
+      color: #13253d;
+      font-size: 0.95rem;
+    }
+
+    .call-stack {
+      width: 320px;
+      max-width: 100%;
+      margin: 14px auto 0;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #f9fbff;
+    }
+
+    .call-stack .title {
+      background: #edf4ff;
+      color: #0f3c78;
+      font-weight: 700;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .frame {
+      margin: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #4f8ff7 0%, #2f6ed5 100%);
+      color: white;
+      font-weight: 700;
+      text-align: center;
+      box-shadow: 0 8px 16px rgba(47, 110, 213, 0.18);
+    }
+
+    .frame.light {
+      background: linear-gradient(180deg, #6ca3fa 0%, #4f8ff7 100%);
+    }
+
+    .frame.dark {
+      background: linear-gradient(180deg, #2f6ed5 0%, #2158b3 100%);
+    }
+
+    .compare {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+    }
+
+    .compare th,
+    .compare td {
+      padding: 14px 16px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .compare th {
+      background: #f2f7ff;
+      color: #123d74;
+      font-size: 0.98rem;
+    }
+
+    .compare tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .mini {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .footer-note {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 10px;
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .page {
+        width: 100%;
+        margin: 0;
+      }
+
+      .hero,
+      .section {
+        box-shadow: none;
+        border-color: #d9dfe7;
+        break-inside: avoid;
+      }
+
+      pre {
+        white-space: pre-wrap;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .grid-2,
+      .grid-3,
+      .diagram {
+        grid-template-columns: 1fr;
+      }
+
+      .hero,
+      .section {
+        padding: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <h1>Stack Frame, Call Stack, and Stack vs Heap</h1>
+      <p>
+        A clean interview-focused study page about how function calls use stack frames,
+        what the call stack stores, and how stack memory differs from heap memory in JavaScript.
+      </p>
+      <ul class="tags">
+        <li>Core CS Fundamentals</li>
+        <li>Memory Model</li>
+        <li>JavaScript</li>
+        <li>Interview Prep</li>
+        <li>Theoretical Concept</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Definition</h2>
+      <div class="grid grid-2">
+        <div class="box">
+          <h3>What is the stack?</h3>
+          <ul>
+            <li>Memory used for execution.</li>
+            <li>Stores function calls and local execution state.</li>
+            <li>Works like <strong>LIFO</strong>: last in, first out.</li>
+            <li>Fast and limited in size.</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>What is the heap?</h3>
+          <ul>
+            <li>Memory used for dynamically allocated data.</li>
+            <li>Stores objects, arrays, functions, closures, and other complex values.</li>
+            <li>More flexible, but slower than the stack.</li>
+            <li>Managed by the JavaScript engine and garbage collector.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="success" style="margin-top:16px;">
+        <h3>Most important interview sentence</h3>
+        <p>
+          The stack stores function calls, local variables, and references.
+          The heap stores the actual objects and dynamically allocated data.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Intuition</h2>
+      <div class="grid grid-2">
+        <div class="example">
+          <h3>Why does the stack exist?</h3>
+          <ul>
+            <li>Every function call needs temporary memory.</li>
+            <li>The runtime must know where to return after a function finishes.</li>
+            <li>It must also keep function parameters and local variables somewhere.</li>
+          </ul>
+        </div>
+        <div class="example">
+          <h3>Why does the heap exist?</h3>
+          <ul>
+            <li>Some values must live longer than one function call.</li>
+            <li>Objects can be large and flexible.</li>
+            <li>Closures can keep values alive even after a function returns.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="box" style="margin-top:16px;">
+        <h3>Mental model</h3>
+        <p>
+          Think of the <code>stack</code> as a short-term execution area and the <code>heap</code>
+          as long-term storage for dynamic data.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>How It Works</h2>
+      <div class="grid grid-3">
+        <div class="box">
+          <h3>1. Function call</h3>
+          <p>A new <code>stack frame</code> is pushed onto the call stack.</p>
+        </div>
+        <div class="box">
+          <h3>2. Function runs</h3>
+          <p>The frame stores parameters, local variables, and the return location.</p>
+        </div>
+        <div class="box">
+          <h3>3. Function returns</h3>
+          <p>The frame is popped from the stack and disappears.</p>
+        </div>
+      </div>
+
+      <div class="warning" style="margin-top:16px;">
+        <h3>What is a stack frame?</h3>
+        <p>
+          A stack frame is the small block of execution data created for one function call.
+          It usually contains:
+        </p>
+        <ul>
+          <li>function parameters</li>
+          <li>local variables</li>
+          <li>return address</li>
+          <li>temporary execution data</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Visual Diagram</h2>
+
+      <h3>1) Object reference: stack vs heap</h3>
+      <div class="diagram">
+        <div class="memory-card">
+          <div class="label">Stack</div>
+          <div class="content">user → 0x1A2B</div>
+        </div>
+        <div class="memory-card">
+          <div class="label">Heap</div>
+          <div class="content">0x1A2B → { name: "Alex" }</div>
+        </div>
+      </div>
+
+      <h3>2) Nested function calls: call stack</h3>
+      <div class="call-stack">
+        <div class="title">Call Stack</div>
+        <div class="frame dark">c()</div>
+        <div class="frame light">b()</div>
+        <div class="frame">a()</div>
+        <div class="frame light">global()</div>
+      </div>
+
+      <div class="example" style="margin-top:18px;">
+        <h3>Key idea</h3>
+        <ul>
+          <li><code>c()</code> is on top because it is the current function.</li>
+          <li>When <code>c()</code> finishes, its frame is removed first.</li>
+          <li>Then execution returns to <code>b()</code>, then <code>a()</code>.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Examples</h2>
+
+      <h3>Primitive values</h3>
+      <p class="mini">Primitives are copied by value.</p>
+      <pre><code class="language-javascript">let x = 5;
+let y = x;</code></pre>
+      <div class="diagram">
+        <div class="memory-card">
+          <div class="label">Stack</div>
+          <div class="content">x → 5
+y → 5</div>
+        </div>
+        <div class="memory-card">
+          <div class="label">Heap</div>
+          <div class="content">(empty)</div>
+        </div>
+      </div>
+
+      <h3>Object reference</h3>
+      <pre><code class="language-javascript">let user = { name: "Alex" };
+let admin = user;</code></pre>
+      <div class="diagram">
+        <div class="memory-card">
+          <div class="label">Stack</div>
+          <div class="content">user  → 0x1A2B
+admin → 0x1A2B</div>
+        </div>
+        <div class="memory-card">
+          <div class="label">Heap</div>
+          <div class="content">0x1A2B → { name: "Alex" }</div>
+        </div>
+      </div>
+
+      <div class="warning" style="margin-top:16px;">
+        <h3>Common confusion</h3>
+        <p>
+          <code>admin = user</code> does <strong>not</strong> create a new object.
+          Both variables point to the same heap object.
+        </p>
+      </div>
+
+      <h3>Function frame</h3>
+      <pre><code class="language-javascript">function sum(a, b) {
+  let result = a + b;
+  return result;
+}
+
+sum(2, 3);</code></pre>
+
+      <div class="diagram">
+        <div class="memory-card">
+          <div class="label">Call Stack</div>
+          <div class="content">sum frame
+---------
+a → 2
+b → 3
+result → 5
+return address → global</div>
+        </div>
+        <div class="memory-card">
+          <div class="label">What happens after return?</div>
+          <div class="content">The entire sum frame is removed.
+
+Only the caller remains on the call stack.</div>
+        </div>
+      </div>
+
+      <h3>Object created inside a function</h3>
+      <pre><code class="language-javascript">function createUser() {
+  let user = { name: "Alex" };
+  return user;
+}
+
+let u = createUser();</code></pre>
+
+      <div class="diagram">
+        <div class="memory-card">
+          <div class="label">During execution</div>
+          <div class="content">Stack:
+createUser frame
+user → 0x1A2B
+
+Heap:
+0x1A2B → { name: "Alex" }</div>
+        </div>
+        <div class="memory-card">
+          <div class="label">After return</div>
+          <div class="content">Stack:
+u → 0x1A2B
+
+Heap:
+0x1A2B → { name: "Alex" }</div>
+        </div>
+      </div>
+
+      <h3>Closure keeps data alive</h3>
+      <pre><code class="language-javascript">function counter() {
+  let count = 0;
+
+  return function () {
+    count++;
+    return count;
+  };
+}
+
+let c = counter();</code></pre>
+
+      <div class="success" style="margin-top:16px;">
+        <h3>Why is this important?</h3>
+        <p>
+          The function <code>counter()</code> returns, but <code>count</code> can still live
+          because the inner function keeps a reference to it.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Step-by-Step Explanation</h2>
+      <ol>
+        <li>The program starts with a global execution context.</li>
+        <li>When a function is called, a new stack frame is pushed.</li>
+        <li>That frame stores parameters and local variables.</li>
+        <li>If the function creates an object, the object lives on the heap.</li>
+        <li>The stack frame stores only the reference to that object.</li>
+        <li>When the function returns, its frame is popped.</li>
+        <li>If something still references the heap object, it stays alive.</li>
+        <li>If nothing references it, garbage collection can remove it later.</li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2>Line-by-Line Explanation</h2>
+      <pre><code class="language-javascript">function sum(a, b) {
+  let result = a + b;
+  return result;
+}
+
+sum(2, 3);</code></pre>
+
+      <div class="grid grid-2">
+        <div class="box">
+          <h3><code>function sum(a, b)</code></h3>
+          <p>Defines a function. No frame exists yet.</p>
+        </div>
+        <div class="box">
+          <h3><code>sum(2, 3)</code></h3>
+          <p>Calls the function. A new <code>sum frame</code> is pushed onto the stack.</p>
+        </div>
+        <div class="box">
+          <h3><code>a</code> and <code>b</code></h3>
+          <p>These are stored inside the current stack frame as local execution data.</p>
+        </div>
+        <div class="box">
+          <h3><code>let result = a + b;</code></h3>
+          <p><code>result</code> is another local variable inside the same frame.</p>
+        </div>
+        <div class="box">
+          <h3><code>return result;</code></h3>
+          <p>The value is returned to the caller.</p>
+        </div>
+        <div class="box">
+          <h3>After return</h3>
+          <p>The whole frame is removed from the stack.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Common Mistakes and Confusions</h2>
+      <div class="grid grid-2">
+        <div class="warning">
+          <h3>Mistake #1</h3>
+          <p>Thinking that variables and objects always live in the same place.</p>
+          <p><strong>Fix:</strong> the variable may be on the stack, but the object itself is on the heap.</p>
+        </div>
+        <div class="warning">
+          <h3>Mistake #2</h3>
+          <p>Thinking that <code>admin = user</code> copies the object.</p>
+          <p><strong>Fix:</strong> it copies the reference, not the object.</p>
+        </div>
+        <div class="warning">
+          <h3>Mistake #3</h3>
+          <p>Thinking every function has one permanent frame.</p>
+          <p><strong>Fix:</strong> every function call creates a new frame.</p>
+        </div>
+        <div class="warning">
+          <h3>Mistake #4</h3>
+          <p>Thinking closures keep nothing after a function returns.</p>
+          <p><strong>Fix:</strong> closures can keep referenced values alive on the heap.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Complexity</h2>
+      <div class="grid grid-2">
+        <div class="box">
+          <h3>Main stack operations</h3>
+          <ul>
+            <li><code>push</code> a frame: <strong>O(1)</strong></li>
+            <li><code>pop</code> a frame: <strong>O(1)</strong></li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>Space</h3>
+          <ul>
+            <li>Call stack space depends on call depth.</li>
+            <li>For deep recursion, stack usage can grow to <strong>O(n)</strong>.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="warning" style="margin-top:16px;">
+        <h3>When does complexity matter here?</h3>
+        <p>
+          Mostly when talking about recursion. Too many nested calls can cause
+          <code>Maximum call stack size exceeded</code>.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Comparison</h2>
+      <table class="compare">
+        <thead>
+          <tr>
+            <th>Aspect</th>
+            <th>Stack</th>
+            <th>Heap</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Purpose</td>
+            <td>Execution memory</td>
+            <td>Dynamic data storage</td>
+          </tr>
+          <tr>
+            <td>Stores</td>
+            <td>Frames, locals, references, return info</td>
+            <td>Objects, arrays, functions, closures</td>
+          </tr>
+          <tr>
+            <td>Speed</td>
+            <td>Very fast</td>
+            <td>Slower than stack</td>
+          </tr>
+          <tr>
+            <td>Size</td>
+            <td>Limited</td>
+            <td>Larger and flexible</td>
+          </tr>
+          <tr>
+            <td>Lifetime</td>
+            <td>Usually tied to function execution</td>
+            <td>Can outlive a function call</td>
+          </tr>
+          <tr>
+            <td>Failure mode</td>
+            <td>Stack overflow</td>
+            <td>Memory leaks / excessive heap growth</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>Real-World Use Cases</h2>
+      <div class="grid grid-2">
+        <div class="box">
+          <h3>Why interviewers ask this</h3>
+          <ul>
+            <li>To test core CS fundamentals.</li>
+            <li>To check if you understand function execution.</li>
+            <li>To see if you can explain object references clearly.</li>
+            <li>To connect memory to recursion, closures, and garbage collection.</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>Where it shows up in practice</h3>
+          <ul>
+            <li>Debugging recursion problems.</li>
+            <li>Understanding stack overflow errors.</li>
+            <li>Explaining memory leaks and closures in JavaScript.</li>
+            <li>Reasoning about object mutation through shared references.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Interview Explanation Version</h2>
+      <div class="success">
+        <h3>20–30 second answer</h3>
+        <p>
+          The stack stores function calls and local execution data, while the heap stores
+          dynamically allocated objects. In JavaScript, objects are usually on the heap,
+          and variables on the stack hold references to them. Each function call creates
+          a stack frame, and when the function returns, that frame is removed.
+        </p>
+      </div>
+
+      <div class="example" style="margin-top:16px;">
+        <h3>45-second stronger answer</h3>
+        <p>
+          The stack is used for execution, so it keeps stack frames for active function calls.
+          A frame contains things like parameters, local variables, and the return address.
+          The heap is used for objects and other dynamic data. In JavaScript, if I create an object
+          inside a function, the frame usually stores only a reference, while the object itself lives
+          on the heap. This is why shared references, closures, and stack overflow all make sense
+          once you understand stack vs heap.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Pattern to Remember</h2>
+      <div class="box">
+        <p><strong>Short memory rule:</strong></p>
+        <ul>
+          <li><strong>Stack</strong> = function calls, local state, references.</li>
+          <li><strong>Heap</strong> = actual objects and dynamic data.</li>
+          <li><strong>Frame</strong> = one function call's execution box.</li>
+          <li><strong>Recursion</strong> = more frames pushed onto the stack.</li>
+          <li><strong>Closure</strong> = data can survive after the outer function returns.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Summary</h2>
+      <div class="grid grid-2">
+        <div class="success">
+          <ul>
+            <li>Every function call creates a new stack frame.</li>
+            <li>Stack frames hold parameters, locals, and return information.</li>
+            <li>The stack stores references; the heap stores the actual objects.</li>
+            <li>Primitive values are copied by value.</li>
+            <li>Objects are shared through references unless explicitly copied.</li>
+            <li>Closures can keep data alive after a function returns.</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>Recommended filename</h3>
+          <p><code>stack-frame-stack-vs-heap.html</code></p>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer-note">Single-file HTML study page • printable • interview-focused</p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>

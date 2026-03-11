@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stack — Interview Study Page</title>
+  <!-- Filename: stack.html -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#f5f7fb;
+      --card:#ffffff;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --shadow:0 10px 30px rgba(15, 23, 42, 0.08);
+      --blue:#2563eb;
+      --blue-soft:#eff6ff;
+      --green:#059669;
+      --green-soft:#ecfdf5;
+      --amber:#d97706;
+      --amber-soft:#fffbeb;
+      --red:#dc2626;
+      --red-soft:#fef2f2;
+      --purple:#7c3aed;
+      --purple-soft:#f5f3ff;
+      --radius:18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f8fafc 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 32px 18px;
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(229, 231, 235, 0.9);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 40px 40px 28px;
+      background:
+        radial-gradient(circle at top right, rgba(37,99,235,0.10), transparent 30%),
+        radial-gradient(circle at top left, rgba(124,58,237,0.10), transparent 30%),
+        #ffffff;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--blue);
+      background: var(--blue-soft);
+      border: 1px solid #dbeafe;
+      padding: 6px 10px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 5vw, 3rem);
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 820px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      font-size: 0.9rem;
+      color: #334155;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 999px;
+    }
+
+    .content {
+      padding: 34px 40px 42px;
+    }
+
+    section + section {
+      margin-top: 34px;
+      padding-top: 30px;
+      border-top: 1px solid var(--border);
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 1.5rem;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+
+    h3 {
+      margin: 24px 0 10px;
+      font-size: 1.08rem;
+      line-height: 1.35;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    ul {
+      margin: 10px 0 14px 22px;
+      padding: 0;
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    code:not([class]) {
+      background: #f3f4f6;
+      color: #111827;
+      padding: 0.18em 0.42em;
+      border-radius: 8px;
+      font-size: 0.95em;
+      border: 1px solid #e5e7eb;
+    }
+
+    pre[class*="language-"] {
+      border-radius: 16px;
+      padding: 18px !important;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      background: #fafafa !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .box, .example, .warning, .success {
+      border-radius: var(--radius);
+      padding: 18px 18px 16px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .box {
+      background: #fafafa;
+    }
+
+    .example {
+      background: var(--blue-soft);
+      border-color: #dbeafe;
+    }
+
+    .warning {
+      background: var(--amber-soft);
+      border-color: #fde68a;
+    }
+
+    .success {
+      background: var(--green-soft);
+      border-color: #a7f3d0;
+    }
+
+    .kicker {
+      display: inline-block;
+      margin-bottom: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #374151;
+    }
+
+    .ascii {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      white-space: pre;
+      overflow-x: auto;
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 16px;
+      padding: 18px;
+      border: 1px solid #1e293b;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 620px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      font-size: 0.95rem;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .quote {
+      border-left: 4px solid var(--purple);
+      padding: 10px 14px;
+      background: var(--purple-soft);
+      border-radius: 0 14px 14px 0;
+      margin: 12px 0;
+    }
+
+    .mini {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .flow .step {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      min-width: 160px;
+      flex: 1 1 180px;
+    }
+
+    .footer-note {
+      margin-top: 34px;
+      padding: 18px;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 16px;
+      color: #475569;
+    }
+
+    @media (max-width: 780px) {
+      .hero, .content {
+        padding: 24px 18px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      body {
+        padding: 16px;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+
+      .card {
+        box-shadow: none;
+        border: none;
+      }
+
+      .hero {
+        background: white;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <article class="card">
+      <header class="hero">
+        <div class="eyebrow">Technical Interview Study Page</div>
+        <h1>Stack</h1>
+        <p class="subtitle">
+          A core data structure built around the <strong>LIFO</strong> principle: <em>Last In, First Out</em>.
+          This page focuses on interview understanding, intuition, common traps, and how to explain the concept clearly.
+        </p>
+        <div class="tags">
+          <span class="tag">Data Structures</span>
+          <span class="tag">LIFO</span>
+          <span class="tag">DFS</span>
+          <span class="tag">Call Stack</span>
+          <span class="tag">Interview Fundamentals</span>
+        </div>
+      </header>
+
+      <main class="content">
+        <section>
+          <h2>Definition</h2>
+          <p>
+            A <strong>stack</strong> is a data structure that follows the rule <strong>Last In, First Out</strong>.
+            The last element you add is the first one you remove.
+          </p>
+          <div class="success">
+            <div class="kicker">Simple version</div>
+            <p>
+              Think of a stack like a pile of plates: you place plates on top, and you also take them from the top.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Intuition</h2>
+          <p>
+            A stack exists for situations where the most recent thing is the first thing you need to access.
+            It is perfect for <strong>reversing order naturally</strong>.
+          </p>
+          <div class="grid">
+            <div class="box">
+              <div class="kicker">What problem does it solve?</div>
+              <p>
+                It helps manage operations that must be undone, returned from, or processed in reverse order.
+              </p>
+            </div>
+            <div class="box">
+              <div class="kicker">Without a stack</div>
+              <p>
+                Function calls, DFS traversal, undo systems, and parenthesis matching would be much harder to organize cleanly.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Mental Model</h2>
+          <div class="quote">
+            Last plate placed on the pile = first plate removed from the pile.
+          </div>
+          <div class="ascii">Top
+ ↓
+[ Plate 3 ]
+[ Plate 2 ]
+[ Plate 1 ]</div>
+          <p class="mini">
+            You do not remove from the middle. You only interact with the <strong>top</strong>.
+          </p>
+        </section>
+
+        <section>
+          <h2>Core Operations</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Operation</th>
+                  <th>Meaning</th>
+                  <th>Why it is fast</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>push(x)</code></td>
+                  <td>Adds an element on top of the stack</td>
+                  <td>You only touch the top</td>
+                </tr>
+                <tr>
+                  <td><code>pop()</code></td>
+                  <td>Removes and returns the top element</td>
+                  <td>You only touch the top</td>
+                </tr>
+                <tr>
+                  <td><code>peek()</code></td>
+                  <td>Returns the top element without removing it</td>
+                  <td>You only look at the top</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="warning">
+            <div class="kicker">Common interview correction</div>
+            <p>
+              The correct term is <code>peek</code>, not <code>peak</code>. <code>peek</code> means “take a quick look.”
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>ASCII Visualization</h2>
+          <h3>After three pushes</h3>
+          <div class="ascii">push(1)
+push(2)
+push(3)
+
+Top
+ ↓
+[3]
+[2]
+[1]</div>
+
+          <h3>After one pop</h3>
+          <div class="ascii">pop() → 3
+
+Top
+ ↓
+[2]
+[1]</div>
+        </section>
+
+        <section>
+          <h2>Step-by-Step Example</h2>
+          <pre><code class="language-javascript">const stack = [];
+
+stack.push(1);
+stack.push(2);
+stack.push(3);
+
+console.log(stack.pop());  // 3
+console.log(stack.peek?.()); // optional if custom stack exists
+console.log(stack.pop());  // 2</code></pre>
+
+          <div class="flow">
+            <div class="step">
+              <strong>Step 1</strong><br />
+              <code>push(1)</code><br />
+              Stack becomes: <code>[1]</code>
+            </div>
+            <div class="step">
+              <strong>Step 2</strong><br />
+              <code>push(2)</code><br />
+              Stack becomes: <code>[1, 2]</code>
+            </div>
+            <div class="step">
+              <strong>Step 3</strong><br />
+              <code>push(3)</code><br />
+              Stack becomes: <code>[1, 2, 3]</code>
+            </div>
+            <div class="step">
+              <strong>Step 4</strong><br />
+              <code>pop()</code> returns <code>3</code><br />
+              Because the last added comes out first
+            </div>
+          </div>
+
+          <div class="example">
+            <div class="kicker">Key interview sentence</div>
+            <p>
+              The reason <code>pop()</code> returns <code>3</code> is that a stack does not care about insertion order from the beginning;
+              it only cares about the <strong>most recent item on top</strong>.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Implementation Example</h2>
+          <pre><code class="language-javascript">class Stack {
+  constructor() {
+    this.items = [];
+  }
+
+  push(value) {
+    this.items.push(value);
+  }
+
+  pop() {
+    if (this.isEmpty()) return undefined;
+    return this.items.pop();
+  }
+
+  peek() {
+    if (this.isEmpty()) return undefined;
+    return this.items[this.items.length - 1];
+  }
+
+  isEmpty() {
+    return this.items.length === 0;
+  }
+
+  size() {
+    return this.items.length;
+  }
+}
+
+const stack = new Stack();
+stack.push(10);
+stack.push(20);
+stack.push(30);
+
+console.log(stack.peek()); // 30
+console.log(stack.pop());  // 30
+console.log(stack.pop());  // 20
+console.log(stack.size()); // 1</code></pre>
+
+          <h3>Line-by-line explanation</h3>
+          <ul>
+            <li><code>this.items = []</code> stores the internal data.</li>
+            <li><code>push(value)</code> adds to the top.</li>
+            <li><code>pop()</code> removes from the top.</li>
+            <li><code>peek()</code> reads the top without changing the stack.</li>
+            <li><code>isEmpty()</code> helps avoid invalid removals.</li>
+            <li><code>size()</code> tells you how many elements are currently stored.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Complexity</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Operation</th>
+                  <th>Time</th>
+                  <th>Space</th>
+                  <th>Intuition</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>push</code></td>
+                  <td>O(1)</td>
+                  <td rowspan="3">O(n) total for storing <em>n</em> elements</td>
+                  <td>You add only at the top</td>
+                </tr>
+                <tr>
+                  <td><code>pop</code></td>
+                  <td>O(1)</td>
+                  <td>You remove only from the top</td>
+                </tr>
+                <tr>
+                  <td><code>peek</code></td>
+                  <td>O(1)</td>
+                  <td>You inspect only the top</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="success">
+            <div class="kicker">Interview-friendly explanation</div>
+            <p>
+              Time is <code>O(1)</code> because we never scan the structure. We only work with the top.
+              Space is <code>O(n)</code> because storing more elements requires proportionally more memory.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Real-World Use Cases</h2>
+          <div class="grid">
+            <div class="box">
+              <div class="kicker">1. Call Stack</div>
+              <p>
+                Every function call is pushed onto the call stack. When the function finishes, it is popped.
+              </p>
+            </div>
+            <div class="box">
+              <div class="kicker">2. DFS</div>
+              <p>
+                Depth First Search can use an explicit stack to go deep before backtracking.
+              </p>
+            </div>
+            <div class="box">
+              <div class="kicker">3. Undo / Redo</div>
+              <p>
+                The latest action is stored on top, so it is the first thing that gets undone.
+              </p>
+            </div>
+            <div class="box">
+              <div class="kicker">4. Expression Parsing</div>
+              <p>
+                Matching parentheses and evaluating expressions often rely on stack behavior.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Call Stack Connection</h2>
+          <pre><code class="language-javascript">function a() {
+  b();
+}
+
+function b() {
+  c();
+}
+
+function c() {
+  console.log("hello");
+}
+
+a();</code></pre>
+
+          <div class="ascii">Call stack during execution:
+
+c()
+b()
+a()
+global()</div>
+
+          <p>
+            When <code>c()</code> finishes, it leaves first. Then <code>b()</code>, then <code>a()</code>.
+            That is stack behavior in real execution.
+          </p>
+        </section>
+
+        <section>
+          <h2>Stack in DFS</h2>
+          <pre><code class="language-javascript">function dfs(graph, start) {
+  const stack = [start];
+  const visited = new Set();
+
+  while (stack.length > 0) {
+    const node = stack.pop();
+
+    if (visited.has(node)) continue;
+    visited.add(node);
+
+    console.log(node);
+
+    for (const neighbor of graph[node]) {
+      if (!visited.has(neighbor)) {
+        stack.push(neighbor);
+      }
+    }
+  }
+}</code></pre>
+
+          <div class="example">
+            <div class="kicker">Why stack fits DFS</div>
+            <p>
+              DFS wants to go deeper immediately. A stack naturally supports this because the most recently discovered node
+              is processed next.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Classic Interview Problem: Valid Parentheses</h2>
+          <pre><code class="language-javascript">function isValid(s) {
+  const stack = [];
+  const pairs = {
+    ")": "(",
+    "]": "[",
+    "}": "{"
+  };
+
+  for (const ch of s) {
+    if (ch === "(" || ch === "[" || ch === "{") {
+      stack.push(ch);
+    } else {
+      const top = stack.pop();
+      if (top !== pairs[ch]) return false;
+    }
+  }
+
+  return stack.length === 0;
+}</code></pre>
+
+          <h3>Main idea</h3>
+          <ul>
+            <li>Opening bracket → push it.</li>
+            <li>Closing bracket → pop the last opening bracket.</li>
+            <li>If they do not match, the string is invalid.</li>
+            <li>If the stack is not empty at the end, the string is invalid.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Common Mistakes / Confusions</h2>
+          <div class="warning">
+            <div class="kicker">Mistake 1</div>
+            <p>
+              Confusing <strong>stack as a data structure</strong> with <strong>stack memory</strong>.
+              They are related in idea, but they are not the same thing.
+            </p>
+          </div>
+
+          <div class="warning">
+            <div class="kicker">Mistake 2</div>
+            <p>
+              Saying you can remove from the middle. You cannot. A true stack only allows access to the top.
+            </p>
+          </div>
+
+          <div class="warning">
+            <div class="kicker">Mistake 3</div>
+            <p>
+              Forgetting that recursion uses the call stack internally. Deep recursion can fail with stack overflow.
+            </p>
+          </div>
+
+          <div class="warning">
+            <div class="kicker">Mistake 4</div>
+            <p>
+              Saying <code>peak</code> instead of <code>peek</code>.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Bug Pattern: Stack Overflow</h2>
+          <pre><code class="language-javascript">function f() {
+  return f();
+}
+
+f();</code></pre>
+
+          <p>
+            Each function call adds a new frame to the call stack. Since this function never stops,
+            the stack keeps growing until the runtime throws an error such as:
+          </p>
+
+          <div class="ascii">RangeError: Maximum call stack size exceeded</div>
+
+          <div class="box">
+            <div class="kicker">Why it happens</div>
+            <p>
+              There is no base case, so the recursive calls never stop. More calls means more stack frames.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Comparison: Stack vs Queue</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Structure</th>
+                  <th>Rule</th>
+                  <th>Useful for</th>
+                  <th>Mental picture</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Stack</td>
+                  <td>LIFO</td>
+                  <td>DFS, undo, call stack</td>
+                  <td>Pile of plates</td>
+                </tr>
+                <tr>
+                  <td>Queue</td>
+                  <td>FIFO</td>
+                  <td>BFS, scheduling, task processing</td>
+                  <td>People standing in line</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="success">
+            <div class="kicker">Fast way to remember</div>
+            <p>
+              <strong>Stack = newest first.</strong><br />
+              <strong>Queue = oldest first.</strong>
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Interview Explanation Version</h2>
+          <div class="box">
+            <p>
+              “A stack is a data structure that follows the <strong>Last In, First Out</strong> principle.
+              The last item added is the first one removed. The main operations are <code>push</code>,
+              <code>pop</code>, and <code>peek</code>, and they are typically <code>O(1)</code> because
+              we only interact with the top element. Stacks are commonly used in call stacks, DFS, undo systems,
+              and parenthesis matching problems.”
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Pattern to Remember</h2>
+          <div class="quote">
+            If the problem says “go back,” “undo,” “most recent,” “nested,” or “match opening and closing symbols,” think <strong>stack</strong>.
+          </div>
+        </section>
+
+        <section>
+          <h2>Final Takeaway</h2>
+          <p>
+            Stack is one of the most important foundational structures in computer science because it appears both
+            as an explicit data structure and as a hidden runtime mechanism through the call stack.
+          </p>
+          <p>
+            For interviews, the most important things to remember are:
+          </p>
+          <ul>
+            <li><strong>LIFO</strong> behavior</li>
+            <li><code>push</code>, <code>pop</code>, <code>peek</code></li>
+            <li><strong>O(1)</strong> time for top operations</li>
+            <li>Used in <strong>DFS</strong>, <strong>call stack</strong>, <strong>undo</strong>, <strong>parentheses</strong></li>
+            <li>Deep recursion can cause <strong>stack overflow</strong></li>
+          </ul>
+        </section>
+
+        <div class="footer-note">
+          <strong>Suggested filename:</strong> <code>stack.html</code>
+        </div>
+      </main>
+    </article>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>

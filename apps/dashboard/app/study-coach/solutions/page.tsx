@@ -5,7 +5,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type LeetCategory =
   | 'study_guides'
-  | 'theory'
+  | 'theory_oop_solid'
+  | 'theory_dsa'
+  | 'theory_runtime'
   | 'arrays'
   | 'binary_search'
   | 'matrix'
@@ -27,7 +29,9 @@ type SolutionDoc = {
 
 const CATEGORY_LABEL: Record<LeetCategory, string> = {
   study_guides: 'Study Guides',
-  theory: 'Theory',
+  theory_oop_solid: 'Theory · OOP & SOLID',
+  theory_dsa: 'Theory · DSA Fundamentals',
+  theory_runtime: 'Theory · Runtime & Memory',
   arrays: 'Arrays',
   binary_search: 'Binary Search',
   matrix: 'Matrix',
@@ -37,6 +41,21 @@ const CATEGORY_LABEL: Record<LeetCategory, string> = {
   linked_list: 'Linked List',
   binary_tree: 'Binary Tree',
 };
+
+const CATEGORY_ORDER: LeetCategory[] = [
+  'study_guides',
+  'theory_oop_solid',
+  'theory_dsa',
+  'theory_runtime',
+  'arrays',
+  'linked_list',
+  'binary_search',
+  'matrix',
+  'stack',
+  'queue',
+  'recursion',
+  'binary_tree',
+];
 
 function previewUrl(file: string) {
   return `/api/study-coach/leetcode-solutions/preview?file=${encodeURIComponent(file)}`;
@@ -94,7 +113,14 @@ export default function StudyCoachSolutionsPage() {
       current.push(doc);
       map.set(doc.category, current);
     });
-    return Array.from(map.entries()).sort((a, b) => CATEGORY_LABEL[a[0]].localeCompare(CATEGORY_LABEL[b[0]]));
+
+    const orderIndex = new Map(CATEGORY_ORDER.map((id, idx) => [id, idx]));
+    return Array.from(map.entries()).sort((a, b) => {
+      const aIdx = orderIndex.get(a[0]) ?? Number.MAX_SAFE_INTEGER;
+      const bIdx = orderIndex.get(b[0]) ?? Number.MAX_SAFE_INTEGER;
+      if (aIdx !== bIdx) return aIdx - bIdx;
+      return CATEGORY_LABEL[a[0]].localeCompare(CATEGORY_LABEL[b[0]]);
+    });
   }, [filtered]);
 
   const selected = docs.find((doc) => doc.file === selectedFile) ?? null;
@@ -119,8 +145,8 @@ export default function StudyCoachSolutionsPage() {
           </div>
           {headerExpanded ? (
           <>
-            <h1 className="text-2xl font-bold">LeetCode HTMLs</h1>
-            <p className="mt-1 text-sm text-[var(--muted)]">Cuprins complet pentru fișierele din `study-coach/htmldocs`.</p>
+            <h1 className="text-2xl font-bold">Study Coach HTMLs</h1>
+            <p className="mt-1 text-sm text-[var(--muted)]">Cuprins complet pentru `htmldocs` + `htmldocstheory`, grupate pe categorii.</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 className="rounded-md border border-cyan-500/40 bg-cyan-500/20 px-3 py-1.5 text-sm font-semibold disabled:opacity-60"
@@ -188,7 +214,7 @@ export default function StudyCoachSolutionsPage() {
             ) : null}
             {!grouped.length && !loading ? (
               <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-sm text-[var(--muted)]">
-                No HTML files found. Add files in `apps/dashboard/app/study-coach/htmldocs` and press Refresh list.
+                No HTML files found. Add files in `apps/dashboard/app/study-coach/htmldocs` or `.../htmldocstheory` and press Refresh list.
               </div>
             ) : null}
           </div>
