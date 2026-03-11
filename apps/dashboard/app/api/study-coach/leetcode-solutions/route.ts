@@ -64,6 +64,8 @@ const THEORY_DSA_HINTS = [
   'queue',
   'bfs',
   'dfs',
+  'binarytree',
+  'binary-tree',
   'big-o',
   'big-o-notation',
   'complexity',
@@ -143,6 +145,7 @@ function inferNumber(parts: string[]): number | null {
 function prettifyTitle(parts: string[], num: number | null) {
   const REPLACEMENTS: Record<string, string> = {
     binarysearch: 'binary search',
+    binarytree: 'binary tree',
     linkedlist: 'linked list',
     twosum: 'two sum',
     mergetwosortedarrays: 'merge two sorted arrays',

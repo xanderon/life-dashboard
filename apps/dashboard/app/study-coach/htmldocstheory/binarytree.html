@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Binary Tree — Interview Study Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=JetBrains+Mono:wght@400;600&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #f5f2eb;
+    --card: #ffffff;
+    --ink: #1a1814;
+    --ink2: #3d3a34;
+    --ink3: #6b6760;
+    --accent: #c8440a;
+    --accent2: #2a5fa5;
+    --accent3: #1e7c4a;
+    --warn: #b8860b;
+    --border: #e2ddd5;
+    --code-bg: #1e1e2e;
+    --tag-bg: #ede9e0;
+    --radius: 12px;
+    --shadow: 0 2px 16px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05);
+    --shadow-lg: 0 8px 40px rgba(0,0,0,0.1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.7;
+    font-size: 16px;
+    padding: 40px 20px 80px;
+  }
+
+  /* ── LAYOUT ── */
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    margin-bottom: 40px;
+    border-bottom: 3px solid var(--ink);
+    padding-bottom: 28px;
+  }
+  .header-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.4rem, 6vw, 3.6rem);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 16px;
+  }
+  h1 span {
+    color: var(--accent);
+  }
+  .subtitle {
+    color: var(--ink3);
+    font-size: 17px;
+    font-weight: 300;
+    max-width: 560px;
+  }
+
+  /* ── TAGS ── */
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 100px;
+    background: var(--tag-bg);
+    color: var(--ink2);
+    border: 1px solid var(--border);
+  }
+  .tag.red   { background: #fdecea; color: #c0392b; border-color: #f5c6c2; }
+  .tag.blue  { background: #e8f0fb; color: #1a4f8a; border-color: #b8cff2; }
+  .tag.green { background: #e6f5ee; color: #155e35; border-color: #a8dfc0; }
+  .tag.gold  { background: #fdf8e3; color: #856404; border-color: #f0d98a; }
+
+  /* ── SECTIONS ── */
+  section {
+    margin-bottom: 36px;
+  }
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2 .icon {
+    font-style: normal;
+    font-size: 1.2rem;
+  }
+  h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ink2);
+    margin: 18px 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .card p + p { margin-top: 10px; }
+
+  /* ── BOX VARIANTS ── */
+  .box {
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    margin-bottom: 14px;
+    border-left: 4px solid;
+    font-size: 15px;
+  }
+  .box.info    { background: #e8f0fb; border-color: var(--accent2); color: #1a3a6b; }
+  .box.success { background: #e6f5ee; border-color: var(--accent3); color: #0d4a2a; }
+  .box.warning { background: #fdf8e3; border-color: var(--warn);    color: #5a4200; }
+  .box.danger  { background: #fdecea; border-color: var(--accent);  color: #7a1a0a; }
+  .box strong  { font-weight: 600; }
+
+  /* ── EXAMPLE BLOCK ── */
+  .example-block {
+    background: #fafaf7;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    margin-bottom: 14px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  /* ── CODE ── */
+  .code-wrap {
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    margin-bottom: 16px;
+  }
+  .code-label {
+    background: #16162a;
+    color: #7c7ca8;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    border-bottom: 1px solid #2a2a45;
+  }
+  pre[class*="language-"] {
+    margin: 0 !important;
+    border-radius: 0 !important;
+    font-size: 13.5px !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    line-height: 1.7 !important;
+    padding: 22px 20px !important;
+  }
+  code { font-family: 'JetBrains Mono', monospace; }
+  :not(pre) > code {
+    background: #ede9e0;
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 0.875em;
+  }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; margin-bottom: 16px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14.5px;
+  }
+  th {
+    background: var(--ink);
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 11px 16px;
+    text-align: left;
+  }
+  td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: #fafaf7; }
+  tr:last-child td { border-bottom: none; }
+  td code { font-size: 12px; }
+
+  /* ── STEP LIST ── */
+  .steps { counter-reset: step; list-style: none; padding: 0; }
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+    align-items: flex-start;
+  }
+  .steps li::before {
+    content: counter(step);
+    min-width: 30px;
+    height: 30px;
+    background: var(--ink);
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .steps li .why {
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 500;
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  /* ── TRAVERSAL GRID ── */
+  .traversal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .trav-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .trav-card .trav-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 6px;
+  }
+  .trav-card .trav-order {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+  .trav-card .trav-use {
+    font-size: 13px;
+    color: var(--ink3);
+  }
+
+  /* ── COMPLEXITY BADGE ── */
+  .complexity-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .cx-badge {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    flex: 1;
+    min-width: 120px;
+  }
+  .cx-badge .cx-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    margin-bottom: 4px;
+  }
+  .cx-badge .cx-val {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .cx-badge .cx-note {
+    font-size: 11px;
+    color: var(--ink3);
+    margin-top: 3px;
+  }
+
+  /* ── INTERVIEW BOX ── */
+  .interview-box {
+    background: var(--ink);
+    color: #f0ede6;
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .interview-box::before {
+    content: '"';
+    position: absolute;
+    top: -10px; left: 16px;
+    font-family: 'Playfair Display', serif;
+    font-size: 8rem;
+    color: rgba(255,255,255,0.06);
+    line-height: 1;
+    pointer-events: none;
+  }
+  .interview-box p {
+    font-size: 17px;
+    line-height: 1.8;
+    font-weight: 300;
+    font-style: italic;
+    position: relative;
+  }
+  .interview-box .attr {
+    margin-top: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(240,237,230,0.45);
+    font-style: normal;
+  }
+
+  /* ── PATTERN BOX ── */
+  .pattern-box {
+    background: linear-gradient(135deg, #fdf8f2 0%, #fff 100%);
+    border: 2px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 22px 26px;
+  }
+  .pattern-box .pattern-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  .pattern-box p {
+    font-size: 15.5px;
+    line-height: 1.7;
+    color: var(--ink2);
+  }
+
+  /* ── MISTAKE ITEM ── */
+  .mistake {
+    background: #fdecea;
+    border: 1px solid #f5c6c2;
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 10px;
+  }
+  .mistake .mistake-title {
+    font-weight: 600;
+    color: #c0392b;
+    margin-bottom: 6px;
+    font-size: 15px;
+  }
+  .mistake p { font-size: 14.5px; color: #7a1a0a; }
+
+  /* ── DIVIDER ── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 10px 0 32px;
+  }
+
+  /* ── PRINT ── */
+  @media print {
+    body { background: #fff; padding: 20px; }
+    .card, .box, .code-wrap { box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ══════════════════════════════════════════ HEADER -->
+  <header class="header">
+    <div class="header-meta">Data Structures · Interview Guide</div>
+    <h1>Binary <span>Tree</span></h1>
+    <p class="subtitle">Structuri ierarhice, parcurgeri recursive și intuiția din spatele fiecărei operații.</p>
+    <div class="tags">
+      <span class="tag blue">Tree</span>
+      <span class="tag red">Recursion</span>
+      <span class="tag green">DFS / BFS</span>
+      <span class="tag gold">Fundamental</span>
+      <span class="tag">O(log n) BST</span>
+      <span class="tag">O(n) traversal</span>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════ DEFINIȚIE -->
+  <section>
+    <h2><i class="icon">📐</i> Definiția simplă</h2>
+    <div class="card">
+      <p>Un <strong>Binary Tree</strong> este o structură de date ierarhică în care fiecare nod are <strong>cel mult 2 copii</strong> — numiți copilul <strong>stâng</strong> și copilul <strong>drept</strong>.</p>
+      <p>Nodul de sus = <strong>root (rădăcina)</strong>. Nodurile fără copii = <strong>frunze (leaves)</strong>. Este baza pentru BST, Heap, Trie și mulți alți algoritmi fundamentali.</p>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- ══════════════════════════════════════════ INTUIȚIE -->
+  <section>
+    <h2><i class="icon">💡</i> Intuiția — De ce există?</h2>
+    <div class="box info">
+      <strong>Problema:</strong> Dacă stochezi date într-o listă, căutarea unui element durează <code>O(n)</code> — trebuie să parcurgi totul unul câte unul.
+    </div>
+    <div class="box success">
+      <strong>Binary Tree rezolvă:</strong> organizarea datelor <strong>ierarhic</strong>, astfel încât la fiecare pas poți elimina jumătate din spațiul de căutare → <code>O(log n)</code>.
+    </div>
+    <div class="box warning">
+      <strong>Fără arbori binari:</strong> sistemele de fișiere, bazele de date (indexuri SQL), compilatoarele (AST) și Git ar fi dramatic mai lente sau imposibil de implementat eficient.
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- ══════════════════════════════════════════ MENTAL MODEL -->
+  <section>
+    <h2><i class="icon">🧠</i> Mental Model</h2>
+    <div class="card">
+      <p>Imaginează-ți un <strong>turneu de tenis cu eliminare directă</strong>. La fiecare meci (nod), există exact 2 jucători (copil stâng + copil drept). Câștigătorul avansează sus (spre rădăcină). Tragi o linie de sus în jos = parcurgi arborele.</p>
+      <p style="margin-top:12px">Sau mai simplu: o <strong>familie la o reuniune</strong>. Bunicul stă în centru (root). El are 2 copii. Fiecare copil are maxim 2 copii. Când cauți pe cineva, la fiecare întrebare, <em>jumătate din familie dispare</em> din căutare.</p>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- ══════════════════════════════════════════ STRUCTURA -->
+  <section>
+    <h2><i class="icon">🏗️</i> Structura în cod</h2>
+    <div class="code-wrap">
+      <div class="code-label">javascript — Node class</div>
+<pre><code class="language-javascript">class Node {
+  constructor(value) {
+    this.value = value;  // datele stocate
+    this.left  = null;   // pointer copil stâng
+    this.right = null;   // pointer copil drept
+  }
+}
+
+// Construim manual un arbore
+const root       = new Node(10);
+root.left        = new Node(5);
+root.right       = new Node(15);
+root.left.left   = new Node(3);
+root.left.right  = new Node(7);
+root.right.right = new Node(20);</code></pre>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- ══════════════════════════════════════════ VIZUALIZARE -->
+  <section>
+    <h2><i class="icon">🌳</i> Vizualizare ASCII</h2>
+    <div class="example-block">          10          ← ROOT (rădăcina)
+         /  \
+        5    15       ← noduri interne
+       / \     \
+      3   7     20   ← FRUNZE (leaves) — nu au copii
+
+Memorie (pointeri):
+┌─────────────────┐
+│  Node(10)       │
+│  left  ────────────→  Node(5)
+│  right ────────────→  Node(15)
+└─────────────────┘
+
+  Node(5):                 Node(15):
+  left  ──→ Node(3)        left  ──→ null
+  right ──→ Node(7)        right ──→ Node(20)</div>
+
+    <h3>Tipuri importante de Binary Tree</h3>
+    <div class="example-block">1. FULL BT                2. COMPLETE BT
+   (0 sau 2 copii)           (umplut stânga→dreapta)
+       10                         10
+      /  \                       /  \
+     5    15                    5    15
+    / \                        / \  /
+   3   7                      3  7 12
+
+3. PERFECT BT             4. DEGENERAT (worst case!)
+   (toate nivelele pline)     (lista înlănțuită!)
+       10                     1
+      /  \                     \
+     5    15                    2
+    / \  / \                     \
+   3  7 12  20                    3  ← înălțime O(n)!</div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- ══════════════════════════════════════════ TRAVERSALS -->
+  <section>
+    <h2><i class="icon">🔄</i> Cele 3 parcurgeri esențiale</h2>
+
+    <div class="traversal-grid">
+      <div class="trav-card">
+        <div class="trav-name">In-Order</div>
+        <div class="trav-order">Stânga → Rădăcină → Dreapta</div>
+        <div class="trav-use">✅ Pe BST → valori sortate. Rezultat: <strong>3, 5, 7, 10, 15, 20</strong></div>
+      </div>
+      <div class="trav-card">
+        <div class="trav-name">Pre-Order</div>
+        <div class="trav-order">Rădăcină → Stânga → Dreapta</div>
+        <div class="trav-use">✅ Copiere arbore, serializare. Rezultat: <strong>10, 5, 3, 7, 15, 20</strong></div>
+      </div>
+      <div class="trav-card">
+        <div class="trav-name">Post-Order</div>
+        <div class="trav-order">Stânga → Dreapta → Rădăcină</div>
+        <div class="trav-use">✅ Ștergere arbore, calcul expresii. Rezultat: <strong>3, 7, 5, 20, 15, 10</strong></div>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-label">javascript — toate cele 3 parcurgeri</div>
+<pre><code class="language-javascript">// IN-ORDER: stânga → rădăcină → dreapta
+// De ce? — vizităm tot ce e mai mic, apoi nodul, apoi tot ce e mai mare
+function inOrder(node) {
+  if (node === null) return;  // ← CAZUL DE BAZĂ — esențial!
+  inOrder(node.left);
+  console.log(node.value);   // procesăm la mijloc
+  inOrder(node.right);
+}
+
+// PRE-ORDER: rădăcină → stânga → dreapta
+function preOrder(node) {
+  if (node === null) return;
+  console.log(node.value);   // procesăm PRIMUL
+  preOrder(node.left);
+  preOrder(node.right);
+}
+
+// POST-ORDER: stânga → dreapta → rădăcină
+function postOrder(node) {
+  if (node === null) return;
+  postOrder(node.left);
+  postOrder(node.right);
+  console.log(node.value);   // procesăm ULTIMUL
+}
+
+// Exemplu call stack pentru inOrder(root):
+// inOrder(10)
+//   inOrder(5)
+//     inOrder(3)
+//       inOrder(null) ← return
+//       print 3
+//       inOrder(null) ← return
+//     print 5
+//     inOrder(7)
+//       print 7
+//   print 10
+//   inOrder(15)
+//     print 15 ...</code></pre>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- ══════════════════════════════════════════ EXEMPLU PAS CU PAS -->
+  <section>
+    <h2><i class="icon">🚶</i> Exemplu pas cu pas — Max Depth</h2>
+    <div class="box info">
+      <strong>Problemă:</strong> Găsește adâncimea maximă a unui Binary Tree (LeetCode #104). Arborele de mai sus are adâncimea <strong>3</strong>.
+    </div>
+
+    <ol class="steps">
+      <li>
+        <div>
+          <strong>Identificăm cazul de bază:</strong> dacă nodul este <code>null</code>, adâncimea este <code>0</code>.
+          <div class="why">De ce? — Recursie fără caz de bază = Stack Overflow garantat.</div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong>Apelăm recursiv</strong> pe copilul stâng și pe cel drept pentru a obține adâncimea lor.
+          <div class="why">De ce? — Problema se descompune: adâncimea unui nod = 1 + max(adâncime stânga, adâncime dreapta).</div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong>Returnăm</strong> <code>1 + Math.max(left, right)</code> — cel mai lung drum spre o frunză.
+          <div class="why">De ce max? — Vrem drumul cel mai LUNG, nu cel mai scurt.</div>
+        </div>
+      </li>
+    </ol>
+
+    <div class="code-wrap">
+      <div class="code-label">javascript — maxDepth (soluție finală)</div>
+<pre><code class="language-javascript">function maxDepth(root) {
+  // Pasul 1: cazul de bază
+  if (root === null) return 0;
+
+  // Pasul 2: rezolvăm subproblemele (recursie)
+  const leftDepth  = maxDepth(root.left);
+  const rightDepth = maxDepth(root.right);
+
+  // Pasul 3: combinăm rezultatele
+  return 1 + Math.max(leftDepth, rightDepth);
+}
+
+// Execuție pe arborele nostru:
+//
+//   maxDepth(10)
+//     maxDepth(5)
+//       maxDepth(3) → 1 + max(0,0) = 1
+//       maxDepth(7) → 1 + max(0,0) = 1
+//     → 1 + max(1,1) = 2
+//     maxDepth(15)
+//       maxDepth(20) → 1 + max(0,0) = 1
+//     → 1 + max(0,1) = 2
+//   → 1 + max(2,2) = 3  ✅
+
+console.log(maxDepth(root)); // → 3</code></pre>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- ══════════════════════════════════════════ COMPLEXITATE -->
+  <section>
+    <h2><i class="icon">⏱️</i> Complexitate</h2>
+
+    <div class="complexity-row">
+      <div class="cx-badge">
+        <div class="cx-label">Search (BST echilibrat)</div>
+        <div class="cx-val">O(log n)</div>
+        <div class="cx-note">Elimini jumătate la fiecare pas</div>
+      </div>
+      <div class="cx-badge">
+        <div class="cx-label">Traversal (orice BT)</div>
+        <div class="cx-val">O(n)</div>
+        <div class="cx-note">Vizitezi fiecare nod o dată</div>
+      </div>
+      <div class="cx-badge">
+        <div class="cx-label">Search (degenerat)</div>
+        <div class="cx-val">O(n)</div>
+        <div class="cx-note">Arborele e o listă!</div>
+      </div>
+      <div class="cx-badge">
+        <div class="cx-label">Space (recursie)</div>
+        <div class="cx-val">O(h)</div>
+        <div class="cx-note">h = înălțimea arborelui</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Operație</th>
+            <th>BT simplu</th>
+            <th>BST echilibrat</th>
+            <th>BST degenerat</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Search</strong></td><td><code>O(n)</code></td><td><code>O(log n)</code></td><td><code>O(n)</code></td></tr>
+          <tr><td><strong>Insert</strong></td><td><code>O(n)</code></td><td><code>O(log n)</code></td><td><code>O(n)</code></td></tr>
+          <tr><td><strong>Delete</strong></td><td><code>O(n)</code></td><td><code>O(log n)</code></td><td><code>O(n)</code></td></tr>
+          <tr><td><strong>Traversal</strong></td><td><code>O(n)</code></td><td><code>O(n)</code></td><td><code>O(n)</code></td></tr>
+          <tr><td><strong>Space (call stack)</strong></td><td><code>O(n)</code></td><td><code>O(log n)</code></td><td><code>O(n)</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box info">
+      <strong>Intuiție O(log n):</strong> Cu 1.000.000 noduri, un BST echilibrat găsești orice element în aproximativ <strong>20 de pași</strong>. Fiecare pas elimină jumătate din posibilități.
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- ══════════════════════════════════════════ GREȘELI COMUNE -->
+  <section>
+    <h2><i class="icon">⚠️</i> Greșeli comune & Bug-uri</h2>
+
+    <div class="mistake">
+      <div class="mistake-title">❌ Bug #1 — Uiți cazul de bază în recursie</div>
+      <p>Fără <code>if (node === null) return</code>, recursia continuă la infinit → Stack Overflow.</p>
+    </div>
+    <div class="code-wrap">
+      <div class="code-label">javascript — buggy vs correct</div>
+<pre><code class="language-javascript">// ❌ GREȘIT — lipsește cazul de bază
+function height(node) {
+  return 1 + Math.max(height(node.left), height(node.right));
+  // → RangeError: Maximum call stack size exceeded!
+}
+
+// ✅ CORECT
+function height(node) {
+  if (node === null) return 0;  // ← OBLIGATORIU
+  return 1 + Math.max(height(node.left), height(node.right));
+}</code></pre>
+    </div>
+
+    <div class="mistake">
+      <div class="mistake-title">❌ Bug #2 — Confuzi Binary Tree cu BST</div>
+      <p>Un Binary Tree simplu NU garantează că valorile sunt ordonate. Proprietatea de ordonare aparține BST-ului.</p>
+    </div>
+    <div class="code-wrap">
+      <div class="code-label">javascript — BT vs BST</div>
+<pre><code class="language-javascript">// Binary Tree VALID (nu are reguli de ordine):
+//       10
+//      /  \
+//     20    5    ← 20 pe stânga lui 10? OK în BT, INVALID în BST!
+
+// BST VALID (stânga &lt; rădăcină &lt; dreapta):
+//       10
+//      /  \
+//     5    20   ← corect: 5 &lt; 10 &lt; 20</code></pre>
+    </div>
+
+    <div class="mistake">
+      <div class="mistake-title">❌ Bug #3 — In-Order pe BT simplu ≠ valori sortate</div>
+      <p>In-Order dă valori sortate NUMAI pe BST. Pe un Binary Tree fără proprietatea de ordonare, rezultatul e impredictibil.</p>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- ══════════════════════════════════════════ COMPARAȚIE -->
+  <section>
+    <h2><i class="icon">⚖️</i> Comparație cu alternativele</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Structură</th><th>Search</th><th>Insert ordonat</th><th>Ordine</th><th>Range queries</th><th>Memorie</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Array / List</strong></td><td><code>O(n)</code></td><td><code>O(n)</code></td><td>✅ da</td><td><code>O(n)</code></td><td>💚 compact</td></tr>
+          <tr><td><strong>BST echilibrat</strong></td><td><code>O(log n)</code></td><td><code>O(log n)</code></td><td>✅ da</td><td><code>O(log n+k)</code></td><td>⚠️ pointeri</td></tr>
+          <tr><td><strong>Hash Table</strong></td><td><code>O(1)</code></td><td><code>O(1)</code></td><td>❌ nu</td><td>❌ imposibil</td><td>⚠️ extra</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="box warning">
+      <strong>Când alegi Tree vs Hash Table?</strong> Când ai nevoie de <strong>ordine</strong> sau <strong>range queries</strong> — ex: "toți userii cu vârsta între 20–30 ani". Hash table nu poate face asta; BST da.
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- ══════════════════════════════════════════ CONEXIUNI -->
+  <section>
+    <h2><i class="icon">🔗</i> Conexiuni cu alte concepte</h2>
+    <div class="example-block">Binary Tree
+    │
+    ├── BST — adaugă proprietatea stânga &lt; nod &lt; dreapta
+    │       ├── AVL Tree — auto-balansare cu rotații, O(log n) garantat
+    │       └── Red-Black Tree — Java TreeMap, C++ std::map
+    │
+    ├── Heap — Binary Tree complet, baza pentru Priority Queue
+    │
+    ├── Trie — arbore pentru string-uri, autocomplete
+    │
+    ├── Recursie — parcurgerea arborilor e recursie NATURALĂ
+    │
+    ├── DFS / BFS
+    │       ├── DFS = recursie sau stack explicit
+    │       └── BFS = queue (parcurgere nivel cu nivel)
+    │
+    └── Dynamic Programming — subprobleme suprapuse pe arbori</div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- ══════════════════════════════════════════ TRICK QUESTIONS -->
+  <section>
+    <h2><i class="icon">🪤</i> Trick Questions — Capcane de interviu</h2>
+
+    <div class="box danger">
+      <strong>Capcana #1:</strong> „Un arbore cu un singur nod — câte frunze are?"<br/>
+      → Răspuns: <strong>1</strong>. Rădăcina este și frunză când nu are copii. Mulți zic 0.
+    </div>
+    <div class="box danger">
+      <strong>Capcana #2:</strong> „Poate un Binary Tree să aibă înălțimea O(n)?"<br/>
+      → <strong>DA!</strong> Un arbore degenerat (fiecare nod un singur copil) e practic o listă înlănțuită. BST fără echilibrare poate degenera la O(n) dacă inserezi datele sortat.
+    </div>
+    <div class="box danger">
+      <strong>Capcana #3:</strong> „In-Order traversal pe orice Binary Tree dă valori sortate?"<br/>
+      → <strong>NU!</strong> Garantat sortate NUMAI dacă e BST.
+    </div>
+    <div class="box danger">
+      <strong>Capcana #4:</strong> „Echilibrat = Perfect?"<br/>
+      → <strong>NU!</strong> Echilibrat înseamnă că diferența de înălțime între subarbori e ≤ 1. Perfect înseamnă că toate nivelele sunt complet pline.
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- ══════════════════════════════════════════ FEYNMAN -->
+  <section>
+    <h2><i class="icon">👶</i> Feynman Technique</h2>
+    <div class="card" style="font-size:16px; line-height:1.8;">
+      Imaginează-ți că vrei să găsești un număr dintr-o carte de telefon cu un milion de numere. Dacă le citești unul câte unul, durează mult. Dar dacă deschizi cartea la mijloc și întrebi <em>„e mai mare sau mai mic?"</em>, elimini jumătate. Faci asta din nou și din nou. Un <strong>Binary Tree</strong> funcționează exact așa — la fiecare <em>nod</em>, mergi ori la stânga (mai mic) ori la dreapta (mai mare). Cu 1.000.000 de numere, găsești pe oricine în doar <strong>~20 de întrebări</strong>!
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- ══════════════════════════════════════════ INTERVIEW ANSWER -->
+  <section>
+    <h2><i class="icon">🎯</i> Răspuns de interviu (30 secunde)</h2>
+    <div class="interview-box">
+      <p>Un Binary Tree este o structură de date ierarhică unde fiecare nod are cel mult doi copii — stâng și drept. Este util pentru că organizează datele recursiv, permițând operații eficiente: pe un BST echilibrat, căutarea, inserarea și ștergerea se fac în O(log n). Cele trei parcurgeri esențiale sunt in-order, pre-order și post-order — fiecare utilă în contexte diferite: in-order pe BST produce valori sortate, pre-order e util pentru serializare, iar post-order pentru ștergere. La interviu, gândirea recursivă este cheia: la fiecare nod te întrebi ce trebuie să știi despre subarbori pentru a rezolva problema.</p>
+      <div class="attr">— răspuns recomandat pentru interviu tehnic</div>
+    </div>
+  </section>
+
+  <hr class="divider"/>
+
+  <!-- ══════════════════════════════════════════ PATTERN -->
+  <section>
+    <h2><i class="icon">🔑</i> Pattern de reținut</h2>
+    <div class="pattern-box">
+      <div class="pattern-title">✦ regula de aur pentru arbori</div>
+      <p>Când primești o problemă cu arbori binari, primul instinct = <strong>gândește recursiv</strong>. Întreabă-te: <em>„Ce trebuie să știe nodul curent despre subarborii săi pentru a rezolva problema?"</em> Dacă poți răspunde la asta, soluția recursivă apare natural.</p>
+      <p style="margin-top:10px">Structura universală: <code>if (!node) return valoare_implicita;</code> → <code>rezolvă stânga</code> → <code>rezolvă dreapta</code> → <code>combină rezultatele</code>.</p>
+    </div>
+  </section>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>
