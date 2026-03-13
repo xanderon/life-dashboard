@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Reverse Linked List — Interview Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #f0ece4;
+    --card: #faf8f4;
+    --ink: #1a1814;
+    --ink-soft: #5a5650;
+    --ink-faint: #9a9690;
+    --accent: #c84b2f;
+    --accent-soft: #f5ede9;
+    --accent2: #2a6dd9;
+    --accent2-soft: #e8f0fb;
+    --green: #1e7c4a;
+    --green-soft: #e6f5ed;
+    --yellow: #9a6c00;
+    --yellow-soft: #fdf4de;
+    --border: #e0dbd2;
+    --code-bg: #1e1e2e;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Sora', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.75;
+    padding: 2rem 1rem 6rem;
+  }
+
+  /* ── Layout ── */
+  .page { max-width: 860px; margin: 0 auto; }
+
+  /* ── Header ── */
+  .header {
+    padding: 2.5rem 0 2rem;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 2.5rem;
+  }
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 100px;
+    border: 1.5px solid;
+  }
+  .badge-easy { color: var(--green); border-color: var(--green); background: var(--green-soft); }
+  .badge-list { color: var(--accent2); border-color: var(--accent2); background: var(--accent2-soft); }
+  .badge-two-ptr { color: #7c3aed; border-color: #7c3aed; background: #f3eeff; }
+  .badge-classic { color: var(--yellow); border-color: var(--yellow); background: var(--yellow-soft); }
+
+  h1 {
+    font-size: 2.6rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin-bottom: 0.5rem;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle {
+    font-size: 1rem;
+    color: var(--ink-soft);
+    font-weight: 400;
+  }
+
+  /* ── Sections ── */
+  .section { margin-bottom: 2.5rem; }
+  h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  h2::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--ink);
+  }
+
+  /* ── Boxes ── */
+  .card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+  .box {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .box p, .box li { color: var(--ink-soft); }
+
+  .example {
+    background: var(--accent2-soft);
+    border: 1.5px solid #b8d0f8;
+    border-radius: var(--radius-sm);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+  .example .label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 0.4rem;
+  }
+
+  .warning {
+    background: var(--yellow-soft);
+    border: 1.5px solid #e8c45a;
+    border-radius: var(--radius-sm);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .warning::before { content: '⚠️  '; }
+
+  .success {
+    background: var(--green-soft);
+    border: 1.5px solid #7dd4a8;
+    border-radius: var(--radius-sm);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .success::before { content: '✅  '; }
+
+  .danger {
+    background: #fff0ed;
+    border: 1.5px solid #f5b8aa;
+    border-radius: var(--radius-sm);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .danger::before { content: '❌  '; }
+
+  .highlight-box {
+    background: linear-gradient(135deg, #fff8f6 0%, #fff5f0 100%);
+    border: 2px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  /* ── Inline code ── */
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    background: #ede9e1;
+    border: 1px solid #d8d3cb;
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ── Code blocks (Prism) ── */
+  pre[class*="language-"] {
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    line-height: 1.7;
+    margin: 0;
+    overflow-x: auto;
+    background: var(--code-bg) !important;
+    border: 1.5px solid #2e2e3e;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  }
+  pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+  .code-wrap { margin-bottom: 1rem; }
+  .code-label {
+    background: var(--code-bg);
+    border: 1.5px solid #2e2e3e;
+    border-bottom: none;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    padding: 0.4rem 1rem;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: #888;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .code-label .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-r { background: #ff5f56; }
+  .dot-y { background: #ffbd2e; }
+  .dot-g { background: #27c93f; }
+  .code-label + pre { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+
+  /* ── ASCII Walkthrough ── */
+  .walkthrough-step {
+    background: var(--code-bg);
+    border: 1.5px solid #2e2e3e;
+    border-radius: var(--radius-sm);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.9;
+    color: #cdd6f4;
+    overflow-x: auto;
+  }
+  .step-header {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #89b4fa;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid #2e2e3e;
+    padding-bottom: 0.5rem;
+  }
+  .step-why {
+    margin-top: 0.5rem;
+    font-size: 11.5px;
+    color: #a6e3a1;
+  }
+  .step-cond { color: #f9e2af; }
+  .step-action { color: #cba6f7; }
+  .step-ptr { color: #89dceb; }
+
+  /* ── Complexity table ── */
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    background: var(--ink);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 0.6rem 1rem;
+    text-align: left;
+  }
+  td {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    vertical-align: top;
+  }
+  td:first-child { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--ink); font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #f5f3ef; }
+
+  /* ── Comparison grid ── */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .compare-card {
+    border-radius: var(--radius-sm);
+    padding: 1.25rem;
+    border: 1.5px solid;
+  }
+  .compare-good { border-color: #7dd4a8; background: var(--green-soft); }
+  .compare-bad  { border-color: #f5b8aa; background: #fff0ed; }
+  .compare-card h4 {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
+  }
+  .compare-good h4 { color: var(--green); }
+  .compare-bad h4  { color: #c84b2f; }
+  .compare-card li { font-size: 13px; color: var(--ink-soft); margin-left: 1.1rem; margin-bottom: 0.3rem; }
+
+  /* ── Interview answer ── */
+  .interview-answer {
+    background: linear-gradient(135deg, #1e1e2e 0%, #24273a 100%);
+    border: 2px solid #45475a;
+    border-radius: var(--radius);
+    padding: 1.75rem;
+    color: #cdd6f4;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13.5px;
+    line-height: 1.9;
+    position: relative;
+  }
+  .interview-answer::before {
+    content: '"';
+    position: absolute;
+    top: -0.5rem;
+    left: 1rem;
+    font-size: 4rem;
+    font-family: 'Sora', sans-serif;
+    color: #45475a;
+    line-height: 1;
+  }
+  .interview-answer em { color: #89b4fa; font-style: normal; }
+  .interview-answer strong { color: #a6e3a1; }
+
+  /* ── Pattern box ── */
+  .pattern-box {
+    background: linear-gradient(135deg, #1e1e2e, #181825);
+    border: 2px solid #cba6f7;
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    color: #cdd6f4;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 2;
+  }
+  .pattern-box .pkey { color: #cba6f7; font-weight: 700; }
+  .pattern-box .pval { color: #a6e3a1; }
+
+  /* ── List styles ── */
+  ul, ol { padding-left: 1.4rem; }
+  li { margin-bottom: 0.35rem; color: var(--ink-soft); }
+  li strong { color: var(--ink); }
+
+  p { margin-bottom: 0.75rem; color: var(--ink-soft); }
+  p:last-child { margin-bottom: 0; }
+
+  /* ── Responsive ── */
+  @media(max-width: 600px) {
+    h1 { font-size: 1.9rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ══ HEADER ══ -->
+  <div class="header">
+    <div class="header-meta">
+      <span class="badge badge-easy">Easy</span>
+      <span class="badge badge-list">Linked List</span>
+      <span class="badge badge-two-ptr">Three Pointers</span>
+      <span class="badge badge-classic">Must Know</span>
+    </div>
+    <h1><span>#206</span> Reverse Linked List</h1>
+    <p class="subtitle">Building block pentru palindrome, k-group reversal, reorder list și altele.</p>
+  </div>
+
+  <!-- ══ PROBLEM STATEMENT ══ -->
+  <div class="section">
+    <h2>Problem Statement</h2>
+    <div class="box">
+      <p>Dată head-ul unei liste înlănțuite, întoarce lista inversată.</p>
+      <p>Modifici lista <strong>in-place</strong> — fără a aloca o nouă structură de date.</p>
+    </div>
+    <div class="example">
+      <div class="label">Input</div>
+      <div>head = [1, 2, 3, 4, 5]</div>
+    </div>
+    <div class="example">
+      <div class="label">Output</div>
+      <div>[5, 4, 3, 2, 1]</div>
+    </div>
+    <div class="example">
+      <div class="label">Edge Case — single node</div>
+      <div>head = [1]  →  [1]</div>
+    </div>
+    <div class="example">
+      <div class="label">Edge Case — empty list</div>
+      <div>head = null  →  null</div>
+    </div>
+  </div>
+
+  <!-- ══ INTUITION ══ -->
+  <div class="section">
+    <h2>Intuiție &amp; Mental Model</h2>
+    <div class="highlight-box">
+      <h3>🚂 Analogia trenului</h3>
+      <p>Imaginează-ți vagoane de tren cuplate: fiecare știe doar <em>cine e în față</em>. Inversarea înseamnă că decuplezi fiecare vagon și îl cuplezi în <strong>sens invers</strong>. La final, locomotiva devine ultimul vagon și viceversa.</p>
+    </div>
+    <div class="box">
+      <h3>De ce există această operație?</h3>
+      <p>O listă simplă merge <strong>într-o singură direcție</strong>. Nu poți parcurge înapoi fără:</p>
+      <ul>
+        <li>un stack auxiliar O(n) space</li>
+        <li>sau inversarea pointer-ilor in-place O(1) space ← <strong>soluția optimă</strong></li>
+      </ul>
+      <p>Reversarea e un <strong>building block</strong> pentru zeci de probleme mai complexe.</p>
+    </div>
+  </div>
+
+  <!-- ══ ALGORITHM ══ -->
+  <div class="section">
+    <h2>Algoritmul — Three Pointers</h2>
+    <div class="box">
+      <p>Avem nevoie de <strong>3 pointeri</strong> care avansează simultan:</p>
+      <ul>
+        <li><code>prev</code> — nodul deja procesat (start: <code>null</code>)</li>
+        <li><code>curr</code> — nodul curent pe care îl procesăm (start: <code>head</code>)</li>
+        <li><code>next</code> — salvăm <code>curr.next</code> <em>înainte</em> să-l suprascriem</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>La fiecare iterație, 4 pași:</h3>
+      <ol>
+        <li>Salvează <code>next = curr.next</code> &nbsp;→ nu pierdem restul listei</li>
+        <li>Inversează: <code>curr.next = prev</code> &nbsp;→ pointer-ul merge înapoi</li>
+        <li>Avansează: <code>prev = curr</code></li>
+        <li>Avansează: <code>curr = next</code></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- ══ WALKTHROUGH ══ -->
+  <div class="section">
+    <h2>Simulare Pas cu Pas</h2>
+
+    <div class="walkthrough-step">
+      <div class="step-header">⚙ Stare inițială</div>
+null  [1] → [2] → [3] → [4] → [5] → null
+       ↑
+     curr
+<span class="step-ptr">prev = null   curr = [1]   next = undefined</span>
+    </div>
+
+    <div class="walkthrough-step">
+      <div class="step-header">Iterația 1</div>
+<span class="step-cond">curr !== null  ✅</span>
+
+<span class="step-action">next = curr.next  →  next = [2]       // salvăm [2] ÎNAINTE să tăiem legătura!</span>
+<span class="step-action">curr.next = prev  →  [1].next = null  // inversăm: [1] pointează spre null</span>
+<span class="step-action">prev = curr       →  prev = [1]</span>
+<span class="step-action">curr = next       →  curr = [2]</span>
+
+null ← [1]    [2] → [3] → [4] → [5] → null
+        ↑      ↑
+      prev    curr
+<span class="step-why">→ De ce salvăm next mai întâi? Dacă scriem curr.next = prev direct, pierdem accesul la [2]..</span>
+    </div>
+
+    <div class="walkthrough-step">
+      <div class="step-header">Iterația 2</div>
+<span class="step-cond">curr !== null  ✅</span>
+
+<span class="step-action">next = [3]</span>
+<span class="step-action">curr.next = prev  →  [2].next = [1]   // [2] pointează înapoi spre [1]</span>
+<span class="step-action">prev = [2],  curr = [3]</span>
+
+null ← [1] ← [2]    [3] → [4] → [5] → null
+               ↑      ↑
+             prev    curr
+    </div>
+
+    <div class="walkthrough-step">
+      <div class="step-header">Iterația 3</div>
+<span class="step-cond">curr !== null  ✅</span>
+
+<span class="step-action">next = [4]</span>
+<span class="step-action">[3].next = [2]</span>
+<span class="step-action">prev = [3],  curr = [4]</span>
+
+null ← [1] ← [2] ← [3]    [4] → [5] → null
+                      ↑      ↑
+                    prev    curr
+    </div>
+
+    <div class="walkthrough-step">
+      <div class="step-header">Iterația 4 &amp; 5 (rezumat)</div>
+<span class="step-action">Iterația 4: [4].next = [3],  prev = [4],  curr = [5]</span>
+<span class="step-action">Iterația 5: [5].next = [4],  prev = [5],  curr = null</span>
+
+null ← [1] ← [2] ← [3] ← [4] ← [5]
+                                   ↑
+                                  prev
+                                          ↑
+                                      curr = null
+    </div>
+
+    <div class="walkthrough-step">
+      <div class="step-header">Condiție de stop + return</div>
+<span class="step-cond">curr !== null  ❌  →  STOP</span>
+
+<span class="step-action">return prev  →  noul head este [5]</span>
+
+Rezultat:  [5] → [4] → [3] → [2] → [1] → null
+            ↑
+         new head
+<span class="step-why">→ De ce returnăm prev și nu curr? La ieșire curr = null, prev = ultimul nod procesat = noul head.</span>
+    </div>
+  </div>
+
+  <!-- ══ CODE ══ -->
+  <div class="section">
+    <h2>Soluția JavaScript</h2>
+
+    <div class="code-wrap">
+      <div class="code-label">
+        <span class="dot dot-r"></span>
+        <span class="dot dot-y"></span>
+        <span class="dot dot-g"></span>
+        reverse-linked-list.js
+      </div>
+<pre><code class="language-javascript">// Definition for singly-linked list node
+function ListNode(val, next = null) {
+  this.val = val;
+  this.next = next;
+}
+
+// ─── Iterative — O(n) time, O(1) space ───────────────────────────
+function reverseList(head) {
+  let prev = null;  // the "already reversed" side
+  let curr = head;  // current node being processed
+
+  while (curr !== null) {
+    const next = curr.next; // 1️⃣  save next before we overwrite it
+    curr.next = prev;        // 2️⃣  reverse the pointer
+    prev = curr;             // 3️⃣  advance prev
+    curr = next;             // 4️⃣  advance curr
+  }
+
+  return prev; // prev is the new head (curr is null at this point)
+}
+</code></pre>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-label">
+        <span class="dot dot-r"></span>
+        <span class="dot dot-y"></span>
+        <span class="dot dot-g"></span>
+        recursive-version.js — O(n) space!
+      </div>
+<pre><code class="language-javascript">// ─── Recursive — O(n) time, O(n) space (call stack!) ────────────
+function reverseListRecursive(head) {
+  // Base case: empty list or single node
+  if (head === null || head.next === null) return head;
+
+  // Recursively reverse the rest of the list
+  const newHead = reverseListRecursive(head.next);
+
+  // Make next node point back to current
+  head.next.next = head;
+
+  // Cut current node's forward link
+  head.next = null;
+
+  return newHead;
+}
+
+// ⚠️  Avoid in interviews unless explicitly asked.
+// Each recursive call adds a frame to the call stack → O(n) space.
+// For a list of 100,000 nodes this can cause a stack overflow.
+</code></pre>
+    </div>
+  </div>
+
+  <!-- ══ LINE BY LINE ══ -->
+  <div class="section">
+    <h2>Explicație Linie cu Linie</h2>
+
+    <div class="box">
+      <h3><code>let prev = null</code></h3>
+      <p>La început, "partea inversată" este goală. Primul nod procesat va trebui să pointeze spre <code>null</code> (devine noul tail).</p>
+    </div>
+    <div class="box">
+      <h3><code>const next = curr.next</code></h3>
+      <p>Cel mai important pas. Dacă nu salvezi <code>next</code> <em>înainte</em> de a suprascrie <code>curr.next</code>, pierzi accesul la restul listei. Aceasta e greșeala #1 la interviu.</p>
+    </div>
+    <div class="box">
+      <h3><code>curr.next = prev</code></h3>
+      <p>Inversarea propriu-zisă. Nodul curent nu mai pointează spre dreapta — pointează spre stânga, spre ce am procesat deja.</p>
+    </div>
+    <div class="box">
+      <h3><code>return prev</code></h3>
+      <p>La ieșirea din buclă, <code>curr === null</code>. <code>prev</code> este ultimul nod procesat, care este noul <code>head</code>. Dacă returnezi <code>curr</code>, returnezi <code>null</code>. Greșeala #2 la interviu.</p>
+    </div>
+  </div>
+
+  <!-- ══ COMMON MISTAKES ══ -->
+  <div class="section">
+    <h2>Greșeli Comune</h2>
+
+    <div class="danger">
+      <h3>Greșeala #1 — Uiți să salvezi <code>next</code></h3>
+      <div class="code-wrap" style="margin-top: 0.75rem;">
+<pre><code class="language-javascript">// ❌ WRONG — lost the rest of the list!
+curr.next = prev;
+curr = curr.next; // curr is now null, not the next real node!
+
+// ✅ CORRECT
+const next = curr.next; // save first
+curr.next = prev;
+curr = next;
+</code></pre>
+      </div>
+    </div>
+
+    <div class="danger">
+      <h3>Greșeala #2 — Returnezi <code>curr</code> în loc de <code>prev</code></h3>
+      <div class="code-wrap" style="margin-top: 0.75rem;">
+<pre><code class="language-javascript">// ❌ WRONG — returns null (curr = null when loop exits)
+return curr;
+
+// ✅ CORRECT — prev = the last processed node = new head
+return prev;
+</code></pre>
+      </div>
+    </div>
+
+    <div class="warning">
+      <h3>Greșeala #3 — Preferi recursivul fără să menționezi spațiu O(n)</h3>
+      <p>Recursivul pare mai elegant, dar fiecare apel adaugă un frame pe call stack. Pentru liste mari poate provoca stack overflow. Menționează explicit trade-off-ul.</p>
+    </div>
+
+    <div class="warning">
+      <h3>Greșeala #4 — Nu tratezi edge cases</h3>
+      <div class="code-wrap" style="margin-top: 0.75rem;">
+<pre><code class="language-javascript">// ✅ Handle both edge cases at the start of your explanation:
+// head = null  →  while condition false from start, return prev = null ✓
+// head = [1]   →  one iteration: [1].next = null, return prev = [1]   ✓
+</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ COMPLEXITY ══ -->
+  <div class="section">
+    <h2>Complexitate</h2>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Variantă</th>
+            <th>Time</th>
+            <th>Space</th>
+            <th>De ce?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Iterativ ✅</td>
+            <td>O(n)</td>
+            <td>O(1)</td>
+            <td>Vizitezi fiecare nod o singură dată. Doar 3 pointeri, indiferent de n.</td>
+          </tr>
+          <tr>
+            <td>Recursiv</td>
+            <td>O(n)</td>
+            <td>O(n)</td>
+            <td>n apeluri recursive pe call stack simultan = O(n) memory.</td>
+          </tr>
+          <tr>
+            <td>Cu stack auxiliar</td>
+            <td>O(n)</td>
+            <td>O(n)</td>
+            <td>Stochezi toate valorile, apoi le rescrii. Simplu dar ineficient.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ COMPARISON ══ -->
+  <div class="section">
+    <h2>Iterativ vs Recursiv</h2>
+    <div class="compare-grid">
+      <div class="compare-card compare-good">
+        <h4>✅ Iterativ — preferabil</h4>
+        <ul>
+          <li>Space O(1) — constant</li>
+          <li>Nu risc de stack overflow</li>
+          <li>Mai ușor de debug</li>
+          <li>Răspuns clar la interviu</li>
+        </ul>
+      </div>
+      <div class="compare-card compare-bad">
+        <h4>⚠️ Recursiv — cu rezerve</h4>
+        <ul>
+          <li>Space O(n) — call stack</li>
+          <li>Stack overflow pentru liste mari</li>
+          <li>Cod mai elegant vizual</li>
+          <li>Folosește doar dacă e cerut</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CONNECTIONS ══ -->
+  <div class="section">
+    <h2>Conexiuni cu Alte Concepte</h2>
+    <div class="box">
+      <ul>
+        <li><strong>Two Pointers</strong> — același pattern de avansare cu doi pointeri simultan</li>
+        <li><strong>In-place algorithms</strong> — modifici structura fără memorie auxiliară</li>
+        <li><strong>Palindrome Linked List (#234)</strong> — inversezi jumătatea a doua și compari</li>
+        <li><strong>Reverse Nodes in k-Group (#25)</strong> — aplici reversarea în segmente</li>
+        <li><strong>Reorder List (#143)</strong> — inversarea e un sub-pas al algoritmului</li>
+        <li><strong>Doubly Linked List</strong> — nu ai nevoie de reversare, ai deja pointer <code>prev</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══ REAL EXAMPLES ══ -->
+  <div class="section">
+    <h2>Exemple Reale din Programare</h2>
+    <div class="box">
+      <ul>
+        <li><strong>Browser history</strong> — butonul Back traversează o listă inversată</li>
+        <li><strong>Undo/Redo</strong> — editoare de text folosesc liste pentru istoricul acțiunilor</li>
+        <li><strong>Parsarea expresiilor</strong> — evaluare de la dreapta la stânga</li>
+        <li><strong>Print queue reversal</strong> — inversezi ordinea joburilor de printare</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══ INTERVIEW QUESTIONS ══ -->
+  <div class="section">
+    <h2>Întrebări Frecvente de Interviu</h2>
+
+    <div class="box">
+      <h3>Q: Care e diferența iterativ vs recursiv?</h3>
+      <p><strong>A:</strong> Iterativ = O(1) space (doar 3 pointeri). Recursiv = O(n) space din call stack. La o listă de 100k noduri, recursivul poate cauza stack overflow.</p>
+    </div>
+    <div class="box">
+      <h3>Q: Ce returnezi la final și de ce?</h3>
+      <p><strong>A:</strong> Returnez <code>prev</code>, nu <code>curr</code>. La ieșirea din buclă, <code>curr</code> este <code>null</code> iar <code>prev</code> pointează spre ultimul nod procesat — care este noul head.</p>
+    </div>
+    <div class="box">
+      <h3>Q: Ce se întâmplă cu lista originală?</h3>
+      <p><strong>A:</strong> E modificată <strong>in-place</strong>. Dacă ai nevoie de structura originală, trebuie să o copiezi înainte.</p>
+    </div>
+    <div class="box">
+      <h3>Q: Cum tratezi edge cases?</h3>
+      <p><strong>A:</strong> <code>head = null</code>: bucla nu pornește, returnăm <code>null</code>. <code>head</code> cu un singur nod: o iterație, nodul pointează spre <code>null</code>, returnăm nodul. Ambele funcționează fără <code>if</code> explicit.</p>
+    </div>
+  </div>
+
+  <!-- ══ TRICK QUESTIONS ══ -->
+  <div class="section">
+    <h2>Capcane &amp; Trick Questions</h2>
+
+    <div class="warning">
+      <strong>"Poți face asta cu 2 pointeri, fără next temporar?"</strong>
+      <p style="margin-top:0.4rem">Nu. Ai nevoie de <code>next</code> temporar, altfel pierzi restul listei când suprascrii <code>curr.next</code>. Poți folosi destructuring în JS: <code>[prev, curr, curr.next] = [curr, curr.next, prev]</code> — dar tot sunt 3 valori.</p>
+    </div>
+    <div class="warning">
+      <strong>"Ce se întâmplă dacă inversezi de două ori?"</strong>
+      <p style="margin-top:0.4rem">Obții lista originală. Reversal este idempotent aplicat de două ori: reverse(reverse(list)) = list.</p>
+    </div>
+    <div class="warning">
+      <strong>"Este lista mutată sau copiată?"</strong>
+      <p style="margin-top:0.4rem">Mutată. Inversezi pointer-ii existenți in-place. Nodurile sunt aceleași obiecte în memorie.</p>
+    </div>
+  </div>
+
+  <!-- ══ INTERVIEW ANSWER ══ -->
+  <div class="section">
+    <h2>Răspuns de Interviu — 30 secunde</h2>
+    <div class="interview-answer">
+<em>„Reverse Linked List înseamnă să inversezi direcția tuturor pointer-ilor</em> <strong>next</strong><em>. Folosesc trei pointeri:</em> <strong>prev</strong><em> inițializat cu</em> <strong>null</strong><em>,</em> <strong>curr</strong><em> pornind de la</em> <strong>head</strong><em>, și</em> <strong>next</strong><em> pentru a salva temporar legătura înainte să o suprascriu — altfel pierdem restul listei. La fiecare pas fac</em> <strong>curr.next = prev</strong><em>, avansez prev la curr și curr la next. La final,</em> <strong>prev</strong><em> pointează spre noul head —</em> <strong>curr</strong><em> este null la ieșire. Time O(n), Space O(1). Prefer varianta iterativă față de recursivă deoarece recursivul consumă O(n) space pe call stack."</em>
+    </div>
+  </div>
+
+  <!-- ══ FEYNMAN ══ -->
+  <div class="section">
+    <h2>Feynman — pentru un copil de 10 ani</h2>
+    <div class="highlight-box">
+      <p>Ai 5 cuburi legate cu sfori: <strong>[1]→[2]→[3]→[4]→[5]</strong>.</p>
+      <p>Vrei să meargă în ordine inversă. Ce faci?</p>
+      <p>Iei primul cub, <strong>tai sfoara</strong> care merge spre [2], și legi o sfoară nouă spre... nimic (null). Iei [2], tai sfoara spre [3], legi o sfoară nouă spre [1]. Continui până la capăt.</p>
+      <p>La final ai <strong>[5]→[4]→[3]→[2]→[1]→null</strong>. Ai folosit doar mâinile tale — nicio cutie extra!</p>
+    </div>
+  </div>
+
+  <!-- ══ PATTERN ══ -->
+  <div class="section">
+    <h2>Pattern de Reținut</h2>
+    <div class="pattern-box">
+<span class="pkey">Pattern:      </span><span class="pval">Three-Pointer In-Place Reversal</span>
+<span class="pkey">Init:         </span><span class="pval">prev = null,  curr = head</span>
+<span class="pkey">Loop guard:   </span><span class="pval">curr !== null</span>
+<span class="pkey">Step 1:       </span><span class="pval">save next = curr.next         // always first!</span>
+<span class="pkey">Step 2:       </span><span class="pval">curr.next = prev              // reverse</span>
+<span class="pkey">Step 3:       </span><span class="pval">prev = curr                   // advance prev</span>
+<span class="pkey">Step 4:       </span><span class="pval">curr = next                   // advance curr</span>
+<span class="pkey">Return:       </span><span class="pval">prev                          // NOT curr (curr = null)</span>
+<span class="pkey">Time:         </span><span class="pval">O(n)</span>
+<span class="pkey">Space:        </span><span class="pval">O(1)</span>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>
