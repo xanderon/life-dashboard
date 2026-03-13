@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detect Cycle in Linked List — Interview Study</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #f0f2f5;
+    --card:     #ffffff;
+    --border:   #e2e8f0;
+    --text:     #1a202c;
+    --muted:    #64748b;
+    --accent:   #3b82f6;
+    --accent-l: #eff6ff;
+    --accent-d: #1d4ed8;
+    --green:    #16a34a;
+    --green-l:  #f0fdf4;
+    --red:      #dc2626;
+    --red-l:    #fef2f2;
+    --amber:    #d97706;
+    --amber-l:  #fffbeb;
+    --purple:   #7c3aed;
+    --purple-l: #f5f3ff;
+    --shadow:   0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.06);
+    --radius:   12px;
+    --mono:     'JetBrains Mono', monospace;
+    --sans:     'Inter', sans-serif;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 40px 20px 80px;
+    font-size: 15px;
+  }
+
+  .page { max-width: 860px; margin: 0 auto; }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px 36px 28px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+  }
+  .problem-number { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
+  .problem-title  { font-size: 26px; font-weight: 700; color: var(--text); margin-bottom: 16px; line-height: 1.2; }
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; letter-spacing: .04em;
+  }
+  .tag-easy   { background: var(--green-l);  color: var(--green);  border: 1px solid #bbf7d0; }
+  .tag-medium { background: var(--amber-l);  color: var(--amber);  border: 1px solid #fde68a; }
+  .tag-hard   { background: var(--red-l);    color: var(--red);    border: 1px solid #fecaca; }
+  .tag-blue   { background: var(--accent-l); color: var(--accent-d); border: 1px solid #bfdbfe; }
+  .tag-purple { background: var(--purple-l); color: var(--purple); border: 1px solid #ddd6fe; }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+  }
+  .card + .card { }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    letter-spacing: .1em; text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  h2 { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+  h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+  p  { margin-bottom: 12px; color: #374151; }
+  p:last-child { margin-bottom: 0; }
+  ul, ol { padding-left: 20px; }
+  li { margin-bottom: 6px; color: #374151; }
+  strong { font-weight: 600; color: var(--text); }
+
+  /* ── INLINE CODE ── */
+  code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: #f1f5f9;
+    color: #1e40af;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+  }
+
+  /* ── CODE BLOCK ── */
+  .code-wrap {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #1e293b;
+    margin: 16px 0;
+  }
+  .code-header {
+    background: #1a2332;
+    padding: 9px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #0f172a;
+  }
+  .code-dots { display: flex; gap: 5px; }
+  .code-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .code-lang { font-family: var(--mono); font-size: 11px; color: #64748b; }
+  .code-wrap pre[class*="language-"] {
+    margin: 0;
+    border-radius: 0;
+    font-size: 13px;
+    line-height: 1.75;
+    max-height: 520px;
+  }
+
+  /* ── BOXES ── */
+  .box {
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 14px 0;
+    border-left: 4px solid;
+  }
+  .box p:last-child { margin-bottom: 0; }
+
+  .box-info    { background: var(--accent-l); border-color: var(--accent); }
+  .box-info    p, .box-info li { color: #1e3a8a; }
+  .box-info    strong { color: #1e40af; }
+
+  .box-success { background: var(--green-l);  border-color: var(--green); }
+  .box-success p, .box-success li { color: #14532d; }
+
+  .box-warning { background: var(--amber-l);  border-color: var(--amber); }
+  .box-warning p, .box-warning li { color: #78350f; }
+
+  .box-danger  { background: var(--red-l);    border-color: var(--red); }
+  .box-danger  p, .box-danger li { color: #7f1d1d; }
+
+  .box-purple  { background: var(--purple-l); border-color: var(--purple); }
+  .box-purple  p, .box-purple li { color: #3b0764; }
+
+  /* ── EXAMPLE BLOCK ── */
+  .example-block {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 12px 0;
+  }
+  .example-header {
+    background: #f1f5f9;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  .example-body {
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.8;
+  }
+  .example-body .ex-label { color: var(--muted); font-weight: 500; }
+  .example-body .ex-val   { color: #1e293b; font-weight: 600; }
+  .example-body .ex-note  { color: var(--muted); font-size: 12px; }
+
+  /* ── STEP BLOCK ── */
+  .steps { display: flex; flex-direction: column; gap: 0; }
+  .step {
+    display: flex; gap: 16px; align-items: flex-start;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .step:last-child { border-bottom: none; padding-bottom: 0; }
+  .step-num {
+    flex-shrink: 0;
+    width: 30px; height: 30px;
+    background: var(--accent); color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    margin-top: 1px;
+  }
+  .step-content { flex: 1; }
+  .step-title { font-weight: 600; margin-bottom: 4px; }
+  .step-desc  { font-size: 14px; color: #374151; margin: 0; }
+
+  /* ── WALKTHROUGH ROWS ── */
+  .trace-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0; font-family: var(--mono); }
+  .trace-table th {
+    background: #f1f5f9; padding: 9px 12px;
+    text-align: left; font-weight: 600; font-size: 11px;
+    color: var(--muted); letter-spacing: .06em; text-transform: uppercase;
+    border-bottom: 2px solid var(--border);
+  }
+  .trace-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .trace-table tr:last-child td { border-bottom: none; }
+  .trace-table tr:hover td { background: #f8fafc; }
+  .trace-table .meet td { background: #f5f3ff; }
+  .cell-slow  { color: #0369a1; font-weight: 600; }
+  .cell-fast  { color: #c2410c; font-weight: 600; }
+  .cell-meet  { color: var(--purple); font-weight: 700; }
+  .cell-ok    { color: var(--green); font-weight: 600; }
+  .cell-no    { color: var(--red);   font-weight: 600; }
+
+  /* ── COMPLEXITY TABLE ── */
+  .cplx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+  .cplx-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+  }
+  .cplx-label { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; }
+  .cplx-value { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .cplx-reason { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+  /* ── MISTAKE ITEM ── */
+  .mistake-list { display: flex; flex-direction: column; gap: 12px; }
+  .mistake-item {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--red-l);
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .mistake-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .mistake-title { font-weight: 600; color: var(--red); margin-bottom: 4px; font-size: 14px; }
+  .mistake-desc { font-size: 13px; color: #7f1d1d; margin: 0; line-height: 1.5; }
+
+  /* ── INTERVIEW BOX ── */
+  .interview-quote {
+    position: relative;
+    background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%);
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 20px 24px;
+    font-style: italic;
+    color: #1e3a5f;
+    font-size: 15px;
+    line-height: 1.8;
+  }
+  .interview-quote::before {
+    content: '"';
+    position: absolute;
+    top: 4px; left: 14px;
+    font-size: 52px; color: #bfdbfe;
+    line-height: 1; font-style: normal;
+  }
+
+  /* ── PATTERN PILL ── */
+  .pattern-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .pattern-pill {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pill-blue   { background: var(--accent-l); color: var(--accent-d); border: 1px solid #bfdbfe; }
+  .pill-purple { background: var(--purple-l); color: var(--purple);   border: 1px solid #ddd6fe; }
+  .pill-green  { background: var(--green-l);  color: var(--green);    border: 1px solid #bbf7d0; }
+
+  /* ── COMPARISON TABLE ── */
+  .cmp-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  .cmp-table th {
+    background: #f8fafc; padding: 10px 14px;
+    text-align: left; font-size: 12px; font-weight: 700;
+    color: var(--muted); letter-spacing: .06em; text-transform: uppercase;
+    border-bottom: 2px solid var(--border);
+  }
+  .cmp-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .cmp-table tr:last-child td { border-bottom: none; }
+  .cmp-winner td:first-child { border-left: 3px solid var(--green); }
+  .badge-winner { display: inline-block; background: var(--green-l); color: var(--green); border: 1px solid #bbf7d0; border-radius: 4px; font-size: 11px; font-weight: 700; padding: 1px 8px; margin-left: 6px; }
+
+  /* ── LINE EXPLAIN ── */
+  .line-explain { display: flex; flex-direction: column; gap: 10px; }
+  .le-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .le-row:last-child { border-bottom: none; }
+  .le-code { font-family: var(--mono); font-size: 12px; color: #1e293b; background: #f1f5f9; padding: 8px 10px; border-radius: 6px; white-space: pre; overflow-x: auto; }
+  .le-desc { font-size: 13px; color: #374151; line-height: 1.55; }
+  .le-why  { font-size: 12px; color: var(--accent-d); margin-top: 4px; font-weight: 500; }
+
+  /* ── DIVIDER ── */
+  .divider { height: 1px; background: var(--border); margin: 8px 0 24px; }
+
+  /* ── FOOTER ── */
+  .footer { text-align: center; margin-top: 48px; font-size: 12px; color: var(--muted); }
+
+  @media print {
+    body { background: white; }
+    .code-wrap pre[class*="language-"] { max-height: none; }
+  }
+  @media (max-width: 600px) {
+    .card { padding: 20px 18px; }
+    .header { padding: 24px 20px; }
+    .le-row { grid-template-columns: 1fr; }
+    .cplx-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ══ HEADER ═══════════════════════════════════════════════════════ -->
+  <div class="header">
+    <div class="problem-number">LeetCode 141 · Linked List</div>
+    <div class="problem-title">Detect Cycle in Linked List</div>
+    <div class="tags">
+      <span class="tag tag-easy">Easy</span>
+      <span class="tag tag-blue">Two Pointers</span>
+      <span class="tag tag-blue">Linked List</span>
+      <span class="tag tag-purple">Floyd's Algorithm</span>
+      <span class="tag tag-purple">Fast &amp; Slow Pointers</span>
+    </div>
+  </div>
+
+  <!-- ══ PROBLEM STATEMENT ════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="section-title">Problem Statement</div>
+    <p>Given the <code>head</code> of a linked list, determine if the list has a <strong>cycle</strong> in it.</p>
+    <p>A cycle exists if some node can be reached again by continuously following the <code>next</code> pointer. Return <code>true</code> if there is a cycle, <code>false</code> otherwise.</p>
+
+    <div class="box box-info">
+      <p><strong>Constraint to keep in mind:</strong> The problem asks for <strong>O(1) space</strong> in the follow-up, which immediately rules out the HashSet approach and points toward Floyd's algorithm.</p>
+    </div>
+
+    <div class="example-block">
+      <div class="example-header">Example 1 — Has cycle</div>
+      <div class="example-body">
+        <div><span class="ex-label">Input:  </span><span class="ex-val">head = [3, 2, 0, -4]</span><span class="ex-note">  (tail connects to node at index 1)</span></div>
+        <div><span class="ex-label">Output: </span><span class="ex-val">true</span></div>
+        <div style="margin-top:10px; color:#64748b; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:2">
+          [3] → [2] → [0] → [-4]<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↑__________________|<br>
+          <span style="font-size:11px; color:#94a3b8">tail (-4) points back to node 2 → infinite loop</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="example-block">
+      <div class="example-header">Example 2 — No cycle</div>
+      <div class="example-body">
+        <div><span class="ex-label">Input:  </span><span class="ex-val">head = [1, 2]</span><span class="ex-note">  (tail connects to no node)</span></div>
+        <div><span class="ex-label">Output: </span><span class="ex-val">false</span></div>
+        <div style="margin-top:10px; color:#64748b; font-family:'JetBrains Mono',monospace; font-size:12px">
+          [1] → [2] → null
+        </div>
+      </div>
+    </div>
+
+    <div class="example-block">
+      <div class="example-header">Example 3 — Edge case</div>
+      <div class="example-body">
+        <div><span class="ex-label">Input:  </span><span class="ex-val">head = [1]</span></div>
+        <div><span class="ex-label">Output: </span><span class="ex-val">false</span></div>
+        <div style="margin-top:10px; color:#94a3b8; font-size:12px">Single node, next = null → return false immediately</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MAIN IDEA ════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="section-title">Main Idea — Intuition</div>
+    <h3>The Tortoise &amp; Hare</h3>
+    <p>Imagine two runners on a track. One runs at <strong>1× speed</strong> (slow), the other at <strong>2× speed</strong> (fast).</p>
+    <ul style="margin-bottom: 14px;">
+      <li>If the track is <strong>straight</strong> → fast reaches the end (<code>null</code>) first. No cycle.</li>
+      <li>If the track is <strong>circular</strong> → fast will eventually lap slow and they <strong>meet</strong>. Cycle exists.</li>
+    </ul>
+    <div class="box box-purple">
+      <p><strong>Why do they always meet?</strong> Think in relative terms: fast gains exactly 1 step on slow per iteration. Inside a cycle, the gap between them shrinks by 1 each round. Eventually the gap becomes 0 — they're on the same node.</p>
+    </div>
+    <p>Key insight: we only need <strong>two pointers</strong> and <strong>no extra memory</strong>. This is the O(1) space requirement the interviewer is looking for.</p>
+  </div>
+
+  <!-- ══ STEP-BY-STEP WALKTHROUGH ══════════════════════════════════════ -->
+  <div class="card">
+    <div class="section-title">Step-by-Step Walkthrough</div>
+    <p style="margin-bottom:16px">List: <code>1 → 2 → 3 → 4 → 2</code> (node with value 2 is the cycle entry point)</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">0</div>
+        <div class="step-content">
+          <div class="step-title">Initialization</div>
+          <p class="step-desc">Both <code>slow</code> and <code>fast</code> start at <code>head</code>. Edge case check: if <code>head</code> or <code>head.next</code> is null, return false immediately — no cycle possible.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Enter the while loop — evaluate condition</div>
+          <p class="step-desc">Check <code>fast !== null && fast.next !== null</code>. If fast reaches null, the list ended → no cycle. We check <code>fast.next</code> too because we need to call <code>fast.next.next</code> safely.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Advance pointers</div>
+          <p class="step-desc"><code>slow = slow.next</code> (1 step). <code>fast = fast.next.next</code> (2 steps). Fast builds a gap advantage of 1 per iteration.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Check if they meet</div>
+          <p class="step-desc"><code>if (slow === fast)</code> — comparing <strong>references</strong>, not values. If they point to the same node object → cycle detected, return <code>true</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">Loop exits → return false</div>
+          <p class="step-desc">fast reached <code>null</code>. The list has an end → no cycle. Return <code>false</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 20px;">
+      <h3 style="margin-bottom:12px">Iteration trace — list: 1→2→3→4→(back to 2)</h3>
+      <table class="trace-table">
+        <thead>
+          <tr>
+            <th>Iter</th>
+            <th>Condition</th>
+            <th>slow (🐢)</th>
+            <th>fast (🐇)</th>
+            <th>slow === fast?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Init</td>
+            <td>—</td>
+            <td class="cell-slow">node(1)</td>
+            <td class="cell-fast">node(1)</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>1</td>
+            <td class="cell-ok">✅ true</td>
+            <td class="cell-slow">node(2)</td>
+            <td class="cell-fast">node(3)</td>
+            <td class="cell-no">❌ no</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td class="cell-ok">✅ true</td>
+            <td class="cell-slow">node(3)</td>
+            <td class="cell-fast">node(2)</td>
+            <td class="cell-no">❌ no</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td class="cell-ok">✅ true</td>
+            <td class="cell-slow">node(4)</td>
+            <td class="cell-fast">node(4)</td>
+            <td class="cell-no">❌ no</td>
+          </tr>
+          <tr class="meet">
+            <td>4</td>
+            <td class="cell-ok">✅ true</td>
+            <td class="cell-slow">node(2)</td>
+            <td class="cell-fast">node(2)</td>
+            <td class="cell-meet">✅ MEET → return true</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ FINAL SOLUTION ════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="section-title">Final Solution</div>
+    <div class="code-wrap">
+      <div class="code-header">
+        <div class="code-dots">
+          <div class="code-dot" style="background:#ff5f57"></div>
+          <div class="code-dot" style="background:#febc2e"></div>
+          <div class="code-dot" style="background:#28c840"></div>
+        </div>
+        <span class="code-lang">hasCycle.js · Floyd's Algorithm · O(n) time · O(1) space</span>
+      </div>
+      <pre><code class="language-javascript">/**
+ * Definition for singly-linked list node.
+ * function ListNode(val) {
+ *   this.val = val;
+ *   this.next = null;
+ * }
+ */
+
+/**
+ * Floyd's Cycle Detection — Tortoise &amp; Hare
+ * @param {ListNode} head
+ * @return {boolean}
+ */
+function hasCycle(head) {
+
+  // ── EDGE CASE ─────────────────────────────────────────────────────
+  // Empty list or single node → can't have a cycle.
+  // Also prevents null-dereference errors below.
+  if (!head || !head.next) return false;
+
+  // ── INITIALIZE POINTERS ───────────────────────────────────────────
+  // Both start at head. slow moves 1 step; fast moves 2 steps.
+  // Starting at the same place is intentional — first advance happens
+  // inside the loop before the equality check.
+  let slow = head;
+  let fast = head;
+
+  // ── MAIN LOOP ─────────────────────────────────────────────────────
+  // We need BOTH guards:
+  //   fast !== null         → fast hasn't walked off the end yet
+  //   fast.next !== null    → calling fast.next.next won't throw
+  while (fast !== null &amp;&amp; fast.next !== null) {
+
+    // Advance slow by 1 step
+    slow = slow.next;
+
+    // Advance fast by 2 steps (gains 1 step on slow per iteration)
+    fast = fast.next.next;
+
+    // ── MEETING CHECK ──────────────────────────────────────────────
+    // Compare REFERENCES (object identity), not .val!
+    // Two different nodes can hold the same value — that's not a cycle.
+    if (slow === fast) return true;  // They're on the same node → cycle!
+  }
+
+  // ── NO CYCLE ──────────────────────────────────────────────────────
+  // fast reached null → the list has a definite end.
+  return false;
+}
+</code></pre>
+    </div>
+
+    <!-- HashSet alternative -->
+    <details style="margin-top:8px">
+      <summary style="cursor:pointer; font-size:14px; font-weight:600; color:var(--muted); padding:8px 0; user-select:none">▸ Show naive HashSet solution (O(n) space)</summary>
+      <div class="code-wrap" style="margin-top:10px">
+        <div class="code-header">
+          <div class="code-dots">
+            <div class="code-dot" style="background:#ff5f57"></div>
+            <div class="code-dot" style="background:#febc2e"></div>
+            <div class="code-dot" style="background:#28c840"></div>
+          </div>
+          <span class="code-lang">hasCycle-hashset.js · O(n) time · O(n) space</span>
+        </div>
+        <pre><code class="language-javascript">function hasCycle(head) {
+  // Store every visited node reference in a Set.
+  // If we encounter a node we've seen before → cycle.
+  const seen = new Set();
+
+  let current = head;
+  while (current !== null) {
+    if (seen.has(current)) return true;  // Already visited → cycle!
+    seen.add(current);                   // Mark as visited
+    current = current.next;
+  }
+
+  return false;  // Reached null → no cycle
+}
+</code></pre>
+      </div>
+    </details>
+  </div>
+
+  <!-- ══ LINE-BY-LINE EXPLANATION ══════════════════════════════════════ -->
+  <div class="card">
+    <div class="section-title">Line-by-Line Explanation</div>
+    <div class="line-explain">
+      <div class="le-row">
+        <div class="le-code">if (!head || !head.next) return false;</div>
+        <div class="le-desc">
+          <strong>Edge case guard.</strong> Handles empty list and single-node list. A cycle requires at least 2 nodes with one pointing back.
+          <div class="le-why">→ Without this, <code>head.next.next</code> would throw a TypeError.</div>
+        </div>
+      </div>
+      <div class="le-row">
+        <div class="le-code">let slow = head;
+let fast = head;</div>
+        <div class="le-desc">
+          <strong>Both start at head.</strong> The first real move happens inside the loop, so starting at the same position is safe — they won't trigger a false-positive meet on init.
+        </div>
+      </div>
+      <div class="le-row">
+        <div class="le-code">while (fast !== null &amp;&amp;
+       fast.next !== null)</div>
+        <div class="le-desc">
+          <strong>Two guards, both required.</strong> <code>fast !== null</code> prevents calling <code>.next</code> on null. <code>fast.next !== null</code> prevents calling <code>.next.next</code> when fast is the last node.
+        </div>
+      </div>
+      <div class="le-row">
+        <div class="le-code">slow = slow.next;
+fast = fast.next.next;</div>
+        <div class="le-desc">
+          <strong>Speed differential = 1 per step.</strong> This relative gain is what guarantees fast catches slow inside any cycle in at most <em>cycle_length</em> iterations.
+        </div>
+      </div>
+      <div class="le-row">
+        <div class="le-code">if (slow === fast) return true;</div>
+        <div class="le-desc">
+          <strong>Reference equality, not value!</strong> <code>===</code> on objects checks if they are the exact same object in memory. Two nodes with value <code>2</code> are not a cycle unless they are literally the same node.
+        </div>
+      </div>
+      <div class="le-row">
+        <div class="le-code">return false;</div>
+        <div class="le-desc">
+          <strong>Fast exited naturally.</strong> The only way to exit the while loop without returning <code>true</code> is if <code>fast</code> or <code>fast.next</code> became null → the list has an endpoint → no cycle.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ COMMON MISTAKES ───────────────────────────────────────────── -->
+  <div class="card">
+    <div class="section-title">Common Mistakes</div>
+    <div class="mistake-list">
+      <div class="mistake-item">
+        <div class="mistake-icon">⚠️</div>
+        <div>
+          <div class="mistake-title">Comparing .val instead of references</div>
+          <p class="mistake-desc"><code>if (slow.val === fast.val)</code> is wrong. Two different nodes can have the same value. You need <code>slow === fast</code> to compare object identity (memory address).</p>
+        </div>
+      </div>
+      <div class="mistake-item">
+        <div class="mistake-icon">⚠️</div>
+        <div>
+          <div class="mistake-title">Missing the fast.next guard</div>
+          <p class="mistake-desc">Writing <code>while (fast !== null)</code> without checking <code>fast.next !== null</code>. If fast is the last node, <code>fast.next.next</code> throws a TypeError at runtime.</p>
+        </div>
+      </div>
+      <div class="mistake-item">
+        <div class="mistake-icon">⚠️</div>
+        <div>
+          <div class="mistake-title">Forgetting the edge case check</div>
+          <p class="mistake-desc">Jumping straight into the loop with an empty list or single-node list causes immediate crashes. Always guard with <code>if (!head || !head.next) return false</code> first.</p>
+        </div>
+      </div>
+      <div class="mistake-item">
+        <div class="mistake-icon">⚠️</div>
+        <div>
+          <div class="mistake-title">Using HashSet when O(1) space is required</div>
+          <p class="mistake-desc">HashSet is valid for LeetCode 141 but interviewers often follow up with "can you do it with constant space?" — always lead with Floyd's and mention HashSet as the naive alternative.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ COMPLEXITY ═══════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="section-title">Complexity Analysis</div>
+    <div class="cplx-grid">
+      <div class="cplx-card">
+        <div class="cplx-label">Time Complexity</div>
+        <div class="cplx-value">O(n)</div>
+        <div class="cplx-reason">slow visits at most <em>n</em> nodes before they meet or fast exits. Even inside a cycle, fast gains 1 step per iteration → meets slow in at most <em>cycle_length</em> steps.</div>
+      </div>
+      <div class="cplx-card">
+        <div class="cplx-label">Space Complexity</div>
+        <div class="cplx-value">O(1)</div>
+        <div class="cplx-reason">Only two pointer variables, regardless of list length. No auxiliary data structure. This is the key advantage over the HashSet approach.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ COMPARISON ═══════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="section-title">Approach Comparison</div>
+    <table class="cmp-table">
+      <thead>
+        <tr>
+          <th>Approach</th>
+          <th>Time</th>
+          <th>Space</th>
+          <th>When to mention</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>HashSet (visited set)</td>
+          <td>O(n)</td>
+          <td>O(n)</td>
+          <td>Mention as the intuitive naive solution first</td>
+        </tr>
+        <tr class="cmp-winner">
+          <td><strong>Floyd's Two Pointers</strong><span class="badge-winner">optimal</span></td>
+          <td>O(n)</td>
+          <td><strong>O(1)</strong></td>
+          <td>This is the expected answer. Always lead with this.</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="box box-success" style="margin-top:14px">
+      <p><strong>Interview tip:</strong> Start by saying "I can solve this in two ways." Briefly describe the HashSet approach (easier to reason about), then say "but since we want O(1) space, I'll use Floyd's cycle detection." This shows you know the trade-offs.</p>
+    </div>
+  </div>
+
+  <!-- ══ INTERVIEW ANSWER ══════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="section-title">30-Second Interview Answer</div>
+    <div class="interview-quote">
+      "I'll use Floyd's cycle detection — two pointers, slow and fast. Slow advances one step per iteration, fast advances two steps. If there's no cycle, fast reaches null and we return false. If there's a cycle, fast will eventually lap slow inside the loop and they'll land on the same node, so we return true. Time complexity is O(n) and space is O(1) — just two pointer variables."
+    </div>
+  </div>
+
+  <!-- ══ PATTERN ═══════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="section-title">Pattern to Remember</div>
+    <p><strong>Fast &amp; Slow Pointers</strong> (Tortoise &amp; Hare) is the pattern. Whenever you see:</p>
+    <ul style="margin-bottom:14px">
+      <li>Detect a cycle in any sequence / linked list</li>
+      <li>Find the <strong>entry point</strong> of a cycle (LeetCode 142)</li>
+      <li>Find the <strong>middle node</strong> of a linked list (when fast reaches end, slow is at mid)</li>
+      <li>Find a <strong>duplicate number</strong> in an array (LeetCode 287 — same algorithm!)</li>
+    </ul>
+    <div class="pattern-row">
+      <span class="pattern-pill pill-blue">🐢 slow = head → +1 step</span>
+      <span class="pattern-pill pill-purple">🐇 fast = head → +2 steps</span>
+      <span class="pattern-pill pill-green">meet → cycle or midpoint</span>
+    </div>
+    <div class="box box-info" style="margin-top:16px">
+      <p><strong>Bonus — find cycle entry point (LC 142):</strong> After slow and fast meet, reset slow to head. Advance both by 1 step at a time. Where they meet again is the entry node of the cycle. This works due to a beautiful mathematical property: the distance from head to entry equals the distance from the meeting point to entry (going forward inside the cycle).</p>
+    </div>
+  </div>
+
+  <!-- ══ RELATED PROBLEMS ══════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="section-title">Related Problems (same pattern)</div>
+    <table class="cmp-table">
+      <thead>
+        <tr><th>Problem</th><th>Variation</th><th>Difficulty</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>LC 142 · Linked List Cycle II</td>
+          <td>Return entry node of cycle</td>
+          <td><span class="tag tag-medium" style="font-size:11px">Medium</span></td>
+        </tr>
+        <tr>
+          <td>LC 876 · Middle of Linked List</td>
+          <td>fast reaches end → slow is mid</td>
+          <td><span class="tag tag-easy" style="font-size:11px">Easy</span></td>
+        </tr>
+        <tr>
+          <td>LC 287 · Find the Duplicate Number</td>
+          <td>Floyd's on an implicit linked list</td>
+          <td><span class="tag tag-medium" style="font-size:11px">Medium</span></td>
+        </tr>
+        <tr>
+          <td>LC 234 · Palindrome Linked List</td>
+          <td>Find mid with slow/fast, then reverse</td>
+          <td><span class="tag tag-easy" style="font-size:11px">Easy</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">Floyd's Cycle Detection · LeetCode 141 · Study Sheet</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>

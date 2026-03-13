@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Merge Sort — Technical Interview Study Page</title>
+
+  <!-- Prism.js -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --success-bg: #ecfdf5;
+      --success-border: #a7f3d0;
+      --warning-bg: #fffbeb;
+      --warning-border: #fde68a;
+      --example-bg: #f8fafc;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f8fafc 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    .page {
+      max-width: 1050px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(229, 231, 235, 0.85);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 36px 36px 26px;
+      background:
+        radial-gradient(circle at top right, rgba(37, 99, 235, 0.09), transparent 30%),
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 25%),
+        #ffffff;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 6px 10px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 2.2rem;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.03rem;
+      max-width: 780px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      font-size: 0.9rem;
+      color: #1d4ed8;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    .content {
+      padding: 28px 36px 40px;
+    }
+
+    section {
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 1.35rem;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+
+    h3 {
+      margin: 18px 0 10px;
+      font-size: 1.02rem;
+      line-height: 1.35;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    ul, ol {
+      margin: 10px 0 10px 22px;
+      padding: 0;
+    }
+
+    li { margin: 6px 0; }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(12, 1fr);
+    }
+
+    .col-6 { grid-column: span 6; }
+    .col-12 { grid-column: span 12; }
+
+    .box, .example, .warning, .success {
+      border-radius: var(--radius);
+      padding: 18px 18px 16px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .example {
+      background: var(--example-bg);
+    }
+
+    .warning {
+      background: var(--warning-bg);
+      border-color: var(--warning-border);
+    }
+
+    .success {
+      background: var(--success-bg);
+      border-color: var(--success-border);
+    }
+
+    code:not(pre code) {
+      background: #f3f4f6;
+      color: #111827;
+      padding: 0.18rem 0.38rem;
+      border-radius: 8px;
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 14px 0 0;
+      border-radius: 16px;
+      overflow: auto;
+      border: 1px solid #e5e7eb;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+
+    pre code {
+      font-size: 0.92rem;
+    }
+
+    .ascii {
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      padding: 16px;
+      border-radius: 16px;
+      overflow-x: auto;
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      border-radius: 14px;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      font-size: 0.95rem;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    .muted { color: var(--muted); }
+
+    .step {
+      margin: 12px 0;
+      padding: 14px 16px;
+      border-left: 4px solid var(--accent);
+      background: #f8fbff;
+      border-radius: 0 14px 14px 0;
+    }
+
+    .small {
+      font-size: 0.94rem;
+      color: var(--muted);
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 30px 0;
+    }
+
+    @media (max-width: 820px) {
+      .hero, .content {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+
+      .col-6, .col-12 {
+        grid-column: span 12;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .page {
+        max-width: none;
+        padding: 0;
+      }
+
+      .card {
+        border: none;
+        box-shadow: none;
+      }
+
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <article class="card">
+      <header class="hero">
+        <div class="eyebrow">Technical Interview Study Page</div>
+        <h1>Merge Sort</h1>
+        <p class="subtitle">
+          A classic <strong>divide and conquer</strong> sorting algorithm. It is important in interviews because it is clean,
+          predictable, stable, and a great way to show that you understand recursion, array splitting, and merging sorted data.
+        </p>
+
+        <div class="tags">
+          <span class="tag">Algorithms</span>
+          <span class="tag">Sorting</span>
+          <span class="tag">Divide and Conquer</span>
+          <span class="tag">Recursion</span>
+          <span class="tag">JavaScript</span>
+          <span class="tag">Interview Prep</span>
+        </div>
+      </header>
+
+      <main class="content">
+        <section>
+          <h2>1. Problem Statement</h2>
+          <div class="box">
+            <p>
+              Given an array of numbers, sort it in ascending order using <strong>Merge Sort</strong>.
+            </p>
+            <p class="small">
+              Example goal: turn <code>[5, 3, 8, 4, 2]</code> into <code>[2, 3, 4, 5, 8]</code>.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>2. Examples</h2>
+          <div class="grid">
+            <div class="example col-6">
+              <h3>Example 1</h3>
+              <p><strong>Input:</strong> <code>[5, 3, 8, 4, 2]</code></p>
+              <p><strong>Output:</strong> <code>[2, 3, 4, 5, 8]</code></p>
+            </div>
+            <div class="example col-6">
+              <h3>Example 2</h3>
+              <p><strong>Input:</strong> <code>[4, 1, 3, 2]</code></p>
+              <p><strong>Output:</strong> <code>[1, 2, 3, 4]</code></p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>3. Main Idea / Intuition</h2>
+          <div class="success">
+            <p>
+              Merge Sort works in <strong>two big phases</strong>:
+            </p>
+            <ol>
+              <li><strong>Split</strong> the array into smaller halves until each piece has 1 element.</li>
+              <li><strong>Merge</strong> those small sorted pieces back together in sorted order.</li>
+            </ol>
+            <p>
+              A single element is already sorted. The real work is in the <code>merge(left, right)</code> step.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>4. Visual Overview</h2>
+          <div class="ascii">Input: [8, 3, 5, 2]
+
+Split phase:
+                [8, 3, 5, 2]
+               /            \
+           [8, 3]          [5, 2]
+           /    \          /    \
+         [8]    [3]      [5]    [2]
+
+Merge phase:
+         [8] + [3]  →  [3, 8]
+         [5] + [2]  →  [2, 5]
+
+Final merge:
+         [3, 8] + [2, 5]  →  [2, 3, 5, 8]</div>
+        </section>
+
+        <section>
+          <h2>5. Step-by-Step Walkthrough</h2>
+
+          <div class="step">
+            <strong>Step 1: Start with the full array</strong><br />
+            <code>[5, 3, 8, 4, 2]</code>
+          </div>
+
+          <div class="step">
+            <strong>Step 2: Split into halves</strong><br />
+            Left = <code>[5, 3]</code><br />
+            Right = <code>[8, 4, 2]</code>
+          </div>
+
+          <div class="step">
+            <strong>Step 3: Keep splitting recursively</strong><br />
+            <code>[5, 3]</code> becomes <code>[5]</code> and <code>[3]</code><br />
+            <code>[8, 4, 2]</code> becomes <code>[8]</code> and <code>[4, 2]</code><br />
+            <code>[4, 2]</code> becomes <code>[4]</code> and <code>[2]</code>
+          </div>
+
+          <div class="step">
+            <strong>Step 4: Merge small sorted arrays</strong><br />
+            <code>[5]</code> + <code>[3]</code> → <code>[3, 5]</code><br />
+            <code>[4]</code> + <code>[2]</code> → <code>[2, 4]</code>
+          </div>
+
+          <div class="step">
+            <strong>Step 5: Merge bigger sorted arrays</strong><br />
+            <code>[8]</code> + <code>[2, 4]</code> → <code>[2, 4, 8]</code>
+          </div>
+
+          <div class="step">
+            <strong>Step 6: Final merge</strong><br />
+            <code>[3, 5]</code> + <code>[2, 4, 8]</code> → <code>[2, 3, 4, 5, 8]</code>
+          </div>
+        </section>
+
+        <section>
+          <h2>6. The Most Important Part: How <code>merge()</code> Works</h2>
+          <div class="box">
+            <p>Suppose we already have two sorted arrays:</p>
+            <p><code>left = [3, 8]</code></p>
+            <p><code>right = [2, 5]</code></p>
+            <p>We compare the current elements one by one:</p>
+          </div>
+
+          <div class="ascii">left   = [3, 8]
+          i
+right  = [2, 5]
+          j
+result = []
+
+Compare left[i] and right[j]:
+
+1) 3 vs 2  → take 2
+result = [2]
+
+2) 3 vs 5  → take 3
+result = [2, 3]
+
+3) 8 vs 5  → take 5
+result = [2, 3, 5]
+
+right is finished, so append the rest of left:
+result = [2, 3, 5, 8]</div>
+
+          <div class="warning">
+            <p>
+              <strong>Key idea:</strong> the <code>while</code> loop is not doing the recursive splitting.
+              It is only used to merge <strong>two already sorted arrays</strong>.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>7. Final JavaScript Solution</h2>
+<pre><code class="language-javascript">function mergeSort(arr) {
+  // Base case:
+  // If the array has 0 or 1 element, it is already sorted.
+  if (arr.length &lt;= 1) {
+    return arr;
+  }
+
+  // Find the middle index
+  const mid = Math.floor(arr.length / 2);
+
+  // Split the array into left and right halves
+  const leftHalf = arr.slice(0, mid);
+  const rightHalf = arr.slice(mid);
+
+  // Recursively sort each half
+  const sortedLeft = mergeSort(leftHalf);
+  const sortedRight = mergeSort(rightHalf);
+
+  // Merge the two sorted halves
+  return merge(sortedLeft, sortedRight);
+}
+
+function merge(left, right) {
+  const result = [];
+  let i = 0;
+  let j = 0;
+
+  // Compare elements from both arrays
+  while (i &lt; left.length &amp;&amp; j &lt; right.length) {
+    if (left[i] &lt; right[j]) {
+      result.push(left[i]);
+      i++;
+    } else {
+      result.push(right[j]);
+      j++;
+    }
+  }
+
+  // Add any remaining elements
+  while (i &lt; left.length) {
+    result.push(left[i]);
+    i++;
+  }
+
+  while (j &lt; right.length) {
+    result.push(right[j]);
+    j++;
+  }
+
+  return result;
+}
+
+// Example
+console.log(mergeSort([5, 3, 8, 4, 2])); // [2, 3, 4, 5, 8]</code></pre>
+        </section>
+
+        <section>
+          <h2>8. Line-by-Line Explanation</h2>
+          <div class="box">
+            <h3><code>mergeSort(arr)</code></h3>
+            <ul>
+              <li><code>if (arr.length &lt;= 1)</code>: stop condition for recursion.</li>
+              <li><code>mid</code>: where we split the array.</li>
+              <li><code>slice(0, mid)</code>: left half.</li>
+              <li><code>slice(mid)</code>: right half.</li>
+              <li><code>mergeSort(leftHalf)</code>: recursively sort left.</li>
+              <li><code>mergeSort(rightHalf)</code>: recursively sort right.</li>
+              <li><code>merge(sortedLeft, sortedRight)</code>: combine them into one sorted array.</li>
+            </ul>
+
+            <h3><code>merge(left, right)</code></h3>
+            <ul>
+              <li><code>result</code>: final merged array.</li>
+              <li><code>i</code>: pointer for <code>left</code>.</li>
+              <li><code>j</code>: pointer for <code>right</code>.</li>
+              <li><code>while (i &lt; left.length &amp;&amp; j &lt; right.length)</code>: keep comparing while both arrays still have elements.</li>
+              <li>If <code>left[i]</code> is smaller, push it and move <code>i</code>.</li>
+              <li>Otherwise, push <code>right[j]</code> and move <code>j</code>.</li>
+              <li>After the loop, append the remaining elements from whichever side is not finished.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h2>9. Why It Uses Recursion + a Second Function</h2>
+          <div class="grid">
+            <div class="success col-6">
+              <h3>Why recursion?</h3>
+              <p>
+                Recursion is used for the <strong>split phase</strong>.
+                Merge Sort naturally says: “sort the left half” and “sort the right half,”
+                and those are just smaller versions of the same problem.
+              </p>
+            </div>
+            <div class="example col-6">
+              <h3>Why a second function?</h3>
+              <p>
+                The second function, usually <code>merge()</code>, handles the <strong>merge phase</strong>.
+                It solves a different sub-problem: given two sorted arrays, combine them efficiently.
+              </p>
+            </div>
+          </div>
+
+          <div class="warning">
+            <p>
+              Interview answer:
+              <strong>“Merge Sort is usually written with recursion for splitting, and a helper function for merging.”</strong>
+              There is also an iterative version called <em>bottom-up merge sort</em>, but the recursive one is the most common in interviews.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>10. Common Mistakes</h2>
+          <div class="warning">
+            <ul>
+              <li>
+                <strong>Confusing the roles:</strong> recursion splits, <code>merge()</code> combines.
+              </li>
+              <li>
+                <strong>Forgetting the base case:</strong> without <code>arr.length &lt;= 1</code>, recursion never stops.
+              </li>
+              <li>
+                <strong>Not adding leftover elements:</strong> after the main <code>while</code>, one side may still have items.
+              </li>
+              <li>
+                <strong>Using expensive operations like <code>shift()</code> repeatedly:</strong> in JavaScript, <code>shift()</code> is typically O(n), which hurts performance.
+              </li>
+              <li>
+                <strong>Thinking merge sort is in-place:</strong> the standard version uses extra memory.
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h2>11. Complexity</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Case</th>
+                <th>Time Complexity</th>
+                <th>Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Best</td>
+                <td><code>O(n log n)</code></td>
+                <td>Still splits and merges every level</td>
+              </tr>
+              <tr>
+                <td>Average</td>
+                <td><code>O(n log n)</code></td>
+                <td>Balanced divide + linear merge work per level</td>
+              </tr>
+              <tr>
+                <td>Worst</td>
+                <td><code>O(n log n)</code></td>
+                <td>Unlike quicksort, merge sort stays predictable</td>
+              </tr>
+              <tr>
+                <td>Space</td>
+                <td><code>O(n)</code></td>
+                <td>Extra arrays are created during merging</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="box">
+            <p>
+              Intuition for <code>O(n log n)</code>:
+            </p>
+            <ul>
+              <li>There are about <code>log n</code> levels of splitting.</li>
+              <li>At each level, the total work done by merging is about <code>n</code>.</li>
+              <li>So total work is <code>n × log n</code>.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h2>12. Interview Explanation Version</h2>
+          <div class="success">
+            <p>
+              <strong>30-second version:</strong><br />
+              “Merge Sort is a divide-and-conquer sorting algorithm. It recursively splits the array into halves until each subarray has one element, then merges those sorted subarrays back together. The merge step is linear, and because there are log n levels of splitting, the total time complexity is O(n log n). It is stable, but it uses O(n) extra space.”
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>13. Pattern to Remember</h2>
+          <div class="box">
+            <p><strong>Pattern:</strong> <code>split → solve subproblems → merge results</code></p>
+            <p>
+              This same interview pattern appears in:
+            </p>
+            <ul>
+              <li>Merge Sort</li>
+              <li>Binary tree recursion</li>
+              <li>Divide and conquer problems</li>
+              <li>Problems like “merge two sorted arrays/lists”</li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h2>14. Optional Brute Force Comparison</h2>
+          <div class="grid">
+            <div class="example col-6">
+              <h3>Bubble Sort mindset</h3>
+              <p>
+                Compare neighbors again and again until everything is sorted.
+              </p>
+              <p><strong>Time:</strong> <code>O(n²)</code></p>
+            </div>
+            <div class="success col-6">
+              <h3>Merge Sort mindset</h3>
+              <p>
+                Break the problem into smaller sorted parts, then merge intelligently.
+              </p>
+              <p><strong>Time:</strong> <code>O(n log n)</code></p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>15. Final Takeaway</h2>
+          <div class="success">
+            <p>
+              If you remember only one thing, remember this:
+            </p>
+            <p>
+              <strong>Merge Sort = recursion for splitting + while loop for merging.</strong>
+            </p>
+            <p>
+              The recursion is not the scary part once you see that it just keeps cutting the array into smaller pieces.
+              The <code>merge()</code> function is the real engine: it combines two sorted arrays into one sorted result.
+            </p>
+          </div>
+        </section>
+      </main>
+    </article>
+  </div>
+</body>
+</html>
