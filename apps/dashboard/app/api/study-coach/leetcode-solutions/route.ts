@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 
 type LeetCategory =
   | 'study_guides'
+  | 'real_life_questions'
   | 'theory_oop_solid'
   | 'theory_dsa'
   | 'theory_runtime'
@@ -30,9 +31,11 @@ type SolutionDoc = {
 
 const DOCS_ROOT = path.join(process.cwd(), 'app', 'study-coach', 'htmldocs');
 const THEORY_ROOT = path.join(process.cwd(), 'app', 'study-coach', 'htmldocstheory');
+const REAL_LIFE_ROOT = path.join(process.cwd(), 'app', 'study-coach', 'htmlreallifequestions');
 
 const CATEGORY_HINTS: Array<{ id: LeetCategory; hints: string[] }> = [
   { id: 'study_guides', hints: ['learning.method', 'learning method'] },
+  { id: 'real_life_questions', hints: ['real-life', 'real life', 'myapp', 'my app', 'issue solved'] },
   { id: 'linked_list', hints: ['linkedlist', 'linked_list', 'linked-list'] },
   { id: 'binary_search', hints: ['binarysearch', 'binary_search', 'binary-search'] },
   { id: 'binary_tree', hints: ['binarytree', 'binary_tree', 'binary-tree', 'tree'] },
@@ -154,6 +157,7 @@ function inferCategory(file: string, parts: string[]): LeetCategory {
   const joined = file.toLowerCase();
 
   if (joined.startsWith('theory/')) return inferTheoryCategory(joined);
+  if (joined.startsWith('real_life/')) return 'real_life_questions';
   if (joined.includes('linkedlist') || joined.includes('linked_list') || joined.includes('linked-list')) return 'linked_list';
   if (joined.includes('binarysearch') || joined.includes('binary_search') || joined.includes('binary-search')) return 'binary_search';
   if (joined.includes('learning.method') || joined.includes('learning method')) return 'study_guides';
@@ -196,6 +200,8 @@ function prettifyTitle(parts: string[], num: number | null) {
     lsp: 'liskov substitution principle',
     bfs: 'breadth first search',
     dfs: 'depth first search',
+    designpatternsinmyapp: 'design patterns in my app',
+    'real-life-issue-solved-by-me-rabbit': 'real life issue solved by me rabbit',
     nterface: 'interface',
     polymorphisma: 'polymorphism',
   };
@@ -254,6 +260,12 @@ export async function GET() {
     if (theoryStat?.isDirectory()) {
       const files = await walkHtmlFiles(THEORY_ROOT);
       docs.push(...files.map((f) => `theory/${f.replace(/\\/g, '/')}`));
+    }
+
+    const realLifeStat = await fs.stat(REAL_LIFE_ROOT).catch(() => null);
+    if (realLifeStat?.isDirectory()) {
+      const files = await walkHtmlFiles(REAL_LIFE_ROOT);
+      docs.push(...files.map((f) => `real_life/${f.replace(/\\/g, '/')}`));
     }
 
     const parsed = docs

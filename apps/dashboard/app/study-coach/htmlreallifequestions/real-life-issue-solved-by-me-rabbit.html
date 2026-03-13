@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RabbitMQ Channel Exhaustion Issue – Interview-Ready Case Study</title>
+
+  <!-- Prism -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" rel="stylesheet" />
+  <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #667085;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-soft: #dbeafe;
+      --success: #16a34a;
+      --success-soft: #dcfce7;
+      --warn: #d97706;
+      --warn-soft: #fef3c7;
+      --danger: #dc2626;
+      --danger-soft: #fee2e2;
+      --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, #eef4ff 0%, transparent 26%),
+        radial-gradient(circle at top right, #eefcf5 0%, transparent 22%),
+        var(--bg);
+      line-height: 1.65;
+    }
+
+    .page {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 20px 72px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #f8fbff, #ffffff);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 34px 32px;
+      box-shadow: var(--shadow);
+      margin-bottom: 26px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--primary);
+      background: var(--primary-soft);
+      border-radius: 999px;
+      padding: 6px 10px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(2rem, 3.8vw, 3rem);
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      margin: 0;
+      max-width: 920px;
+      font-size: 1.04rem;
+      color: var(--muted);
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 0.92rem;
+      color: #344054;
+      font-weight: 600;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    .box, .example, .warning, .success {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .example {
+      border-left: 6px solid var(--primary);
+    }
+
+    .warning {
+      background: linear-gradient(180deg, #fffdf8, #ffffff);
+      border-left: 6px solid var(--warn);
+    }
+
+    .success {
+      background: linear-gradient(180deg, #f8fff9, #ffffff);
+      border-left: 6px solid var(--success);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 1.5rem;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+
+    h3 {
+      margin: 22px 0 10px;
+      font-size: 1.08rem;
+      line-height: 1.35;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    ul, ol {
+      margin: 0 0 12px 22px;
+      padding: 0;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    code:not(pre code) {
+      background: #eef2ff;
+      color: #3730a3;
+      padding: 0.18em 0.45em;
+      border-radius: 8px;
+      font-size: 0.92em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    pre {
+      overflow-x: auto;
+      border-radius: 14px;
+      border: 1px solid #e6e8ef;
+      padding: 18px !important;
+      background: #fafafa !important;
+      margin: 14px 0 18px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .three-col {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      background: #fcfdff;
+    }
+
+    .metric .label {
+      display: block;
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .metric .value {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .mini-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #0f172a;
+    }
+
+    .flow {
+      background: #0f172a;
+      color: #e5eefc;
+      border-radius: 16px;
+      padding: 18px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.95rem;
+      line-height: 1.7;
+      margin-top: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 10px;
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 14px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      font-size: 0.93rem;
+      color: #334155;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .callout-title {
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .quote {
+      margin-top: 10px;
+      padding: 16px 18px;
+      border-radius: 14px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      font-size: 1rem;
+    }
+
+    .pattern-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .pattern-pill {
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    .footer-note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .section-anchor {
+      display: inline-block;
+      color: var(--primary);
+      font-size: 0.86rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    @media (max-width: 900px) {
+      .two-col, .three-col {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding: 26px 22px;
+      }
+
+      .box, .example, .warning, .success {
+        padding: 20px;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .page {
+        max-width: none;
+        padding: 0;
+      }
+
+      .hero, .box, .example, .warning, .success {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+
+      pre {
+        white-space: pre-wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="eyebrow">Interview-Ready Engineering Case Study</div>
+      <h1>RabbitMQ Channel Exhaustion Issue – Root Cause, Investigation, and Fix</h1>
+      <p class="subtitle">
+        A production-style scalability problem discovered during pre-prod / UAT scale testing in <code>xc1p-monitoring</code>,
+        traced to RabbitMQ channel lifecycle misuse inside a shared utility, then fixed through channel reuse,
+        synchronization, idle cleanup, and safer resource management.
+      </p>
+
+      <div class="tags">
+        <span class="tag">Distributed Systems</span>
+        <span class="tag">RabbitMQ</span>
+        <span class="tag">Scalability</span>
+        <span class="tag">Performance Debugging</span>
+        <span class="tag">Node.js</span>
+        <span class="tag">Clean Code</span>
+        <span class="tag">Resource Pooling</span>
+        <span class="tag">Concurrency Control</span>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="box">
+        <div class="section-anchor">1. Problem Statement</div>
+        <h2>What was happening?</h2>
+        <p>
+          In pre-prod / UAT scale testing, we observed a large number of RabbitMQ publishing failures in
+          <code>xc1p-monitoring</code>. The visible symptom in logs was:
+        </p>
+        <div class="warning">
+          <div class="callout-title">Observed error</div>
+          <p><code>Failed to send message on exchange XC1-Monitoring</code></p>
+        </div>
+
+        <p>
+          Investigation in OpenSearch showed the failures were heavily concentrated around
+          <code>POST /api/v1/monitoring/events</code>, with roughly <strong>~4000 errors</strong>.
+          The traffic was mainly coming from <code>xc1p-updates</code>, which was pushing large volumes of events
+          toward monitoring during scale scenarios.
+        </p>
+
+        <div class="three-col">
+          <div class="metric">
+            <span class="label">Environment</span>
+            <div class="value">Pre-prod / UAT</div>
+          </div>
+          <div class="metric">
+            <span class="label">Main endpoint involved</span>
+            <div class="value">POST /monitoring/events</div>
+          </div>
+          <div class="metric">
+            <span class="label">Observed failures</span>
+            <div class="value">~4000</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="example">
+        <div class="section-anchor">2. Context</div>
+        <h2>Why this was a real scale problem, not just a random log error</h2>
+        <p>
+          This only became obvious under heavy scale conditions. At low traffic, the code “worked,” so the design flaw
+          stayed mostly hidden. But once many devices started sending events at the same time, the system began creating
+          and closing RabbitMQ channels at a very high rate.
+        </p>
+
+        <p>
+          The issue was not that RabbitMQ publish itself was broken. The issue was that the application was treating
+          channels like throwaway objects per message, instead of reusable communication paths.
+        </p>
+
+        <div class="flow">
+Incoming event burst
+        ↓
+xc1p-updates sends many monitoring events
+        ↓
+xc1p-monitoring publishes to RabbitMQ
+        ↓
+shared utility opens & closes channels per publish
+        ↓
+channel churn explodes under concurrency
+        ↓
+broker pressure + publish failures + noisy logs
+        </div>
+      </section>
+
+      <section class="box">
+        <div class="section-anchor">3. Root Cause</div>
+        <h2>The actual technical issue</h2>
+        <p>
+          The root cause was inside the shared RabbitMQ utility:
+          <code>xc1-nodejs-utils/lib/servicesUtils/rmq.utils.js</code>,
+          specifically in <code>PrivateMethods.Exchange.produce()</code>.
+        </p>
+
+        <p>The original implementation effectively did this for every single publish:</p>
+
+<pre><code class="language-javascript">async function produce(exchange, routingKey, message, useConfirmChannel = false) {
+  const channel = useConfirmChannel
+    ? await RMQService.createConfirmChannel()
+    : await RMQService.createChannel();
+
+  channel.publish(exchange, routingKey, Buffer.from(JSON.stringify(message)));
+
+  await channel.close();
+}</code></pre>
+
+        <p>
+          That means every message incurred full channel lifecycle cost:
+          <code>create → publish → close</code>.
+        </p>
+
+        <div class="warning">
+          <div class="callout-title">Why this is wrong conceptually</div>
+          <p>
+            RabbitMQ channels are meant to be lightweight but long-lived.
+            They should usually be created once and reused for many publish operations.
+          </p>
+        </div>
+      </section>
+
+      <section class="example">
+        <div class="section-anchor">4. Real Example</div>
+        <h2>What happened at scale</h2>
+        <p>
+          Imagine <code>xc1p-updates</code> sends <strong>10,000 events</strong> in a short interval.
+          With the old implementation, that translates into:
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Operation</th>
+              <th>Per message</th>
+              <th>Total for 10,000 events</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Create channel</td>
+              <td>1</td>
+              <td>10,000</td>
+            </tr>
+            <tr>
+              <td>Publish message</td>
+              <td>1</td>
+              <td>10,000</td>
+            </tr>
+            <tr>
+              <td>Close channel</td>
+              <td>1</td>
+              <td>10,000</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          So the system was not only doing 10,000 publishes. It was also doing 10,000 channel creations and 10,000 channel closes.
+          That is a huge amount of unnecessary churn.
+        </p>
+
+        <div class="flow">
+Old model:
+
+publish #1 → createChannel() → publish() → close()
+publish #2 → createChannel() → publish() → close()
+publish #3 → createChannel() → publish() → close()
+...
+publish #10000 → createChannel() → publish() → close()
+        </div>
+      </section>
+
+      <section class="warning">
+        <div class="section-anchor">5. Why It Failed</div>
+        <h2>Failure mechanics under concurrency</h2>
+
+        <h3>1. Channel exhaustion</h3>
+        <p>
+          RabbitMQ brokers still have practical limits around channel count, channel creation rate, and resource pressure.
+          When many concurrent publishes all try to create fresh channels, the broker gets overloaded by management overhead,
+          not just business traffic.
+        </p>
+
+        <h3>2. Socket and protocol churn</h3>
+        <p>
+          Even if channels are cheaper than full TCP connections, creating and tearing them down repeatedly still creates protocol,
+          broker, and event loop overhead. This introduces avoidable pressure on the system.
+        </p>
+
+        <h3>3. Concurrent duplicate creation</h3>
+        <p>
+          Multiple publish calls arriving at the same time had no synchronization around channel creation. So instead of one reusable
+          channel being created and shared, many channels could be created simultaneously for the same purpose.
+        </p>
+
+        <h3>4. Unnecessary latency per publish</h3>
+        <p>
+          Each message paid setup and teardown cost. That overhead might be invisible for a few messages, but it becomes significant
+          when traffic spikes.
+        </p>
+      </section>
+
+      <section class="box">
+        <div class="section-anchor">6. Investigation Walkthrough</div>
+        <h2>How the issue was identified step by step</h2>
+
+        <ol>
+          <li>Scale testing in pre-prod / UAT triggered large traffic bursts.</li>
+          <li>We noticed repeated RabbitMQ publish failures in logs.</li>
+          <li>OpenSearch analysis showed the main concentration around <code>POST /api/v1/monitoring/events</code>.</li>
+          <li>Traffic source analysis pointed mainly to <code>xc1p-updates</code> sending many events.</li>
+          <li>We traced the publish path down into the shared RMQ utility.</li>
+          <li>Code review revealed that every publish was creating and closing a channel.</li>
+          <li>That explained why the issue appeared specifically under concurrency and scale.</li>
+        </ol>
+
+        <div class="quote">
+          <strong>Key engineering insight:</strong> the functional code path was correct, but the resource lifecycle strategy was not scalable.
+        </div>
+      </section>
+
+      <section class="success">
+        <div class="section-anchor">7. Main Idea / Intuition</div>
+        <h2>The smarter design</h2>
+        <p>
+          The fix was to stop treating RabbitMQ channels as disposable per-message objects and instead treat them
+          like reusable shared resources.
+        </p>
+
+        <div class="flow">
+Correct model:
+
+create channel once
+        ↓
+reuse for many publishes
+        ↓
+refresh idle timer on each use
+        ↓
+close only when truly unused or invalid
+        </div>
+
+        <p>
+          This is very similar to how we think about database connections or HTTP keep-alive connections:
+          create once, reuse many times, clean up safely when idle or broken.
+        </p>
+      </section>
+
+      <section class="box">
+        <div class="section-anchor">8. Final JavaScript Solution</div>
+        <h2>Representative implementation idea</h2>
+
+<pre><code class="language-javascript">const publishChannelCache = new Map();
+const publishCreationPromises = new Map();
+
+const PUBLISH_CHANNEL_IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+
+function getCacheKey(useConfirmChannel) {
+  return useConfirmChannel
+    ? "rmq-publish:confirm"
+    : "rmq-publish:channel";
+}
+
+async function evictCachedPublishChannel(cacheKey) {
+  const cached = publishChannelCache.get(cacheKey);
+  if (!cached) return;
+
+  publishChannelCache.delete(cacheKey);
+
+  try {
+    clearTimeout(cached.idleTimer);
+    await cached.channel.close();
+  } catch (err) {
+    // Ignore close errors during cleanup
+  }
+}
+
+function scheduleIdleEviction(cacheKey, cachedEntry) {
+  clearTimeout(cachedEntry.idleTimer);
+
+  cachedEntry.idleTimer = setTimeout(async () =&gt; {
+    await evictCachedPublishChannel(cacheKey);
+  }, PUBLISH_CHANNEL_IDLE_TIMEOUT_MS);
+}
+
+async function ensurePublishChannel(useConfirmChannel = false) {
+  const cacheKey = getCacheKey(useConfirmChannel);
+  const existing = publishChannelCache.get(cacheKey);
+
+  if (existing) {
+    existing.lastUsedAt = Date.now();
+    scheduleIdleEviction(cacheKey, existing);
+    return existing.channel;
+  }
+
+  const inflightCreation = publishCreationPromises.get(cacheKey);
+  if (inflightCreation) {
+    return inflightCreation;
+  }
+
+  const creationPromise = (async () =&gt; {
+    const channel = useConfirmChannel
+      ? await RMQService.createConfirmChannel()
+      : await RMQService.createChannel();
+
+    const cachedEntry = {
+      channel,
+      lastUsedAt: Date.now(),
+      idleTimer: null
+    };
+
+    publishChannelCache.set(cacheKey, cachedEntry);
+    scheduleIdleEviction(cacheKey, cachedEntry);
+
+    channel.on("close", async () =&gt; {
+      await evictCachedPublishChannel(cacheKey);
+    });
+
+    channel.on("error", async () =&gt; {
+      await evictCachedPublishChannel(cacheKey);
+    });
+
+    return channel;
+  })();
+
+  publishCreationPromises.set(cacheKey, creationPromise);
+
+  try {
+    return await creationPromise;
+  } finally {
+    publishCreationPromises.delete(cacheKey);
+  }
+}
+
+async function produce(exchange, routingKey, message, useConfirmChannel = false) {
+  const cacheKey = getCacheKey(useConfirmChannel);
+  const channel = await ensurePublishChannel(useConfirmChannel);
+
+  try {
+    channel.publish(
+      exchange,
+      routingKey,
+      Buffer.from(JSON.stringify(message))
+    );
+
+    const cached = publishChannelCache.get(cacheKey);
+    if (cached) {
+      cached.lastUsedAt = Date.now();
+      scheduleIdleEviction(cacheKey, cached);
+    }
+  } catch (err) {
+    await evictCachedPublishChannel(cacheKey);
+    throw err;
+  }
+}</code></pre>
+      </section>
+
+      <section class="box">
+        <div class="section-anchor">9. Step-by-Step Walkthrough</div>
+        <h2>How the new flow works</h2>
+
+        <div class="two-col">
+          <div>
+            <h3>Step 1 — Derive a cache key</h3>
+            <p>
+              We distinguish between standard publish channels and confirm channels. That means the cache is keyed by channel type,
+              not by message.
+            </p>
+
+            <h3>Step 2 — Reuse if channel already exists</h3>
+            <p>
+              If the right channel is already cached, we simply return it. This avoids unnecessary broker interaction.
+            </p>
+
+            <h3>Step 3 — Synchronize creation</h3>
+            <p>
+              If multiple publishes arrive concurrently and there is no cached channel yet, only one actual create operation is allowed.
+              The others await the same in-flight promise.
+            </p>
+          </div>
+
+          <div>
+            <h3>Step 4 — Publish using the shared channel</h3>
+            <p>
+              The message is published using the reused channel, so the publish path becomes lightweight.
+            </p>
+
+            <h3>Step 5 — Refresh idle timeout</h3>
+            <p>
+              Every time the channel is used, we update <code>lastUsedAt</code> and reset the idle timer.
+            </p>
+
+            <h3>Step 6 — Cleanup on idle or failure</h3>
+            <p>
+              If the channel becomes idle for too long, or if it emits <code>close</code>/<code>error</code>, it is evicted from cache
+              and closed safely. The next publish recreates it cleanly.
+            </p>
+          </div>
+        </div>
+
+        <div class="flow">
+New model:
+
+publish A → ensurePublishChannel()
+          → cache miss → create once
+          → cache it
+          → publish
+
+publish B → ensurePublishChannel()
+          → cache hit
+          → reuse same channel
+          → publish
+
+publish C → ensurePublishChannel()
+          → cache hit
+          → reuse same channel
+          → publish
+        </div>
+      </section>
+
+      <section class="box">
+        <div class="section-anchor">10. Before vs After</div>
+        <h2>Behavioral comparison</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Aspect</th>
+              <th>Before fix</th>
+              <th>After fix</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Channel lifecycle</td>
+              <td>Create and close on every publish</td>
+              <td>Create once, reuse many times</td>
+            </tr>
+            <tr>
+              <td>Concurrency safety</td>
+              <td>No coordination for channel creation</td>
+              <td>Async lock via creation promises</td>
+            </tr>
+            <tr>
+              <td>Broker pressure</td>
+              <td>High channel churn</td>
+              <td>Low, stable channel count</td>
+            </tr>
+            <tr>
+              <td>Latency overhead</td>
+              <td>Repeated setup/teardown cost</td>
+              <td>Mostly pure publish cost</td>
+            </tr>
+            <tr>
+              <td>Failure recovery</td>
+              <td>Less controlled</td>
+              <td>Eviction + clean recreation</td>
+            </tr>
+            <tr>
+              <td>Scalability profile</td>
+              <td>Degrades badly under bursts</td>
+              <td>Much better under burst traffic</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="success">
+        <div class="section-anchor">11. Benefits</div>
+        <h2>What improved</h2>
+
+        <div class="three-col">
+          <div class="metric">
+            <span class="label">Broker load</span>
+            <div class="value">Lower</div>
+          </div>
+          <div class="metric">
+            <span class="label">Publish stability</span>
+            <div class="value">Higher</div>
+          </div>
+          <div class="metric">
+            <span class="label">Scale readiness</span>
+            <div class="value">Improved</div>
+          </div>
+        </div>
+
+        <h3>Key improvements</h3>
+        <ul>
+          <li>Drastically reduced channel churn.</li>
+          <li>Removed unnecessary resource creation per message.</li>
+          <li>Reduced pressure on RabbitMQ and surrounding system components.</li>
+          <li>Improved publish stability under high concurrency.</li>
+          <li>Made the fix available to all services using the shared utility, not just one service.</li>
+        </ul>
+      </section>
+
+      <section class="box">
+        <div class="section-anchor">12. Line-by-Line Explanation</div>
+        <h2>Why the solution is solid engineering, not just a quick patch</h2>
+
+        <h3><code>publishChannelCache</code></h3>
+        <p>
+          Stores reusable channels by type. This is the core optimization because it moves us away from per-message lifecycle handling.
+        </p>
+
+        <h3><code>publishCreationPromises</code></h3>
+        <p>
+          Acts like an async lock. It prevents the classic race where 20 concurrent requests all detect a cache miss and each create a channel.
+        </p>
+
+        <h3><code>ensurePublishChannel()</code></h3>
+        <p>
+          Centralizes channel acquisition logic. This is important because it gives one place to handle reuse, creation, locking, and lifecycle.
+        </p>
+
+        <h3><code>scheduleIdleEviction()</code></h3>
+        <p>
+          Ensures channels are not kept forever. This keeps the solution balanced: efficient reuse during load, but cleanup when idle.
+        </p>
+
+        <h3><code>channel.on("close")</code> and <code>channel.on("error")</code></h3>
+        <p>
+          These hooks make the cache self-healing. If the channel becomes invalid, it is removed from cache so the next publish recreates a clean one.
+        </p>
+
+        <h3><code>evictCachedPublishChannel()</code></h3>
+        <p>
+          Cleanup logic is centralized, which avoids duplicated close/delete logic scattered in multiple places.
+        </p>
+
+        <h3><code>try/catch</code> around publish</h3>
+        <p>
+          If publish fails, the cached channel is evicted. That protects the system from reusing a broken channel repeatedly.
+        </p>
+      </section>
+
+      <section class="warning">
+        <div class="section-anchor">13. Common Mistakes</div>
+        <h2>What would be easy to get wrong</h2>
+
+        <ul>
+          <li>
+            <strong>Only caching the channel without synchronization.</strong>
+            That still allows a race on first creation under concurrency.
+          </li>
+          <li>
+            <strong>Keeping channels forever.</strong>
+            Reuse is good, but stale resources still need cleanup.
+          </li>
+          <li>
+            <strong>Not evicting on error/close.</strong>
+            That can leave a broken channel in cache and cause repeated failures.
+          </li>
+          <li>
+            <strong>Fixing only one service locally.</strong>
+            The better solution was to fix the shared utility so all consumers benefit.
+          </li>
+          <li>
+            <strong>Calling this a RabbitMQ bug.</strong>
+            It was an application-side lifecycle design issue, not a broker defect.
+          </li>
+        </ul>
+      </section>
+
+      <section class="box">
+        <div class="section-anchor">14. Complexity</div>
+        <h2>Complexity and runtime impact</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Operation</th>
+              <th>Before</th>
+              <th>After</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Per publish channel acquisition</td>
+              <td>Heavy, requires create/close</td>
+              <td>Usually O(1) cache lookup</td>
+            </tr>
+            <tr>
+              <td>Concurrent first creation</td>
+              <td>Many duplicate creates possible</td>
+              <td>One create, many awaiters</td>
+            </tr>
+            <tr>
+              <td>Steady-state publish path</td>
+              <td>High overhead</td>
+              <td>Low overhead</td>
+            </tr>
+            <tr>
+              <td>Space</td>
+              <td>No caching</td>
+              <td>Small bounded cache of channels</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          The big win is not algorithmic complexity in the classic interview sense, but <strong>resource efficiency under load</strong>.
+          The fix turns a repeated expensive lifecycle operation into a mostly constant-time cached access.
+        </p>
+      </section>
+
+      <section class="box">
+        <div class="section-anchor">15. Design Principles</div>
+        <h2>Patterns and clean code principles demonstrated</h2>
+
+        <div class="pattern-list">
+          <span class="pattern-pill">Single Responsibility Principle</span>
+          <span class="pattern-pill">DRY</span>
+          <span class="pattern-pill">Defensive Programming</span>
+          <span class="pattern-pill">Resource Pooling Pattern</span>
+          <span class="pattern-pill">Concurrency Control</span>
+          <span class="pattern-pill">Centralized Lifecycle Management</span>
+          <span class="pattern-pill">Self-Healing Resource Cache</span>
+        </div>
+
+        <h3>SRP</h3>
+        <p>
+          <code>Exchange.produce()</code> no longer directly owns every aspect of channel lifecycle. Lifecycle responsibility is pushed into
+          dedicated helpers such as <code>ensurePublishChannel()</code> and <code>evictCachedPublishChannel()</code>.
+        </p>
+
+        <h3>DRY</h3>
+        <p>
+          Creation, reuse, and cleanup logic are centralized instead of being repeated in multiple branches.
+        </p>
+
+        <h3>Defensive programming</h3>
+        <p>
+          The code assumes channels can fail or close unexpectedly and handles that explicitly.
+        </p>
+
+        <h3>Resource pooling</h3>
+        <p>
+          The channel is treated similarly to a pooled DB or HTTP resource: reused while healthy, recreated when invalid, cleaned when idle.
+        </p>
+
+        <h3>Concurrency control</h3>
+        <p>
+          The async creation lock prevents wasteful duplicate creation under burst traffic.
+        </p>
+      </section>
+
+      <section class="box">
+        <div class="section-anchor">16. Interview Explanation Version</div>
+        <h2>How to explain this in an interview</h2>
+
+        <div class="quote">
+          <strong>Strong 60–90 second version:</strong><br><br>
+          “During pre-prod scale testing, we saw thousands of RabbitMQ publish failures on the monitoring events endpoint.
+          I investigated the logs in OpenSearch and traced the issue to a shared RMQ utility used by the services.
+          The root cause was that every publish call created a RabbitMQ channel, published one message, and closed the channel immediately.
+          That design worked at small volume, but under burst traffic it caused extreme channel churn and broker pressure.
+          <br><br>
+          I fixed it by introducing channel caching in the shared utility, plus synchronization so concurrent publishers don’t create duplicate channels.
+          I also added idle eviction and cleanup on close/error so the cache stays healthy.
+          The result was much lower broker overhead, better publish stability, and the improvement automatically benefited every service using that utility.
+          It was a good example of debugging a scale issue where the business logic was correct, but the resource lifecycle design was not.” 
+        </div>
+
+        <h3>Shorter version</h3>
+        <p>
+          “I solved a RabbitMQ scalability issue caused by opening and closing a channel for every published message.
+          I changed the shared utility to reuse cached channels, synchronize concurrent creation, and clean them up safely when idle or broken.”
+        </p>
+
+        <h3>What makes this answer strong</h3>
+        <ul>
+          <li>You show investigation, not guesswork.</li>
+          <li>You connect symptoms to root cause clearly.</li>
+          <li>You explain both the technical flaw and the system-level impact.</li>
+          <li>You show a reusable fix at shared-library level, not just a local patch.</li>
+        </ul>
+      </section>
+
+      <section class="box">
+        <div class="section-anchor">17. Pattern to Remember</div>
+        <h2>Mental model for future problems</h2>
+
+        <div class="flow">
+If a resource is expensive to create
+and cheap to reuse,
+do not manage it per request/message.
+
+Instead:
+acquire once → reuse safely → clean up on idle/failure
+        </div>
+
+        <p>
+          This pattern applies beyond RabbitMQ:
+        </p>
+        <ul>
+          <li>Database connections</li>
+          <li>HTTP keep-alive agents</li>
+          <li>Redis clients</li>
+          <li>Thread pools / worker pools</li>
+          <li>AMQP channels</li>
+        </ul>
+      </section>
+
+      <section class="example">
+        <div class="section-anchor">18. Optional Brute Force Comparison</div>
+        <h2>Naive approach vs optimized approach</h2>
+
+<pre><code class="language-javascript">// ❌ Naive / brute-force style resource handling
+async function publishNaive(message) {
+  const channel = await RMQService.createChannel();
+  channel.publish("XC1-Monitoring", "events", Buffer.from(JSON.stringify(message)));
+  await channel.close();
+}
+
+// ✅ Optimized reusable resource handling
+async function publishOptimized(message) {
+  const channel = await ensurePublishChannel(false);
+  channel.publish("XC1-Monitoring", "events", Buffer.from(JSON.stringify(message)));
+}</code></pre>
+
+        <p>
+          The first version is easier to write, but it does not scale. The second version requires a bit more lifecycle logic,
+          but it is much more appropriate for bursty production traffic.
+        </p>
+      </section>
+
+      <section class="success">
+        <div class="section-anchor">19. Final Takeaway</div>
+        <h2>Why this is a strong interview story</h2>
+        <p>
+          This is a strong example because it shows more than “I fixed a bug.” It shows that you:
+        </p>
+        <ul>
+          <li>Observed a real production-like issue under scale.</li>
+          <li>Used logs and traffic analysis to isolate the hotspot.</li>
+          <li>Understood RabbitMQ concepts deeply enough to identify misuse.</li>
+          <li>Designed a reusable fix with lifecycle management and concurrency safety.</li>
+          <li>Improved the shared utility so the whole ecosystem benefits.</li>
+        </ul>
+
+        <p class="footer-note">
+          In an interview, this positions you as someone who can reason about system behavior under load,
+          not just write code that works in happy-path development scenarios.
+        </p>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

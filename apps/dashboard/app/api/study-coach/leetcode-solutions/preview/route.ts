@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 
 const DOCS_ROOT = path.join(process.cwd(), 'app', 'study-coach', 'htmldocs');
 const THEORY_ROOT = path.join(process.cwd(), 'app', 'study-coach', 'htmldocstheory');
+const REAL_LIFE_ROOT = path.join(process.cwd(), 'app', 'study-coach', 'htmlreallifequestions');
 
 function sanitizeRelative(input: string) {
   const normalized = input.replace(/\\/g, '/').replace(/^\/+/, '');
@@ -17,6 +18,12 @@ function resolveRootAndFile(safe: string) {
     return {
       root: THEORY_ROOT,
       rel: safe.slice('theory/'.length),
+    };
+  }
+  if (safe.startsWith('real_life/')) {
+    return {
+      root: REAL_LIFE_ROOT,
+      rel: safe.slice('real_life/'.length),
     };
   }
 

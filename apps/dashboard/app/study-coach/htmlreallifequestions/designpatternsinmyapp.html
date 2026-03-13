@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Design Patterns in Real Life — XC1 Microservices Study Page</title>
+
+  <!-- Prism.js -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css"
+  />
+  <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #18212f;
+      --muted: #5c6b80;
+      --line: #dfe7f1;
+      --primary: #2563eb;
+      --primary-soft: #e8f0ff;
+      --success: #0f9f6e;
+      --success-soft: #e9fbf4;
+      --warning: #b45309;
+      --warning-soft: #fff4e5;
+      --shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+      --radius-sm: 12px;
+      --max: 1220px;
+      --code-bg: #f8fafc;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f7f9fc 0%, #eef4fb 100%);
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .page {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 28px 20px 64px;
+    }
+
+    .hero {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: 32px;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--primary);
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    h1, h2, h3, h4 {
+      line-height: 1.2;
+      margin: 0 0 12px;
+      color: #0f172a;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 3.7vw, 3.2rem);
+      margin-bottom: 14px;
+    }
+
+    h2 {
+      font-size: 1.7rem;
+      margin-top: 6px;
+    }
+
+    h3 {
+      font-size: 1.2rem;
+      margin-top: 10px;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--text);
+    }
+
+    .subtitle {
+      font-size: 1.05rem;
+      color: var(--muted);
+      max-width: 900px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      background: var(--primary-soft);
+      color: var(--primary);
+      border: 1px solid #c9dbff;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .toc {
+      position: sticky;
+      top: 18px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px 18px;
+    }
+
+    .toc h3 {
+      margin-bottom: 14px;
+      font-size: 1rem;
+    }
+
+    .toc ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .toc li + li {
+      margin-top: 10px;
+    }
+
+    .toc a {
+      display: block;
+      color: #1e293b;
+      font-size: 0.95rem;
+      padding: 6px 8px;
+      border-radius: 10px;
+    }
+
+    .toc a:hover {
+      background: #f3f7fd;
+      text-decoration: none;
+    }
+
+    .content {
+      min-width: 0;
+    }
+
+    .section-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 22px;
+    }
+
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.92rem;
+      color: var(--primary);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .box,
+    .example,
+    .warning,
+    .success {
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+      margin: 16px 0;
+      border: 1px solid var(--line);
+    }
+
+    .box {
+      background: #f8fbff;
+    }
+
+    .example {
+      background: #f8fafc;
+    }
+
+    .warning {
+      background: var(--warning-soft);
+      border-color: #f2d2a9;
+    }
+
+    .success {
+      background: var(--success-soft);
+      border-color: #bcebd7;
+    }
+
+    .label {
+      display: inline-block;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .box .label { color: var(--primary); }
+    .example .label { color: #475569; }
+    .warning .label { color: var(--warning); }
+    .success .label { color: var(--success); }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 8px;
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fbff;
+      font-size: 0.95rem;
+      color: #1e293b;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    code:not(pre code) {
+      background: #eef3f8;
+      border: 1px solid #d9e3ee;
+      padding: 2px 8px;
+      border-radius: 8px;
+      font-size: 0.92em;
+    }
+
+    pre[class*="language-"] {
+      background: var(--code-bg) !important;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+      padding: 18px !important;
+      overflow: auto;
+      margin: 16px 0;
+    }
+
+    pre code {
+      font-size: 0.92rem;
+      line-height: 1.65;
+    }
+
+    .mini-list {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .mini-list li + li {
+      margin-top: 8px;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0 0;
+    }
+
+    .small-pill {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.84rem;
+      color: #334155;
+      font-weight: 600;
+    }
+
+    .chapter-links {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .chapter-links a {
+      display: block;
+      border: 1px solid var(--line);
+      background: #f9fbff;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .chapter-links a:hover {
+      text-decoration: none;
+      border-color: #c9dbff;
+      background: #eff6ff;
+    }
+
+    .source-note {
+      font-size: 0.92rem;
+      color: var(--muted);
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--line);
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 12px;
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+      }
+
+      .grid-2,
+      .grid-3,
+      .chapter-links {
+        grid-template-columns: 1fr;
+      }
+
+      .hero,
+      .section-card {
+        padding: 22px;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .page {
+        max-width: 100%;
+        padding: 0;
+      }
+
+      .layout {
+        display: block;
+      }
+
+      .toc {
+        display: none;
+      }
+
+      .hero,
+      .section-card {
+        box-shadow: none;
+        border: 1px solid #d1d5db;
+        break-inside: avoid;
+      }
+
+      a {
+        color: #111827;
+        text-decoration: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page" id="top">
+    <section class="hero">
+      <div class="eyebrow">Technical Interview Study Page</div>
+      <h1>Design Patterns in Real Life — XC1 Microservices</h1>
+      <p class="subtitle">
+        A large, interview-friendly study page built around a real-world style problem:
+        <strong>How do common design patterns actually appear inside a microservices system?</strong>
+        Instead of learning patterns as abstract definitions only, this page explains the problem,
+        the intuition, the concrete service-level examples, and how to talk about them clearly in an interview.
+      </p>
+
+      <div class="tags">
+        <span class="tag">Design Patterns</span>
+        <span class="tag">Microservices</span>
+        <span class="tag">Node.js</span>
+        <span class="tag">RabbitMQ</span>
+        <span class="tag">REST</span>
+        <span class="tag">Interview Prep</span>
+        <span class="tag">Real-Life Architecture</span>
+      </div>
+    </section>
+
+    <div class="layout">
+      <aside class="toc">
+        <h3>Chapters</h3>
+        <ul>
+          <li><a href="#problem">1. Problem Statement</a></li>
+          <li><a href="#examples">2. Examples</a></li>
+          <li><a href="#idea">3. Main Idea / Intuition</a></li>
+          <li><a href="#walkthrough">4. Step-by-Step Walkthrough</a></li>
+          <li><a href="#solution">5. Final JavaScript Solution</a></li>
+          <li><a href="#line-by-line">6. Line-by-Line Explanation</a></li>
+          <li><a href="#patterns">7. Pattern-by-Pattern Breakdown</a></li>
+          <li><a href="#mistakes">8. Common Mistakes</a></li>
+          <li><a href="#complexity">9. Complexity</a></li>
+          <li><a href="#interview">10. Interview Explanation Version</a></li>
+          <li><a href="#remember">11. Pattern to Remember</a></li>
+          <li><a href="#bruteforce">12. Optional Brute Force Comparison</a></li>
+        </ul>
+      </aside>
+
+      <main class="content">
+        <section class="section-card" id="problem">
+          <div class="section-head">
+            <h2>1. Problem Statement</h2>
+            <a class="back-link" href="#top">↑ Back to chapters</a>
+          </div>
+
+          <div class="box">
+            <div class="label">Problem</div>
+            <p>
+              In interviews, you are often asked something like:
+              <strong>"Explain design patterns you used in a real project"</strong> or
+              <strong>"How do patterns appear in a microservices architecture?"</strong>
+            </p>
+            <p>
+              The challenge is that many candidates know the textbook definitions, but they
+              struggle to connect them to a real system with services, queues, REST calls,
+              controllers, managers, repositories, adapters, and connection pools.
+            </p>
+          </div>
+
+          <p>
+            For this study page, the concrete problem is:
+          </p>
+
+          <div class="example">
+            <div class="label">Interview-style problem</div>
+            <p>
+              Given a real microservices environment with services like monitoring, warranty,
+              communication, REST clients, and RabbitMQ consumers, explain:
+            </p>
+            <ul class="mini-list">
+              <li>what patterns are present,</li>
+              <li>what real problem each one solves,</li>
+              <li>how it works in practice,</li>
+              <li>and how to explain it clearly in an interview.</li>
+            </ul>
+          </div>
+
+          <div class="warning">
+            <div class="label">Why this matters</div>
+            <p>
+              This is not a pure LeetCode problem. It is a
+              <strong>system design / architecture explanation problem</strong>.
+              The interviewer wants to see whether you understand
+              <strong>why the architecture was built that way</strong>, not only whether you can list pattern names.
+            </p>
+          </div>
+
+          <div class="source-note">
+            Real-life pattern examples on this page are based on the uploaded XC1 notes describing
+            patterns such as Microservices Architecture, Publisher-Subscriber via RabbitMQ,
+            Layered Architecture, Adapter, Strategy, Observer, and Singleton-style connection reuse. :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
+          </div>
+        </section>
+
+        <section class="section-card" id="examples">
+          <div class="section-head">
+            <h2>2. Examples</h2>
+            <a class="back-link" href="#top">↑ Back to chapters</a>
+          </div>
+
+          <p>
+            Before going into theory, it helps to anchor everything in real situations.
+          </p>
+
+          <div class="grid-2">
+            <div class="example">
+              <div class="label">Example A — Device event flow</div>
+              <p>
+                A device service updates a device. It should not block while waiting for monitoring,
+                warranty, or communication-related side effects to finish.
+              </p>
+              <p>
+                So the device service publishes an event, and other services consume it asynchronously.
+              </p>
+            </div>
+
+            <div class="example">
+              <div class="label">Example B — Warranty external API differences</div>
+              <p>
+                A warranty service must talk to external APIs that do not behave the same way in all regions.
+                One region may use a client ID, another may use a token-based flow.
+              </p>
+              <p>
+                Instead of spreading region-specific <code>if/else</code> logic everywhere,
+                an adapter hides those differences behind a unified interface.
+              </p>
+            </div>
+
+            <div class="example">
+              <div class="label">Example C — SMTP auth strategies</div>
+              <p>
+                A communication service may send email with different authentication modes,
+                for example <code>basic</code> or <code>token</code>.
+              </p>
+              <p>
+                The sending flow is mostly the same; only the authentication strategy changes.
+              </p>
+            </div>
+
+            <div class="example">
+              <div class="label">Example D — Shared DB connection reuse</div>
+              <p>
+                If every request created a new Mongo connection, the system would waste resources
+                and risk pool exhaustion.
+              </p>
+              <p>
+                Reusing a shared connection or pool behaves like a Singleton-style resource.
+              </p>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Real Situation</th>
+                <th>Pattern</th>
+                <th>Main Benefit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Device publishes events to RabbitMQ</td>
+                <td>Publisher-Subscriber / Observer</td>
+                <td>Loose coupling and async processing</td>
+              </tr>
+              <tr>
+                <td>Controller → Manager → Repository flow</td>
+                <td>Layered Architecture</td>
+                <td>Clear separation of responsibilities</td>
+              </tr>
+              <tr>
+                <td>Global vs PRC warranty API differences</td>
+                <td>Adapter</td>
+                <td>Unified interface over different external APIs</td>
+              </tr>
+              <tr>
+                <td>Basic auth vs token auth in SMTP</td>
+                <td>Strategy</td>
+                <td>Runtime-swappable behavior</td>
+              </tr>
+              <tr>
+                <td>Shared DB pool reuse</td>
+                <td>Singleton-style resource sharing</td>
+                <td>Efficiency and consistency</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="source-note">
+            The uploaded XC1 notes explicitly describe these examples: event-driven communication with RabbitMQ,
+            layered controller/manager/repository separation, external warranty API adaptation,
+            SMTP auth strategies, and shared connection pooling. :contentReference[oaicite:2]{index=2} :contentReference[oaicite:3]{index=3} :contentReference[oaicite:4]{index=4} :contentReference[oaicite:5]{index=5} :contentReference[oaicite:6]{index=6}
+          </div>
+        </section>
+
+        <section class="section-card" id="idea">
+          <div class="section-head">
+            <h2>3. Main Idea / Intuition</h2>
+            <a class="back-link" href="#top">↑ Back to chapters</a>
+          </div>
+
+          <div class="success">
+            <div class="label">Main intuition</div>
+            <p>
+              Design patterns are not decoration. They exist because
+              <strong>real systems become hard to change, hard to scale, and hard to reason about</strong>
+              unless responsibilities are separated and communication is controlled.
+            </p>
+          </div>
+
+          <p>
+            The simplest mental model is this:
+          </p>
+
+          <div class="box">
+            <div class="label">Mental model</div>
+            <p>
+              A large microservices system is like a company with departments:
+            </p>
+            <ul class="mini-list">
+              <li><strong>Controllers</strong> are the reception desk — they receive requests.</li>
+              <li><strong>Managers / services</strong> are the decision makers — they apply business rules.</li>
+              <li><strong>Repositories</strong> are the archive room — they know how to access stored data.</li>
+              <li><strong>Message queues</strong> are the mailroom — services send notifications without direct interruption.</li>
+              <li><strong>Adapters</strong> are translators — they make different external systems look uniform.</li>
+              <li><strong>Strategies</strong> are interchangeable methods of doing the same job.</li>
+              <li><strong>Singleton-style shared resources</strong> are shared utilities, like one managed connection pool.</li>
+            </ul>
+          </div>
+
+          <p>
+            So the main idea is:
+            <strong>patterns reduce chaos</strong>.
+            They give structure to communication, responsibility, variation, and reuse.
+          </p>
+        </section>
+
+        <section class="section-card" id="walkthrough">
+          <div class="section-head">
+            <h2>4. Step-by-Step Walkthrough</h2>
+            <a class="back-link" href="#top">↑ Back to chapters</a>
+          </div>
+
+          <p>
+            Let’s walk through a realistic scenario from the point of view of the architecture.
+          </p>
+
+          <div class="box">
+            <div class="label">Step 1 — A request or event enters the system</div>
+            <p>
+              A device changes state or an API endpoint is called.
+              The controller or event consumer becomes the entry point.
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="label">Step 2 — Business logic is delegated</div>
+            <p>
+              The controller should not do everything itself.
+              It forwards the request to a manager or service layer.
+              This is where decisions are made.
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="label">Step 3 — Data access is delegated again</div>
+            <p>
+              The service layer should not contain raw DB logic everywhere.
+              Data retrieval or persistence is delegated to repository-like code.
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="label">Step 4 — Other services may need to react</div>
+            <p>
+              Instead of forcing synchronous calls to every interested service,
+              the current service can publish an event through RabbitMQ.
+              Subscribers react independently.
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="label">Step 5 — External systems may need translation</div>
+            <p>
+              If the service talks to an external API with different contracts,
+              an adapter isolates those differences.
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="label">Step 6 — Different behaviors may be selected at runtime</div>
+            <p>
+              If one piece of logic changes depending on configuration,
+              like auth mode or sending mechanism, Strategy keeps that variation clean.
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="label">Step 7 — Shared heavy resources are reused</div>
+            <p>
+              Database connection pools or shared clients are reused rather than recreated,
+              which is why Singleton-style handling often appears.
+            </p>
+          </div>
+
+          <div class="example">
+            <div class="label">ASCII view</div>
+            <pre><code>HTTP Request / Device Event
+          |
+          v
+   Controller / Consumer
+          |
+          v
+   Manager / Service Layer
+          |
+     +----+----+
+     |         |
+     v         v
+Repository   Publish Event ----&gt; Other Services
+     |
+     v
+    DB
+
+External API calls
+     |
+     v
+  Adapter
+
+Runtime behavior switch
+     |
+     v
+ Strategy
+
+Shared heavy client
+     |
+     v
+Singleton-style connection / pool</code></pre>
+          </div>
+        </section>
+
+        <section class="section-card" id="solution">
+          <div class="section-head">
+            <h2>5. Final JavaScript Solution</h2>
+            <a class="back-link" href="#top">↑ Back to chapters</a>
+          </div>
+
+          <p>
+            Since this is an interview explanation problem rather than an algorithmic one,
+            the “solution” is best represented as a compact JavaScript model of the architecture.
+          </p>
+
+          <pre><code class="language-javascript">// A simplified interview-friendly model of how patterns appear together
+
+class DeviceRepository {
+  constructor(db) {
+    this.db = db;
+  }
+
+  async findById(deviceId) {
+    return this.db.devices.find((device) =&gt; device.id === deviceId) || null;
+  }
+
+  async save(device) {
+    const index = this.db.devices.findIndex((d) =&gt; d.id === device.id);
+
+    if (index === -1) {
+      this.db.devices.push(device);
+    } else {
+      this.db.devices[index] = device;
+    }
+
+    return device;
+  }
+}
+
+class WarrantyApiAdapter {
+  constructor(region) {
+    this.region = region;
+  }
+
+  async getWarranty(deviceId) {
+    if (this.region === "PRC") {
+      return this.callTokenBasedApi(deviceId);
+    }
+
+    return this.callClientIdBasedApi(deviceId);
+  }
+
+  async callTokenBasedApi(deviceId) {
+    return {
+      deviceId,
+      region: "PRC",
+      authMode: "token",
+      warrantyStatus: "ACTIVE"
+    };
+  }
+
+  async callClientIdBasedApi(deviceId) {
+    return {
+      deviceId,
+      region: "GLOBAL",
+      authMode: "clientId",
+      warrantyStatus: "ACTIVE"
+    };
+  }
+}
+
+class BasicSmtpStrategy {
+  async getCredentials() {
+    return { type: "basic", username: "user", password: "secret" };
+  }
+}
+
+class TokenSmtpStrategy {
+  async getCredentials() {
+    return { type: "token", token: "abc123" };
+  }
+}
+
+class MailService {
+  constructor(strategy) {
+    this.strategy = strategy;
+  }
+
+  async send(message) {
+    const credentials = await this.strategy.getCredentials();
+
+    return {
+      status: "SENT",
+      credentialsType: credentials.type,
+      message
+    };
+  }
+}
+
+class EventBus {
+  constructor() {
+    this.listeners = {};
+  }
+
+  subscribe(eventName, handler) {
+    if (!this.listeners[eventName]) {
+      this.listeners[eventName] = [];
+    }
+
+    this.listeners[eventName].push(handler);
+  }
+
+  async publish(eventName, payload) {
+    const handlers = this.listeners[eventName] || [];
+
+    for (const handler of handlers) {
+      await handler(payload);
+    }
+  }
+}
+
+class DeviceManager {
+  constructor({ repository, warrantyAdapter, eventBus }) {
+    this.repository = repository;
+    this.warrantyAdapter = warrantyAdapter;
+    this.eventBus = eventBus;
+  }
+
+  async processDeviceUpdate(deviceId) {
+    const device = await this.repository.findById(deviceId);
+
+    if (!device) {
+      throw new Error("Device not found");
+    }
+
+    const warranty = await this.warrantyAdapter.getWarranty(deviceId);
+
+    const updatedDevice = {
+      ...device,
+      warrantyStatus: warranty.warrantyStatus
+    };
+
+    await this.repository.save(updatedDevice);
+
+    await this.eventBus.publish("device.updated", {
+      deviceId,
+      warrantyStatus: warranty.warrantyStatus
+    });
+
+    return updatedDevice;
+  }
+}
+
+// Singleton-style shared DB object
+const sharedDb = {
+  devices: [
+    { id: "d1", name: "ThinkPad-01", warrantyStatus: "UNKNOWN" }
+  ]
+};
+
+// Wiring everything together
+const repository = new DeviceRepository(sharedDb);
+const warrantyAdapter = new WarrantyApiAdapter("GLOBAL");
+const eventBus = new EventBus();
+
+eventBus.subscribe("device.updated", async (payload) =&gt; {
+  console.log("Monitoring service received:", payload);
+});
+
+eventBus.subscribe("device.updated", async (payload) =&gt; {
+  console.log("Communication service received:", payload);
+});
+
+const manager = new DeviceManager({
+  repository,
+  warrantyAdapter,
+  eventBus
+});
+
+manager.processDeviceUpdate("d1").then(console.log);</code></pre>
+
+          <div class="success">
+            <div class="label">What this solution shows</div>
+            <ul class="mini-list">
+              <li><strong>Repository</strong> for data access</li>
+              <li><strong>Adapter</strong> for external warranty API differences</li>
+              <li><strong>Strategy</strong> for SMTP credential mode</li>
+              <li><strong>Observer / Pub-Sub style event bus</strong> for service reactions</li>
+              <li><strong>Layering</strong> via manager orchestration</li>
+              <li><strong>Singleton-style shared resource</strong> via shared DB instance</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section-card" id="line-by-line">
+          <div class="section-head">
+            <h2>6. Line-by-Line Explanation</h2>
+            <a class="back-link" href="#top">↑ Back to chapters</a>
+          </div>
+
+          <div class="grid-2">
+            <div class="box">
+              <div class="label">Repository</div>
+              <p>
+                <code>DeviceRepository</code> exists so the rest of the system does not need to know
+                where or how devices are stored.
+              </p>
+              <p>
+                That means business logic can say
+                <code>findById</code> and <code>save</code> without embedding raw DB details everywhere.
+              </p>
+            </div>
+
+            <div class="box">
+              <div class="label">Adapter</div>
+              <p>
+                <code>WarrantyApiAdapter</code> hides the regional differences in the external API.
+              </p>
+              <p>
+                The manager just says: <code>getWarranty(deviceId)</code>.
+                It does not need to care whether the region uses token auth or client ID auth.
+              </p>
+            </div>
+
+            <div class="box">
+              <div class="label">Strategy</div>
+              <p>
+                <code>BasicSmtpStrategy</code> and <code>TokenSmtpStrategy</code> represent different
+                ways to provide credentials.
+              </p>
+              <p>
+                The mail service keeps one stable contract while the strategy changes at runtime.
+              </p>
+            </div>
+
+            <div class="box">
+              <div class="label">Event Bus</div>
+              <p>
+                The event bus models the idea that one service publishes and many others can react.
+              </p>
+              <p>
+                This mirrors Observer / Publisher-Subscriber behavior in a simplified way.
+              </p>
+            </div>
+
+            <div class="box">
+              <div class="label">Manager</div>
+              <p>
+                <code>DeviceManager</code> coordinates the use case:
+                load device, fetch warranty, persist change, publish event.
+              </p>
+              <p>
+                This is the business layer that connects patterns together.
+              </p>
+            </div>
+
+            <div class="box">
+              <div class="label">Shared Resource</div>
+              <p>
+                <code>sharedDb</code> stands in for a shared connection or pool.
+              </p>
+              <p>
+                The point is not the variable itself, but the architectural idea:
+                expensive resources should usually be reused, not recreated per request.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section-card" id="patterns">
+          <div class="section-head">
+            <h2>7. Pattern-by-Pattern Breakdown</h2>
+            <a class="back-link" href="#top">↑ Back to chapters</a>
+          </div>
+
+          <h3>Microservices Architecture</h3>
+          <div class="box">
+            <p>
+              The system is split into separate services such as monitoring, warranty,
+              and communication. This avoids a single monolith where all concerns are coupled together.
+            </p>
+            <p>
+              Interview point:
+              <strong>if one area needs scaling or deployment, you do not want to redeploy everything else.</strong>
+            </p>
+          </div>
+
+          <h3>Publisher-Subscriber / Event-Driven Architecture</h3>
+          <div class="box">
+            <p>
+              One service publishes an event, and interested consumers react asynchronously.
+              This is ideal when a change in one domain should trigger work elsewhere without blocking the original request.
+            </p>
+            <div class="pill-row">
+              <span class="small-pill">Loose coupling</span>
+              <span class="small-pill">Async processing</span>
+              <span class="small-pill">Scalable fan-out</span>
+            </div>
+          </div>
+
+          <h3>Layered Architecture</h3>
+          <div class="box">
+            <p>
+              Controllers handle input. Managers or services handle business logic.
+              Repositories handle persistence. Each layer exists for a different reason.
+            </p>
+            <p>
+              Interview point:
+              <strong>this reduces mixing of HTTP concerns, business rules, and DB code.</strong>
+            </p>
+          </div>
+
+          <h3>Observer</h3>
+          <div class="box">
+            <p>
+              In practice, Observer appears inside the event-driven model:
+              consumers subscribe to changes and react when something happens.
+            </p>
+            <p>
+              It helps avoid wasteful polling and allows event-based reaction.
+            </p>
+          </div>
+
+          <h3>Adapter</h3>
+          <div class="box">
+            <p>
+              Adapter is useful when outside systems are inconsistent.
+              You do not want every caller to know all the quirks of every external API.
+            </p>
+            <p>
+              Instead, one adapter translates the ugly parts into a stable internal contract.
+            </p>
+          </div>
+
+          <h3>Strategy</h3>
+          <div class="box">
+            <p>
+              Strategy is best when the algorithm or behavior changes, but the overall workflow stays the same.
+            </p>
+            <p>
+              For example, sending email still means “send mail,” but how credentials are resolved may differ.
+            </p>
+          </div>
+
+          <h3>Singleton-style Connection Pooling</h3>
+          <div class="box">
+            <p>
+              A shared connection or pool is a practical example of Singleton-like behavior:
+              one managed reusable resource instead of repeated expensive initialization.
+            </p>
+          </div>
+
+          <div class="source-note">
+            These exact pattern categories and motivations are explicitly described in the uploaded XC1 design-pattern notes,
+            including Microservices Architecture, Publisher-Subscriber via RabbitMQ, Layered Architecture,
+            Observer, Adapter, Strategy, and Singleton-style connection pooling. :contentReference[oaicite:7]{index=7} :contentReference[oaicite:8]{index=8} :contentReference[oaicite:9]{index=9} :contentReference[oaicite:10]{index=10} :contentReference[oaicite:11]{index=11} :contentReference[oaicite:12]{index=12} :contentReference[oaicite:13]{index=13}
+          </div>
+        </section>
+
+        <section class="section-card" id="mistakes">
+          <div class="section-head">
+            <h2>8. Common Mistakes</h2>
+            <a class="back-link" href="#top">↑ Back to chapters</a>
+          </div>
+
+          <div class="warning">
+            <div class="label">Mistake 1</div>
+            <p>
+              <strong>Naming patterns without explaining the problem.</strong><br />
+              Saying “we used Strategy” is weak.
+              Saying “we had multiple auth modes and Strategy let us swap the credential resolution cleanly”
+              is much stronger.
+            </p>
+          </div>
+
+          <div class="warning">
+            <div class="label">Mistake 2</div>
+            <p>
+              <strong>Confusing architecture with design pattern.</strong><br />
+              Microservices Architecture is a higher-level architectural style.
+              Adapter or Strategy is a more local design pattern.
+            </p>
+          </div>
+
+          <div class="warning">
+            <div class="label">Mistake 3</div>
+            <p>
+              <strong>Calling everything a pattern.</strong><br />
+              Not every piece of code needs a fancy name.
+              The important part is the design reason behind it.
+            </p>
+          </div>
+
+          <div class="warning">
+            <div class="label">Mistake 4</div>
+            <p>
+              <strong>Ignoring trade-offs.</strong><br />
+              Event-driven systems reduce coupling, but debugging can become harder.
+              Layering improves structure, but can add more files and indirection.
+            </p>
+          </div>
+
+          <div class="warning">
+            <div class="label">Mistake 5</div>
+            <p>
+              <strong>Giving only textbook definitions.</strong><br />
+              Interviews are much stronger when you connect the pattern to a concrete flow:
+              controller → service → repository, publish event, adapter to external API, and so on.
+            </p>
+          </div>
+        </section>
+
+        <section class="section-card" id="complexity">
+          <div class="section-head">
+            <h2>9. Complexity</h2>
+            <a class="back-link" href="#top">↑ Back to chapters</a>
+          </div>
+
+          <p>
+            This kind of problem is not mainly about Big-O, but there is still a useful way to think about complexity:
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Aspect</th>
+                <th>Main Cost</th>
+                <th>Why It Matters</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Direct synchronous service calls</td>
+                <td>Latency coupling</td>
+                <td>One service waits for another</td>
+              </tr>
+              <tr>
+                <td>Event-driven processing</td>
+                <td>Operational complexity</td>
+                <td>Better decoupling, harder tracing/debugging</td>
+              </tr>
+              <tr>
+                <td>Layered architecture</td>
+                <td>Code indirection</td>
+                <td>Clearer boundaries, more files / hops</td>
+              </tr>
+              <tr>
+                <td>Adapters</td>
+                <td>Extra abstraction layer</td>
+                <td>Cleaner callers, centralized translation logic</td>
+              </tr>
+              <tr>
+                <td>Strategies</td>
+                <td>More objects / types</td>
+                <td>Cleaner variation and extensibility</td>
+              </tr>
+              <tr>
+                <td>Singleton-style shared resources</td>
+                <td>Lifecycle management</td>
+                <td>Efficient reuse, but careful initialization required</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="success">
+            <div class="label">Interview takeaway</div>
+            <p>
+              The key “complexity” discussion here is usually not time complexity.
+              It is about <strong>maintainability, coupling, scalability, and change cost</strong>.
+            </p>
+          </div>
+        </section>
+
+        <section class="section-card" id="interview">
+          <div class="section-head">
+            <h2>10. Interview Explanation Version</h2>
+            <a class="back-link" href="#top">↑ Back to chapters</a>
+          </div>
+
+          <div class="box">
+            <div class="label">30-second version</div>
+            <p>
+              In a real microservices environment, design patterns appear naturally as responses to real problems.
+              For example, we use event-driven Publisher-Subscriber patterns to decouple services,
+              layered architecture to separate controllers, business logic, and persistence,
+              adapters to hide external API differences, strategies when behavior changes by configuration,
+              and shared connection pooling as a Singleton-style resource reuse pattern.
+            </p>
+          </div>
+
+          <div class="box">
+            <div class="label">60-second version</div>
+            <p>
+              The most important thing is not just naming the pattern but explaining the pain it solves.
+              In a microservices system, if services call each other synchronously for every side effect,
+              they become tightly coupled and slower, so event-driven communication helps.
+              Inside each service, controllers should not do DB work directly, so layered separation helps.
+              When an external API differs by region or auth model, Adapter hides that difference.
+              When one workflow has multiple interchangeable behaviors, like auth mode, Strategy keeps it clean.
+              And for expensive resources like DB connections, we reuse shared pools instead of creating them per request.
+            </p>
+          </div>
+
+          <div class="success">
+            <div class="label">Good interview structure</div>
+            <ol class="mini-list">
+              <li>Name the pattern.</li>
+              <li>State the real problem.</li>
+              <li>Explain how the pattern solves it.</li>
+              <li>Give one concrete example from service flow.</li>
+              <li>Mention one trade-off.</li>
+            </ol>
+          </div>
+        </section>
+
+        <section class="section-card" id="remember">
+          <div class="section-head">
+            <h2>11. Pattern to Remember</h2>
+            <a class="back-link" href="#top">↑ Back to chapters</a>
+          </div>
+
+          <div class="example">
+            <div class="label">Simple formula</div>
+            <p>
+              <strong>Pattern = repeated problem + reusable structure.</strong>
+            </p>
+          </div>
+
+          <div class="grid-3">
+            <div class="box">
+              <div class="label">When communication hurts</div>
+              <p>Think <strong>Publisher-Subscriber / Observer</strong>.</p>
+            </div>
+            <div class="box">
+              <div class="label">When responsibilities are mixed</div>
+              <p>Think <strong>Layered Architecture</strong>.</p>
+            </div>
+            <div class="box">
+              <div class="label">When external systems differ</div>
+              <p>Think <strong>Adapter</strong>.</p>
+            </div>
+            <div class="box">
+              <div class="label">When one behavior changes by config</div>
+              <p>Think <strong>Strategy</strong>.</p>
+            </div>
+            <div class="box">
+              <div class="label">When heavy resources are reused</div>
+              <p>Think <strong>Singleton-style shared instance</strong>.</p>
+            </div>
+            <div class="box">
+              <div class="label">When the whole system must scale independently</div>
+              <p>Think <strong>Microservices Architecture</strong>.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section-card" id="bruteforce">
+          <div class="section-head">
+            <h2>12. Optional Brute Force Comparison</h2>
+            <a class="back-link" href="#top">↑ Back to chapters</a>
+          </div>
+
+          <p>
+            A good way to understand patterns is to compare them with the messy version.
+          </p>
+
+          <div class="grid-2">
+            <div class="warning">
+              <div class="label">Brute force / messy version</div>
+              <ul class="mini-list">
+                <li>Controller contains business logic</li>
+                <li>Controller queries DB directly</li>
+                <li>Service makes direct synchronous calls everywhere</li>
+                <li>External API differences handled with scattered <code>if/else</code></li>
+                <li>Auth differences handled inline in the same function</li>
+                <li>New DB connection per request</li>
+              </ul>
+            </div>
+
+            <div class="success">
+              <div class="label">Pattern-based version</div>
+              <ul class="mini-list">
+                <li>Controller only handles input/output</li>
+                <li>Manager handles orchestration</li>
+                <li>Repository handles persistence</li>
+                <li>Event bus handles async reactions</li>
+                <li>Adapter hides external contract differences</li>
+                <li>Strategy swaps behavior cleanly</li>
+                <li>Shared pool reuses connections</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="label">Core conclusion</div>
+            <p>
+              The “pattern solution” is rarely about writing more code.
+              It is about making the codebase <strong>easier to extend, safer to change, and easier to explain</strong>.
+            </p>
+          </div>
+
+          <div class="chapter-links">
+            <a href="#problem">Revisit the Problem Statement</a>
+            <a href="#solution">Jump back to the Final JavaScript Solution</a>
+            <a href="#patterns">Review the Pattern Breakdown</a>
+            <a href="#interview">Practice the Interview Explanation</a>
+          </div>
+
+          <p class="footer-note">
+            Study tip: for each pattern, practice answering in this format:
+            <strong>problem → why naive approach hurts → how the pattern fixes it → one real example</strong>.
+          </p>
+
+          <div class="source-note">
+            This page’s real-life framing is based on the uploaded XC1 design-pattern notes and technical prep material,
+            which emphasize interview-ready explanation, real problems solved, and architecture examples from actual services. :contentReference[oaicite:14]{index=14} :contentReference[oaicite:15]{index=15}
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

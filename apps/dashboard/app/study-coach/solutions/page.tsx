@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type LeetCategory =
   | 'study_guides'
+  | 'real_life_questions'
   | 'theory_oop_solid'
   | 'theory_dsa'
   | 'theory_runtime'
@@ -29,6 +30,7 @@ type SolutionDoc = {
 
 const CATEGORY_LABEL: Record<LeetCategory, string> = {
   study_guides: 'Study Guides',
+  real_life_questions: 'Real Life Questions',
   theory_oop_solid: 'Theory · OOP & SOLID',
   theory_dsa: 'Theory · DSA Fundamentals',
   theory_runtime: 'Theory · Runtime & Memory',
@@ -44,6 +46,7 @@ const CATEGORY_LABEL: Record<LeetCategory, string> = {
 
 const CATEGORY_ORDER: LeetCategory[] = [
   'study_guides',
+  'real_life_questions',
   'theory_oop_solid',
   'theory_dsa',
   'theory_runtime',
@@ -151,7 +154,7 @@ export default function StudyCoachSolutionsPage() {
           {headerExpanded ? (
           <>
             <h1 className="text-2xl font-bold">Study Coach HTMLs</h1>
-            <p className="mt-1 text-sm text-[var(--muted)]">Cuprins complet pentru `htmldocs` + `htmldocstheory`, grupate pe categorii.</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">Cuprins complet pentru `htmldocs` + `htmldocstheory` + `htmlreallifequestions`, grupate pe categorii.</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 className="rounded-md border border-cyan-500/40 bg-cyan-500/20 px-3 py-1.5 text-sm font-semibold disabled:opacity-60"
@@ -219,7 +222,7 @@ export default function StudyCoachSolutionsPage() {
             ) : null}
             {!grouped.length && !loading ? (
               <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-sm text-[var(--muted)]">
-                No HTML files found. Add files in `apps/dashboard/app/study-coach/htmldocs` or `.../htmldocstheory` and press Refresh list.
+                No HTML files found. Add files in `.../htmldocs`, `.../htmldocstheory` or `.../htmlreallifequestions` and press Refresh list.
               </div>
             ) : null}
           </div>
