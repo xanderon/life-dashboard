@@ -16,6 +16,8 @@ type LeetCategory =
   | 'linked_list'
   | 'binary_tree';
 
+type TheoryCategory = Extract<LeetCategory, 'theory_oop_solid' | 'theory_dsa' | 'theory_runtime'>;
+
 type LeetDifficulty = 'easy' | 'medium';
 
 type SolutionDoc = {
@@ -40,6 +42,33 @@ const CATEGORY_HINTS: Array<{ id: LeetCategory; hints: string[] }> = [
   { id: 'recursion', hints: ['recursion', 'recursive'] },
   { id: 'arrays', hints: ['array', 'arrays'] },
 ];
+
+const THEORY_CATEGORY_BY_FILE: Record<string, TheoryCategory> = {
+  'abstraction-vs-encapsulation.html': 'theory_oop_solid',
+  'dip.html': 'theory_oop_solid',
+  'encapsulation.html': 'theory_oop_solid',
+  'lsp.html': 'theory_oop_solid',
+  'nterface-segregation-principle.html': 'theory_oop_solid',
+  'polymorphism.html': 'theory_oop_solid',
+  'polymorphisma.html': 'theory_oop_solid',
+  'singleton.html': 'theory_oop_solid',
+
+  'array-vector.html': 'theory_dsa',
+  'bfs.html': 'theory_dsa',
+  'big-o-notation.html': 'theory_dsa',
+  'binarytree.html': 'theory_dsa',
+  'detect-cycle-in-linked-list.html': 'theory_dsa',
+  'dfs.html': 'theory_dsa',
+  'hash-map.html': 'theory_dsa',
+  'merge-sort.html': 'theory_dsa',
+  'reverse-linked-list-theory.html': 'theory_dsa',
+  'stack.html': 'theory_dsa',
+
+  'garbage-collector.html': 'theory_runtime',
+  'memory-allocation-stack-vs-heap.html': 'theory_runtime',
+  'nodejs-process-thread-event-loop.html': 'theory_runtime',
+  'stack-frame-stack-vs-heap.html': 'theory_runtime',
+};
 
 const THEORY_OOP_SOLID_HINTS = [
   'abstraction',
@@ -109,6 +138,10 @@ async function walkHtmlFiles(root: string, current = ''): Promise<string[]> {
 
 function inferTheoryCategory(file: string): LeetCategory {
   const lower = file.toLowerCase();
+  const base = path.basename(lower);
+
+  const mapped = THEORY_CATEGORY_BY_FILE[base];
+  if (mapped) return mapped;
 
   if (THEORY_RUNTIME_HINTS.some((hint) => lower.includes(hint))) return 'theory_runtime';
   if (THEORY_OOP_SOLID_HINTS.some((hint) => lower.includes(hint))) return 'theory_oop_solid';
@@ -161,11 +194,13 @@ function prettifyTitle(parts: string[], num: number | null) {
     singleton: 'singleton',
     dip: 'dependency inversion principle',
     lsp: 'liskov substitution principle',
+    bfs: 'breadth first search',
+    dfs: 'depth first search',
     nterface: 'interface',
     polymorphisma: 'polymorphism',
   };
 
-  const filtered = parts.filter((part) => !/^\d+$/.test(part) && !['leetcode', 'easy', 'medium', 'html'].includes(part.toLowerCase()));
+  const filtered = parts.filter((part) => !/^\d+$/.test(part) && !['leetcode', 'easy', 'medium', 'html', 'theory'].includes(part.toLowerCase()));
   const normalized = filtered
     .map((part) => {
       const key = part.toLowerCase();

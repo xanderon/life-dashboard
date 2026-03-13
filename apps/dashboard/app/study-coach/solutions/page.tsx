@@ -115,7 +115,12 @@ export default function StudyCoachSolutionsPage() {
     });
 
     const orderIndex = new Map(CATEGORY_ORDER.map((id, idx) => [id, idx]));
-    return Array.from(map.entries()).sort((a, b) => {
+    const entries = Array.from(map.entries()).map(([category, items]) => [
+      category,
+      [...items].sort((a, b) => a.title.localeCompare(b.title)),
+    ] as const);
+
+    return entries.sort((a, b) => {
       const aIdx = orderIndex.get(a[0]) ?? Number.MAX_SAFE_INTEGER;
       const bIdx = orderIndex.get(b[0]) ?? Number.MAX_SAFE_INTEGER;
       if (aIdx !== bIdx) return aIdx - bIdx;
