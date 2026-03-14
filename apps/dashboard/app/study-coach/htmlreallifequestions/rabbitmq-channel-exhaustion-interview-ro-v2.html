@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RabbitMQ Channel Exhaustion — Studiu tehnic + variantă de interviu</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #5b6475;
+      --primary: #1e40af;
+      --primary-soft: #e8efff;
+      --accent: #0f766e;
+      --accent-soft: #e7fbf7;
+      --warn: #b45309;
+      --warn-soft: #fff4e5;
+      --danger: #b91c1c;
+      --danger-soft: #feecec;
+      --border: #dbe3f0;
+      --code-bg: #0f172a;
+      --code-text: #e5eefc;
+      --shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(180deg, #eef4ff 0%, var(--bg) 220px);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #163fbe 0%, #0f766e 100%);
+      color: white;
+      border-radius: 24px;
+      padding: 34px 34px 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: 2.2rem;
+      line-height: 1.15;
+    }
+
+    .hero p {
+      margin: 10px 0 0;
+      max-width: 980px;
+      font-size: 1.05rem;
+      color: rgba(255,255,255,0.92);
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .pill {
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.18);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.92rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 18px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px 18px 10px;
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .sidebar a {
+      display: block;
+      color: var(--primary);
+      text-decoration: none;
+      padding: 8px 10px;
+      border-radius: 10px;
+      margin-bottom: 4px;
+      font-size: 0.96rem;
+    }
+
+    .sidebar a:hover {
+      background: #f1f5ff;
+    }
+
+    .content {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 26px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 14px;
+      font-size: 1.45rem;
+      color: #12203d;
+    }
+
+    .card h3 {
+      margin-top: 22px;
+      margin-bottom: 10px;
+      font-size: 1.08rem;
+      color: #19305c;
+    }
+
+    .callout {
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin: 14px 0;
+      border: 1px solid transparent;
+    }
+
+    .info { background: var(--primary-soft); border-color: #c9d8ff; }
+    .success { background: var(--accent-soft); border-color: #bcefe7; }
+    .warn { background: var(--warn-soft); border-color: #ffd8a8; }
+    .danger { background: var(--danger-soft); border-color: #fecaca; }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .mini {
+      background: #fafcff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    ul, ol {
+      padding-left: 20px;
+      margin-top: 8px;
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    pre {
+      margin: 14px 0;
+      padding: 18px;
+      background: var(--code-bg);
+      color: var(--code-text);
+      border-radius: 16px;
+      overflow-x: auto;
+      font-size: 0.92rem;
+      line-height: 1.5;
+      border: 1px solid #1f2a44;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    .diagram {
+      background: #f8fbff;
+      border: 1px dashed #c2d4ef;
+      border-radius: 16px;
+      padding: 18px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      white-space: pre-wrap;
+      line-height: 1.5;
+      color: #163055;
+    }
+
+    .qa {
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      margin-top: 14px;
+    }
+
+    .quote {
+      border-left: 4px solid var(--primary);
+      padding-left: 16px;
+      margin: 16px 0;
+      color: #24344f;
+      font-weight: 600;
+    }
+
+    .footer-note {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.94rem;
+      margin-top: 14px;
+    }
+
+    @media (max-width: 980px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        position: static;
+      }
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+      .hero h1 {
+        font-size: 1.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <h1>RabbitMQ Channel Exhaustion — studiu tehnic + variantă bună de interviu</h1>
+      <p>
+        Pagina aceasta explică pe înțeles, dar fără să piardă detalii, problema reală observată în pre-prod / UAT:
+        publish failures în RabbitMQ, cauzate de un model greșit de creare și închidere a canalelor la fiecare mesaj.
+        Include contextul real, root cause, fix-ul implementat în utilitara shared, beneficiile și o variantă clară de povestit la interviu.
+      </p>
+      <div class="pill-row">
+        <div class="pill">Exemplu real din producție / scale testing</div>
+        <div class="pill">Focus pe înțelegere</div>
+        <div class="pill">Flow tehnic clar</div>
+        <div class="pill">Clean Code / SOLID / Patterns</div>
+        <div class="pill">Pregătire pentru interviu</div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <aside class="sidebar">
+        <h2>Cuprins</h2>
+        <a href="#context">1. Contextul real</a>
+        <a href="#problema">2. Problema tehnică reală</a>
+        <a href="#scale">3. Ce se întâmplă la scale</a>
+        <a href="#detectare">4. Cum a fost detectată</a>
+        <a href="#solutie">5. Soluția implementată</a>
+        <a href="#de-ce">6. De ce funcționează</a>
+        <a href="#principii">7. SOLID / DRY / patterns</a>
+        <a href="#interviu">8. Cum o povestești la interviu</a>
+        <a href="#qna">9. Întrebări posibile la interviu</a>
+      </aside>
+
+      <main class="content">
+
+        <section class="card" id="context">
+          <h2>1. Contextul real</h2>
+          <p>
+            În mediul <strong>pre-prod / UAT</strong>, în timpul unor <strong>teste de scale</strong> pe serviciul
+            <strong>xc1p-monitoring</strong>, au apărut foarte multe erori de tipul:
+          </p>
+          <pre><code>Failed to send message on exchange XC1-Monitoring</code></pre>
+
+          <p>Investigația în OpenSearch / logs monitoring a arătat că erorile erau concentrate pe endpointul:</p>
+          <pre><code>POST /api/v1/monitoring/events</code></pre>
+
+          <div class="callout danger">
+            <strong>Semnal important:</strong> volumul de erori era mare, aproximativ <strong>4000</strong>, iar sursa principală
+            era serviciul <strong>xc1p-updates</strong>, care trimitea multe evenimente către monitoring într-un interval scurt.
+          </div>
+
+          <div class="quote">
+            Problema nu era că RabbitMQ „nu mergea”, ci că modelul nostru de utilizare a canalelor devenea toxic la volum mare.
+          </div>
+        </section>
+
+        <section class="card" id="problema">
+          <h2>2. Problema tehnică reală</h2>
+          <p>Problema era în utilitara comună:</p>
+          <pre><code>xc1-nodejs-utils/lib/servicesUtils/rmq.utils.js</code></pre>
+          <p>mai exact în metoda:</p>
+          <pre><code>PrivateMethods.Exchange.produce()</code></pre>
+
+          <h3>Implementarea veche</h3>
+          <p>La fiecare publish, metoda făcea tot lifecycle-ul canalului de la zero:</p>
+          <ol>
+            <li>deschidea un channel RabbitMQ</li>
+            <li>făcea publish la mesaj</li>
+            <li>închidea channel-ul imediat</li>
+          </ol>
+
+          <pre><code>channel = await RMQService.createChannel()
+// sau
+channel = await RMQService.createConfirmChannel()
+
+channel.publish(...)
+
+channel.close()</code></pre>
+
+          <div class="callout warn">
+            <strong>De ce pare corect la prima vedere?</strong><br/>
+            Pentru trafic mic, logica pare „curată”: deschizi resursa, o folosești, o închizi.
+            Problema este că RabbitMQ channels nu sunt gândite pentru modelul <em>create → publish → close</em> pe fiecare mesaj.
+          </div>
+
+          <h3>Modelul mental corect</h3>
+          <p>
+            Un channel RabbitMQ trebuie privit ca un <strong>lightweight communication path, dar long-lived</strong>.
+          </p>
+
+          <div class="two-col">
+            <div class="mini">
+              <h3>Greșit</h3>
+              <ul>
+                <li>create channel</li>
+                <li>publish one message</li>
+                <li>close channel</li>
+                <li>repetă pentru fiecare mesaj</li>
+              </ul>
+            </div>
+            <div class="mini">
+              <h3>Corect</h3>
+              <ul>
+                <li>create channel once</li>
+                <li>publish multe mesaje</li>
+                <li>reuse channel</li>
+                <li>close doar când chiar nu mai e nevoie</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" id="scale">
+          <h2>3. Ce se întâmplă la scale</h2>
+          <p>Să luăm un scenariu realist:</p>
+
+          <div class="callout info">
+            <strong>Exemplu:</strong> <code>xc1p-updates</code> trimite <strong>10.000 events</strong> către monitoring într-un interval scurt.
+            Fiecare event apelează <code>Exchange.produce(...)</code>.
+          </div>
+
+          <p>Asta înseamnă:</p>
+          <ul>
+            <li>10.000 publish calls</li>
+            <li>10.000 createChannel()</li>
+            <li>10.000 publish()</li>
+            <li>10.000 close()</li>
+          </ul>
+
+          <div class="diagram">10.000 events
+   ↓
+10.000 apeluri Exchange.produce()
+   ↓
+pentru fiecare:
+   createChannel()
+   assertExchange()
+   publish()
+   close()
+   ↓
+channel churn masiv + presiune pe broker</div>
+
+          <h3>Problemele care apar</h3>
+
+          <div class="mini">
+            <h3>1. Channel exhaustion</h3>
+            <p>
+              Brokerul RabbitMQ are limite reale pe numărul de channels, sockets și rata de channel creation.
+              Dacă multe publish-uri pornesc simultan, brokerul poate intra în zone de presiune:
+            </p>
+            <ul>
+              <li><code>channel_max exceeded</code></li>
+              <li><code>too many channels</code></li>
+              <li>connection pressure</li>
+            </ul>
+          </div>
+
+          <div class="mini">
+            <h3>2. Socket churn</h3>
+            <p>
+              Deși channel-ul nu este același lucru cu o conexiune TCP complet nouă, crearea și distrugerea lui repetată
+              produce activitate inutilă: frames AMQP, alocări de resurse, negociere, bookkeeping intern.
+            </p>
+          </div>
+
+          <div class="mini">
+            <h3>3. Race conditions / concurență prost controlată</h3>
+            <p>Dacă vin multe publish-uri simultan și nu există sincronizare:</p>
+            <pre><code>publish1 → createChannel()
+publish2 → createChannel()
+publish3 → createChannel()</code></pre>
+            <p>toate încearcă să creeze resurse în același timp.</p>
+          </div>
+
+          <div class="mini">
+            <h3>4. Latency inutilă</h3>
+            <p>
+              La fiecare mesaj plătești costul de create, assert, publish și close, deși
+              <strong>publish-ul propriu-zis este singura operație cu valoare reală pentru mesajul tău</strong>.
+            </p>
+          </div>
+        </section>
+
+        <section class="card" id="detectare">
+          <h2>4. Cum a fost detectată problema</h2>
+          <ul>
+            <li>problema a apărut în <strong>scale testing</strong>, nu într-un scenariu mic sau local</li>
+            <li>în logs apărea repetat mesajul <code>Failed to send message on exchange</code></li>
+            <li>OpenSearch a indicat zona cu probleme: <code>POST /api/v1/monitoring/events</code></li>
+            <li>volumul de erori era mare: aproximativ <strong>4000</strong></li>
+            <li>apoi investigația de cod a dus către utilitara shared din <code>rmq.utils.js</code></li>
+          </ul>
+
+          <div class="callout success">
+            <strong>Observația-cheie:</strong> problema nu era într-un singur microserviciu, ci într-o utilitară comună.
+          </div>
+        </section>
+
+        <section class="card" id="solutie">
+          <h2>5. Soluția implementată</h2>
+          <p>Fix-ul a fost aplicat în utilitara shared:</p>
+          <pre><code>xc1-nodejs-utils/lib/servicesUtils/rmq.utils.js</code></pre>
+
+          <p><strong>Nu mai crea și închide channel-ul la fiecare publish; creează-l o dată, refolosește-l, curăță-l inteligent.</strong></p>
+
+          <h3>5.1 Channel caching</h3>
+          <pre><code>const publishChannelCache = new Map();</code></pre>
+
+          <h3>5.2 Sincronizare la creare</h3>
+          <pre><code>publishCreationPromises</code></pre>
+
+          <div class="diagram">publish A → observă că nu există channel
+          ↓
+      începe createChannel()
+
+publish B → observă că există deja o promisiune de creare
+          ↓
+          așteaptă
+
+publish C → observă aceeași promisiune
+          ↓
+          așteaptă
+
+când create-ul se termină:
+A, B, C folosesc același channel</div>
+
+          <h3>5.3 Idle timeout</h3>
+          <pre><code>PUBLISH_CHANNEL_IDLE_TIMEOUT_MS = 15 min</code></pre>
+
+          <h3>5.4 Cleanup robust</h3>
+          <p>La <code>channel.close</code>, <code>channel.error</code> sau publish failure, canalul este eliminat din cache și recreat la nevoie.</p>
+
+          <h3>5.5 Fluxul nou</h3>
+          <div class="diagram">publish call
+   ↓
+Exchange.produce()
+   ↓
+ensurePublishChannel()
+   ↓
+dacă există cached channel → reuse
+dacă nu există → create once
+   ↓
+publish message
+   ↓
+update lastUsedAt
+reset idle timer</div>
+        </section>
+
+        <section class="card" id="de-ce">
+          <h2>6. De ce funcționează această soluție</h2>
+
+          <div class="two-col">
+            <div class="mini">
+              <h3>Înainte</h3>
+              <ul>
+                <li>10.000 events</li>
+                <li>10.000 create channel</li>
+                <li>10.000 close channel</li>
+                <li>multe puncte de failure</li>
+              </ul>
+            </div>
+            <div class="mini">
+              <h3>După</h3>
+              <ul>
+                <li>10.000 events</li>
+                <li>1 channel reutilizat</li>
+                <li>sau 1 normal + 1 confirm</li>
+                <li>cost de lifecycle amortizat</li>
+              </ul>
+            </div>
+          </div>
+
+          <ul>
+            <li><strong>Scalabilitate:</strong> mai puține create/close</li>
+            <li><strong>Performanță:</strong> overhead redus</li>
+            <li><strong>Stabilitate:</strong> mai puține publish failures</li>
+            <li><strong>Predictibilitate:</strong> concurență controlată</li>
+          </ul>
+        </section>
+
+        <section class="card" id="principii">
+          <h2>7. Clean Code, SOLID și design patterns atinse</h2>
+
+          <h3>Single Responsibility Principle</h3>
+          <p><code>Exchange.produce()</code> nu mai ține în brațe direct tot lifecycle-ul de canal.</p>
+
+          <h3>DRY</h3>
+          <p>Logica de creare, reuse și cleanup este centralizată.</p>
+
+          <h3>Fail Fast / Defensive Programming</h3>
+          <p>La erori, canalul este invalidat și scos din cache.</p>
+
+          <h3>Resource Pooling Pattern</h3>
+          <p>Channel-urile sunt tratate ca resurse reutilizabile, similar cu DB connection pooling.</p>
+
+          <h3>Concurrency Control / Async Lock Pattern</h3>
+          <p><code>publishCreationPromises</code> funcționează ca un lock async per cache key.</p>
+        </section>
+
+        <section class="card" id="interviu">
+          <h2>8. Cum o povestești la interviu</h2>
+
+          <h3>Varianta scurtă</h3>
+          <div class="quote">
+            În timpul unor teste de scale în pre-prod / UAT, am observat mii de erori la publish în RabbitMQ pe zona de monitoring.
+            Investigația a arătat că utilitara shared crea și închidea un channel la fiecare mesaj.
+            La volum mare, asta producea channel churn, presiune pe broker și publish failures.
+            Am introdus channel caching, sincronizare la creare, idle cleanup și invalidare la erori.
+          </div>
+
+          <h3>Varianta bună — 2 minute</h3>
+          <p>
+            Am avut o problemă reală observată în timpul testelor de scale, unde <code>xc1p-updates</code> trimitea multe events către
+            <code>xc1p-monitoring</code>. În logs apăreau foarte multe erori de tipul <code>Failed to send message on exchange</code>.
+          </p>
+          <p>
+            Când am investigat codul, am văzut că în utilitara shared din <code>rmq.utils.js</code>, metoda <code>Exchange.produce()</code>
+            deschidea un RabbitMQ channel la fiecare publish, publica mesajul și apoi îl închidea imediat.
+          </p>
+          <p>
+            Soluția a fost să introduc channel caching, sincronizare prin async lock, idle timeout pentru cleanup și invalidare robustă la erori.
+          </p>
+        </section>
+
+        <section class="card" id="qna">
+          <h2>9. Întrebări posibile la interviu și răspunsuri bune</h2>
+
+          <div class="qa">
+            <h3>De ce nu e ok să creezi și să închizi channel-ul la fiecare mesaj?</h3>
+            <p>Pentru că introduci mult overhead operațional și presiune pe broker fără valoare reală.</p>
+          </div>
+
+          <div class="qa">
+            <h3>De ce ai pus lock async la channel creation?</h3>
+            <p>Ca să evit duplicate creation când mai multe publish-uri vin simultan și canalul nu există încă.</p>
+          </div>
+
+          <div class="qa">
+            <h3>De ce nu lași canalul deschis permanent?</h3>
+            <p>Pentru că și asta poate deveni o problemă; idle timeout-ul oferă un compromis bun.</p>
+          </div>
+
+          <div class="qa">
+            <h3>Ce pattern ai folosit aici?</h3>
+            <p>Resource pooling / resource reuse, plus concurrency control prin async lock.</p>
+          </div>
+        </section>
+
+        <div class="footer-note">
+          Pagină regenerată în română, structurată pentru înțelegere și pregătire de interviu.
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
