@@ -115,6 +115,16 @@ function monthKey(ts: string | null) {
   return `${y}-${m}`;
 }
 
+function dayKey(ts: string | null) {
+  if (!ts) return 'unknown';
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return 'unknown';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function formatMonthLabel(key: string) {
   if (key === 'unknown') return 'Dată necunoscută';
   const [year, month] = key.split('-');
@@ -253,6 +263,8 @@ export default function ReceiptsPage() {
   const prevSelectionRef = useRef<ReceiptRow | null>(null);
 
   const stores = useMemo(() => storeOptions, [storeOptions]);
+  const todayKey = useMemo(() => dayKey(new Date().toISOString()), []);
+  const currentMonthKey = useMemo(() => monthKey(new Date().toISOString()), []);
   const groupedReceipts = useMemo(() => {
     const groups: {
       key: string;
@@ -1053,74 +1065,88 @@ export default function ReceiptsPage() {
                 Nu există bonuri.
               </div>
             ) : null}
-            {groupedReceipts.map((group) => (
-              <div key={group.key} className="mt-3">
-                <div className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-[var(--muted)]">
-                  <span>{group.label}</span>
-                  <span className="h-px flex-1 bg-[var(--border)]/60" />
-                  <span className="text-[10px] font-semibold text-[var(--muted)]">
-                    {Math.round(group.total)} {group.currency ?? 'RON'}
-                  </span>
-                </div>
-                <div
-                  className={`mt-2 ${
-                    selected
-                      ? 'space-y-2'
-                      : 'grid gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
-                  }`}
+            {groupedReceipts.map((group) => {
+              const hasSelectedInGroup = group.items.some((r) => r.id === selected?.id);
+              const isPastMonth = group.key !== 'unknown' && group.key < currentMonthKey;
+              return (
+                <details
+                  key={group.key}
+                  className="mt-3 rounded-xl border border-[var(--border)]/60 bg-[var(--panel-2)]/30 p-2"
+                  open={hasSelectedInGroup || !isPastMonth}
                 >
-                  {group.items.map((r) => (
-                    <button
-                      key={r.id}
-                      className={`w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-1 text-left text-[11px] leading-tight transition hover:bg-[#1b4a45] ${
-                        selected?.id === r.id
-                          ? 'border-white bg-[#1f504a] ring-2 ring-white/90'
-                          : ''
-                      }`}
-                        onClick={() => {
-                          setSelected(r);
-                          setSuccess(null);
-                          setMetaLocked(true);
-                          setPendingReceiptDelete(null);
-                          setConfirmDeleteReceipt(null);
-                        }}
-                      >
-                      <div className="relative flex items-start gap-3">
-                        {!selected ? (
-                          <span
-                            className="pointer-events-none absolute inset-0 flex items-center justify-center text-base opacity-30"
-                            style={{ color: weekColorValue(r.receipt_date) ?? 'var(--muted)' }}
-                          >
-                            {weekGlyph(r.receipt_date)}
-                          </span>
-                        ) : null}
-                        <div>
-                          <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                            {r.store}
+                  <summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] uppercase tracking-wide text-[var(--muted)]">
+                    <span>{group.label}</span>
+                    <span className="h-px flex-1 bg-[var(--border)]/60" />
+                    <span className="text-[10px] font-semibold text-[var(--muted)]">
+                      {Math.round(group.total)} {group.currency ?? 'RON'}
+                    </span>
+                  </summary>
+                  <div
+                    className={`mt-2 ${
+                      selected
+                        ? 'space-y-2'
+                        : 'grid gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+                    }`}
+                  >
+                    {group.items.map((r) => {
+                      const isTodayReceipt = dayKey(r.receipt_date) === todayKey;
+                      const isSelected = selected?.id === r.id;
+                      return (
+                        <button
+                          key={r.id}
+                          className={`w-full rounded-lg border p-1 text-left text-[11px] leading-tight transition ${
+                            isSelected
+                              ? 'border-sky-100 bg-[#255f73] ring-2 ring-sky-100/90 shadow-[0_0_0_1px_rgba(186,230,253,0.45)] hover:bg-[#2c7188]'
+                              : isTodayReceipt
+                                ? 'border-emerald-300/35 bg-emerald-500/10 hover:bg-emerald-500/15'
+                                : 'border-[var(--border)] bg-[var(--panel-2)] hover:bg-[#1b4a45]'
+                          }`}
+                          onClick={() => {
+                            setSelected(r);
+                            setSuccess(null);
+                            setMetaLocked(true);
+                            setPendingReceiptDelete(null);
+                            setConfirmDeleteReceipt(null);
+                          }}
+                        >
+                          <div className="relative flex items-start gap-3">
+                            {!selected ? (
+                              <span
+                                className="pointer-events-none absolute inset-0 flex items-center justify-center text-base opacity-30"
+                                style={{ color: weekColorValue(r.receipt_date) ?? 'var(--muted)' }}
+                              >
+                                {weekGlyph(r.receipt_date)}
+                              </span>
+                            ) : null}
+                            <div>
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                                {r.store}
+                              </div>
+                              <div
+                                className="mt-0.5 text-[10px]"
+                                style={{
+                                  color: weekColorValue(r.receipt_date) ?? 'var(--muted)',
+                                }}
+                              >
+                                {fmtDateOnly(r.receipt_date)}
+                              </div>
+                            </div>
+                            <div className="ml-auto text-right">
+                              <div className="text-[9px] uppercase tracking-wide text-[var(--muted)]">
+                                Total
+                              </div>
+                              <div className="text-sm font-semibold text-[var(--text)]">
+                                {r.total_amount?.toFixed(2)} {r.currency}
+                              </div>
+                            </div>
                           </div>
-                          <div
-                            className="mt-0.5 text-[10px]"
-                            style={{
-                              color: weekColorValue(r.receipt_date) ?? 'var(--muted)',
-                            }}
-                          >
-                            {fmtDateOnly(r.receipt_date)}
-                          </div>
-                        </div>
-                        <div className="ml-auto text-right">
-                          <div className="text-[9px] uppercase tracking-wide text-[var(--muted)]">
-                            Total
-                          </div>
-                          <div className="text-sm font-semibold text-[var(--text)]">
-                            {r.total_amount?.toFixed(2)} {r.currency}
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </details>
+              );
+            })}
           </div>
 
             {selected ? (

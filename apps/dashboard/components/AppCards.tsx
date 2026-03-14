@@ -8,7 +8,6 @@ export function AppCards() {
   const [apps, setApps] = useState<AppRow[] | null>(null);
   const [receiptsSummary, setReceiptsSummary] = useState<{
     count: number;
-    totalYear: number;
     totalMonth: number;
     totalPrevMonth: number;
     hasPrevMonth: boolean;
@@ -70,14 +69,12 @@ export function AppCards() {
       }
 
       const now = new Date();
-      const year = now.getFullYear();
       const month = now.getMonth();
-      const startOfYear = new Date(year, 0, 1).getTime();
+      const year = now.getFullYear();
       const startOfMonth = new Date(year, month, 1).getTime();
       const startOfPrevMonth = new Date(year, month - 1, 1).getTime();
       const endOfPrevMonth = startOfMonth - 1;
 
-      let totalYear = 0;
       let totalMonth = 0;
       let totalPrevMonth = 0;
 
@@ -85,14 +82,12 @@ export function AppCards() {
         const ts = row.receipt_date ? new Date(row.receipt_date).getTime() : null;
         if (!ts) return;
         const amount = row.total_amount ?? 0;
-        if (ts >= startOfYear) totalYear += amount;
         if (ts >= startOfMonth) totalMonth += amount;
         if (ts >= startOfPrevMonth && ts <= endOfPrevMonth) totalPrevMonth += amount;
       });
 
       setReceiptsSummary({
         count: count ?? 0,
-        totalYear,
         totalMonth,
         totalPrevMonth,
         hasPrevMonth: totalPrevMonth > 0,

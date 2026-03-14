@@ -22,7 +22,6 @@ function fmt(ts: string | null) {
 
 type ReceiptsSummary = {
   count: number;
-  totalYear: number;
   totalMonth: number;
   totalPrevMonth: number;
   hasPrevMonth: boolean;
@@ -57,12 +56,10 @@ export function AppCard({
             <StatusPill status={app.status} />
           </div>
           {isReceipts && receiptsSummary ? (
-            <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+            <div className="mt-3 space-y-2 text-sm">
               <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2">
-                <div className="text-[10px] uppercase text-[var(--muted)]">Total an curent</div>
-                <div className="mt-1 text-base font-semibold">
-                  {receiptsSummary.totalYear.toFixed(2)} {receiptsSummary.currency}
-                </div>
+                <div className="text-[10px] uppercase text-[var(--muted)]">Bonuri</div>
+                <div className="mt-1 text-base font-semibold">{receiptsSummary.count}</div>
               </div>
               <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2">
                 <div className="text-[10px] uppercase text-[var(--muted)]">Total luna curenta</div>
@@ -77,6 +74,20 @@ export function AppCard({
                     ? `${receiptsSummary.totalPrevMonth.toFixed(2)} ${receiptsSummary.currency}`
                     : '—'}
                 </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Link
+                  className="rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2.5 text-center text-sm font-semibold text-sky-100 transition hover:bg-sky-500/25"
+                  href="/receipts"
+                >
+                  Deschide bonuri
+                </Link>
+                <Link
+                  className="rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 py-2.5 text-center text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/25"
+                  href="/receipts/charts"
+                >
+                  Vezi grafice
+                </Link>
               </div>
             </div>
           ) : isTermo ? (
