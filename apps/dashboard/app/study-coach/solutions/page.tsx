@@ -71,6 +71,8 @@ export default function StudyCoachSolutionsPage() {
   const [showMenu, setShowMenu] = useState(true);
   const [headerExpanded, setHeaderExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfStatus, setPdfStatus] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const loadDocs = useCallback(async () => {
@@ -97,6 +99,37 @@ export default function StudyCoachSolutionsPage() {
   useEffect(() => {
     void loadDocs();
   }, [loadDocs]);
+
+  const generateMissingPdfs = useCallback(async () => {
+    setPdfBusy(true);
+    setPdfStatus(null);
+    try {
+      const res = await fetch('/api/study-coach/leetcode-solutions/generate-pdfs', {
+        method: 'POST',
+      });
+      const payload = await res.json() as {
+        error?: string;
+        createdCount?: number;
+        skippedCount?: number;
+        failedCount?: number;
+      };
+
+      if (!res.ok) {
+        const errorMsg = payload.error ?? `Failed files: ${payload.failedCount ?? 0}`;
+        setPdfStatus(`PDF generation failed: ${errorMsg}`);
+        return;
+      }
+
+      setPdfStatus(
+        `PDF generation done. Created: ${payload.createdCount ?? 0}, skipped existing: ${payload.skippedCount ?? 0}.`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setPdfStatus(`PDF generation failed: ${message}`);
+    } finally {
+      setPdfBusy(false);
+    }
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -163,6 +196,13 @@ export default function StudyCoachSolutionsPage() {
               >
                 {loading ? 'Loading...' : 'Refresh list'}
               </button>
+              <button
+                className="rounded-md border border-fuchsia-500/40 bg-fuchsia-500/20 px-3 py-1.5 text-sm font-semibold disabled:opacity-60"
+                onClick={() => { void generateMissingPdfs(); }}
+                disabled={pdfBusy}
+              >
+                {pdfBusy ? 'Generating PDFs...' : 'Generate missing PDFs'}
+              </button>
               <input
                 className="rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1.5 text-sm"
                 placeholder="Search by title / category / file"
@@ -171,6 +211,9 @@ export default function StudyCoachSolutionsPage() {
               />
               <span className="self-center text-xs text-[var(--muted)]">{filtered.length} files</span>
             </div>
+            {pdfStatus ? (
+              <p className="mt-2 text-xs text-[var(--muted)]">{pdfStatus}</p>
+            ) : null}
           </>
           ) : (
             <div className="text-xs text-[var(--muted)]">{filtered.length} files</div>

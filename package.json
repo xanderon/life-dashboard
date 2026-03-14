@@ -9,6 +9,7 @@
     "dev": "npm --workspace apps/dashboard run dev",
     "build": "npm --workspace apps/dashboard run build",
     "lint": "npm --workspace apps/dashboard run lint",
+    "studycoach:pdfs": "node scripts/generate_study_coach_pdfs.mjs",
     "termo:check": "node --env-file .env scripts/termo_alert.mjs",
     "device:ping": "node --env-file .env scripts/device_heartbeat.mjs"
   },
