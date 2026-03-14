@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { existsSync } from 'fs';
-import { mkdir, readdir, stat } from 'fs/promises';
-import path from 'path';
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'fs/promises';
 import { spawnSync } from 'child_process';
+import { tmpdir } from 'os';
+import path from 'path';
 import { pathToFileURL } from 'url';
 
 const REPO_ROOT = process.cwd();
@@ -11,6 +12,9 @@ const TARGET_DIRS = [
   path.join(REPO_ROOT, 'apps', 'dashboard', 'app', 'study-coach', 'htmldocstheory'),
   path.join(REPO_ROOT, 'apps', 'dashboard', 'app', 'study-coach', 'htmlreallifequestions'),
 ];
+
+// Chrome capabil de pagini foarte inalte (aprox 200in). Folosim asta ca sa evitam multipage.
+const SINGLE_PAGE_HEIGHT_MM = 5000;
 
 function isHtml(filePath) {
   return filePath.toLowerCase().endsWith('.html');
@@ -58,11 +62,60 @@ function resolveChromeBinary() {
   return null;
 }
 
+function injectSinglePagePrintCss(html) {
+  const printCss = `
+<style id="study-coach-pdf-print-style">
+  @page {
+    size: 210mm ${SINGLE_PAGE_HEIGHT_MM}mm;
+    margin: 0;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    box-sizing: border-box;
+  }
+
+  pre, code, table, blockquote, section, article, aside, figure, img {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+</style>
+`;
+
+  if (html.includes('</head>')) return html.replace('</head>', `${printCss}</head>`);
+  if (html.includes('<body')) return html.replace('<body', `${printCss}<body`);
+  return `${printCss}${html}`;
+}
+
+async function createPrintableTempHtml(originalHtmlPath) {
+  const source = await readFile(originalHtmlPath, 'utf8');
+  const content = injectSinglePagePrintCss(source);
+
+  const dir = await mkdtemp(path.join(tmpdir(), 'study-coach-pdf-'));
+  const tempPath = path.join(dir, path.basename(originalHtmlPath));
+  await writeFile(tempPath, content, 'utf8');
+
+  return {
+    tempPath,
+    cleanup: async () => {
+      await rm(dir, { recursive: true, force: true });
+    },
+  };
+}
+
 function printPdf(chromeBinary, htmlPath, pdfPath) {
   const htmlUrl = pathToFileURL(htmlPath).href;
   const args = [
     '--headless=new',
     '--disable-gpu',
+    '--no-pdf-header-footer',
     '--print-to-pdf-no-header',
     `--print-to-pdf=${pdfPath}`,
     htmlUrl,
@@ -114,11 +167,24 @@ async function main() {
     }
 
     await mkdir(path.dirname(pdfPath), { recursive: true });
-    const result = printPdf(chromeBinary, htmlPath, pdfPath);
-    if (result.ok) {
-      created.push(pdfPath);
-    } else {
-      failed.push({ htmlPath, pdfPath, error: result.error });
+
+    let printable = null;
+    try {
+      printable = await createPrintableTempHtml(htmlPath);
+      const result = printPdf(chromeBinary, printable.tempPath, pdfPath);
+      if (result.ok) {
+        created.push(pdfPath);
+      } else {
+        failed.push({ htmlPath, pdfPath, error: result.error });
+      }
+    } catch (error) {
+      failed.push({
+        htmlPath,
+        pdfPath,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      if (printable) await printable.cleanup();
     }
   }
 
