@@ -13,8 +13,6 @@ const TARGET_DIRS = [
   path.join(REPO_ROOT, 'apps', 'dashboard', 'app', 'study-coach', 'htmlreallifequestions'),
 ];
 
-// Chrome capabil de pagini foarte inalte (aprox 200in). Folosim asta ca sa evitam multipage.
-const SINGLE_PAGE_HEIGHT_MM = 5000;
 
 function isHtml(filePath) {
   return filePath.toLowerCase().endsWith('.html');
@@ -66,7 +64,6 @@ function injectSinglePagePrintCss(html) {
   const printCss = `
 <style id="study-coach-pdf-print-style">
   @page {
-    size: 210mm ${SINGLE_PAGE_HEIGHT_MM}mm;
     margin: 0;
   }
 
