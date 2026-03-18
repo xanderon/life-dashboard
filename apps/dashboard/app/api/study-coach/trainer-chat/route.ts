@@ -1,27 +1,44 @@
 import { NextResponse } from 'next/server';
 
+type ProblemStatus = 'todo' | 'in_progress' | 'done';
+type Difficulty = 'easy' | 'medium' | 'hard' | '';
+type PhaseId = 'phase_1' | 'phase_2' | 'phase_3';
+
 type Action =
-  | { type: 'focus_concept'; conceptId: string }
-  | { type: 'create_task'; title: string; conceptId: string; estimateMin: number; taskType: 'new' | 'recall' | 'deal-breaker' | 'nice' }
-  | { type: 'mark_task'; taskId: string; status: 'todo' | 'in_progress' | 'done' }
-  | { type: 'schedule_review'; conceptId: string; daysAhead: number };
+  | { type: 'focus_problem'; problemId: string }
+  | { type: 'mark_problem'; problemId: string; status: ProblemStatus }
+  | {
+      type: 'update_problem_meta';
+      problemId: string;
+      difficulty?: Difficulty;
+      docsUrl?: string;
+      solutionPath?: string;
+      notes?: string;
+    };
 
 type ChatPayload = {
   nowIso: string;
   learningWindowOpen: boolean;
-  readiness: number;
-  dealBreakerCoverage: number;
-  stateSummary: {
-    concepts: Array<{ id: string; name: string; mastery: number; dealBreaker: boolean; nextReview: string }>;
-    tasks: Array<{ id: string; title: string; conceptId: string; status: 'todo' | 'in_progress' | 'done'; estimateMin: number; type: 'new' | 'recall' | 'deal-breaker' | 'nice' }>;
+  kpis: {
+    roadmapProgress: number;
+    foundationCoverage: number;
+    reviewsDue: number;
   };
+  activeCategoryId: string;
+  focusProblemId: string | null;
+  categories: Array<{
+    id: string;
+    title: string;
+    phase: PhaseId;
+    problems: Array<{
+      id: string;
+      title: string;
+      status: ProblemStatus;
+      core: boolean;
+      difficulty: Difficulty;
+    }>;
+  }>;
   messages: Array<{ role: 'user' | 'coach'; text: string }>;
-  todayContext?: {
-    completedBlocks: number;
-    totalBlocks: number;
-    currentObjective: string | null;
-    doneTodayConceptIds: string[];
-  };
   trigger?: 'user_message' | 'proactive_nudge';
 };
 
@@ -31,6 +48,26 @@ type ChatResult = {
   actions: Action[];
 };
 
+type FlatProblem = {
+  id: string;
+  title: string;
+  status: ProblemStatus;
+  core: boolean;
+  difficulty: Difficulty;
+  categoryTitle: string;
+  phase: PhaseId;
+};
+
+function flattenProblems(payload: ChatPayload): FlatProblem[] {
+  return payload.categories.flatMap((category) =>
+    category.problems.map((problem) => ({
+      ...problem,
+      categoryTitle: category.title,
+      phase: category.phase,
+    }))
+  );
+}
+
 function latestUserMessage(payload: ChatPayload) {
   for (let i = payload.messages.length - 1; i >= 0; i -= 1) {
     if (payload.messages[i].role === 'user') return payload.messages[i].text.toLowerCase();
@@ -38,301 +75,211 @@ function latestUserMessage(payload: ChatPayload) {
   return '';
 }
 
-function detectConfidence(userText: string): number | null {
-  const numMatch = userText.match(/\b(\d{1,3})\b/);
-  if (numMatch) {
-    const n = Number(numMatch[1]);
-    if (Number.isFinite(n)) return Math.max(0, Math.min(100, n));
-  }
-  if (userText.includes('confidence high') || userText.includes('incredere mare') || userText.includes('high confidence')) {
-    return 85;
-  }
-  if (userText.includes('confidence medium') || userText.includes('incredere medie')) {
-    return 65;
-  }
-  if (userText.includes('confidence low') || userText.includes('incredere mica')) {
-    return 40;
-  }
+function phaseRank(phase: PhaseId) {
+  if (phase === 'phase_1') return 1;
+  if (phase === 'phase_2') return 2;
+  return 3;
+}
+
+function nextPriorityProblem(problems: FlatProblem[]) {
+  return [...problems]
+    .filter((problem) => problem.status !== 'done' && problem.core)
+    .sort((a, b) => phaseRank(a.phase) - phaseRank(b.phase))[0];
+}
+
+function parseDifficulty(text: string): Difficulty | null {
+  if (text.includes(' easy')) return 'easy';
+  if (text.includes(' medium')) return 'medium';
+  if (text.includes(' hard')) return 'hard';
   return null;
 }
 
-function isCompletionMessage(userText: string) {
-  const completionTerms = ['am facut', 'gata', 'am terminat', 'done', 'rezolvat', 'finished'];
-  return completionTerms.some((t) => userText.includes(t));
+function inferMentionedProblem(text: string, problems: FlatProblem[]) {
+  const norm = text.replace(/[^a-z0-9 ]+/g, ' ').trim();
+  let best: { p: FlatProblem; score: number } | null = null;
+
+  for (const p of problems) {
+    const title = p.title.toLowerCase();
+    if (norm.includes(title)) return p;
+
+    const tokens = title.split(' ').filter((token) => token.length >= 4);
+    const score = tokens.reduce((acc, token) => (norm.includes(token) ? acc + 1 : acc), 0);
+    if (!best || score > best.score) {
+      best = { p, score };
+    }
+  }
+
+  if (best && best.score >= 2) return best.p;
+  return null;
 }
 
-function mentionsSrpDone(userText: string) {
-  const mentionsSrp = userText.includes('srp') || userText.includes('single responsibility');
-  const doneTone = userText.includes('am facut') || userText.includes('am terminat') || userText.includes('azi');
-  return mentionsSrp && doneTone;
-}
-
-function localFallback(payload: ChatPayload): ChatResult {
+function buildFallback(payload: ChatPayload): ChatResult {
   const userText = latestUserMessage(payload);
-  const lastCoachText = [...payload.messages].reverse().find((m) => m.role === 'coach')?.text.toLowerCase() ?? '';
-  const weakestDealBreaker = payload.stateSummary.concepts
-    .filter((c) => c.dealBreaker)
-    .sort((a, b) => a.mastery - b.mastery)[0];
+  const problems = flattenProblems(payload);
+  const focused = problems.find((problem) => problem.id === payload.focusProblemId) ?? null;
+  const suggested = nextPriorityProblem(problems);
+  const mentioned = inferMentionedProblem(userText, problems);
 
-  const srp = payload.stateSummary.concepts.find((c) => c.id === 'srp');
-  const doneTodaySet = new Set(payload.todayContext?.doneTodayConceptIds ?? []);
-  const activeTask = payload.stateSummary.tasks.find((t) => t.status === 'in_progress');
-  const topTodoDealBreaker = payload.stateSummary.tasks.find((t) => t.status === 'todo' && t.type === 'deal-breaker');
-  const confidence = detectConfidence(userText);
-
-  if (mentionsSrpDone(userText) && srp) {
-    const srpPendingTasks = payload.stateSummary.tasks.filter(
-      (t) => t.conceptId === srp.id && t.status !== 'done'
-    );
-    const nextDealBreaker = payload.stateSummary.concepts
-      .filter((c) => c.dealBreaker && c.id !== srp.id)
-      .sort((a, b) => a.mastery - b.mastery)[0];
-
-    const actions: Action[] = [
-      ...srpPendingTasks.map<Action>((t) => ({ type: 'mark_task', taskId: t.id, status: 'done' })),
-      { type: 'schedule_review', conceptId: srp.id, daysAhead: 2 },
-    ];
-
-    if (nextDealBreaker) {
-      actions.push({ type: 'focus_concept', conceptId: nextDealBreaker.id });
-      const hasTaskOnNext = payload.stateSummary.tasks.some(
-        (t) => t.conceptId === nextDealBreaker.id && t.status !== 'done'
-      );
-      if (!hasTaskOnNext) {
-        actions.push({
-          type: 'create_task',
-          title: `Active recall sprint: ${nextDealBreaker.name}`,
-          conceptId: nextDealBreaker.id,
-          estimateMin: 20,
-          taskType: 'deal-breaker',
-        });
-      }
-    }
-
-    return {
-      mode: 'local-fallback',
-      reply: nextDealBreaker
-        ? `Perfect, marcam SRP ca facut azi si il punem la review peste 2 zile. Urmatorul focus: ${nextDealBreaker.name}, sprint 20-25 min.`
-        : 'Perfect, marcam SRP ca facut azi si il punem la review peste 2 zile. Esti ok pe deal-breakers pentru moment.',
-      actions,
-    };
-  }
-
-  if (isCompletionMessage(userText) && activeTask) {
-    const actions: Action[] = [{ type: 'mark_task', taskId: activeTask.id, status: 'done' }];
-    if (topTodoDealBreaker && topTodoDealBreaker.id !== activeTask.id) {
-      actions.push({ type: 'mark_task', taskId: topTodoDealBreaker.id, status: 'in_progress' });
+  if (payload.trigger === 'proactive_nudge') {
+    if (suggested) {
+      return {
+        mode: 'local-fallback',
+        reply: `Reminder: continua cu ${suggested.title} (${suggested.categoryTitle}). Tinta: 25 min + un check-in scurt.`,
+        actions: [{ type: 'focus_problem', problemId: suggested.id }],
+      };
     }
     return {
       mode: 'local-fallback',
-      reply: topTodoDealBreaker
-        ? `Perfect, am marcat \"${activeTask.title}\" ca done. Urmatorul pas: intra pe \"${topTodoDealBreaker.title}\" pentru 20-25 min.`
-        : `Perfect, am marcat \"${activeTask.title}\" ca done. Urmatorul pas: da-mi urmatorul concept pe care vrei sa-l atacam.`,
-      actions,
-    };
-  }
-
-  if (confidence !== null && confidence >= 75 && activeTask) {
-    return {
-      mode: 'local-fallback',
-      reply: `Confidence ${confidence}% e bun. Confirmi sa marchez \"${activeTask.title}\" ca done? Scrie: \"da, marcheaza done\".`,
+      reply: 'Toate problemele core sunt done. Fa un review pe cele vechi sau ataca optionalele.',
       actions: [],
     };
   }
 
-  if (userText.includes('marcheaza done') || userText.includes('mark done')) {
-    if (activeTask) {
+  const asksNext = userText.includes('ce urmeaza') || userText.includes('what next') || userText.includes('next');
+  if (asksNext && suggested) {
+    return {
+      mode: 'local-fallback',
+      reply: `Urmatoarea problema prioritara: ${suggested.title} (${suggested.categoryTitle}, ${suggested.phase.replace('_', ' ')}).`,
+      actions: [{ type: 'focus_problem', problemId: suggested.id }],
+    };
+  }
+
+  const doneTone = userText.includes('am terminat') || userText.includes('gata') || userText.includes('done') || userText.includes('rezolvat');
+  if (doneTone) {
+    const target = mentioned ?? focused;
+    if (target) {
+      const after = nextPriorityProblem(problems.filter((problem) => problem.id !== target.id));
       return {
         mode: 'local-fallback',
-        reply: `Done. Am marcat \"${activeTask.title}\" si te mut pe urmatorul task relevant.`,
+        reply: after
+          ? `Perfect. Marcam ${target.title} ca done. Dupa asta continua cu ${after.title}.`
+          : `Perfect. Marcam ${target.title} ca done. Ai terminat lista core.`,
         actions: [
-          { type: 'mark_task', taskId: activeTask.id, status: 'done' },
-          ...(topTodoDealBreaker ? [{ type: 'mark_task' as const, taskId: topTodoDealBreaker.id, status: 'in_progress' as const }] : []),
+          { type: 'mark_problem', problemId: target.id, status: 'done' },
+          ...(after ? [{ type: 'focus_problem' as const, problemId: after.id }] : []),
         ],
       };
     }
   }
 
-  if (userText.includes('ce urmeaza') || userText.includes('what next') || userText.includes('next?')) {
-    const done = payload.todayContext?.completedBlocks ?? 0;
-    const total = payload.todayContext?.totalBlocks ?? 0;
-    if (topTodoDealBreaker) {
+  const diff = parseDifficulty(userText);
+  if (diff) {
+    const target = mentioned ?? focused;
+    if (target) {
       return {
         mode: 'local-fallback',
-        reply: `Progres Today: ${done}/${total} blocuri. Urmatorul pas: \"${topTodoDealBreaker.title}\" (20-25 min), apoi check-in cu definitie + exemplu + confidence.`,
-        actions: [{ type: 'mark_task', taskId: topTodoDealBreaker.id, status: 'in_progress' }],
+        reply: `Setez ${target.title} la difficulty ${diff}.`,
+        actions: [{ type: 'update_problem_meta', problemId: target.id, difficulty: diff }],
       };
     }
   }
 
-  const asksAlgorithms = userText.includes('algoritm') || userText.includes('algorithm') || userText.includes('leetcode') || userText.includes('dsa');
-  if (asksAlgorithms) {
-    const hasAlgoTask = payload.stateSummary.tasks.some((t) => t.title.toLowerCase().includes('linked list') || t.title.toLowerCase().includes('two pointers') || t.title.toLowerCase().includes('binary search'));
-    return {
-      mode: 'local-fallback',
-      reply: hasAlgoTask
-        ? 'Da, dupa DIP intram pe algoritmi. Plan concret: 1) termini DIP acum, 2) 25 min Linked List, 3) 20 min recap patterns, 4) check-in scurt.'
-        : 'Da, dupa DIP incepem algoritmi. Plan concret: 1) termini DIP (20-25 min), 2) sprint Linked List 25 min, 3) sprint Binary Search 20 min, 4) recap 10 min.',
-      actions: hasAlgoTask
-        ? []
-        : [
-          {
-            type: 'create_task',
-            title: 'Algorithms sprint: Linked List (1 problem + explain)',
-            conceptId: 'polymorphism',
-            estimateMin: 25,
-            taskType: 'new',
-          },
-          {
-            type: 'create_task',
-            title: 'Algorithms sprint: Binary Search recap',
-            conceptId: 'polymorphism',
-            estimateMin: 20,
-            taskType: 'new',
-          },
-        ],
-    };
-  }
-
-  if (userText.includes('ce sa fac') && (userText.includes('srp') || userText.includes('single responsibility'))) {
-    return {
-      mode: 'local-fallback',
-      reply: [
-        'Bun, pentru SRP fa asa in 20 minute:',
-        '1) Defineste SRP in 2 fraze.',
-        '2) Da un exemplu prost (o clasa care face SQL + email + business).',
-        '3) Refactor mental in 3 componente (repo, service, notifier).',
-        '4) Spune un pitfall: \"SRP nu inseamna o metoda per clasa\".',
-        'Dupa sprint, trimite-mi confidence + un exemplu concret din codul tau.'
-      ].join(' '),
-      actions: [
-        ...(srp ? [{ type: 'focus_concept', conceptId: srp.id } as const] : []),
-        ...(srp ? [{
-          type: 'create_task' as const,
-          title: 'SRP 20m: definitie + exemplu prost + refactor',
-          conceptId: srp.id,
-          estimateMin: 20,
-          taskType: 'deal-breaker' as const,
-        }] : []),
-      ],
-    };
-  }
-
-  if (doneTodaySet.has('srp') && srp && (userText.includes('srp') || userText.includes('single responsibility'))) {
-    const nextDealBreaker = payload.stateSummary.concepts
-      .filter((c) => c.dealBreaker && c.id !== srp.id)
-      .sort((a, b) => a.mastery - b.mastery)[0];
-
-    return {
-      mode: 'local-fallback',
-      reply: nextDealBreaker
-        ? `Confirm, SRP apare deja ca facut in Today. Nu mai insistam pe el acum. Trecem pe ${nextDealBreaker.name}.`
-        : 'Confirm, SRP apare facut in Today. Trecem pe algoritmi ca next focus.',
-      actions: nextDealBreaker ? [{ type: 'focus_concept', conceptId: nextDealBreaker.id }] : [],
-    };
-  }
-
-  if (userText.includes('stai') || userText.includes('termin') || userText.includes('acum')) {
-    return {
-      mode: 'local-fallback',
-      reply: 'Perfect, termina problema curenta. Cand ai inchis-o, da-mi \"gata\" si intram imediat pe un sprint SRP de 20 minute.',
-      actions: [],
-    };
-  }
-
-  if (!payload.learningWindowOpen) {
-    return {
-      mode: 'local-fallback',
-      reply: 'Acum esti in afara ferestrei de invatare. Ia o pauza scurta si revino in urmatoarea fereastra cu un sprint de 20 min.',
-      actions: [],
-    };
-  }
-
-    if (payload.trigger === 'proactive_nudge' && weakestDealBreaker) {
-    return {
-      mode: 'local-fallback',
-      reply: `Ping de la trainer: esti in fereastra de invatare. Propun acum un sprint scurt pe ${weakestDealBreaker.name} (deal-breaker).`,
-      actions: [
-        { type: 'focus_concept', conceptId: weakestDealBreaker.id },
-        {
-          type: 'create_task',
-          title: `Active recall sprint: ${weakestDealBreaker.name}`,
-          conceptId: weakestDealBreaker.id,
-          estimateMin: 20,
-          taskType: 'deal-breaker',
-        },
-      ],
-    };
-  }
-
-  const todoDealBreaker = payload.stateSummary.tasks.find(
-    (t) => t.status !== 'done' && t.type === 'deal-breaker'
-  );
-
-  if (todoDealBreaker) {
-    if (lastCoachText.includes(todoDealBreaker.title.toLowerCase())) {
+  const urlMatch = userText.match(/https?:\/\/\S+/i);
+  if (urlMatch) {
+    const target = mentioned ?? focused;
+    if (target) {
       return {
         mode: 'local-fallback',
-        reply: `Ca sa nu stam blocati: fie incepi acum \"${todoDealBreaker.title}\", fie imi spui explicit \"skip\" si iti dau alternativa pe algoritmi.`,
-        actions: [],
+        reply: `Am atasat link-ul de docs pe ${target.title}.`,
+        actions: [{ type: 'update_problem_meta', problemId: target.id, docsUrl: urlMatch[0] }],
       };
     }
+  }
+
+  if (focused) {
     return {
       mode: 'local-fallback',
-      reply: `Plan concret: ia task-ul \"${todoDealBreaker.title}\", lucreaza 20-25 min, apoi da-mi: definitie + exemplu + confidence.`,
-      actions: [
-        { type: 'mark_task', taskId: todoDealBreaker.id, status: 'in_progress' },
-      ],
+      reply: `Ramai pe ${focused.title}. Spune-mi cand il termini sau cere direct "ce urmeaza" pentru urmatorul pas din roadmap.`,
+      actions: [],
     };
   }
 
-  if (weakestDealBreaker) {
+  if (suggested) {
     return {
       mode: 'local-fallback',
-      reply: `Prioritatea ta acum este ${weakestDealBreaker.name}. Tinta minima: 70% mastery.`,
-      actions: [
-        { type: 'focus_concept', conceptId: weakestDealBreaker.id },
-        { type: 'schedule_review', conceptId: weakestDealBreaker.id, daysAhead: 1 },
-      ],
+      reply: `Pornim cu ${suggested.title}.`,
+      actions: [{ type: 'focus_problem', problemId: suggested.id }],
     };
   }
 
   return {
     mode: 'local-fallback',
-    reply: 'Arata bine. Fa un sprint nou pe un topic core si trimite-mi un check-in scurt dupa.',
+    reply: 'Roadmap-ul este complet. Poti continua pe optionale sau review.',
     actions: [],
   };
 }
 
-function isValidAction(v: unknown): v is Action {
-  if (!v || typeof v !== 'object') return false;
-  const x = v as { type?: string };
-  return ['focus_concept', 'create_task', 'mark_task', 'schedule_review'].includes(String(x.type));
+function normalizeStatus(value: unknown): ProblemStatus {
+  if (value === 'todo' || value === 'in_progress' || value === 'done') return value;
+  return 'todo';
+}
+
+function normalizeDifficulty(value: unknown): Difficulty | undefined {
+  if (value === '' || value === 'easy' || value === 'medium' || value === 'hard') return value;
+  return undefined;
+}
+
+function normalizeActions(raw: unknown): Action[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Action[] = [];
+
+  raw.forEach((item) => {
+    if (!item || typeof item !== 'object') return;
+    const action = item as Record<string, unknown>;
+    const type = action.type;
+
+    if (type === 'focus_problem' && typeof action.problemId === 'string') {
+      out.push({ type, problemId: action.problemId });
+      return;
+    }
+
+    if (type === 'mark_problem' && typeof action.problemId === 'string') {
+      out.push({ type, problemId: action.problemId, status: normalizeStatus(action.status) });
+      return;
+    }
+
+    if (type === 'update_problem_meta' && typeof action.problemId === 'string') {
+      const next: Action = { type, problemId: action.problemId };
+      if (typeof action.docsUrl === 'string') next.docsUrl = action.docsUrl;
+      if (typeof action.solutionPath === 'string') next.solutionPath = action.solutionPath;
+      if (typeof action.notes === 'string') next.notes = action.notes;
+      const diff = normalizeDifficulty(action.difficulty);
+      if (diff !== undefined) next.difficulty = diff;
+      out.push(next);
+    }
+  });
+
+  return out;
 }
 
 export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as ChatPayload;
-    const apiKey = process.env.OPENAI_API_KEY;
-
-    if (!apiKey) {
-      return NextResponse.json(localFallback(payload));
+    if (!Array.isArray(payload?.categories)) {
+      return NextResponse.json({ error: 'Missing categories.' }, { status: 400 });
     }
 
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) return NextResponse.json(buildFallback(payload));
+
     const systemPrompt = [
-      'You are a proactive Romanian study coach for SWE interviews.',
-      'Be concise and directive. Push deal-breaker topics first.',
-      'Always react directly to the latest user message in your first sentence.',
-      'If user says they want to finish another task first, acknowledge and set a follow-up checkpoint.',
-      'If user asks what to do for a concept, give concrete numbered steps, not generic advice.',
-      'If user says they finished a task or gives high confidence, propose marking task done and move to next concrete task.',
-      'If user asks "ce urmeaza", answer with one concrete next sprint and expected output.',
-      'If user asks about algorithms timing, provide a sequence (after current task) with exact durations.',
-      'Avoid repeating the exact previous coach message; if repeated context, offer two options.',
-      'If user is behind, say it directly and propose one concrete sprint now.',
-      'Return strict JSON with keys: reply (string), actions (array).',
-      'Action types allowed: focus_concept, create_task, mark_task, schedule_review.',
+      'You are a strict algorithm study coach.',
+      'Main objective: keep user focused on listed roadmap problems, phase order first.',
+      'Respond in Romanian and return JSON only.',
+      'Allowed action types: focus_problem, mark_problem, update_problem_meta.',
+      'Keep reply concise and actionable.',
     ].join(' ');
+
+    const userPayload = {
+      nowIso: payload.nowIso,
+      trigger: payload.trigger,
+      learningWindowOpen: payload.learningWindowOpen,
+      kpis: payload.kpis,
+      activeCategoryId: payload.activeCategoryId,
+      focusProblemId: payload.focusProblemId,
+      categories: payload.categories,
+      messages: payload.messages,
+    };
 
     const r = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -344,12 +291,12 @@ export async function POST(request: Request) {
         model: 'gpt-4.1-mini',
         input: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify(payload) },
+          { role: 'user', content: JSON.stringify(userPayload) },
         ],
         text: {
           format: {
             type: 'json_schema',
-            name: 'trainer_chat',
+            name: 'algo_trainer_chat',
             schema: {
               type: 'object',
               additionalProperties: false,
@@ -361,10 +308,6 @@ export async function POST(request: Request) {
                   items: {
                     type: 'object',
                     additionalProperties: true,
-                    required: ['type'],
-                    properties: {
-                      type: { type: 'string' },
-                    },
                   },
                 },
               },
@@ -374,28 +317,22 @@ export async function POST(request: Request) {
       }),
     });
 
-    if (!r.ok) {
-      return NextResponse.json(localFallback(payload));
-    }
+    if (!r.ok) return NextResponse.json(buildFallback(payload));
 
     const data = (await r.json()) as { output_text?: string };
     const raw = data.output_text ?? '{}';
     const parsed = JSON.parse(raw) as { reply?: unknown; actions?: unknown };
 
-    const actions = Array.isArray(parsed.actions)
-      ? parsed.actions.filter(isValidAction).slice(0, 4)
-      : [];
+    const reply = typeof parsed.reply === 'string' && parsed.reply.trim().length
+      ? parsed.reply
+      : buildFallback(payload).reply;
 
-    const result: ChatResult = {
+    return NextResponse.json({
       mode: 'openai',
-      reply: typeof parsed.reply === 'string' && parsed.reply.trim().length > 0
-        ? parsed.reply.trim()
-        : 'Plan: alege un deal-breaker si fa un sprint de 20 minute acum.',
-      actions,
-    };
-
-    return NextResponse.json(result);
+      reply,
+      actions: normalizeActions(parsed.actions),
+    });
   } catch {
-    return NextResponse.json({ error: 'Failed to produce coach chat response.' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to run trainer chat.' }, { status: 500 });
   }
 }
