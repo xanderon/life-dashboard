@@ -97,6 +97,12 @@ const PHASE_LABEL: Record<PhaseId, string> = {
   phase_3: 'Faza 3 · Completare',
 };
 
+const STATUS_LABEL: Record<ProblemStatus, string> = {
+  todo: 'TODO',
+  in_progress: 'DOING',
+  done: 'DONE',
+};
+
 const ROADMAP_SEED: SeedCategory[] = [
   {
     title: 'Array',
@@ -360,6 +366,20 @@ const DEFAULT_STATE = buildDefaultState();
 
 function flattenProblems(categories: RoadmapCategory[]) {
   return categories.flatMap((category) => category.problems.map((problem) => ({ ...problem, categoryId: category.id, categoryTitle: category.title, phase: category.phase })));
+}
+
+function problemCardClass(status: ProblemStatus, focused: boolean) {
+  const base = 'rounded-lg border p-2 transition-colors';
+  if (status === 'done') return `${base} border-emerald-500/40 bg-emerald-500/10`;
+  if (status === 'in_progress') return `${base} border-sky-500/40 bg-sky-500/10`;
+  if (focused) return `${base} border-indigo-500/50 bg-indigo-500/10`;
+  return `${base} border-[var(--border)] bg-[var(--panel-2)]`;
+}
+
+function statusButtonClass(active: boolean) {
+  return active
+    ? 'rounded-md border border-emerald-500/50 bg-emerald-500/20 px-2 py-1 text-xs font-semibold'
+    : 'rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs';
 }
 
 export default function StudyCoachTrainerPage() {
@@ -792,6 +812,9 @@ export default function StudyCoachTrainerPage() {
                               <div>
                                 <div className="font-semibold">{category.title}</div>
                                 <div className="text-xs text-[var(--muted)]">{done}/{total} done</div>
+                                <div className="mt-1 h-1.5 w-36 rounded bg-[var(--panel-2)]">
+                                  <div className="h-1.5 rounded bg-emerald-400" style={{ width: `${total ? Math.round((done / total) * 100) : 0}%` }} />
+                                </div>
                               </div>
                               <button
                                 type="button"
@@ -811,24 +834,32 @@ export default function StudyCoachTrainerPage() {
                           </div>
 
                           <div className="mt-3 space-y-2">
-                            {category.problems.map((problem) => (
-                              <div key={problem.id} className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-2">
+                            {category.problems.map((problem) => {
+                              const focused = state.ui.focusProblemId === problem.id;
+                              return (
+                              <div key={problem.id} className={problemCardClass(problem.status, focused)}>
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                   <div>
-                                    <div className="text-sm font-semibold">{problem.title}</div>
+                                    <div className={`text-sm font-semibold ${problem.status === 'done' ? 'line-through opacity-80' : ''}`}>{problem.title}</div>
                                     <div className="text-xs text-[var(--muted)]">
-                                      {problem.core ? 'core' : 'optional'}
+                                      {STATUS_LABEL[problem.status]} • {problem.core ? 'core' : 'optional'}
                                       {problem.lastReviewedAt ? ` • review ${problem.lastReviewedAt}` : ''}
+                                      {focused ? ' • focused' : ''}
                                     </div>
                                   </div>
                                   <div className="flex flex-wrap gap-1">
-                                    <button className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs" onClick={() => setProblemStatus(problem.id, 'todo')}>todo</button>
-                                    <button className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs" onClick={() => setProblemStatus(problem.id, 'in_progress')}>doing</button>
-                                    <button className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs" onClick={() => setProblemStatus(problem.id, 'done')}>done</button>
-                                    <button className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2 py-1 text-xs" onClick={() => setFocus(problem.id, category.id)}>focus</button>
+                                    <button className={statusButtonClass(problem.status === 'todo')} onClick={() => setProblemStatus(problem.id, 'todo')}>todo</button>
+                                    <button className={statusButtonClass(problem.status === 'in_progress')} onClick={() => setProblemStatus(problem.id, 'in_progress')}>doing</button>
+                                    <button className={statusButtonClass(problem.status === 'done')} onClick={() => setProblemStatus(problem.id, 'done')}>done</button>
+                                    {focused ? (
+                                      <span className="rounded-md border border-indigo-500/40 bg-indigo-500/20 px-2 py-1 text-xs font-semibold">Focused</span>
+                                    ) : (
+                                      <button className="rounded-md border border-indigo-500/40 bg-indigo-500/20 px-2 py-1 text-xs" onClick={() => setFocus(problem.id, category.id)}>Set focus</button>
+                                    )}
                                   </div>
                                 </div>
 
+                                {focused ? (
                                 <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
                                   <label className="text-xs">
                                     Difficulty
@@ -874,8 +905,10 @@ export default function StudyCoachTrainerPage() {
                                     />
                                   </label>
                                 </div>
+                                ) : null}
                               </div>
-                            ))}
+                            );
+                            })}
                           </div>
                         </details>
                       );
