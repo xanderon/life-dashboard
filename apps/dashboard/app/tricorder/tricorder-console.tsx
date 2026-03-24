@@ -438,33 +438,33 @@ export function TricorderConsole() {
           </div>
         </section>
 
-        <section className={styles.panelStack}>
-          <div className={styles.wavePanel}>
-            <div className={styles.panelTitle}>Live feed</div>
-            <div className={styles.waveform}>
-              {waveform.map((bar, index) => (
-                <span
-                  key={bar.id}
-                  className={styles.waveBar}
-                  style={{
-                    height: `${bar.height}%`,
-                    animationDelay: `${index * 80}ms`,
-                  }}
-                />
-              ))}
-            </div>
+        <section className={styles.hybridPanel}>
+          <div className={styles.hybridHeader}>
+            <div className={styles.panelTitle}>Signal telemetry</div>
+            <div className={styles.subtle}>{activeThemePreset.label} theme</div>
           </div>
 
-          <div className={styles.telemetryPanel}>
-            <div className={styles.panelTitle}>Telemetry</div>
-            <div className={styles.telemetryGrid}>
-              <Readout label="Focus" value={activeControl} />
-              <Readout label="Harmonic" value={`${metrics[3]}.4`} />
-              <Readout label="Stability" value={`${100 - metrics[1]}%`} />
-              <Readout label="Phase" value={activeMode.code} />
-            </div>
-            <p className={styles.detailText}>{activeMode.detail}</p>
+          <div className={styles.waveformCompact}>
+            {waveform.map((bar, index) => (
+              <span
+                key={bar.id}
+                className={styles.waveBar}
+                style={{
+                  height: `${bar.height}%`,
+                  animationDelay: `${index * 80}ms`,
+                }}
+              />
+            ))}
           </div>
+
+          <div className={styles.telemetryGridCompact}>
+            <Readout label="Focus" value={activeControl} />
+            <Readout label="Harmonic" value={`${metrics[3]}.4`} />
+            <Readout label="Stability" value={`${100 - metrics[1]}%`} />
+            <Readout label="Phase" value={activeMode.code} />
+          </div>
+
+          <p className={styles.detailText}>{activeMode.detail}</p>
         </section>
 
         <section className={styles.controls}>

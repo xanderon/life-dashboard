@@ -576,22 +576,29 @@
   letter-spacing: 0.08em;
 }
 
-.panelStack {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.wavePanel,
-.telemetryPanel,
+.hybridPanel,
 .controls {
   padding: 10px;
 }
 
-.waveform {
+.hybridPanel {
+  margin-top: 12px;
+  border-radius: 24px;
+  border: 1px solid rgba(158, 227, 206, 0.14);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tricorder-panel-top, #0c121d) 96%, transparent), color-mix(in srgb, var(--tricorder-panel-bottom, #060910) 96%, transparent));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.hybridHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.waveformCompact {
   margin-top: 8px;
-  height: 68px;
+  height: 44px;
   display: grid;
   grid-template-columns: repeat(24, minmax(0, 1fr));
   align-items: end;
@@ -606,18 +613,27 @@
   animation: hop 3.4s infinite ease-in-out;
 }
 
-.telemetryGrid {
+.telemetryGridCompact {
   margin-top: 8px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .detailText {
   margin: 8px 0 0;
-  font-size: 0.76rem;
-  line-height: 1.35;
+  font-size: 0.72rem;
+  line-height: 1.28;
   color: rgba(223, 246, 239, 0.84);
+}
+
+.telemetryGridCompact .readout {
+  padding: 8px;
+}
+
+.telemetryGridCompact .readoutValue {
+  margin-top: 4px;
+  font-size: 0.86rem;
 }
 
 .buttonGrid {
