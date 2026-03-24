@@ -42,10 +42,13 @@ type TargetProfile = {
   energy: number;
   stamina: number;
   signal: number;
+  ghost: boolean;
   x: number;
   y: number;
   note: string;
 };
+
+type ContactView = 'hidden' | 'blip' | 'data';
 
 const modes: Mode[] = [
   {
@@ -195,6 +198,7 @@ const targetProfiles: TargetProfile[] = [
     energy: 81,
     stamina: 88,
     signal: 74,
+    ghost: false,
     x: 34,
     y: 38,
     note: 'Stable biorhythm. Responsive movement pattern.',
@@ -208,6 +212,7 @@ const targetProfiles: TargetProfile[] = [
     energy: 39,
     stamina: 31,
     signal: 67,
+    ghost: false,
     x: 62,
     y: 47,
     note: 'Irregular cellular output. Mobility compromised.',
@@ -221,6 +226,7 @@ const targetProfiles: TargetProfile[] = [
     energy: 94,
     stamina: 58,
     signal: 89,
+    ghost: false,
     x: 52,
     y: 29,
     note: 'High-energy envelope detected. Scan penetration reduced.',
@@ -234,6 +240,7 @@ const targetProfiles: TargetProfile[] = [
     energy: 24,
     stamina: 12,
     signal: 41,
+    ghost: false,
     x: 27,
     y: 62,
     note: 'Life signs fading. Severe instability across all channels.',
@@ -243,13 +250,14 @@ const targetProfiles: TargetProfile[] = [
     name: 'Vault Sleeper',
     type: 'Dormant specimen',
     status: 'Dormant',
-    health: 64,
-    energy: 16,
+    health: 0,
+    energy: 73,
     stamina: 8,
     signal: 52,
+    ghost: true,
     x: 73,
     y: 41,
-    note: 'Low-activity state. Minimal reaction unless pulse scan is raised.',
+    note: 'Body trace absent. Residual spectral charge remains coherent.',
   },
 ];
 
@@ -259,6 +267,8 @@ export function TricorderConsole() {
   const [activeDisplay, setActiveDisplay] = useState<DisplayKind>(modes[0].display);
   const [activeTheme, setActiveTheme] = useState<ThemeKind>('starfleet');
   const [activeTarget, setActiveTarget] = useState<TargetProfile>(targetProfiles[0]);
+  const [contactView, setContactView] = useState<ContactView>('blip');
+  const [materialScanId, setMaterialScanId] = useState(0);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -347,6 +357,29 @@ export function TricorderConsole() {
     [activeMode, tick]
   );
 
+  const trackedPosition = useMemo(
+    () => ({
+      x: Math.max(12, Math.min(88, activeTarget.x + Math.sin(tick / 2.4 + activeTarget.x) * 5 * controlProfile.spread)),
+      y: Math.max(16, Math.min(80, activeTarget.y + Math.cos(tick / 2.8 + activeTarget.y) * 4 * controlProfile.spread)),
+    }),
+    [activeTarget.x, activeTarget.y, controlProfile.spread, tick]
+  );
+
+  const materialReadout = useMemo(() => {
+    const signatures = [
+      'Titanium weave',
+      'Carbon laminate',
+      'Ceramic shell',
+      'Duranium lattice',
+      'Silicate dust',
+      'Organic residue',
+    ];
+    return signatures.map((label, index) => ({
+      label,
+      value: 12 + ((materialScanId * 17 + activeTarget.signal * 3 + index * 19) % 74),
+    }));
+  }, [activeTarget.signal, materialScanId]);
+
   const statusToneClass = {
     Healthy: styles.statusHealthy,
     Damaged: styles.statusDamaged,
@@ -354,6 +387,12 @@ export function TricorderConsole() {
     Dormant: styles.statusDormant,
     Shielded: styles.statusShielded,
   }[activeTarget.status];
+  const showRadarBlip = activeDisplay === 'radar' && contactView !== 'hidden';
+  const showBioData = activeDisplay === 'bio' && contactView === 'data';
+  const showGhostTrace = activeDisplay === 'spectral' && contactView !== 'hidden' && activeTarget.ghost;
+  const showTargetPanel = contactView === 'data' && (activeDisplay === 'bio' || showGhostTrace);
+  const showTargetLabel = contactView === 'data';
+  const showMaterialResults = activeDisplay === 'material' && materialScanId > 0;
 
   return (
     <div
@@ -508,19 +547,56 @@ export function TricorderConsole() {
               </div>
             ) : null}
 
-            <div
-              className={activeControl === 'Lock' ? styles.targetMarkerLocked : styles.targetMarker}
-              style={{
-                left: `${activeTarget.x}%`,
-                top: `${activeTarget.y}%`,
-              }}
-            >
-              <span className={styles.targetMarkerCore} />
-              <div className={styles.targetLabel}>
-                <strong>{activeTarget.name}</strong>
-                <span>{activeTarget.status}</span>
+            {showRadarBlip ? (
+              <div
+                className={activeControl === 'Lock' ? styles.targetMarkerLocked : styles.targetMarker}
+                style={{
+                  left: `${trackedPosition.x}%`,
+                  top: `${trackedPosition.y}%`,
+                }}
+              >
+                <span className={styles.targetMarkerCore} />
+                {showTargetLabel ? (
+                  <div className={styles.targetLabel}>
+                    <strong>{activeTarget.name}</strong>
+                    <span>{activeTarget.status}</span>
+                  </div>
+                ) : null}
               </div>
-            </div>
+            ) : null}
+
+            {showBioData ? (
+              <div className={styles.bioVitals}>
+                <div className={styles.bioVitalsHeader}>
+                  <span>{activeTarget.name}</span>
+                  <span>{activeTarget.status}</span>
+                </div>
+                <div className={styles.bioVitalsGrid}>
+                  <span>Health {activeTarget.health}%</span>
+                  <span>Energy {activeTarget.energy}%</span>
+                  <span>Stamina {activeTarget.stamina}%</span>
+                </div>
+              </div>
+            ) : null}
+
+            {showGhostTrace ? (
+              <div className={styles.ghostTrace}>
+                <div className={styles.ghostTraceLabel}>
+                  {activeTarget.name} / spectral residue
+                </div>
+              </div>
+            ) : null}
+
+            {showMaterialResults ? (
+              <div className={styles.materialResults}>
+                {materialReadout.slice(0, 3).map((result) => (
+                  <div key={result.label} className={styles.materialResultRow}>
+                    <span>{result.label}</span>
+                    <strong>{result.value}%</strong>
+                  </div>
+                ))}
+              </div>
+            ) : null}
 
             {activeControl === 'Pulse' ? <div className={styles.pulseOverlay} /> : null}
             {activeControl === 'Wide' ? <div className={styles.wideOverlay} /> : null}
@@ -548,7 +624,9 @@ export function TricorderConsole() {
         <section className={styles.hybridPanel}>
           <div className={styles.hybridHeader}>
             <div className={styles.panelTitle}>Signal telemetry</div>
-            <div className={styles.subtle}>{activeThemePreset.label} theme</div>
+            <div className={styles.subtle}>
+              {activeThemePreset.label} theme / {contactView}
+            </div>
           </div>
 
           <div className={styles.waveformCompact}>
@@ -574,6 +652,7 @@ export function TricorderConsole() {
           <p className={styles.detailText}>{activeMode.detail}</p>
         </section>
 
+        {showTargetPanel ? (
         <section className={styles.targetPanel}>
           <div className={styles.hybridHeader}>
             <div className={styles.panelTitle}>Life signs</div>
@@ -608,6 +687,35 @@ export function TricorderConsole() {
               >
                 <span>{target.name}</span>
                 <small>{target.status}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+        ) : null}
+
+        <section className={styles.controls}>
+          <div className={styles.panelTitle}>Contact layer</div>
+          <div className={styles.contactViewStrip}>
+            {(['hidden', 'blip', 'data'] as ContactView[]).map((view) => (
+              <button
+                key={view}
+                type="button"
+                className={view === contactView ? styles.pillActive : styles.pill}
+                onClick={() => setContactView(view)}
+              >
+                {view}
+              </button>
+            ))}
+          </div>
+          <div className={styles.targetSelectorCompact}>
+            {targetProfiles.map((target) => (
+              <button
+                key={target.id}
+                type="button"
+                className={target.id === activeTarget.id ? styles.targetChipActive : styles.targetChip}
+                onClick={() => setActiveTarget(target)}
+              >
+                {target.name}
               </button>
             ))}
           </div>
@@ -669,6 +777,19 @@ export function TricorderConsole() {
             ))}
           </div>
         </section>
+
+        {activeDisplay === 'material' ? (
+          <section className={styles.controls}>
+            <div className={styles.panelTitle}>Material trigger</div>
+            <button
+              type="button"
+              className={styles.materialTrigger}
+              onClick={() => setMaterialScanId((value) => value + 1)}
+            >
+              Trigger focused material scan
+            </button>
+          </section>
+        ) : null}
 
         <Link className={styles.hiddenBack} href="/">
           return to dashboard
