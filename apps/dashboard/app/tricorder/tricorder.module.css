@@ -123,7 +123,7 @@
 .displayTabs {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -194,12 +194,13 @@
   inset: -10%;
   background: conic-gradient(from 180deg, transparent 0deg, transparent 290deg, color-mix(in srgb, var(--tricorder-accent) 62%, transparent) 330deg, transparent 360deg);
   opacity: 0.42;
-  animation: spin 5s linear infinite;
+  animation: spin 8.5s linear infinite;
 }
 
 .bioDisplay,
 .spectralDisplay,
-.terrainDisplay {
+.terrainDisplay,
+.materialDisplay {
   position: absolute;
   inset: 0;
 }
@@ -233,7 +234,7 @@
   border: 1px solid rgba(255, 255, 255, 0.24);
   background: color-mix(in srgb, var(--tricorder-accent) 60%, transparent);
   box-shadow: 0 0 16px color-mix(in srgb, var(--tricorder-accent) 26%, transparent);
-  animation: pulse 1.8s infinite ease-in-out;
+  animation: pulse 3.6s infinite ease-in-out;
 }
 
 .bioLine {
@@ -244,7 +245,7 @@
   height: 2px;
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tricorder-accent) 90%, white), transparent);
   box-shadow: 0 0 16px color-mix(in srgb, var(--tricorder-accent) 28%, transparent);
-  animation: drift 2.4s infinite ease-in-out;
+  animation: drift 4.8s infinite ease-in-out;
 }
 
 .spectralBackdrop {
@@ -269,7 +270,7 @@
   border-radius: 999px 999px 4px 4px;
   background: linear-gradient(180deg, color-mix(in srgb, white 40%, var(--tricorder-accent)), color-mix(in srgb, var(--tricorder-accent) 35%, black));
   box-shadow: 0 0 18px color-mix(in srgb, var(--tricorder-accent) 20%, transparent);
-  animation: hop 1.4s infinite ease-in-out;
+  animation: hop 3.2s infinite ease-in-out;
 }
 
 .spectralCurve {
@@ -343,6 +344,69 @@
   inset: 32%;
 }
 
+.materialDisplay {
+  background:
+    radial-gradient(circle at 50% 14%, color-mix(in srgb, var(--tricorder-accent) 18%, transparent), transparent 30%),
+    linear-gradient(180deg, rgba(142, 255, 149, 0.06), transparent 38%);
+}
+
+.materialBackdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(217, 255, 241, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(217, 255, 241, 0.04) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.materialColumnGrid {
+  position: absolute;
+  inset: 22px 18px 94px;
+  display: grid;
+  grid-template-columns: repeat(18, minmax(0, 1fr));
+  align-items: end;
+  gap: 4px;
+}
+
+.materialColumn {
+  display: block;
+  border-radius: 999px 999px 3px 3px;
+  background: linear-gradient(180deg, color-mix(in srgb, white 25%, var(--tricorder-accent)), color-mix(in srgb, var(--tricorder-accent) 25%, black));
+  box-shadow: 0 0 16px color-mix(in srgb, var(--tricorder-accent) 18%, transparent);
+  animation: rise 5.8s infinite ease-in-out;
+}
+
+.materialHexGrid {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 18px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.materialHex {
+  display: block;
+  aspect-ratio: 1 / 0.92;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tricorder-accent) 38%, white), color-mix(in srgb, var(--tricorder-accent) 18%, black));
+  clip-path: polygon(25% 4%, 75% 4%, 100% 50%, 75% 96%, 25% 96%, 0 50%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.materialBeam {
+  position: absolute;
+  left: 50%;
+  top: 16px;
+  width: 56%;
+  height: 78%;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tricorder-accent) 42%, transparent), transparent 60%);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  opacity: 0.5;
+  animation: shimmer 7.4s infinite ease-in-out;
+}
+
 .scopeCore {
   position: absolute;
   inset: 18% 22%;
@@ -360,7 +424,7 @@
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tricorder-accent) 75%, white), transparent);
   filter: blur(0.4px);
   opacity: 0.85;
-  animation: drift 2.6s ease-in-out infinite;
+  animation: drift 5.4s ease-in-out infinite;
 }
 
 .scopeReadout {
@@ -429,7 +493,7 @@
   border-radius: 999px 999px 6px 6px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--tricorder-accent) 95%, white), color-mix(in srgb, var(--tricorder-accent) 42%, black));
   box-shadow: 0 0 12px color-mix(in srgb, var(--tricorder-accent) 22%, transparent);
-  animation: hop 1.6s infinite ease-in-out;
+  animation: hop 3.4s infinite ease-in-out;
 }
 
 .telemetryGrid {
@@ -564,6 +628,16 @@
 @keyframes hop {
   0%, 100% { transform: scaleY(0.88); opacity: 0.8; }
   50% { transform: scaleY(1); opacity: 1; }
+}
+
+@keyframes rise {
+  0%, 100% { transform: scaleY(0.82); opacity: 0.6; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.24; transform: translateX(-50%) scaleY(0.92); }
+  50% { opacity: 0.64; transform: translateX(-50%) scaleY(1.04); }
 }
 
 @media (min-width: 640px) {

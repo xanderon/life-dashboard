@@ -15,7 +15,7 @@ type Mode = {
   readouts: [string, string, string];
 };
 
-type DisplayKind = 'radar' | 'bio' | 'spectral' | 'terrain';
+type DisplayKind = 'radar' | 'bio' | 'spectral' | 'terrain' | 'material';
 
 const modes: Mode[] = [
   {
@@ -69,6 +69,16 @@ const modes: Mode[] = [
     readouts: ['Depth map', 'Mass edge', 'Void ping'],
   },
   {
+    id: 'material',
+    label: 'Material Scan',
+    code: 'MAT-31',
+    accent: '#8cf07d',
+    display: 'material',
+    summary: 'Densitate, structura interna si semnatura compozita.',
+    detail: 'Clasificare rapida pentru aliaje, ceramice, compozite si straturi ascunse.',
+    readouts: ['Lattice', 'Density', 'Alloy trace'],
+  },
+  {
     id: 'stellar',
     label: 'Stellar',
     code: 'AST-12',
@@ -78,6 +88,16 @@ const modes: Mode[] = [
     detail: 'Modeleaza vectori de camp si deriva pentru navigatie imaginara de punte.',
     readouts: ['Field braid', 'Orbit skew', 'Vector calm'],
   },
+  {
+    id: 'interference',
+    label: 'Interference',
+    code: 'SUB-08',
+    accent: '#67d6ff',
+    display: 'spectral',
+    summary: 'Detectie de bruiaj, campuri ascunse si fisuri de faza.',
+    detail: 'Urmareste fluctuatii neregulate si noduri de camp care mascheaza alte semnale.',
+    readouts: ['Field noise', 'Phase ripple', 'Mask bleed'],
+  },
 ];
 
 const controlLabels = ['Sweep', 'Pulse', 'Wide', 'Lock', 'Stealth'];
@@ -86,6 +106,7 @@ const displayLabels: { id: DisplayKind; label: string }[] = [
   { id: 'bio', label: 'Bio' },
   { id: 'spectral', label: 'Spectral' },
   { id: 'terrain', label: 'Terrain' },
+  { id: 'material', label: 'Material' },
 ];
 
 export function TricorderConsole() {
@@ -101,7 +122,7 @@ export function TricorderConsole() {
   useEffect(() => {
     const timer = window.setInterval(() => {
       setTick((value) => value + 1);
-    }, 900);
+    }, 1300);
 
     return () => window.clearInterval(timer);
   }, []);
@@ -151,6 +172,15 @@ export function TricorderConsole() {
         top: 16 + ((index * 19 + tick * 3) % 62),
         left: 12 + ((index * 23 + tick * 5) % 70),
         size: 16 + ((index * 7 + tick) % 18),
+      })),
+    [activeMode, tick]
+  );
+
+  const materialCells = useMemo(
+    () =>
+      Array.from({ length: 18 }, (_, index) => ({
+        id: `${activeMode.id}-material-${index}`,
+        level: 22 + ((tick * 5 + index * 17 + activeMode.id.length * 9) % 74),
       })),
     [activeMode, tick]
   );
@@ -263,6 +293,34 @@ export function TricorderConsole() {
                 </div>
                 <div className={styles.terrainHorizon} />
                 <div className={styles.terrainPing} />
+              </div>
+            ) : null}
+
+            {activeDisplay === 'material' ? (
+              <div className={styles.materialDisplay}>
+                <div className={styles.materialBackdrop} />
+                <div className={styles.materialColumnGrid}>
+                  {materialCells.map((cell, index) => (
+                    <span
+                      key={cell.id}
+                      className={styles.materialColumn}
+                      style={{
+                        height: `${cell.level}%`,
+                        animationDelay: `${index * 140}ms`,
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className={styles.materialHexGrid}>
+                  {materialCells.slice(0, 12).map((cell) => (
+                    <span
+                      key={`${cell.id}-hex`}
+                      className={styles.materialHex}
+                      style={{ opacity: cell.level / 100 }}
+                    />
+                  ))}
+                </div>
+                <div className={styles.materialBeam} />
               </div>
             ) : null}
 
