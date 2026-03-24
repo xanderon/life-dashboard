@@ -31,6 +31,22 @@ type ThemePreset = {
   glow: string;
 };
 
+type TargetStatus = 'Healthy' | 'Damaged' | 'Critical' | 'Dormant' | 'Shielded';
+
+type TargetProfile = {
+  id: string;
+  name: string;
+  type: string;
+  status: TargetStatus;
+  health: number;
+  energy: number;
+  stamina: number;
+  signal: number;
+  x: number;
+  y: number;
+  note: string;
+};
+
 const modes: Mode[] = [
   {
     id: 'bio',
@@ -38,8 +54,8 @@ const modes: Mode[] = [
     code: 'MED-01',
     accent: '#ffd36b',
     display: 'bio',
-    summary: 'Semnaturi organice, ritm si micro-variatii.',
-    detail: 'Mapare ritmica a semnalelor vii cu focus pe puls si densitate celulara.',
+    summary: 'Organic signatures, pulse rhythm, and micro-variance.',
+    detail: 'Rhythmic mapping of living signals with focus on pulse, tissue density, and neural shimmer.',
     readouts: ['Pulse sync', 'Neural shimmer', 'Cell mesh'],
   },
   {
@@ -48,8 +64,8 @@ const modes: Mode[] = [
     code: 'ATM-09',
     accent: '#69f0d1',
     display: 'radar',
-    summary: 'Compozitie aer, presiune si zone cu turbulenta.',
-    detail: 'Senzorii urmaresc deviatii termice, compusi volatili si instabilitati de camp.',
+    summary: 'Atmospheric mix, pressure shifts, and turbulence pockets.',
+    detail: 'Sensors track thermal drift, volatile compounds, and local field instability.',
     readouts: ['Air mix', 'Pressure span', 'Thermal drift'],
   },
   {
@@ -58,8 +74,8 @@ const modes: Mode[] = [
     code: 'SIG-77',
     accent: '#7fb6ff',
     display: 'spectral',
-    summary: 'Urme radio, bruiaj si purtatoare slabe.',
-    detail: 'Filtrare pe benzi inguste pentru detectie de ecouri si surse ascunse.',
+    summary: 'Radio traces, interference, and weak carrier patterns.',
+    detail: 'Narrow-band filtering exposes echoes, repeaters, and masked signal sources.',
     readouts: ['Carrier lock', 'Noise gate', 'Echo depth'],
   },
   {
@@ -68,8 +84,8 @@ const modes: Mode[] = [
     code: 'SPC-42',
     accent: '#ff8bc8',
     display: 'spectral',
-    summary: 'Spectru de energie si anomalii luminoase.',
-    detail: 'Separa emisii scurte de fond si scoate in fata impulsurile rare.',
+    summary: 'Energy spectrum and luminous anomalies.',
+    detail: 'Separates short emissions from the background and surfaces rare pulse events.',
     readouts: ['Flux prism', 'Gamma lace', 'Phase split'],
   },
   {
@@ -78,8 +94,8 @@ const modes: Mode[] = [
     code: 'GEO-18',
     accent: '#ff9f6d',
     display: 'terrain',
-    summary: 'Textura, cavitati si contur local.',
-    detail: 'Reconstructie rapida a suprafetei pentru goluri, muchii si corpuri dense.',
+    summary: 'Texture, cavities, and local contour mapping.',
+    detail: 'Rapid surface reconstruction for voids, edges, sublayers, and dense objects.',
     readouts: ['Depth map', 'Mass edge', 'Void ping'],
   },
   {
@@ -88,8 +104,8 @@ const modes: Mode[] = [
     code: 'MAT-31',
     accent: '#8cf07d',
     display: 'material',
-    summary: 'Densitate, structura interna si semnatura compozita.',
-    detail: 'Clasificare rapida pentru aliaje, ceramice, compozite si straturi ascunse.',
+    summary: 'Density, internal lattice, and composite signature.',
+    detail: 'Fast classification for alloys, ceramics, composites, and hidden layered structures.',
     readouts: ['Lattice', 'Density', 'Alloy trace'],
   },
   {
@@ -98,8 +114,8 @@ const modes: Mode[] = [
     code: 'AST-12',
     accent: '#bb98ff',
     display: 'radar',
-    summary: 'Campuri, orientare si pattern orbital.',
-    detail: 'Modeleaza vectori de camp si deriva pentru navigatie imaginara de punte.',
+    summary: 'Field vectors, orientation, and orbital pattern drift.',
+    detail: 'Models field braids and vector drift for an imaginary bridge-grade navigation pass.',
     readouts: ['Field braid', 'Orbit skew', 'Vector calm'],
   },
   {
@@ -108,8 +124,8 @@ const modes: Mode[] = [
     code: 'SUB-08',
     accent: '#67d6ff',
     display: 'spectral',
-    summary: 'Detectie de bruiaj, campuri ascunse si fisuri de faza.',
-    detail: 'Urmareste fluctuatii neregulate si noduri de camp care mascheaza alte semnale.',
+    summary: 'Interference, hidden fields, and phase fractures.',
+    detail: 'Tracks irregular fluctuations and field knots that mask underlying signals.',
     readouts: ['Field noise', 'Phase ripple', 'Mask bleed'],
   },
 ];
@@ -169,11 +185,80 @@ const themePresets: ThemePreset[] = [
   },
 ];
 
+const targetProfiles: TargetProfile[] = [
+  {
+    id: 'aurora',
+    name: 'Aurora Entity',
+    type: 'Bioform',
+    status: 'Healthy',
+    health: 92,
+    energy: 81,
+    stamina: 88,
+    signal: 74,
+    x: 34,
+    y: 38,
+    note: 'Stable biorhythm. Responsive movement pattern.',
+  },
+  {
+    id: 'drifter',
+    name: 'Hull Drifter',
+    type: 'Unknown life sign',
+    status: 'Damaged',
+    health: 46,
+    energy: 39,
+    stamina: 31,
+    signal: 67,
+    x: 62,
+    y: 47,
+    note: 'Irregular cellular output. Mobility compromised.',
+  },
+  {
+    id: 'sentinel',
+    name: 'Sentinel Echo',
+    type: 'Synthetic hybrid',
+    status: 'Shielded',
+    health: 78,
+    energy: 94,
+    stamina: 58,
+    signal: 89,
+    x: 52,
+    y: 29,
+    note: 'High-energy envelope detected. Scan penetration reduced.',
+  },
+  {
+    id: 'ember',
+    name: 'Ember Wisp',
+    type: 'Residual life sign',
+    status: 'Critical',
+    health: 18,
+    energy: 24,
+    stamina: 12,
+    signal: 41,
+    x: 27,
+    y: 62,
+    note: 'Life signs fading. Severe instability across all channels.',
+  },
+  {
+    id: 'vault',
+    name: 'Vault Sleeper',
+    type: 'Dormant specimen',
+    status: 'Dormant',
+    health: 64,
+    energy: 16,
+    stamina: 8,
+    signal: 52,
+    x: 73,
+    y: 41,
+    note: 'Low-activity state. Minimal reaction unless pulse scan is raised.',
+  },
+];
+
 export function TricorderConsole() {
   const [activeMode, setActiveMode] = useState(modes[0]);
   const [activeControl, setActiveControl] = useState<ControlKind>(controlLabels[0]);
   const [activeDisplay, setActiveDisplay] = useState<DisplayKind>(modes[0].display);
   const [activeTheme, setActiveTheme] = useState<ThemeKind>('starfleet');
+  const [activeTarget, setActiveTarget] = useState<TargetProfile>(targetProfiles[0]);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -261,6 +346,14 @@ export function TricorderConsole() {
       })),
     [activeMode, tick]
   );
+
+  const statusToneClass = {
+    Healthy: styles.statusHealthy,
+    Damaged: styles.statusDamaged,
+    Critical: styles.statusCritical,
+    Dormant: styles.statusDormant,
+    Shielded: styles.statusShielded,
+  }[activeTarget.status];
 
   return (
     <div
@@ -415,6 +508,20 @@ export function TricorderConsole() {
               </div>
             ) : null}
 
+            <div
+              className={activeControl === 'Lock' ? styles.targetMarkerLocked : styles.targetMarker}
+              style={{
+                left: `${activeTarget.x}%`,
+                top: `${activeTarget.y}%`,
+              }}
+            >
+              <span className={styles.targetMarkerCore} />
+              <div className={styles.targetLabel}>
+                <strong>{activeTarget.name}</strong>
+                <span>{activeTarget.status}</span>
+              </div>
+            </div>
+
             {activeControl === 'Pulse' ? <div className={styles.pulseOverlay} /> : null}
             {activeControl === 'Wide' ? <div className={styles.wideOverlay} /> : null}
             {activeControl === 'Lock' ? <div className={styles.lockOverlay} /> : null}
@@ -465,6 +572,45 @@ export function TricorderConsole() {
           </div>
 
           <p className={styles.detailText}>{activeMode.detail}</p>
+        </section>
+
+        <section className={styles.targetPanel}>
+          <div className={styles.hybridHeader}>
+            <div className={styles.panelTitle}>Life signs</div>
+            <div className={`${styles.targetStatusBadge} ${statusToneClass}`}>{activeTarget.status}</div>
+          </div>
+
+          <div className={styles.targetIdentity}>
+            <div>
+              <div className={styles.targetName}>{activeTarget.name}</div>
+              <div className={styles.targetMeta}>
+                {activeTarget.type} / Signal {activeTarget.signal}%
+              </div>
+            </div>
+            <div className={styles.moduleCode}>Target locked</div>
+          </div>
+
+          <div className={styles.lifeStats}>
+            <LifeStat label="Health" value={activeTarget.health} />
+            <LifeStat label="Energy" value={activeTarget.energy} />
+            <LifeStat label="Stamina" value={activeTarget.stamina} />
+          </div>
+
+          <p className={styles.detailText}>{activeTarget.note}</p>
+
+          <div className={styles.targetSelector}>
+            {targetProfiles.map((target) => (
+              <button
+                key={target.id}
+                type="button"
+                className={target.id === activeTarget.id ? styles.targetButtonActive : styles.targetButton}
+                onClick={() => setActiveTarget(target)}
+              >
+                <span>{target.name}</span>
+                <small>{target.status}</small>
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className={styles.controls}>
@@ -537,6 +683,18 @@ function Readout({ label, value }: { label: string; value: string }) {
     <div className={styles.readout}>
       <div className={styles.metricLabel}>{label}</div>
       <div className={styles.readoutValue}>{value}</div>
+    </div>
+  );
+}
+
+function LifeStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className={styles.lifeStat}>
+      <div className={styles.metricLabel}>{label}</div>
+      <div className={styles.lifeBarTrack}>
+        <span className={styles.lifeBarFill} style={{ width: `${value}%` }} />
+      </div>
+      <div className={styles.readoutValue}>{value}%</div>
     </div>
   );
 }
