@@ -16,6 +16,20 @@ type Mode = {
 };
 
 type DisplayKind = 'radar' | 'bio' | 'spectral' | 'terrain' | 'material';
+type ThemeKind = 'starfleet' | 'nebula' | 'red-alert' | 'emerald';
+type ControlKind = 'Sweep' | 'Pulse' | 'Wide' | 'Lock' | 'Stealth';
+
+type ThemePreset = {
+  id: ThemeKind;
+  label: string;
+  shellTop: string;
+  shellBottom: string;
+  hullTop: string;
+  hullBottom: string;
+  panelTop: string;
+  panelBottom: string;
+  glow: string;
+};
 
 const modes: Mode[] = [
   {
@@ -100,7 +114,7 @@ const modes: Mode[] = [
   },
 ];
 
-const controlLabels = ['Sweep', 'Pulse', 'Wide', 'Lock', 'Stealth'];
+const controlLabels: ControlKind[] = ['Sweep', 'Pulse', 'Wide', 'Lock', 'Stealth'];
 const displayLabels: { id: DisplayKind; label: string }[] = [
   { id: 'radar', label: 'Radar' },
   { id: 'bio', label: 'Bio' },
@@ -108,11 +122,58 @@ const displayLabels: { id: DisplayKind; label: string }[] = [
   { id: 'terrain', label: 'Terrain' },
   { id: 'material', label: 'Material' },
 ];
+const themePresets: ThemePreset[] = [
+  {
+    id: 'starfleet',
+    label: 'Starfleet',
+    shellTop: '#11193a',
+    shellBottom: '#070b16',
+    hullTop: '#202a46',
+    hullBottom: '#0a0f1d',
+    panelTop: '#0f1b2d',
+    panelBottom: '#060a14',
+    glow: '#5ad7ff',
+  },
+  {
+    id: 'nebula',
+    label: 'Nebula',
+    shellTop: '#28124c',
+    shellBottom: '#090412',
+    hullTop: '#36195f',
+    hullBottom: '#10071c',
+    panelTop: '#21103d',
+    panelBottom: '#0c0618',
+    glow: '#ff72d8',
+  },
+  {
+    id: 'red-alert',
+    label: 'Red Alert',
+    shellTop: '#361016',
+    shellBottom: '#0e0408',
+    hullTop: '#4c171f',
+    hullBottom: '#14070a',
+    panelTop: '#2b0d14',
+    panelBottom: '#110609',
+    glow: '#ff7a63',
+  },
+  {
+    id: 'emerald',
+    label: 'Emerald',
+    shellTop: '#10251f',
+    shellBottom: '#050b0a',
+    hullTop: '#17382d',
+    hullBottom: '#08120f',
+    panelTop: '#0d1f1b',
+    panelBottom: '#050d0b',
+    glow: '#95ff69',
+  },
+];
 
 export function TricorderConsole() {
   const [activeMode, setActiveMode] = useState(modes[0]);
-  const [activeControl, setActiveControl] = useState(controlLabels[0]);
+  const [activeControl, setActiveControl] = useState<ControlKind>(controlLabels[0]);
   const [activeDisplay, setActiveDisplay] = useState<DisplayKind>(modes[0].display);
+  const [activeTheme, setActiveTheme] = useState<ThemeKind>('starfleet');
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -127,33 +188,49 @@ export function TricorderConsole() {
     return () => window.clearInterval(timer);
   }, []);
 
+  const activeThemePreset = themePresets.find((theme) => theme.id === activeTheme) ?? themePresets[0];
+  const controlProfiles: Record<ControlKind, { energy: number; spread: number; dim: number; speed: number }> = {
+    Sweep: { energy: 1, spread: 1, dim: 1, speed: 1 },
+    Pulse: { energy: 1.18, spread: 0.96, dim: 1, speed: 1.2 },
+    Wide: { energy: 0.96, spread: 1.34, dim: 1, speed: 0.92 },
+    Lock: { energy: 1.05, spread: 0.82, dim: 1, speed: 0.78 },
+    Stealth: { energy: 0.74, spread: 0.68, dim: 0.62, speed: 0.72 },
+  };
+  const controlProfile = controlProfiles[activeControl];
+
   const metrics = useMemo(() => {
     const base = activeMode.id.length * 11 + tick * 7;
     return [
-      40 + (base % 57),
-      20 + ((base * 3) % 71),
-      10 + ((base * 5) % 83),
-      8 + ((base * 7) % 91),
+      Math.min(99, Math.round((40 + (base % 57)) * controlProfile.energy)),
+      Math.min(99, Math.round((20 + ((base * 3) % 71)) * controlProfile.energy)),
+      Math.min(99, Math.round((10 + ((base * 5) % 83)) * controlProfile.energy)),
+      Math.min(99, Math.round((8 + ((base * 7) % 91)) * controlProfile.energy)),
     ];
-  }, [activeMode, tick]);
+  }, [activeMode, controlProfile.energy, tick]);
 
   const waveform = useMemo(
     () =>
       Array.from({ length: 24 }, (_, index) => ({
         id: `${activeMode.id}-${index}`,
-        height: 16 + ((tick * 13 + index * 19 + activeMode.id.length * 17) % 84),
+        height: Math.min(
+          96,
+          Math.round((16 + ((tick * 13 + index * 19 + activeMode.id.length * 17) % 84)) * controlProfile.energy)
+        ),
       })),
-    [activeMode, tick]
+    [activeMode, controlProfile.energy, tick]
   );
 
   const scanRows = useMemo(
     () =>
       Array.from({ length: 5 }, (_, index) => ({
         id: `${activeMode.id}-row-${index}`,
-        left: (metrics[index % metrics.length] + index * 9) % 100,
-        width: 18 + ((metrics[(index + 1) % metrics.length] + index * 7) % 32),
+        left: (metrics[index % metrics.length] * controlProfile.spread + index * 9) % 100,
+        width: Math.max(
+          14,
+          Math.min(54, (18 + ((metrics[(index + 1) % metrics.length] + index * 7) % 32)) * controlProfile.spread)
+        ),
       })),
-    [activeMode, metrics]
+    [activeMode, controlProfile.spread, metrics]
   );
 
   const terrainCells = useMemo(
@@ -170,10 +247,10 @@ export function TricorderConsole() {
       Array.from({ length: 9 }, (_, index) => ({
         id: `${activeMode.id}-node-${index}`,
         top: 16 + ((index * 19 + tick * 3) % 62),
-        left: 12 + ((index * 23 + tick * 5) % 70),
-        size: 16 + ((index * 7 + tick) % 18),
+        left: 12 + (((index * 23 + tick * 5) % 70) * Math.min(controlProfile.spread, 1.12)),
+        size: Math.round((16 + ((index * 7 + tick) % 18)) * Math.max(controlProfile.energy, 0.9)),
       })),
-    [activeMode, tick]
+    [activeMode, controlProfile.energy, controlProfile.spread, tick]
   );
 
   const materialCells = useMemo(
@@ -186,7 +263,20 @@ export function TricorderConsole() {
   );
 
   return (
-    <div className={styles.viewport} style={{ ['--tricorder-accent' as string]: activeMode.accent }}>
+    <div
+      className={styles.viewport}
+      style={{
+        ['--tricorder-accent' as string]: activeMode.accent,
+        ['--tricorder-shell-top' as string]: activeThemePreset.shellTop,
+        ['--tricorder-shell-bottom' as string]: activeThemePreset.shellBottom,
+        ['--tricorder-hull-top' as string]: activeThemePreset.hullTop,
+        ['--tricorder-hull-bottom' as string]: activeThemePreset.hullBottom,
+        ['--tricorder-panel-top' as string]: activeThemePreset.panelTop,
+        ['--tricorder-panel-bottom' as string]: activeThemePreset.panelBottom,
+        ['--tricorder-glow' as string]: activeThemePreset.glow,
+        ['--tricorder-dim' as string]: String(controlProfile.dim),
+      }}
+    >
       <div className={styles.device}>
         <header className={styles.topBar}>
           <div>
@@ -222,6 +312,7 @@ export function TricorderConsole() {
           </div>
 
           <div className={styles.scopeFrame}>
+            <div className={styles.scopeAtmosphere} />
             {activeDisplay === 'radar' ? (
               <>
                 <div className={styles.scopeGrid} />
@@ -324,6 +415,11 @@ export function TricorderConsole() {
               </div>
             ) : null}
 
+            {activeControl === 'Pulse' ? <div className={styles.pulseOverlay} /> : null}
+            {activeControl === 'Wide' ? <div className={styles.wideOverlay} /> : null}
+            {activeControl === 'Lock' ? <div className={styles.lockOverlay} /> : null}
+            {activeControl === 'Stealth' ? <div className={styles.stealthOverlay} /> : null}
+
             <div className={styles.scopeReadout}>
               <div>{activeMode.summary}</div>
               <div className={styles.subtle}>
@@ -388,6 +484,27 @@ export function TricorderConsole() {
                 </button>
               );
             })}
+          </div>
+        </section>
+
+        <section className={styles.controls}>
+          <div className={styles.panelTitle}>Theme bank</div>
+          <div className={styles.themeStrip}>
+            {themePresets.map((theme) => (
+              <button
+                key={theme.id}
+                type="button"
+                className={theme.id === activeTheme ? styles.themeButtonActive : styles.themeButton}
+                onClick={() => setActiveTheme(theme.id)}
+                style={{
+                  ['--theme-swatch-a' as string]: theme.shellTop,
+                  ['--theme-swatch-b' as string]: theme.glow,
+                }}
+              >
+                <span className={styles.themeSwatch} />
+                <span>{theme.label}</span>
+              </button>
+            ))}
           </div>
         </section>
 
