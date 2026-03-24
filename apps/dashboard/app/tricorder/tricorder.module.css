@@ -120,6 +120,33 @@
   align-items: flex-start;
 }
 
+.displayTabs {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.displayTab,
+.displayTabActive {
+  min-height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(223, 246, 239, 0.74);
+  font-family: var(--font-tricorder-mono), monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.displayTabActive {
+  background: color-mix(in srgb, var(--tricorder-accent) 24%, rgba(255, 255, 255, 0.04));
+  color: #f6fffb;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--tricorder-accent) 14%, transparent);
+}
+
 .displayLabel,
 .panelTitle,
 .metricLabel,
@@ -168,6 +195,152 @@
   background: conic-gradient(from 180deg, transparent 0deg, transparent 290deg, color-mix(in srgb, var(--tricorder-accent) 62%, transparent) 330deg, transparent 360deg);
   opacity: 0.42;
   animation: spin 5s linear infinite;
+}
+
+.bioDisplay,
+.spectralDisplay,
+.terrainDisplay {
+  position: absolute;
+  inset: 0;
+}
+
+.bioGrid {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(217, 255, 241, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(217, 255, 241, 0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.bioSilhouette {
+  position: absolute;
+  inset: 12% 29% 10%;
+  border-radius: 44% 44% 36% 36% / 22% 22% 40% 40%;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.14) 0 14%, transparent 15%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
+  box-shadow:
+    inset 0 0 35px rgba(255, 255, 255, 0.05),
+    0 0 22px color-mix(in srgb, var(--tricorder-accent) 14%, transparent);
+  opacity: 0.92;
+  clip-path: polygon(43% 0%, 57% 0%, 63% 10%, 71% 20%, 67% 34%, 76% 54%, 70% 100%, 30% 100%, 24% 54%, 33% 34%, 29% 20%, 37% 10%);
+}
+
+.bioNode {
+  position: absolute;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: color-mix(in srgb, var(--tricorder-accent) 60%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--tricorder-accent) 26%, transparent);
+  animation: pulse 1.8s infinite ease-in-out;
+}
+
+.bioLine {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 50%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tricorder-accent) 90%, white), transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--tricorder-accent) 28%, transparent);
+  animation: drift 2.4s infinite ease-in-out;
+}
+
+.spectralBackdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 10%, color-mix(in srgb, var(--tricorder-accent) 18%, transparent), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 35%);
+}
+
+.spectralBars {
+  position: absolute;
+  inset: 18px 16px 56px;
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  align-items: end;
+  gap: 4px;
+}
+
+.spectralBar {
+  display: block;
+  border-radius: 999px 999px 4px 4px;
+  background: linear-gradient(180deg, color-mix(in srgb, white 40%, var(--tricorder-accent)), color-mix(in srgb, var(--tricorder-accent) 35%, black));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--tricorder-accent) 20%, transparent);
+  animation: hop 1.4s infinite ease-in-out;
+}
+
+.spectralCurve {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 90px;
+  height: 56px;
+  border-radius: 999px;
+  border-top: 2px solid color-mix(in srgb, var(--tricorder-accent) 85%, white);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--tricorder-accent) 28%, transparent));
+  transform: perspective(180px) rotateX(62deg);
+}
+
+.terrainDisplay {
+  background:
+    linear-gradient(180deg, rgba(255, 160, 92, 0.06), transparent 28%),
+    radial-gradient(circle at 50% 75%, rgba(255, 255, 255, 0.06), transparent 32%);
+}
+
+.terrainGrid {
+  position: absolute;
+  inset: 18px 16px 72px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.terrainCell {
+  display: block;
+  aspect-ratio: 1 / 1;
+  border-radius: 9px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tricorder-accent) 44%, white), color-mix(in srgb, var(--tricorder-accent) 16%, black));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.terrainHorizon {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 62px;
+  height: 74px;
+  background:
+    linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.04)),
+    linear-gradient(135deg, transparent 12%, color-mix(in srgb, var(--tricorder-accent) 44%, transparent) 48%, transparent 82%);
+  clip-path: polygon(0 70%, 18% 50%, 30% 58%, 46% 34%, 57% 42%, 74% 18%, 100% 54%, 100% 100%, 0 100%);
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--tricorder-accent) 16%, transparent));
+}
+
+.terrainPing {
+  position: absolute;
+  width: 82px;
+  height: 82px;
+  right: 18px;
+  top: 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 22px rgba(255, 255, 255, 0.04);
+}
+
+.terrainPing::before,
+.terrainPing::after {
+  content: '';
+  position: absolute;
+  inset: 16%;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--tricorder-accent) 48%, transparent);
+}
+
+.terrainPing::after {
+  inset: 32%;
 }
 
 .scopeCore {

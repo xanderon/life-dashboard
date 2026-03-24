@@ -9,10 +9,13 @@ type Mode = {
   label: string;
   code: string;
   accent: string;
+  display: DisplayKind;
   summary: string;
   detail: string;
   readouts: [string, string, string];
 };
+
+type DisplayKind = 'radar' | 'bio' | 'spectral' | 'terrain';
 
 const modes: Mode[] = [
   {
@@ -20,6 +23,7 @@ const modes: Mode[] = [
     label: 'Bio Scan',
     code: 'MED-01',
     accent: '#ffd36b',
+    display: 'bio',
     summary: 'Semnaturi organice, ritm si micro-variatii.',
     detail: 'Mapare ritmica a semnalelor vii cu focus pe puls si densitate celulara.',
     readouts: ['Pulse sync', 'Neural shimmer', 'Cell mesh'],
@@ -29,6 +33,7 @@ const modes: Mode[] = [
     label: 'Env Sweep',
     code: 'ATM-09',
     accent: '#69f0d1',
+    display: 'radar',
     summary: 'Compozitie aer, presiune si zone cu turbulenta.',
     detail: 'Senzorii urmaresc deviatii termice, compusi volatili si instabilitati de camp.',
     readouts: ['Air mix', 'Pressure span', 'Thermal drift'],
@@ -38,6 +43,7 @@ const modes: Mode[] = [
     label: 'Signal Trace',
     code: 'SIG-77',
     accent: '#7fb6ff',
+    display: 'spectral',
     summary: 'Urme radio, bruiaj si purtatoare slabe.',
     detail: 'Filtrare pe benzi inguste pentru detectie de ecouri si surse ascunse.',
     readouts: ['Carrier lock', 'Noise gate', 'Echo depth'],
@@ -47,6 +53,7 @@ const modes: Mode[] = [
     label: 'Spectral',
     code: 'SPC-42',
     accent: '#ff8bc8',
+    display: 'spectral',
     summary: 'Spectru de energie si anomalii luminoase.',
     detail: 'Separa emisii scurte de fond si scoate in fata impulsurile rare.',
     readouts: ['Flux prism', 'Gamma lace', 'Phase split'],
@@ -56,6 +63,7 @@ const modes: Mode[] = [
     label: 'Terrain',
     code: 'GEO-18',
     accent: '#ff9f6d',
+    display: 'terrain',
     summary: 'Textura, cavitati si contur local.',
     detail: 'Reconstructie rapida a suprafetei pentru goluri, muchii si corpuri dense.',
     readouts: ['Depth map', 'Mass edge', 'Void ping'],
@@ -65,6 +73,7 @@ const modes: Mode[] = [
     label: 'Stellar',
     code: 'AST-12',
     accent: '#bb98ff',
+    display: 'radar',
     summary: 'Campuri, orientare si pattern orbital.',
     detail: 'Modeleaza vectori de camp si deriva pentru navigatie imaginara de punte.',
     readouts: ['Field braid', 'Orbit skew', 'Vector calm'],
@@ -72,11 +81,22 @@ const modes: Mode[] = [
 ];
 
 const controlLabels = ['Sweep', 'Pulse', 'Wide', 'Lock', 'Stealth'];
+const displayLabels: { id: DisplayKind; label: string }[] = [
+  { id: 'radar', label: 'Radar' },
+  { id: 'bio', label: 'Bio' },
+  { id: 'spectral', label: 'Spectral' },
+  { id: 'terrain', label: 'Terrain' },
+];
 
 export function TricorderConsole() {
   const [activeMode, setActiveMode] = useState(modes[0]);
   const [activeControl, setActiveControl] = useState(controlLabels[0]);
+  const [activeDisplay, setActiveDisplay] = useState<DisplayKind>(modes[0].display);
   const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    setActiveDisplay(activeMode.display);
+  }, [activeMode]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -115,6 +135,26 @@ export function TricorderConsole() {
     [activeMode, metrics]
   );
 
+  const terrainCells = useMemo(
+    () =>
+      Array.from({ length: 30 }, (_, index) => ({
+        id: `${activeMode.id}-cell-${index}`,
+        value: 18 + ((tick * 7 + index * 11 + activeMode.id.length * 13) % 82),
+      })),
+    [activeMode, tick]
+  );
+
+  const bioNodes = useMemo(
+    () =>
+      Array.from({ length: 9 }, (_, index) => ({
+        id: `${activeMode.id}-node-${index}`,
+        top: 16 + ((index * 19 + tick * 3) % 62),
+        left: 12 + ((index * 23 + tick * 5) % 70),
+        size: 16 + ((index * 7 + tick) % 18),
+      })),
+    [activeMode, tick]
+  );
+
   return (
     <div className={styles.viewport} style={{ ['--tricorder-accent' as string]: activeMode.accent }}>
       <div className={styles.device}>
@@ -138,25 +178,98 @@ export function TricorderConsole() {
             <div className={styles.moduleCode}>{activeMode.code}</div>
           </div>
 
-          <div className={styles.scopeFrame}>
-            <div className={styles.scopeGrid} />
-            <div className={styles.scopeSweep} />
-            <div className={styles.scopeCore} />
-            {scanRows.map((row, index) => (
-              <div
-                key={row.id}
-                className={styles.scanBand}
-                style={{
-                  left: `${row.left}%`,
-                  top: `${20 + index * 15}%`,
-                  width: `${row.width}%`,
-                }}
-              />
+          <div className={styles.displayTabs}>
+            {displayLabels.map((display) => (
+              <button
+                key={display.id}
+                type="button"
+                className={display.id === activeDisplay ? styles.displayTabActive : styles.displayTab}
+                onClick={() => setActiveDisplay(display.id)}
+              >
+                {display.label}
+              </button>
             ))}
+          </div>
+
+          <div className={styles.scopeFrame}>
+            {activeDisplay === 'radar' ? (
+              <>
+                <div className={styles.scopeGrid} />
+                <div className={styles.scopeSweep} />
+                <div className={styles.scopeCore} />
+                {scanRows.map((row, index) => (
+                  <div
+                    key={row.id}
+                    className={styles.scanBand}
+                    style={{
+                      left: `${row.left}%`,
+                      top: `${20 + index * 15}%`,
+                      width: `${row.width}%`,
+                    }}
+                  />
+                ))}
+              </>
+            ) : null}
+
+            {activeDisplay === 'bio' ? (
+              <div className={styles.bioDisplay}>
+                <div className={styles.bioGrid} />
+                <div className={styles.bioSilhouette} />
+                {bioNodes.map((node) => (
+                  <span
+                    key={node.id}
+                    className={styles.bioNode}
+                    style={{
+                      top: `${node.top}%`,
+                      left: `${node.left}%`,
+                      width: `${node.size}px`,
+                      height: `${node.size}px`,
+                    }}
+                  />
+                ))}
+                <div className={styles.bioLine} />
+              </div>
+            ) : null}
+
+            {activeDisplay === 'spectral' ? (
+              <div className={styles.spectralDisplay}>
+                <div className={styles.spectralBackdrop} />
+                <div className={styles.spectralBars}>
+                  {waveform.map((bar, index) => (
+                    <span
+                      key={`spectral-${bar.id}`}
+                      className={styles.spectralBar}
+                      style={{
+                        height: `${bar.height}%`,
+                        animationDelay: `${index * 70}ms`,
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className={styles.spectralCurve} />
+              </div>
+            ) : null}
+
+            {activeDisplay === 'terrain' ? (
+              <div className={styles.terrainDisplay}>
+                <div className={styles.terrainGrid}>
+                  {terrainCells.map((cell) => (
+                    <span
+                      key={cell.id}
+                      className={styles.terrainCell}
+                      style={{ opacity: cell.value / 100 }}
+                    />
+                  ))}
+                </div>
+                <div className={styles.terrainHorizon} />
+                <div className={styles.terrainPing} />
+              </div>
+            ) : null}
+
             <div className={styles.scopeReadout}>
               <div>{activeMode.summary}</div>
               <div className={styles.subtle}>
-                {activeControl} channel / cycle {String(tick % 99).padStart(2, '0')}
+                {activeControl} channel / {activeDisplay} view / cycle {String(tick % 99).padStart(2, '0')}
               </div>
             </div>
           </div>
