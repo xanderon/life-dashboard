@@ -4,6 +4,8 @@ import { AppCards } from '@/components/AppCards';
 import { DevicesCard } from '@/components/DevicesCard';
 import { SprintPulseCard } from '@/components/SprintPulseCard';
 import { StudyCoachCard } from '@/components/StudyCoachCard';
+import { JsSyntaxDrillCard } from '@/components/JsSyntaxDrillCard';
+import { TricorderCard } from '@/components/TricorderCard';
 
 
 
@@ -23,6 +25,8 @@ export default function HomePage() {
           <DevicesCard />
           <SprintPulseCard />
           <StudyCoachCard />
+          <JsSyntaxDrillCard />
+          <TricorderCard />
           <AppCards />
         </section>
       </div>

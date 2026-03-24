@@ -1,0 +1,3480 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JavaScript Syntax Drill Trainer</title>
+  <style>
+    :root {
+      --bg: #f3f7fb;
+      --panel: #ffffff;
+      --panel-soft: #f8fbff;
+      --line: #d9e4f2;
+      --text: #15324b;
+      --muted: #667d94;
+      --brand: #1479ff;
+      --brand-soft: #e8f2ff;
+      --success: #11885b;
+      --success-soft: #e7fbf1;
+      --danger: #c53d3d;
+      --danger-soft: #fff0f0;
+      --warning: #a46700;
+      --warning-soft: #fff7df;
+      --shadow: 0 18px 40px rgba(21, 50, 75, 0.08);
+      --mono: "SFMono-Regular", "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+      --sans: Inter, "Segoe UI", system-ui, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, #dcefff 0, transparent 28%),
+        radial-gradient(circle at right top, #eef6ff 0, transparent 32%),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+    }
+
+    .shell {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 22px 16px 32px;
+    }
+
+    .hero {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 14px;
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: linear-gradient(135deg, #ffffff 0%, #f7fbff 100%);
+      box-shadow: var(--shadow);
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(1.7rem, 2.7vw, 2.6rem);
+      line-height: 1.1;
+    }
+
+    .hero p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      max-width: 760px;
+      line-height: 1.55;
+    }
+
+    .hero-badges,
+    .badge-row,
+    .toolbar-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel-soft);
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .badge.brand {
+      background: var(--brand-soft);
+      border-color: #bfdbff;
+      color: #0f5fc8;
+    }
+
+    .badge.success {
+      background: var(--success-soft);
+      border-color: #bdeccc;
+      color: var(--success);
+    }
+
+    .badge.warn {
+      background: var(--warning-soft);
+      border-color: #f1d585;
+      color: var(--warning);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.9fr) minmax(280px, 0.8fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .card-inner {
+      padding: 16px;
+    }
+
+    .card h2,
+    .card h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .subtle {
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .meta-grid,
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .metric {
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel-soft);
+    }
+
+    .metric-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .metric-value {
+      margin-top: 6px;
+      font-size: 1.05rem;
+      font-weight: 800;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    select,
+    button {
+      font: inherit;
+    }
+
+    .mode-select {
+      min-width: 220px;
+      padding: 11px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 14px;
+      padding: 11px 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      transform: none;
+      opacity: 0.6;
+    }
+
+    .btn.primary {
+      background: var(--brand);
+      color: #fff;
+      box-shadow: 0 10px 18px rgba(20, 121, 255, 0.22);
+    }
+
+    .btn.secondary {
+      background: var(--panel-soft);
+      color: var(--text);
+      border-color: var(--line);
+    }
+
+    .btn.success {
+      background: #e9fff5;
+      color: var(--success);
+      border-color: #bcebd2;
+    }
+
+    .btn.danger {
+      background: #fff5f5;
+      color: var(--danger);
+      border-color: #f0c5c5;
+    }
+
+    .btn.ghost {
+      background: #fff;
+      color: var(--text);
+      border-color: var(--line);
+    }
+
+    .exercise-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+
+    .exercise-prompt {
+      margin: 0;
+      font-size: 1.02rem;
+      line-height: 1.6;
+    }
+
+    .prompt-card {
+      margin-top: 10px;
+      padding: 14px 16px;
+      border: 1px solid #d9e7fb;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #f9fcff 0%, #f2f8ff 100%);
+    }
+
+    .prompt-card strong {
+      color: #0f5fc8;
+    }
+
+    .sprint-shell {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 12px 14px;
+      border: 1px solid #d9e7fb;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #fbfdff 0%, #f4f9ff 100%);
+    }
+
+    .sprint-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .inline-code {
+      display: inline-block;
+      padding: 2px 8px;
+      border: 1px solid #d5e4fb;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #0f5fc8;
+      font: 0.93em/1.5 var(--mono);
+      vertical-align: baseline;
+      word-break: break-word;
+    }
+
+    .section-title {
+      margin-bottom: 10px;
+      font-weight: 800;
+      font-size: 0.84rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .code-block {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #0f1720;
+      overflow: hidden;
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: #132232;
+      color: #c8d9eb;
+      font-size: 0.8rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .inline-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin: 14px 0 0;
+    }
+
+    .primary-workflow {
+      display: grid;
+      gap: 14px;
+    }
+
+    .compact-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    .inline-actions .toolbar-row:last-child {
+      justify-content: flex-end;
+    }
+
+    .editor-wrap {
+      position: relative;
+      min-height: 290px;
+      font-family: var(--mono);
+    }
+
+    .editor-highlight,
+    .editor {
+      margin: 0;
+      padding: 16px 18px;
+      min-height: 290px;
+      font: 14px/1.6 var(--mono);
+      white-space: pre-wrap;
+      word-break: break-word;
+      tab-size: 2;
+    }
+
+    .editor-highlight {
+      color: #dce7f5;
+      pointer-events: none;
+    }
+
+    .editor {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      resize: vertical;
+      background: transparent;
+      color: transparent;
+      caret-color: #ffffff;
+      outline: none;
+    }
+
+    .editor::selection {
+      background: rgba(116, 176, 255, 0.35);
+    }
+
+    .token-keyword { color: #72b7ff; }
+    .token-string { color: #c3f0a6; }
+    .token-number { color: #f7d47d; }
+    .token-comment { color: #7890a8; }
+    .token-method { color: #ffb38e; }
+    .token-boolean { color: #f7a3d7; }
+
+    pre,
+    code {
+      font-family: var(--mono);
+    }
+
+    .plain-code {
+      margin: 0;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel-soft);
+      overflow-x: auto;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .plain-code.syntax {
+      background: #0f1720;
+      border-color: #233448;
+      color: #dce7f5;
+    }
+
+    .feedback {
+      margin-top: 14px;
+      padding: 13px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: var(--panel-soft);
+    }
+
+    .feedback.correct {
+      background: var(--success-soft);
+      border-color: #bcebd2;
+    }
+
+    .feedback.wrong {
+      background: var(--danger-soft);
+      border-color: #efcccc;
+    }
+
+    .feedback.error {
+      background: #fff5ef;
+      border-color: #efd2be;
+    }
+
+    .feedback-title {
+      font-size: 1rem;
+      font-weight: 800;
+    }
+
+    .feedback-text {
+      margin-top: 8px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .feedback-text strong {
+      color: var(--text);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .mini-panel {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .mini-panel .label {
+      margin-bottom: 8px;
+      font-size: 0.76rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .hint-box,
+    .solution-box,
+    .message-box {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      line-height: 1.6;
+    }
+
+    .hint-box {
+      background: #fff8e7;
+      border-color: #f1d585;
+    }
+
+    .solution-box {
+      background: #f5f9ff;
+      border-color: #cfe1ff;
+    }
+
+    .message-box {
+      background: #f4fbff;
+      border-color: #d4ebff;
+    }
+
+    .sidebar-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .concept-list,
+    .history-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .concept-item,
+    .history-item {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel-soft);
+    }
+
+    .concept-row,
+    .history-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .bar {
+      height: 8px;
+      margin-top: 10px;
+      background: #e8eef6;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar > span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #74b0ff 0%, #1f8fff 100%);
+    }
+
+    .small {
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .footer-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+
+    .section-shell {
+      display: grid;
+      gap: 8px;
+    }
+
+    .sidebar-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel-soft);
+      color: var(--text);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .sidebar-stack.compact .card:nth-child(2),
+    .sidebar-stack.compact .card:nth-child(3) {
+      display: none;
+    }
+
+    .live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: #edf6ff;
+      border: 1px solid #d2e6ff;
+      color: #0f5fc8;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .timer-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid #d5e4fb;
+      background: #fff;
+      color: var(--text);
+      font-size: 0.84rem;
+      font-weight: 800;
+    }
+
+    .timer-pill.alert {
+      border-color: #f3c9c9;
+      background: #fff5f5;
+      color: var(--danger);
+    }
+
+    .summary-box {
+      margin-top: 12px;
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid #d9e7fb;
+      background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #1f8fff;
+      box-shadow: 0 0 0 0 rgba(31, 143, 255, 0.35);
+      animation: pulse 1.6s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(31, 143, 255, 0.35); }
+      70% { box-shadow: 0 0 0 10px rgba(31, 143, 255, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(31, 143, 255, 0); }
+    }
+
+    @media (max-width: 1080px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .meta-grid,
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .compact-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .shell {
+        padding: 18px 12px 28px;
+      }
+
+      .hero,
+      .card-inner {
+        padding: 16px;
+      }
+
+      .two-col,
+      .compact-row,
+      .meta-grid,
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .btn,
+      .mode-select {
+        width: 100%;
+      }
+
+      .toolbar-row {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div>
+        <div class="hero-badges">
+          <span class="badge brand">JavaScript interview drill</span>
+          <span class="badge">single-file HTML</span>
+          <span class="badge">local only</span>
+        </div>
+        <h1>Syntax & data structures reflex trainer</h1>
+        <p>
+          Exerciții scurte, dese și validate imediat pentru automatisme utile în interviuri:
+          loop-uri, array/string/object, Set, Map, stack, queue, mutation vs non-mutation și
+          micro-operații frecvente în probleme tip LeetCode.
+        </p>
+      </div>
+      <div class="hero-badges">
+        <span class="badge success" id="heroAccuracy">Accuracy total: 0%</span>
+        <span class="badge warn" id="heroMode">Mode: Mixed</span>
+        <span class="badge" id="heroCount">78 exerciții incluse</span>
+      </div>
+    </section>
+
+    <div class="grid">
+      <main class="card">
+        <div class="card-inner">
+          <div class="meta-grid">
+            <div class="metric">
+              <div class="metric-label">Făcute</div>
+              <div class="metric-value" id="metricDone">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Corecte</div>
+              <div class="metric-value" id="metricCorrect">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Accuracy</div>
+              <div class="metric-value" id="metricAccuracy">0%</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Din prima</div>
+              <div class="metric-value" id="metricFirstTry">0%</div>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <div class="toolbar-row">
+              <select id="modeSelect" class="mode-select"></select>
+            </div>
+            <div class="toolbar-row">
+              <button id="sidebarToggle" class="sidebar-toggle" type="button">Compact stats</button>
+              <button id="resetBtn" class="btn danger">Reset Progress</button>
+            </div>
+          </div>
+
+          <div class="sprint-shell">
+            <div>
+              <div style="font-weight:800;">Sprint rounds</div>
+              <div class="small">Submit, vezi verdictul, soluția și treci automat la următoarea.</div>
+            </div>
+            <div class="sprint-actions">
+              <span class="timer-pill" id="sprintTimer">Sprint off</span>
+              <span class="timer-pill" id="questionTimer">Question 00:00</span>
+              <button id="start5Btn" class="btn ghost" type="button">Start 5m</button>
+              <button id="start10Btn" class="btn ghost" type="button">Start 10m</button>
+              <button id="stopSprintBtn" class="btn secondary" type="button">Stop</button>
+            </div>
+          </div>
+
+          <div class="message-box" id="adaptiveMessage"></div>
+
+          <div class="primary-workflow">
+            <div class="exercise-top">
+              <div>
+                <div class="badge-row">
+                  <span class="badge brand" id="categoryBadge">Category</span>
+                  <span class="badge" id="conceptBadge">Concept</span>
+                  <span class="badge" id="difficultyBadge">Easy</span>
+                  <span class="live-pill" id="pacePill"><span class="pulse-dot"></span>Ready to run</span>
+                </div>
+                <div class="prompt-card">
+                  <p class="exercise-prompt" id="promptText"></p>
+                </div>
+              </div>
+              <div class="small" id="exerciseCounter"></div>
+            </div>
+
+            <div class="compact-row">
+              <div class="section-shell">
+                <div class="section-title">Input</div>
+                <pre class="plain-code" id="inputData"></pre>
+              </div>
+              <div class="section-shell">
+                <div class="section-title">Expected</div>
+                <pre class="plain-code syntax" id="expectedPreview"></pre>
+              </div>
+            </div>
+
+            <div style="margin-top:2px;">
+              <div class="section-title">Code</div>
+              <div class="code-block">
+                <div class="code-header">
+                  <span>Editor</span>
+                  <span>Ctrl+Enter = Run • Alt+N = Next</span>
+                </div>
+                <div class="editor-wrap">
+                  <pre class="editor-highlight" id="editorHighlight"></pre>
+                  <textarea id="editor" class="editor" spellcheck="false" aria-label="JavaScript editor"></textarea>
+                </div>
+              </div>
+              <div class="inline-actions">
+                <div class="small" id="editorStatus">Scrie codul și rulează imediat.</div>
+                <div class="badge-row">
+                  <button id="hintBtn" class="btn secondary">Show Hint</button>
+                  <button id="solutionBtn" class="btn secondary">Show Solution</button>
+                  <button id="nextBtn" class="btn success">Next</button>
+                  <button id="runBtn" class="btn primary">Submit</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="feedback" id="feedbackBox">
+              <div class="feedback-title" id="feedbackTitle">Pregătit pentru primul exercițiu</div>
+              <div class="feedback-text" id="feedbackText">
+                Scrie codul, apasă Run și treci rapid prin exerciții scurte.
+              </div>
+              <div class="two-col">
+                <div class="mini-panel">
+                  <div class="label">Output-ul tău</div>
+                  <pre class="plain-code" id="yourOutput"></pre>
+                </div>
+                <div class="mini-panel">
+                  <div class="label">Așteptat</div>
+                  <pre class="plain-code" id="expectedOutput"></pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="hint-box" id="hintBox" hidden></div>
+            <div class="solution-box" id="solutionBox" hidden></div>
+          </div>
+          <div class="footer-note">
+            Validarea folosește output, stare finală sau combinație dintre ele. Pentru structuri
+            mutate, trainer-ul verifică și starea finală a array-ului, obiectului, Set-ului sau Map-ului.
+          </div>
+          <div class="summary-box" id="sessionSummary" hidden></div>
+        </div>
+      </main>
+
+      <aside class="sidebar-stack">
+        <section class="card">
+          <div class="card-inner">
+            <h2>Progress</h2>
+            <div class="stats-grid" style="margin-top:14px;">
+              <div class="metric">
+                <div class="metric-label">Hint-uri</div>
+                <div class="metric-value" id="metricHints">0</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">Soluții văzute</div>
+                <div class="metric-value" id="metricSolutions">0</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">Timp mediu</div>
+                <div class="metric-value" id="metricAvgTime">0s</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">Mode curent</div>
+                <div class="metric-value" id="metricMode">Mixed</div>
+              </div>
+            </div>
+            <div class="footer-note">
+              Exercițiile noi sunt alese adaptiv: mai multe din conceptele slabe, mai puține din
+              cele deja stabile.
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-inner">
+            <h3>Weak / Strong Concepts</h3>
+            <div class="concept-list" id="conceptStats"></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-inner">
+            <h3>Recent History</h3>
+            <div class="history-list" id="historyList"></div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'js-syntax-drill-trainer-v1';
+    const MODES = [
+      { id: 'mixed', label: 'Mixed' },
+      { id: 'arrays', label: 'Arrays only' },
+      { id: 'objects', label: 'Objects only' },
+      { id: 'setmap', label: 'Set/Map only' },
+      { id: 'stackqueue', label: 'Stack/Queue only' },
+      { id: 'weak', label: 'Weak concepts only' },
+      { id: 'easy', label: 'Easy only' },
+      { id: 'mistakes', label: 'Review mistakes' }
+    ];
+
+    const CATEGORY_LABELS = {
+      classic_for: 'A. for clasic',
+      for_of: 'B. for...of',
+      for_in: 'C. for...in',
+      while_loop: 'D. while',
+      array_basics: 'E. array basics',
+      string_basics: 'F. string basics',
+      object_basics: 'G. object basics',
+      object_helpers: 'H. Object.keys / values / entries',
+      set_ops: 'I. Set',
+      map_ops: 'J. Map',
+      stack_array: 'K. stack using array',
+      queue_array: 'L. queue using array',
+      slice_splice: 'M. slice / splice',
+      push_pop_shift_unshift: 'N. push / pop / shift / unshift',
+      index_length: 'O. index access și length',
+      search_has_get: 'P. search / includes / has / get',
+      add_update_delete_clear: 'Q. add / update / delete / clear',
+      reverse_traversal: 'R. reverse traversal',
+      counting: 'S. simple counting patterns',
+      frequency_counter: 'T. frequency counter basics',
+      transform: 'U. transform input into output',
+      mutation_vs_nonmutation: 'V. mutation vs non-mutation',
+      micro_ops: 'W. common micro-operations'
+    };
+
+    const KEYWORDS = /\b(const|let|var|for|while|if|else|return|new|of|in|true|false|null|undefined|break|continue)\b/g;
+    const METHOD_WORDS = /\.(push|pop|shift|unshift|slice|splice|includes|has|get|set|add|delete|clear|keys|values|entries|join|length)\b/g;
+    const NUMBER_WORDS = /\b(\d+)\b/g;
+    const STRING_WORDS = /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g;
+    const COMMENT_WORDS = /(\/\/.*$)/gm;
+
+    const els = {
+      modeSelect: document.getElementById('modeSelect'),
+      runBtn: document.getElementById('runBtn'),
+      nextBtn: document.getElementById('nextBtn'),
+      hintBtn: document.getElementById('hintBtn'),
+      solutionBtn: document.getElementById('solutionBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      start5Btn: document.getElementById('start5Btn'),
+      start10Btn: document.getElementById('start10Btn'),
+      stopSprintBtn: document.getElementById('stopSprintBtn'),
+      promptText: document.getElementById('promptText'),
+      inputData: document.getElementById('inputData'),
+      editor: document.getElementById('editor'),
+      editorHighlight: document.getElementById('editorHighlight'),
+      feedbackBox: document.getElementById('feedbackBox'),
+      feedbackTitle: document.getElementById('feedbackTitle'),
+      feedbackText: document.getElementById('feedbackText'),
+      yourOutput: document.getElementById('yourOutput'),
+      expectedOutput: document.getElementById('expectedOutput'),
+      expectedPreview: document.getElementById('expectedPreview'),
+      editorStatus: document.getElementById('editorStatus'),
+      pacePill: document.getElementById('pacePill'),
+      sprintTimer: document.getElementById('sprintTimer'),
+      questionTimer: document.getElementById('questionTimer'),
+      sessionSummary: document.getElementById('sessionSummary'),
+      sidebarToggle: document.getElementById('sidebarToggle'),
+      hintBox: document.getElementById('hintBox'),
+      solutionBox: document.getElementById('solutionBox'),
+      conceptStats: document.getElementById('conceptStats'),
+      historyList: document.getElementById('historyList'),
+      categoryBadge: document.getElementById('categoryBadge'),
+      conceptBadge: document.getElementById('conceptBadge'),
+      difficultyBadge: document.getElementById('difficultyBadge'),
+      exerciseCounter: document.getElementById('exerciseCounter'),
+      adaptiveMessage: document.getElementById('adaptiveMessage'),
+      metricDone: document.getElementById('metricDone'),
+      metricCorrect: document.getElementById('metricCorrect'),
+      metricAccuracy: document.getElementById('metricAccuracy'),
+      metricFirstTry: document.getElementById('metricFirstTry'),
+      metricHints: document.getElementById('metricHints'),
+      metricSolutions: document.getElementById('metricSolutions'),
+      metricAvgTime: document.getElementById('metricAvgTime'),
+      metricMode: document.getElementById('metricMode'),
+      heroAccuracy: document.getElementById('heroAccuracy'),
+      heroMode: document.getElementById('heroMode'),
+      heroCount: document.getElementById('heroCount')
+    };
+
+    function clone(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function normalizeValue(value) {
+      if (value instanceof Set) {
+        return { __type: 'set', values: Array.from(value).map(normalizeValue) };
+      }
+      if (value instanceof Map) {
+        return { __type: 'map', entries: Array.from(value.entries()).map(([k, v]) => [normalizeValue(k), normalizeValue(v)]) };
+      }
+      if (Array.isArray(value)) {
+        return value.map(normalizeValue);
+      }
+      if (value && typeof value === 'object') {
+        const out = {};
+        Object.keys(value).sort().forEach((key) => {
+          out[key] = normalizeValue(value[key]);
+        });
+        return out;
+      }
+      return value;
+    }
+
+    function stableStringify(value) {
+      return JSON.stringify(normalizeValue(value), null, 2);
+    }
+
+    function pretty(value) {
+      if (value === undefined) return '(nimic)';
+      if (typeof value === 'string') return value;
+      return stableStringify(value);
+    }
+
+    function normalizeLines(lines) {
+      return (lines || []).map((line) => String(line).trim()).filter((line) => line.length > 0);
+    }
+
+    function formatDuration(ms) {
+      const sec = Math.max(0, Math.round((ms || 0) / 1000));
+      return sec + 's';
+    }
+
+    function mmss(ms) {
+      const total = Math.max(0, Math.ceil((ms || 0) / 1000));
+      const min = Math.floor(total / 60);
+      const sec = total % 60;
+      return String(min).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+    }
+
+    function pct(part, total) {
+      return total ? Math.round((part / total) * 100) : 0;
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function highlightCode(code) {
+      let html = escapeHtml(code || ' ');
+      html = html.replace(COMMENT_WORDS, '<span class="token-comment">$1</span>');
+      html = html.replace(STRING_WORDS, '<span class="token-string">$1</span>');
+      html = html.replace(KEYWORDS, '<span class="token-keyword">$1</span>');
+      html = html.replace(NUMBER_WORDS, '<span class="token-number">$1</span>');
+      html = html.replace(/\b(true|false)\b/g, '<span class="token-boolean">$1</span>');
+      html = html.replace(METHOD_WORDS, '.<span class="token-method">$1</span>');
+      return html;
+    }
+
+    function setHighlightedCode(el, code) {
+      el.innerHTML = highlightCode(code || '');
+      el.classList.add('syntax');
+    }
+
+    function formatPromptText(text) {
+      let html = escapeHtml(text || '');
+      html = html.replace(/"([^"]*)"/g, '<span class="inline-code">"$1"</span>');
+      html = html.replace(/(\{[^{}]+\}|\[[^\[\]]+\]|\bObject\.entries\(obj\)\b|\bObject\.keys\(obj\)\b|\bObject\.values\(obj\)\b|\bfor\.\.\.of\b|\bfor\.\.\.in\b|\bsplice\b|\bslice\b|\bpush\b|\bpop\b|\bshift\b|\bunshift\b|\bSet\b|\bMap\b)/g, '<span class="inline-code">$1</span>');
+      return html;
+    }
+
+    function buildHints(lines) {
+      return [
+        lines[0],
+        lines[1] || lines[0],
+        lines[2] || lines[1] || lines[0]
+      ];
+    }
+
+    function withMeta(base, extra) {
+      return Object.assign({
+        difficulty: 'easy',
+        modeTags: [],
+        validator: { type: 'output', expectedOutput: [] }
+      }, base, extra);
+    }
+
+    function outputExercise(config) {
+      return withMeta(config, {
+        validator: {
+          type: 'output',
+          expectedOutput: config.expectedOutput
+        }
+      });
+    }
+
+    function stateExercise(config) {
+      return withMeta(config, {
+        validator: {
+          type: 'state',
+          expectedState: config.expectedState
+        }
+      });
+    }
+
+    function combinedExercise(config) {
+      return withMeta(config, {
+        validator: {
+          type: 'combined',
+          expectedOutput: config.expectedOutput,
+          expectedState: config.expectedState
+        }
+      });
+    }
+
+    function createExercises() {
+      const exercises = [];
+      let idx = 1;
+      const add = (exercise) => {
+        exercises.push(Object.assign({ id: 'ex-' + idx++ }, exercise));
+      };
+
+      [
+        outputExercise({
+          category: 'classic_for',
+          concept: 'classic for',
+          prompt: 'Ai array-ul [4, 7, 1]. Afișează toate elementele folosind for clasic.',
+          inputData: 'const arr = [4, 7, 1];',
+          setupCode: 'let arr = [4, 7, 1];',
+          starterCode: '// Available: arr\nfor (let i = 0; i < arr.length; i++) {\n  // TODO\n}\n',
+          expectedOutput: ['4', '7', '1'],
+          hints: buildHints([
+            'Ai nevoie de indexul i și de arr.length.',
+            'În interiorul buclei, afișează arr[i].',
+            'Structura corectă: for (let i = 0; i < arr.length; i++) { console.log(arr[i]); }'
+          ]),
+          solution: 'for (let i = 0; i < arr.length; i++) {\n  console.log(arr[i]);\n}',
+          explanation: 'Parcurgi array-ul de la index 0 până la ultimul index și afișezi fiecare element.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'classic_for',
+          concept: 'classic for reverse index',
+          prompt: 'Ai string-ul "alex". Afișează caracterele în ordine inversă folosind for clasic.',
+          inputData: 'const str = "alex";',
+          setupCode: 'let str = "alex";',
+          starterCode: '// Available: str\nfor (let i = str.length - 1; i >= 0; i--) {\n  // TODO\n}\n',
+          expectedOutput: ['x', 'e', 'l', 'a'],
+          hints: buildHints([
+            'Pornește de la str.length - 1.',
+            'La fiecare pas afișează str[i].',
+            'Condiția trebuie să fie i >= 0 și decrementare i--.'
+          ]),
+          solution: 'for (let i = str.length - 1; i >= 0; i--) {\n  console.log(str[i]);\n}',
+          explanation: 'Parcurgi string-ul de la ultimul caracter la primul.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'classic_for',
+          concept: 'classic for even filter',
+          prompt: 'Ai array-ul [3, 6, 9, 12]. Afișează doar elementele pare folosind for clasic.',
+          inputData: 'const arr = [3, 6, 9, 12];',
+          setupCode: 'let arr = [3, 6, 9, 12];',
+          starterCode: '// Available: arr\nfor (let i = 0; i < arr.length; i++) {\n  // TODO: afișează doar valorile pare\n}\n',
+          expectedOutput: ['6', '12'],
+          hints: buildHints([
+            'Verifică arr[i] % 2 === 0.',
+            'Afișezi doar când condiția este adevărată.',
+            'if (arr[i] % 2 === 0) { console.log(arr[i]); }'
+          ]),
+          solution: 'for (let i = 0; i < arr.length; i++) {\n  if (arr[i] % 2 === 0) {\n    console.log(arr[i]);\n  }\n}',
+          explanation: 'For clasic e util când ai nevoie și de index și de filtrare simplă.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'classic_for',
+          concept: 'classic for index and value',
+          prompt: 'Ai array-ul [2, 5, 8]. Afișează pe linii separate formatul "index:value" folosind for clasic.',
+          inputData: 'const arr = [2, 5, 8];',
+          setupCode: 'let arr = [2, 5, 8];',
+          starterCode: '// Available: arr\nfor (let i = 0; i < arr.length; i++) {\n  // TODO\n}\n',
+          expectedOutput: ['0:2', '1:5', '2:8'],
+          hints: buildHints([
+            'Ai nevoie atât de i, cât și de arr[i].',
+            'Construiește un string cu i + ":" + arr[i].',
+            'console.log(i + ":" + arr[i]);'
+          ]),
+          solution: 'for (let i = 0; i < arr.length; i++) {\n  console.log(i + ":" + arr[i]);\n}',
+          explanation: 'For clasic este alegerea naturală când outputul depinde de index.',
+          modeTags: ['arrays']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'for_of',
+          concept: 'for...of array',
+          prompt: 'Ai array-ul [10, 20, 30]. Afișează toate valorile folosind for...of.',
+          inputData: 'const arr = [10, 20, 30];',
+          setupCode: 'let arr = [10, 20, 30];',
+          starterCode: '// Available: arr\nfor (const value of arr) {\n  // TODO\n}\n',
+          expectedOutput: ['10', '20', '30'],
+          hints: buildHints([
+            'for...of îți dă direct valoarea, nu indexul.',
+            'În corpul buclei afișează value.',
+            'console.log(value);'
+          ]),
+          solution: 'for (const value of arr) {\n  console.log(value);\n}',
+          explanation: 'for...of este bun pentru parcurgere simplă de valori.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'for_of',
+          concept: 'for...of string',
+          prompt: 'Ai string-ul "code". Afișează fiecare caracter folosind for...of.',
+          inputData: 'const str = "code";',
+          setupCode: 'let str = "code";',
+          starterCode: '// Available: str\nfor (const ch of str) {\n  // TODO\n}\n',
+          expectedOutput: ['c', 'o', 'd', 'e'],
+          hints: buildHints([
+            'String-ul este iterabil.',
+            'Variabila ch reprezintă caracterul curent.',
+            'console.log(ch);'
+          ]),
+          solution: 'for (const ch of str) {\n  console.log(ch);\n}',
+          explanation: 'for...of merge direct pe caracterele din string.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'for_of',
+          concept: 'for...of sum',
+          prompt: 'Ai array-ul [1, 2, 3, 4]. Calculează suma cu for...of și afișează rezultatul final.',
+          inputData: 'const arr = [1, 2, 3, 4];',
+          setupCode: 'let arr = [1, 2, 3, 4];',
+          starterCode: '// Available: arr\nlet sum = 0;\nfor (const value of arr) {\n  // TODO\n}\nconsole.log(sum);\n',
+          expectedOutput: ['10'],
+          hints: buildHints([
+            'Ai deja sum = 0.',
+            'În buclă, adună valoarea curentă la sum.',
+            'sum += value;'
+          ]),
+          solution: 'let sum = 0;\nfor (const value of arr) {\n  sum += value;\n}\nconsole.log(sum);',
+          explanation: 'for...of este foarte bun la acumulări simple.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'for_of',
+          concept: 'for...of set',
+          prompt: 'Ai Set-ul new Set([3, 5, 7]). Afișează toate valorile folosind for...of.',
+          inputData: 'const set = new Set([3, 5, 7]);',
+          setupCode: 'let set = new Set([3, 5, 7]);',
+          starterCode: '// Available: set\nfor (const value of set) {\n  // TODO\n}\n',
+          expectedOutput: ['3', '5', '7'],
+          hints: buildHints([
+            'Set este iterabil.',
+            'for...of îți dă direct fiecare valoare din Set.',
+            'console.log(value);'
+          ]),
+          solution: 'for (const value of set) {\n  console.log(value);\n}',
+          explanation: 'Pentru Set, for...of este varianta directă și clară.',
+          modeTags: ['setmap']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'for_in',
+          concept: 'for...in object keys',
+          prompt: 'Ai obiectul {a: 1, b: 2, c: 3}. Afișează toate cheile folosind for...in.',
+          inputData: 'const obj = { a: 1, b: 2, c: 3 };',
+          setupCode: 'let obj = { a: 1, b: 2, c: 3 };',
+          starterCode: '// Available: obj\nfor (const key in obj) {\n  // TODO\n}\n',
+          expectedOutput: ['a', 'b', 'c'],
+          hints: buildHints([
+            'for...in parcurge cheile obiectului.',
+            'Afișezi direct key.',
+            'console.log(key);'
+          ]),
+          solution: 'for (const key in obj) {\n  console.log(key);\n}',
+          explanation: 'for...in este pentru chei de obiect, nu pentru array-uri.',
+          modeTags: ['objects']
+        }),
+        outputExercise({
+          category: 'for_in',
+          concept: 'for...in key value',
+          prompt: 'Ai obiectul {x: 4, y: 9}. Afișează pe linii separate "key:value" folosind for...in.',
+          inputData: 'const obj = { x: 4, y: 9 };',
+          setupCode: 'let obj = { x: 4, y: 9 };',
+          starterCode: '// Available: obj\nfor (const key in obj) {\n  // TODO\n}\n',
+          expectedOutput: ['x:4', 'y:9'],
+          hints: buildHints([
+            'Ai cheia în key și valoarea în obj[key].',
+            'Construiește un string key + ":" + obj[key].',
+            'console.log(key + ":" + obj[key]);'
+          ]),
+          solution: 'for (const key in obj) {\n  console.log(key + ":" + obj[key]);\n}',
+          explanation: 'Cheile din for...in se folosesc pentru acces la valori cu obj[key].',
+          modeTags: ['objects']
+        }),
+        outputExercise({
+          category: 'for_in',
+          concept: 'for...in count keys',
+          prompt: 'Ai obiectul {name: "Ana", age: 29, city: "Cluj"}. Numără cheile folosind for...in și afișează rezultatul.',
+          inputData: 'const obj = { name: "Ana", age: 29, city: "Cluj" };',
+          setupCode: 'let obj = { name: "Ana", age: 29, city: "Cluj" };',
+          starterCode: '// Available: obj\nlet count = 0;\nfor (const key in obj) {\n  // TODO\n}\nconsole.log(count);\n',
+          expectedOutput: ['3'],
+          hints: buildHints([
+            'La fiecare cheie mărești count.',
+            'Nu contează numele cheii, doar faptul că există.',
+            'count++;'
+          ]),
+          solution: 'let count = 0;\nfor (const key in obj) {\n  count++;\n}\nconsole.log(count);',
+          explanation: 'for...in îți permite să numeri rapid câte proprietăți are obiectul.',
+          modeTags: ['objects']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'while_loop',
+          concept: 'while array forward',
+          prompt: 'Ai array-ul [9, 8, 7]. Afișează toate elementele folosind while.',
+          inputData: 'const arr = [9, 8, 7];',
+          setupCode: 'let arr = [9, 8, 7];',
+          starterCode: '// Available: arr\nlet i = 0;\nwhile (i < arr.length) {\n  // TODO\n}\n',
+          expectedOutput: ['9', '8', '7'],
+          hints: buildHints([
+            'Folosește i pentru indexul curent.',
+            'Afișează arr[i] și apoi crește i.',
+            'console.log(arr[i]); i++;'
+          ]),
+          solution: 'let i = 0;\nwhile (i < arr.length) {\n  console.log(arr[i]);\n  i++;\n}',
+          explanation: 'while merge când controlezi manual indexul și condiția.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'while_loop',
+          concept: 'while reverse string',
+          prompt: 'Ai string-ul "loop". Afișează-l invers folosind while.',
+          inputData: 'const str = "loop";',
+          setupCode: 'let str = "loop";',
+          starterCode: '// Available: str\nlet i = str.length - 1;\nwhile (i >= 0) {\n  // TODO\n}\n',
+          expectedOutput: ['p', 'o', 'o', 'l'],
+          hints: buildHints([
+            'Pornești de la ultimul index.',
+            'Afișează str[i] și decrementează i.',
+            'console.log(str[i]); i--;'
+          ]),
+          solution: 'let i = str.length - 1;\nwhile (i >= 0) {\n  console.log(str[i]);\n  i--;\n}',
+          explanation: 'while este bun și pentru traversări inverse.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'while_loop',
+          concept: 'while count even',
+          prompt: 'Ai array-ul [2, 5, 8, 11]. Numără elementele pare folosind while și afișează rezultatul.',
+          inputData: 'const arr = [2, 5, 8, 11];',
+          setupCode: 'let arr = [2, 5, 8, 11];',
+          starterCode: '// Available: arr\nlet i = 0;\nlet count = 0;\nwhile (i < arr.length) {\n  // TODO\n}\nconsole.log(count);\n',
+          expectedOutput: ['2'],
+          hints: buildHints([
+            'Verifică arr[i] % 2 === 0.',
+            'Dacă e par, crești count.',
+            'La finalul fiecărei iterații nu uita i++;'
+          ]),
+          solution: 'let i = 0;\nlet count = 0;\nwhile (i < arr.length) {\n  if (arr[i] % 2 === 0) {\n    count++;\n  }\n  i++;\n}\nconsole.log(count);',
+          explanation: 'Pattern clasic: index manual + contor separat.',
+          modeTags: ['arrays']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'array_basics',
+          concept: 'array length',
+          prompt: 'Ai array-ul [5, 1, 4, 9]. Afișează lungimea lui.',
+          inputData: 'const arr = [5, 1, 4, 9];',
+          setupCode: 'let arr = [5, 1, 4, 9];',
+          starterCode: '// Available: arr\nconsole.log();\n',
+          expectedOutput: ['4'],
+          hints: buildHints([
+            'Array-ul are proprietatea .length.',
+            'Afișează arr.length.',
+            'console.log(arr.length);'
+          ]),
+          solution: 'console.log(arr.length);',
+          explanation: 'length este una dintre cele mai folosite proprietăți în problemele pe array.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'array_basics',
+          concept: 'array first last',
+          prompt: 'Ai array-ul [11, 22, 33]. Afișează primul și ultimul element, pe linii separate.',
+          inputData: 'const arr = [11, 22, 33];',
+          setupCode: 'let arr = [11, 22, 33];',
+          starterCode: '// Available: arr\n// TODO\n',
+          expectedOutput: ['11', '33'],
+          hints: buildHints([
+            'Primul element este la index 0.',
+            'Ultimul este la arr.length - 1.',
+            'console.log(arr[0]);\nconsole.log(arr[arr.length - 1]);'
+          ]),
+          solution: 'console.log(arr[0]);\nconsole.log(arr[arr.length - 1]);',
+          explanation: 'Accesul la primul și ultimul element apare foarte des.',
+          modeTags: ['arrays']
+        }),
+        stateExercise({
+          category: 'array_basics',
+          concept: 'array update by index',
+          prompt: 'Ai array-ul [3, 6, 9]. Înlocuiește elementul de la index 1 cu 42.',
+          inputData: 'const arr = [3, 6, 9];',
+          setupCode: 'let arr = [3, 6, 9];',
+          starterCode: '// Available: arr\n// TODO\n',
+          collectExpr: '({ arr })',
+          expectedState: { arr: [3, 42, 9] },
+          hints: buildHints([
+            'Ai nevoie de acces prin index.',
+            'Indexul cerut este 1.',
+            'arr[1] = 42;'
+          ]),
+          solution: 'arr[1] = 42;',
+          explanation: 'Actualizarea directă după index este operație de bază pe array.',
+          modeTags: ['arrays']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'string_basics',
+          concept: 'string length',
+          prompt: 'Ai string-ul "banana". Afișează lungimea lui.',
+          inputData: 'const str = "banana";',
+          setupCode: 'let str = "banana";',
+          starterCode: '// Available: str\nconsole.log();\n',
+          expectedOutput: ['6'],
+          hints: buildHints([
+            'String-ul are și el proprietatea .length.',
+            'Afișează str.length.',
+            'console.log(str.length);'
+          ]),
+          solution: 'console.log(str.length);',
+          explanation: 'length pe string este folosit constant în parcurgeri.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'string_basics',
+          concept: 'string char access',
+          prompt: 'Ai string-ul "robot". Afișează caracterul de la index 2.',
+          inputData: 'const str = "robot";',
+          setupCode: 'let str = "robot";',
+          starterCode: '// Available: str\nconsole.log();\n',
+          expectedOutput: ['b'],
+          hints: buildHints([
+            'Poți accesa caracterele ca într-un array.',
+            'Folosește str[2].',
+            'console.log(str[2]);'
+          ]),
+          solution: 'console.log(str[2]);',
+          explanation: 'Accesul prin index pe string apare des în counting și two pointers.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'string_basics',
+          concept: 'string last char',
+          prompt: 'Ai string-ul "stack". Afișează ultimul caracter.',
+          inputData: 'const str = "stack";',
+          setupCode: 'let str = "stack";',
+          starterCode: '// Available: str\nconsole.log();\n',
+          expectedOutput: ['k'],
+          hints: buildHints([
+            'Ultimul index este length - 1.',
+            'Folosește str[str.length - 1].',
+            'console.log(str[str.length - 1]);'
+          ]),
+          solution: 'console.log(str[str.length - 1]);',
+          explanation: 'Pattern foarte frecvent când verifici capete sau sufixe simple.',
+          modeTags: ['arrays']
+        })
+      ].forEach(add);
+
+      [
+        stateExercise({
+          category: 'object_basics',
+          concept: 'object update property',
+          prompt: 'Ai obiectul {a: 1, b: 2}. Crește valoarea lui b cu 10.',
+          inputData: 'const obj = { a: 1, b: 2 };',
+          setupCode: 'let obj = { a: 1, b: 2 };',
+          starterCode: '// Available: obj\n// TODO\n',
+          collectExpr: '({ obj })',
+          expectedState: { obj: { a: 1, b: 12 } },
+          hints: buildHints([
+            'Ai deja cheia b în obiect.',
+            'Poți folosi obj.b sau obj["b"].',
+            'obj.b += 10;'
+          ]),
+          solution: 'obj.b += 10;',
+          explanation: 'Update-ul unei proprietăți e operație de bază pe obiect.',
+          modeTags: ['objects']
+        }),
+        stateExercise({
+          category: 'object_basics',
+          concept: 'object delete property',
+          prompt: 'Ai obiectul {name: "Ana", age: 29}. Șterge cheia "name".',
+          inputData: 'const obj = { name: "Ana", age: 29 };',
+          setupCode: 'let obj = { name: "Ana", age: 29 };',
+          starterCode: '// Available: obj\n// TODO\n',
+          collectExpr: '({ obj })',
+          expectedState: { obj: { age: 29 } },
+          hints: buildHints([
+            'Există operatorul delete pentru proprietăți.',
+            'Ținta este cheia name.',
+            'delete obj.name;'
+          ]),
+          solution: 'delete obj.name;',
+          explanation: 'Pentru ștergere de chei din obiect se folosește delete.',
+          modeTags: ['objects']
+        }),
+        stateExercise({
+          category: 'object_basics',
+          concept: 'object reset value',
+          prompt: 'Ai obiectul {x: 5, y: 8}. Resetează valoarea lui y la 0.',
+          inputData: 'const obj = { x: 5, y: 8 };',
+          setupCode: 'let obj = { x: 5, y: 8 };',
+          starterCode: '// Available: obj\n// TODO\n',
+          collectExpr: '({ obj })',
+          expectedState: { obj: { x: 5, y: 0 } },
+          hints: buildHints([
+            'Nu trebuie să ștergi cheia.',
+            'Doar îi schimbi valoarea.',
+            'obj.y = 0;'
+          ]),
+          solution: 'obj.y = 0;',
+          explanation: 'Resetarea explicită a unei valori apare des în structuri ajutătoare.',
+          modeTags: ['objects']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'object_helpers',
+          concept: 'Object.keys',
+          prompt: 'Ai obiectul {a: 1, b: 2, c: 3}. Afișează toate cheile folosind Object.keys.',
+          inputData: 'const obj = { a: 1, b: 2, c: 3 };',
+          setupCode: 'let obj = { a: 1, b: 2, c: 3 };',
+          starterCode: '// Available: obj\nfor (const key of Object.keys(obj)) {\n  // TODO\n}\n',
+          expectedOutput: ['a', 'b', 'c'],
+          hints: buildHints([
+            'Object.keys(obj) întoarce un array de chei.',
+            'Parcurge-l cu for...of.',
+            'console.log(key);'
+          ]),
+          solution: 'for (const key of Object.keys(obj)) {\n  console.log(key);\n}',
+          explanation: 'Object.keys este varianta clară când vrei doar cheile.',
+          modeTags: ['objects']
+        }),
+        outputExercise({
+          category: 'object_helpers',
+          concept: 'Object.values',
+          prompt: 'Ai obiectul {a: 4, b: 7}. Afișează toate valorile folosind Object.values.',
+          inputData: 'const obj = { a: 4, b: 7 };',
+          setupCode: 'let obj = { a: 4, b: 7 };',
+          starterCode: '// Available: obj\nfor (const value of Object.values(obj)) {\n  // TODO\n}\n',
+          expectedOutput: ['4', '7'],
+          hints: buildHints([
+            'Object.values(obj) îți dă direct valorile.',
+            'Nu mai ai nevoie de chei.',
+            'console.log(value);'
+          ]),
+          solution: 'for (const value of Object.values(obj)) {\n  console.log(value);\n}',
+          explanation: 'Când vrei doar valorile, Object.values e mai clar decât for...in.',
+          modeTags: ['objects']
+        }),
+        outputExercise({
+          category: 'object_helpers',
+          concept: 'Object.entries',
+          prompt: 'Ai obiectul {a: 1, b: 2}. Iterează prin Object.entries și afișează "key:value".',
+          inputData: 'const obj = { a: 1, b: 2 };',
+          setupCode: 'let obj = { a: 1, b: 2 };',
+          starterCode: '// Available: obj\nfor (const [key, value] of Object.entries(obj)) {\n  // TODO\n}\n',
+          expectedOutput: ['a:1', 'b:2'],
+          hints: buildHints([
+            'Fiecare entry are forma [key, value].',
+            'Poți desface direct cu destructuring.',
+            'console.log(key + ":" + value);'
+          ]),
+          solution: 'for (const [key, value] of Object.entries(obj)) {\n  console.log(key + ":" + value);\n}',
+          explanation: 'Object.entries e foarte util când ai nevoie simultan de cheie și valoare.',
+          modeTags: ['objects']
+        }),
+        outputExercise({
+          category: 'object_helpers',
+          concept: 'object key count',
+          prompt: 'Ai obiectul {id: 1, name: "Ana", active: true}. Afișează câte chei are.',
+          inputData: 'const obj = { id: 1, name: "Ana", active: true };',
+          setupCode: 'let obj = { id: 1, name: "Ana", active: true };',
+          starterCode: '// Available: obj\nconsole.log();\n',
+          expectedOutput: ['3'],
+          hints: buildHints([
+            'Object.keys(obj) întoarce array-ul de chei.',
+            'Ai nevoie doar de lungimea lui.',
+            'console.log(Object.keys(obj).length);'
+          ]),
+          solution: 'console.log(Object.keys(obj).length);',
+          explanation: 'Numărul de chei se ia rapid din Object.keys(obj).length.',
+          modeTags: ['objects']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'set_ops',
+          concept: 'Set.has',
+          prompt: 'Ai Set-ul new Set([1, 2, 3]). Verifică dacă există 2 și afișează true sau false.',
+          inputData: 'const set = new Set([1, 2, 3]);',
+          setupCode: 'let set = new Set([1, 2, 3]);',
+          starterCode: '// Available: set\nconsole.log();\n',
+          expectedOutput: ['true'],
+          hints: buildHints([
+            'Set are metoda .has().',
+            'Ținta este valoarea 2.',
+            'console.log(set.has(2));'
+          ]),
+          solution: 'console.log(set.has(2));',
+          explanation: 'Căutarea în Set se face cu has, nu cu includes.',
+          modeTags: ['setmap']
+        }),
+        stateExercise({
+          category: 'set_ops',
+          concept: 'Set.delete',
+          prompt: 'Ai Set-ul new Set([1, 2, 3]). Șterge valoarea 3.',
+          inputData: 'const set = new Set([1, 2, 3]);',
+          setupCode: 'let set = new Set([1, 2, 3]);',
+          starterCode: '// Available: set\n// TODO\n',
+          collectExpr: '({ set })',
+          expectedState: { set: new Set([1, 2]) },
+          hints: buildHints([
+            'Set are metodă de ștergere dedicată.',
+            'Ținta este valoarea 3, nu un index.',
+            'set.delete(3);'
+          ]),
+          solution: 'set.delete(3);',
+          explanation: 'În Set ștergi după valoare, nu după poziție.',
+          modeTags: ['setmap']
+        }),
+        stateExercise({
+          category: 'set_ops',
+          concept: 'Set.add',
+          prompt: 'Ai Set-ul new Set([4, 5]). Adaugă valoarea 9.',
+          inputData: 'const set = new Set([4, 5]);',
+          setupCode: 'let set = new Set([4, 5]);',
+          starterCode: '// Available: set\n// TODO\n',
+          collectExpr: '({ set })',
+          expectedState: { set: new Set([4, 5, 9]) },
+          hints: buildHints([
+            'Adăugarea se face cu .add().',
+            'Set păstrează valori unice.',
+            'set.add(9);'
+          ]),
+          solution: 'set.add(9);',
+          explanation: 'Pentru adăugare în Set se folosește add.',
+          modeTags: ['setmap']
+        }),
+        outputExercise({
+          category: 'set_ops',
+          concept: 'Set.size',
+          prompt: 'Ai Set-ul new Set([8, 8, 9, 10]). Afișează dimensiunea lui.',
+          inputData: 'const set = new Set([8, 8, 9, 10]);',
+          setupCode: 'let set = new Set([8, 8, 9, 10]);',
+          starterCode: '// Available: set\nconsole.log();\n',
+          expectedOutput: ['3'],
+          hints: buildHints([
+            'Set folosește .size, nu .length.',
+            'Duplicatul 8 apare o singură dată.',
+            'console.log(set.size);'
+          ]),
+          solution: 'console.log(set.size);',
+          explanation: 'Set elimină duplicatele și își expune numărul de elemente prin size.',
+          modeTags: ['setmap']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'map_ops',
+          concept: 'Map.get',
+          prompt: 'Ai Map-ul new Map([["a", 5], ["b", 7]]). Afișează valoarea pentru cheia "b".',
+          inputData: 'const map = new Map([["a", 5], ["b", 7]]);',
+          setupCode: 'let map = new Map([["a", 5], ["b", 7]]);',
+          starterCode: '// Available: map\nconsole.log();\n',
+          expectedOutput: ['7'],
+          hints: buildHints([
+            'Map nu folosește map["b"].',
+            'Accesul se face cu .get().',
+            'console.log(map.get("b"));'
+          ]),
+          solution: 'console.log(map.get("b"));',
+          explanation: 'Pe Map citești valorile cu get.',
+          modeTags: ['setmap']
+        }),
+        stateExercise({
+          category: 'map_ops',
+          concept: 'Map.set',
+          prompt: 'Ai Map-ul new Map([["a", 1]]). Adaugă cheia "x" cu valoarea 10.',
+          inputData: 'const map = new Map([["a", 1]]);',
+          setupCode: 'let map = new Map([["a", 1]]);',
+          starterCode: '// Available: map\n// TODO\n',
+          collectExpr: '({ map })',
+          expectedState: { map: new Map([['a', 1], ['x', 10]]) },
+          hints: buildHints([
+            'Map are metoda .set(key, value).',
+            'Cheia cerută este "x".',
+            'map.set("x", 10);'
+          ]),
+          solution: 'map.set("x", 10);',
+          explanation: 'Setarea unei intrări noi sau existente în Map se face cu set.',
+          modeTags: ['setmap']
+        }),
+        stateExercise({
+          category: 'map_ops',
+          concept: 'Map.delete',
+          prompt: 'Ai Map-ul new Map([["id", 1], ["name", "Ana"]]). Șterge cheia "id".',
+          inputData: 'const map = new Map([["id", 1], ["name", "Ana"]]);',
+          setupCode: 'let map = new Map([["id", 1], ["name", "Ana"]]);',
+          starterCode: '// Available: map\n// TODO\n',
+          collectExpr: '({ map })',
+          expectedState: { map: new Map([['name', 'Ana']]) },
+          hints: buildHints([
+            'Map șterge după cheie.',
+            'Metoda este .delete().',
+            'map.delete("id");'
+          ]),
+          solution: 'map.delete("id");',
+          explanation: 'Spre deosebire de array, în Map ștergerea se face după cheie.',
+          modeTags: ['setmap']
+        }),
+        outputExercise({
+          category: 'map_ops',
+          concept: 'Map.has',
+          prompt: 'Ai Map-ul new Map([["cat", 2], ["dog", 4]]). Verifică dacă există cheia "dog".',
+          inputData: 'const map = new Map([["cat", 2], ["dog", 4]]);',
+          setupCode: 'let map = new Map([["cat", 2], ["dog", 4]]);',
+          starterCode: '// Available: map\nconsole.log();\n',
+          expectedOutput: ['true'],
+          hints: buildHints([
+            'Map are metoda .has().',
+            'Trebuie verificată cheia, nu valoarea.',
+            'console.log(map.has("dog"));'
+          ]),
+          solution: 'console.log(map.has("dog"));',
+          explanation: 'Map.has îți spune dacă există cheia cerută.',
+          modeTags: ['setmap']
+        })
+      ].forEach(add);
+
+      [
+        combinedExercise({
+          category: 'stack_array',
+          concept: 'stack pop',
+          prompt: 'Folosește array-ul dat ca stack, scoate ultimul element și afișează elementul scos.',
+          inputData: 'const stack = [2, 4, 5];',
+          setupCode: 'let stack = [2, 4, 5];',
+          starterCode: '// Available: stack\n// TODO\n',
+          collectExpr: '({ stack })',
+          expectedOutput: ['5'],
+          expectedState: { stack: [2, 4] },
+          hints: buildHints([
+            'Pentru stack scoți din capătul din dreapta.',
+            'Metoda utilă este .pop().',
+            'const value = stack.pop();\nconsole.log(value);'
+          ]),
+          solution: 'const value = stack.pop();\nconsole.log(value);',
+          explanation: 'Un stack pe array folosește push/pop la capătul din dreapta.',
+          modeTags: ['stackqueue', 'arrays']
+        }),
+        stateExercise({
+          category: 'stack_array',
+          concept: 'stack push',
+          prompt: 'Folosește array-ul dat ca stack și adaugă valoarea 9.',
+          inputData: 'const stack = [1, 3];',
+          setupCode: 'let stack = [1, 3];',
+          starterCode: '// Available: stack\n// TODO\n',
+          collectExpr: '({ stack })',
+          expectedState: { stack: [1, 3, 9] },
+          hints: buildHints([
+            'Pentru stack adăugarea se face tot la capăt.',
+            'Metoda utilă este .push().',
+            'stack.push(9);'
+          ]),
+          solution: 'stack.push(9);',
+          explanation: 'Push adaugă în vârful stack-ului.',
+          modeTags: ['stackqueue', 'arrays']
+        }),
+        combinedExercise({
+          category: 'stack_array',
+          concept: 'stack peek',
+          prompt: 'Folosește array-ul dat ca stack și afișează ultimul element fără să modifici stack-ul.',
+          inputData: 'const stack = [7, 8, 9];',
+          setupCode: 'let stack = [7, 8, 9];',
+          starterCode: '// Available: stack\n// TODO\n',
+          collectExpr: '({ stack })',
+          expectedOutput: ['9'],
+          expectedState: { stack: [7, 8, 9] },
+          hints: buildHints([
+            'Nu folosi pop, pentru că ar modifica stack-ul.',
+            'Ai nevoie doar de ultimul index.',
+            'console.log(stack[stack.length - 1]);'
+          ]),
+          solution: 'console.log(stack[stack.length - 1]);',
+          explanation: 'Peek pe stack se face prin acces la ultimul element, fără mutație.',
+          modeTags: ['stackqueue', 'arrays']
+        })
+      ].forEach(add);
+
+      [
+        combinedExercise({
+          category: 'queue_array',
+          concept: 'queue shift',
+          prompt: 'Folosește array-ul dat ca queue, scoate primul element și afișează elementul scos.',
+          inputData: 'const queue = [4, 5, 6];',
+          setupCode: 'let queue = [4, 5, 6];',
+          starterCode: '// Available: queue\n// TODO\n',
+          collectExpr: '({ queue })',
+          expectedOutput: ['4'],
+          expectedState: { queue: [5, 6] },
+          hints: buildHints([
+            'Queue scoate din față.',
+            'Metoda utilă este .shift().',
+            'const value = queue.shift();\nconsole.log(value);'
+          ]),
+          solution: 'const value = queue.shift();\nconsole.log(value);',
+          explanation: 'Queue pe array folosește shift pentru dequeue.',
+          modeTags: ['stackqueue', 'arrays']
+        }),
+        stateExercise({
+          category: 'queue_array',
+          concept: 'queue push',
+          prompt: 'Folosește array-ul dat ca queue și adaugă la final valoarea 10.',
+          inputData: 'const queue = [2, 3];',
+          setupCode: 'let queue = [2, 3];',
+          starterCode: '// Available: queue\n// TODO\n',
+          collectExpr: '({ queue })',
+          expectedState: { queue: [2, 3, 10] },
+          hints: buildHints([
+            'Enqueue pe array simplu se face la final.',
+            'Metoda potrivită este .push().',
+            'queue.push(10);'
+          ]),
+          solution: 'queue.push(10);',
+          explanation: 'Pentru queue simplă, push adaugă la coadă.',
+          modeTags: ['stackqueue', 'arrays']
+        }),
+        combinedExercise({
+          category: 'queue_array',
+          concept: 'queue front',
+          prompt: 'Folosește array-ul dat ca queue și afișează primul element fără să modifici array-ul.',
+          inputData: 'const queue = [8, 9, 10];',
+          setupCode: 'let queue = [8, 9, 10];',
+          starterCode: '// Available: queue\n// TODO\n',
+          collectExpr: '({ queue })',
+          expectedOutput: ['8'],
+          expectedState: { queue: [8, 9, 10] },
+          hints: buildHints([
+            'Nu folosi shift dacă vrei să păstrezi queue-ul.',
+            'Primul element este la index 0.',
+            'console.log(queue[0]);'
+          ]),
+          solution: 'console.log(queue[0]);',
+          explanation: 'Front-ul queue-ului se citește din indexul 0.',
+          modeTags: ['stackqueue', 'arrays']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'slice_splice',
+          concept: 'slice subarray',
+          prompt: 'Ai array-ul [0, 1, 2, 3, 4, 5]. Folosind slice, extrage subarray-ul dintre index 1 și 4 și afișează-l.',
+          inputData: 'const arr = [0, 1, 2, 3, 4, 5];',
+          setupCode: 'let arr = [0, 1, 2, 3, 4, 5];',
+          starterCode: '// Available: arr\nconsole.log();\n',
+          expectedOutput: ['[\n  1,\n  2,\n  3\n]'],
+          hints: buildHints([
+            'slice nu modifică array-ul original.',
+            'Capătul din dreapta este exclus.',
+            'console.log(arr.slice(1, 4));'
+          ]),
+          solution: 'console.log(arr.slice(1, 4));',
+          explanation: 'slice(1, 4) întoarce elementele de la index 1 până la 3.',
+          modeTags: ['arrays']
+        }),
+        stateExercise({
+          category: 'slice_splice',
+          concept: 'splice remove index',
+          prompt: 'Ai array-ul [5, 6, 7, 8]. Folosind splice, elimină elementul de pe poziția 2.',
+          inputData: 'const arr = [5, 6, 7, 8];',
+          setupCode: 'let arr = [5, 6, 7, 8];',
+          starterCode: '// Available: arr\n// TODO\n',
+          collectExpr: '({ arr })',
+          expectedState: { arr: [5, 6, 8] },
+          hints: buildHints([
+            'splice modifică array-ul original.',
+            'Ai nevoie de index 2 și să ștergi 1 element.',
+            'arr.splice(2, 1);'
+          ]),
+          solution: 'arr.splice(2, 1);',
+          explanation: 'splice(index, count) șterge direct din array.',
+          modeTags: ['arrays']
+        }),
+        stateExercise({
+          category: 'slice_splice',
+          concept: 'splice replace',
+          prompt: 'Ai array-ul [1, 2, 3]. Folosind splice, înlocuiește elementul de la index 1 cu 99.',
+          inputData: 'const arr = [1, 2, 3];',
+          setupCode: 'let arr = [1, 2, 3];',
+          starterCode: '// Available: arr\n// TODO\n',
+          collectExpr: '({ arr })',
+          expectedState: { arr: [1, 99, 3] },
+          hints: buildHints([
+            'splice poate și șterge, și insera.',
+            'La index 1 ștergi 1 element și inserezi 99.',
+            'arr.splice(1, 1, 99);'
+          ]),
+          solution: 'arr.splice(1, 1, 99);',
+          explanation: 'splice este mutativ și poate face replace punctual.',
+          modeTags: ['arrays']
+        }),
+        combinedExercise({
+          category: 'slice_splice',
+          concept: 'slice non-mutation',
+          prompt: 'Ai array-ul [3, 4, 5, 6]. Afișează rezultatul lui arr.slice(1, 3) și păstrează arr nemodificat.',
+          inputData: 'const arr = [3, 4, 5, 6];',
+          setupCode: 'let arr = [3, 4, 5, 6];',
+          starterCode: '// Available: arr\n// TODO\n',
+          collectExpr: '({ arr })',
+          expectedOutput: ['[\n  4,\n  5\n]'],
+          expectedState: { arr: [3, 4, 5, 6] },
+          hints: buildHints([
+            'slice întoarce un nou array.',
+            'Nu reasigna arr.',
+            'console.log(arr.slice(1, 3));'
+          ]),
+          solution: 'console.log(arr.slice(1, 3));',
+          explanation: 'slice nu mută array-ul original.',
+          modeTags: ['arrays']
+        })
+      ].forEach(add);
+
+      [
+        stateExercise({
+          category: 'push_pop_shift_unshift',
+          concept: 'push',
+          prompt: 'Ai array-ul [1, 2]. Adaugă valoarea 3 la final folosind push.',
+          inputData: 'const arr = [1, 2];',
+          setupCode: 'let arr = [1, 2];',
+          starterCode: '// Available: arr\n// TODO\n',
+          collectExpr: '({ arr })',
+          expectedState: { arr: [1, 2, 3] },
+          hints: buildHints([
+            'Adăugarea la final se face cu push.',
+            'Ținta este valoarea 3.',
+            'arr.push(3);'
+          ]),
+          solution: 'arr.push(3);',
+          explanation: 'push este cea mai frecventă operație de adăugare la final.',
+          modeTags: ['arrays']
+        }),
+        combinedExercise({
+          category: 'push_pop_shift_unshift',
+          concept: 'pop',
+          prompt: 'Ai array-ul [7, 8, 9]. Scoate ultimul element cu pop și afișează-l.',
+          inputData: 'const arr = [7, 8, 9];',
+          setupCode: 'let arr = [7, 8, 9];',
+          starterCode: '// Available: arr\n// TODO\n',
+          collectExpr: '({ arr })',
+          expectedOutput: ['9'],
+          expectedState: { arr: [7, 8] },
+          hints: buildHints([
+            'pop întoarce valoarea scoasă.',
+            'Salvează rezultatul în variabilă și afișează-l.',
+            'const last = arr.pop();\nconsole.log(last);'
+          ]),
+          solution: 'const last = arr.pop();\nconsole.log(last);',
+          explanation: 'pop scoate ultimul element și îl întoarce.',
+          modeTags: ['arrays']
+        }),
+        stateExercise({
+          category: 'push_pop_shift_unshift',
+          concept: 'shift',
+          prompt: 'Ai array-ul [4, 5, 6]. Elimină primul element folosind shift.',
+          inputData: 'const arr = [4, 5, 6];',
+          setupCode: 'let arr = [4, 5, 6];',
+          starterCode: '// Available: arr\n// TODO\n',
+          collectExpr: '({ arr })',
+          expectedState: { arr: [5, 6] },
+          hints: buildHints([
+            'shift elimină din față.',
+            'Nu ai nevoie să afișezi nimic aici.',
+            'arr.shift();'
+          ]),
+          solution: 'arr.shift();',
+          explanation: 'shift este dequeue-ul de bază pe array simplu.',
+          modeTags: ['arrays']
+        }),
+        stateExercise({
+          category: 'push_pop_shift_unshift',
+          concept: 'unshift',
+          prompt: 'Ai array-ul [2, 3]. Adaugă valoarea 1 la început folosind unshift.',
+          inputData: 'const arr = [2, 3];',
+          setupCode: 'let arr = [2, 3];',
+          starterCode: '// Available: arr\n// TODO\n',
+          collectExpr: '({ arr })',
+          expectedState: { arr: [1, 2, 3] },
+          hints: buildHints([
+            'Adăugarea la început se face cu unshift.',
+            'Ținta este valoarea 1.',
+            'arr.unshift(1);'
+          ]),
+          solution: 'arr.unshift(1);',
+          explanation: 'unshift inserează în fața array-ului.',
+          modeTags: ['arrays']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'index_length',
+          concept: 'index access array',
+          prompt: 'Ai array-ul [14, 15, 16]. Afișează elementul de la index 1.',
+          inputData: 'const arr = [14, 15, 16];',
+          setupCode: 'let arr = [14, 15, 16];',
+          starterCode: '// Available: arr\nconsole.log();\n',
+          expectedOutput: ['15'],
+          hints: buildHints([
+            'Acces direct prin index.',
+            'Indexul cerut este 1.',
+            'console.log(arr[1]);'
+          ]),
+          solution: 'console.log(arr[1]);',
+          explanation: 'Accesul direct prin index trebuie să vină reflex.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'index_length',
+          concept: 'last index',
+          prompt: 'Ai array-ul [20, 30, 40, 50]. Afișează ultimul element folosind length.',
+          inputData: 'const arr = [20, 30, 40, 50];',
+          setupCode: 'let arr = [20, 30, 40, 50];',
+          starterCode: '// Available: arr\nconsole.log();\n',
+          expectedOutput: ['50'],
+          hints: buildHints([
+            'Ultimul index nu este arr.length.',
+            'Este arr.length - 1.',
+            'console.log(arr[arr.length - 1]);'
+          ]),
+          solution: 'console.log(arr[arr.length - 1]);',
+          explanation: 'Unul dintre cele mai importante reflexe pe array.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'index_length',
+          concept: 'second last char',
+          prompt: 'Ai string-ul "queue". Afișează penultimul caracter.',
+          inputData: 'const str = "queue";',
+          setupCode: 'let str = "queue";',
+          starterCode: '// Available: str\nconsole.log();\n',
+          expectedOutput: ['u'],
+          hints: buildHints([
+            'Penultimul index este length - 2.',
+            'Folosește acces prin index pe string.',
+            'console.log(str[str.length - 2]);'
+          ]),
+          solution: 'console.log(str[str.length - 2]);',
+          explanation: 'Capetele string-ului se folosesc des în two pointers și parsing simplu.',
+          modeTags: ['arrays']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'search_has_get',
+          concept: 'array includes',
+          prompt: 'Ai array-ul [3, 8, 13]. Verifică dacă există elementul 8 și afișează true sau false.',
+          inputData: 'const arr = [3, 8, 13];',
+          setupCode: 'let arr = [3, 8, 13];',
+          starterCode: '// Available: arr\nconsole.log();\n',
+          expectedOutput: ['true'],
+          hints: buildHints([
+            'Pe array poți folosi includes.',
+            'Ținta este 8.',
+            'console.log(arr.includes(8));'
+          ]),
+          solution: 'console.log(arr.includes(8));',
+          explanation: 'includes este util pentru verificări directe rapide.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'search_has_get',
+          concept: 'string includes',
+          prompt: 'Ai string-ul "leetcode". Verifică dacă include "code".',
+          inputData: 'const str = "leetcode";',
+          setupCode: 'let str = "leetcode";',
+          starterCode: '// Available: str\nconsole.log();\n',
+          expectedOutput: ['true'],
+          hints: buildHints([
+            'String are și el includes.',
+            'Subșirul țintă este "code".',
+            'console.log(str.includes("code"));'
+          ]),
+          solution: 'console.log(str.includes("code"));',
+          explanation: 'includes pe string este util pentru verificări simple.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'search_has_get',
+          concept: 'Set.has search',
+          prompt: 'Ai Set-ul new Set([9, 10, 11]). Verifică dacă există 7.',
+          inputData: 'const set = new Set([9, 10, 11]);',
+          setupCode: 'let set = new Set([9, 10, 11]);',
+          starterCode: '// Available: set\nconsole.log();\n',
+          expectedOutput: ['false'],
+          hints: buildHints([
+            'Set caută cu has.',
+            'Ținta este 7.',
+            'console.log(set.has(7));'
+          ]),
+          solution: 'console.log(set.has(7));',
+          explanation: 'În Set cauți după valoare cu has.',
+          modeTags: ['setmap']
+        }),
+        outputExercise({
+          category: 'search_has_get',
+          concept: 'Map.get missing',
+          prompt: 'Ai Map-ul new Map([["a", 1], ["b", 2]]). Afișează valoarea pentru cheia "z".',
+          inputData: 'const map = new Map([["a", 1], ["b", 2]]);',
+          setupCode: 'let map = new Map([["a", 1], ["b", 2]]);',
+          starterCode: '// Available: map\nconsole.log();\n',
+          expectedOutput: ['undefined'],
+          hints: buildHints([
+            'Folosește get și pentru chei lipsă.',
+            'Map.get întoarce undefined dacă nu găsește cheia.',
+            'console.log(map.get("z"));'
+          ]),
+          solution: 'console.log(map.get("z"));',
+          explanation: 'Trebuie să știi cum arată lookup-ul ratat într-un Map.',
+          modeTags: ['setmap']
+        })
+      ].forEach(add);
+
+      [
+        stateExercise({
+          category: 'add_update_delete_clear',
+          concept: 'object add property',
+          prompt: 'Ai obiectul {a: 1}. Adaugă cheia "b" cu valoarea 2.',
+          inputData: 'const obj = { a: 1 };',
+          setupCode: 'let obj = { a: 1 };',
+          starterCode: '// Available: obj\n// TODO\n',
+          collectExpr: '({ obj })',
+          expectedState: { obj: { a: 1, b: 2 } },
+          hints: buildHints([
+            'Poți adăuga direct o nouă proprietate.',
+            'Ținta este cheia b.',
+            'obj.b = 2;'
+          ]),
+          solution: 'obj.b = 2;',
+          explanation: 'Adăugarea de proprietăți noi pe obiect trebuie să fie reflex.',
+          modeTags: ['objects']
+        }),
+        stateExercise({
+          category: 'add_update_delete_clear',
+          concept: 'Map update existing',
+          prompt: 'Ai Map-ul new Map([["score", 10]]). Actualizează valoarea pentru cheia "score" la 15.',
+          inputData: 'const map = new Map([["score", 10]]);',
+          setupCode: 'let map = new Map([["score", 10]]);',
+          starterCode: '// Available: map\n// TODO\n',
+          collectExpr: '({ map })',
+          expectedState: { map: new Map([['score', 15]]) },
+          hints: buildHints([
+            'Aceeași metodă set merge și pentru update.',
+            'Cheia este "score".',
+            'map.set("score", 15);'
+          ]),
+          solution: 'map.set("score", 15);',
+          explanation: 'În Map, set actualizează dacă cheia există deja.',
+          modeTags: ['setmap']
+        }),
+        stateExercise({
+          category: 'add_update_delete_clear',
+          concept: 'Set.clear',
+          prompt: 'Ai Set-ul new Set([1, 2, 3]). Golește-l complet.',
+          inputData: 'const set = new Set([1, 2, 3]);',
+          setupCode: 'let set = new Set([1, 2, 3]);',
+          starterCode: '// Available: set\n// TODO\n',
+          collectExpr: '({ set })',
+          expectedState: { set: new Set([]) },
+          hints: buildHints([
+            'Există metodă directă pentru golire totală.',
+            'Nu e nevoie să ștergi element cu element.',
+            'set.clear();'
+          ]),
+          solution: 'set.clear();',
+          explanation: 'clear goleşte tot Set-ul într-un singur pas.',
+          modeTags: ['setmap']
+        }),
+        stateExercise({
+          category: 'add_update_delete_clear',
+          concept: 'array delete via splice',
+          prompt: 'Ai array-ul [1, 2, 3, 4]. Șterge elementul 3 folosind splice și indexul lui.',
+          inputData: 'const arr = [1, 2, 3, 4];',
+          setupCode: 'let arr = [1, 2, 3, 4];',
+          starterCode: '// Available: arr\n// TODO\n',
+          collectExpr: '({ arr })',
+          expectedState: { arr: [1, 2, 4] },
+          hints: buildHints([
+            'Elementul 3 este la index 2.',
+            'splice are nevoie de index și count.',
+            'arr.splice(2, 1);'
+          ]),
+          solution: 'arr.splice(2, 1);',
+          explanation: 'Pe array ștergerea mutativă punctuală se face cu splice.',
+          modeTags: ['arrays']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'reverse_traversal',
+          concept: 'reverse array without reverse',
+          prompt: 'Ai array-ul [1, 2, 3]. Afișează elementele în ordine inversă fără reverse().',
+          inputData: 'const arr = [1, 2, 3];',
+          setupCode: 'let arr = [1, 2, 3];',
+          starterCode: '// Available: arr\nfor (let i = arr.length - 1; i >= 0; i--) {\n  // TODO\n}\n',
+          expectedOutput: ['3', '2', '1'],
+          hints: buildHints([
+            'Parcurge de la ultimul index spre 0.',
+            'Afișează arr[i].',
+            'for (let i = arr.length - 1; i >= 0; i--) { console.log(arr[i]); }'
+          ]),
+          solution: 'for (let i = arr.length - 1; i >= 0; i--) {\n  console.log(arr[i]);\n}',
+          explanation: 'Traversarea inversă fără reverse() e reflex de bază.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'reverse_traversal',
+          concept: 'reverse string without reverse',
+          prompt: 'Ai string-ul "abcde". Afișează caracterele în ordine inversă fără reverse().',
+          inputData: 'const str = "abcde";',
+          setupCode: 'let str = "abcde";',
+          starterCode: '// Available: str\nfor (let i = str.length - 1; i >= 0; i--) {\n  // TODO\n}\n',
+          expectedOutput: ['e', 'd', 'c', 'b', 'a'],
+          hints: buildHints([
+            'Pattern identic cu array-ul, dar pe string.',
+            'Folosește str[i].',
+            'console.log(str[i]);'
+          ]),
+          solution: 'for (let i = str.length - 1; i >= 0; i--) {\n  console.log(str[i]);\n}',
+          explanation: 'Același reflex trebuie să funcționeze și pentru string.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'reverse_traversal',
+          concept: 'reverse collect string',
+          prompt: 'Ai string-ul "node". Construiește un string inversat fără reverse() și afișează-l la final.',
+          inputData: 'const str = "node";',
+          setupCode: 'let str = "node";',
+          starterCode: '// Available: str\nlet out = "";\nfor (let i = str.length - 1; i >= 0; i--) {\n  // TODO\n}\nconsole.log(out);\n',
+          expectedOutput: ['edon'],
+          hints: buildHints([
+            'Ai deja out = "".',
+            'Concatenează fiecare caracter în out.',
+            'out += str[i];'
+          ]),
+          solution: 'let out = "";\nfor (let i = str.length - 1; i >= 0; i--) {\n  out += str[i];\n}\nconsole.log(out);',
+          explanation: 'Construirea output-ului inversat este micro-pattern clasic.',
+          modeTags: ['arrays']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'counting',
+          concept: 'count even',
+          prompt: 'Ai array-ul [2, 3, 4, 5, 6]. Numără elementele pare și afișează rezultatul.',
+          inputData: 'const arr = [2, 3, 4, 5, 6];',
+          setupCode: 'let arr = [2, 3, 4, 5, 6];',
+          starterCode: '// Available: arr\nlet count = 0;\nfor (const value of arr) {\n  // TODO\n}\nconsole.log(count);\n',
+          expectedOutput: ['3'],
+          hints: buildHints([
+            'Verifică value % 2 === 0.',
+            'Dacă e adevărat, incrementezi count.',
+            'if (value % 2 === 0) { count++; }'
+          ]),
+          solution: 'let count = 0;\nfor (const value of arr) {\n  if (value % 2 === 0) {\n    count++;\n  }\n}\nconsole.log(count);',
+          explanation: 'Counting pattern: condiție + contor.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'counting',
+          concept: 'count vowels basic',
+          prompt: 'Ai string-ul "arena". Numără de câte ori apare litera "a" și afișează rezultatul.',
+          inputData: 'const str = "arena";',
+          setupCode: 'let str = "arena";',
+          starterCode: '// Available: str\nlet count = 0;\nfor (const ch of str) {\n  // TODO\n}\nconsole.log(count);\n',
+          expectedOutput: ['2'],
+          hints: buildHints([
+            'Compară fiecare caracter cu "a".',
+            'Dacă se potrivește, crești count.',
+            'if (ch === "a") { count++; }'
+          ]),
+          solution: 'let count = 0;\nfor (const ch of str) {\n  if (ch === "a") {\n    count++;\n  }\n}\nconsole.log(count);',
+          explanation: 'Același pattern merge pe string caractere cu caractere.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'counting',
+          concept: 'count object values greater',
+          prompt: 'Ai obiectul {a: 3, b: 9, c: 1}. Numără valorile mai mari decât 2 și afișează rezultatul.',
+          inputData: 'const obj = { a: 3, b: 9, c: 1 };',
+          setupCode: 'let obj = { a: 3, b: 9, c: 1 };',
+          starterCode: '// Available: obj\nlet count = 0;\nfor (const value of Object.values(obj)) {\n  // TODO\n}\nconsole.log(count);\n',
+          expectedOutput: ['2'],
+          hints: buildHints([
+            'Object.values(obj) îți dă valorile.',
+            'Verifici value > 2.',
+            'if (value > 2) { count++; }'
+          ]),
+          solution: 'let count = 0;\nfor (const value of Object.values(obj)) {\n  if (value > 2) {\n    count++;\n  }\n}\nconsole.log(count);',
+          explanation: 'Counting pattern se aplică și pe valori din obiect.',
+          modeTags: ['objects']
+        })
+      ].forEach(add);
+
+      [
+        stateExercise({
+          category: 'frequency_counter',
+          concept: 'frequency string letters',
+          prompt: 'Ai string-ul "aab". Construiește obiectul count pentru litere.',
+          inputData: 'const str = "aab";',
+          setupCode: 'let str = "aab";',
+          starterCode: '// Available: str\nconst count = {};\nfor (const ch of str) {\n  // TODO\n}\n',
+          collectExpr: '({ count })',
+          expectedState: { count: { a: 2, b: 1 } },
+          hints: buildHints([
+            'Pentru fiecare caracter, ia valoarea curentă sau 0.',
+            'Apoi adaugi 1.',
+            'count[ch] = (count[ch] || 0) + 1;'
+          ]),
+          solution: 'const count = {};\nfor (const ch of str) {\n  count[ch] = (count[ch] || 0) + 1;\n}',
+          explanation: 'Acesta este frequency-counter-ul de bază pentru string.',
+          modeTags: ['objects', 'arrays']
+        }),
+        stateExercise({
+          category: 'frequency_counter',
+          concept: 'frequency array numbers',
+          prompt: 'Ai array-ul [1, 2, 1, 1]. Construiește obiectul count pentru valori.',
+          inputData: 'const arr = [1, 2, 1, 1];',
+          setupCode: 'let arr = [1, 2, 1, 1];',
+          starterCode: '// Available: arr\nconst count = {};\nfor (const value of arr) {\n  // TODO\n}\n',
+          collectExpr: '({ count })',
+          expectedState: { count: { 1: 3, 2: 1 } },
+          hints: buildHints([
+            'Patternul este identic cu cel pe string.',
+            'Cheia poate fi value.',
+            'count[value] = (count[value] || 0) + 1;'
+          ]),
+          solution: 'const count = {};\nfor (const value of arr) {\n  count[value] = (count[value] || 0) + 1;\n}',
+          explanation: 'Frequency counter pe array apare des în hashing simplu.',
+          modeTags: ['objects', 'arrays']
+        }),
+        outputExercise({
+          category: 'frequency_counter',
+          concept: 'frequency read count',
+          prompt: 'Ai obiectul count = {a: 3, b: 1}. Afișează frecvența pentru cheia "a".',
+          inputData: 'const count = { a: 3, b: 1 };',
+          setupCode: 'let count = { a: 3, b: 1 };',
+          starterCode: '// Available: count\nconsole.log();\n',
+          expectedOutput: ['3'],
+          hints: buildHints([
+            'Accesezi cheia a direct din obiect.',
+            'Poți folosi count.a sau count["a"].',
+            'console.log(count.a);'
+          ]),
+          solution: 'console.log(count.a);',
+          explanation: 'După construire, frecvențele trebuie citite rapid.',
+          modeTags: ['objects']
+        }),
+        stateExercise({
+          category: 'frequency_counter',
+          concept: 'frequency with Map',
+          prompt: 'Ai string-ul "aba". Construiește un Map freq cu frecvența fiecărei litere.',
+          inputData: 'const str = "aba";',
+          setupCode: 'let str = "aba";',
+          starterCode: '// Available: str\nconst freq = new Map();\nfor (const ch of str) {\n  // TODO\n}\n',
+          collectExpr: '({ freq })',
+          expectedState: { freq: new Map([['a', 2], ['b', 1]]) },
+          hints: buildHints([
+            'Citești valoarea curentă cu get sau 0.',
+            'Apoi scrii noua valoare cu set.',
+            'freq.set(ch, (freq.get(ch) || 0) + 1);'
+          ]),
+          solution: 'const freq = new Map();\nfor (const ch of str) {\n  freq.set(ch, (freq.get(ch) || 0) + 1);\n}',
+          explanation: 'Același frequency pattern merge și cu Map.',
+          modeTags: ['setmap', 'objects']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'transform',
+          concept: 'transform numbers to doubled output',
+          prompt: 'Ai array-ul [1, 2, 3]. Afișează valorile dublate, fiecare pe linie separată.',
+          inputData: 'const arr = [1, 2, 3];',
+          setupCode: 'let arr = [1, 2, 3];',
+          starterCode: '// Available: arr\nfor (const value of arr) {\n  // TODO\n}\n',
+          expectedOutput: ['2', '4', '6'],
+          hints: buildHints([
+            'Pentru fiecare valoare, calculezi value * 2.',
+            'Afișează direct rezultatul.',
+            'console.log(value * 2);'
+          ]),
+          solution: 'for (const value of arr) {\n  console.log(value * 2);\n}',
+          explanation: 'Transformarea simplă input -> output e pattern foarte frecvent.',
+          modeTags: ['arrays']
+        }),
+        stateExercise({
+          category: 'transform',
+          concept: 'build upper array',
+          prompt: 'Ai array-ul ["a", "b", "c"]. Construiește un nou array upper cu litere mari.',
+          inputData: 'const arr = ["a", "b", "c"];',
+          setupCode: 'let arr = ["a", "b", "c"];',
+          starterCode: '// Available: arr\nconst upper = [];\nfor (const value of arr) {\n  // TODO\n}\n',
+          collectExpr: '({ upper })',
+          expectedState: { upper: ['A', 'B', 'C'] },
+          hints: buildHints([
+            'Ai deja array-ul upper.',
+            'Folosește toUpperCase() și push.',
+            'upper.push(value.toUpperCase());'
+          ]),
+          solution: 'const upper = [];\nfor (const value of arr) {\n  upper.push(value.toUpperCase());\n}',
+          explanation: 'Construirea unui nou array din altul apare mereu în probleme mici.',
+          modeTags: ['arrays']
+        }),
+        stateExercise({
+          category: 'transform',
+          concept: 'entries to lines',
+          prompt: 'Ai obiectul {x: 1, y: 2}. Construiește array-ul out cu valorile ["x:1", "y:2"].',
+          inputData: 'const obj = { x: 1, y: 2 };',
+          setupCode: 'let obj = { x: 1, y: 2 };',
+          starterCode: '// Available: obj\nconst out = [];\nfor (const [key, value] of Object.entries(obj)) {\n  // TODO\n}\n',
+          collectExpr: '({ out })',
+          expectedState: { out: ['x:1', 'y:2'] },
+          hints: buildHints([
+            'Folosește Object.entries și push.',
+            'Formatul este key + ":" + value.',
+            'out.push(key + ":" + value);'
+          ]),
+          solution: 'const out = [];\nfor (const [key, value] of Object.entries(obj)) {\n  out.push(key + ":" + value);\n}',
+          explanation: 'Transformarea într-un array de stringuri apare des în debug și output shaping.',
+          modeTags: ['objects']
+        }),
+        stateExercise({
+          category: 'transform',
+          concept: 'set to array',
+          prompt: 'Ai Set-ul new Set([2, 4, 6]). Construiește array-ul out cu aceleași valori, în aceeași ordine.',
+          inputData: 'const set = new Set([2, 4, 6]);',
+          setupCode: 'let set = new Set([2, 4, 6]);',
+          starterCode: '// Available: set\nconst out = [];\nfor (const value of set) {\n  // TODO\n}\n',
+          collectExpr: '({ out })',
+          expectedState: { out: [2, 4, 6] },
+          hints: buildHints([
+            'Parcurgi Set-ul cu for...of.',
+            'La fiecare pas adaugi în out.',
+            'out.push(value);'
+          ]),
+          solution: 'const out = [];\nfor (const value of set) {\n  out.push(value);\n}',
+          explanation: 'Uneori trebuie doar să convertești iterația în output nou.',
+          modeTags: ['setmap', 'arrays']
+        })
+      ].forEach(add);
+
+      [
+        combinedExercise({
+          category: 'mutation_vs_nonmutation',
+          concept: 'slice keeps original',
+          prompt: 'Ai array-ul [1, 2, 3, 4]. Afișează arr.slice(0, 2) și lasă array-ul original nemodificat.',
+          inputData: 'const arr = [1, 2, 3, 4];',
+          setupCode: 'let arr = [1, 2, 3, 4];',
+          starterCode: '// Available: arr\n// TODO\n',
+          collectExpr: '({ arr })',
+          expectedOutput: ['[\n  1,\n  2\n]'],
+          expectedState: { arr: [1, 2, 3, 4] },
+          hints: buildHints([
+            'slice este non-mutativ.',
+            'Afișează rezultatul direct.',
+            'console.log(arr.slice(0, 2));'
+          ]),
+          solution: 'console.log(arr.slice(0, 2));',
+          explanation: 'Trainer-ul verifică aici și outputul, și faptul că arr rămâne la fel.',
+          modeTags: ['arrays']
+        }),
+        combinedExercise({
+          category: 'mutation_vs_nonmutation',
+          concept: 'splice mutates',
+          prompt: 'Ai array-ul [1, 2, 3, 4]. Folosește splice ca să elimini primele 2 elemente și afișează elementele eliminate.',
+          inputData: 'const arr = [1, 2, 3, 4];',
+          setupCode: 'let arr = [1, 2, 3, 4];',
+          starterCode: '// Available: arr\n// TODO\n',
+          collectExpr: '({ arr })',
+          expectedOutput: ['[\n  1,\n  2\n]'],
+          expectedState: { arr: [3, 4] },
+          hints: buildHints([
+            'splice întoarce elementele eliminate și modifică array-ul.',
+            'Ai nevoie de splice(0, 2).',
+            'const removed = arr.splice(0, 2);\nconsole.log(removed);'
+          ]),
+          solution: 'const removed = arr.splice(0, 2);\nconsole.log(removed);',
+          explanation: 'Aici vezi clar diferența dintre valoarea întoarsă și mutația în arr.',
+          modeTags: ['arrays']
+        }),
+        combinedExercise({
+          category: 'mutation_vs_nonmutation',
+          concept: 'map get no mutation',
+          prompt: 'Ai Map-ul new Map([["a", 1], ["b", 2]]). Afișează valoarea pentru "a" fără să modifici Map-ul.',
+          inputData: 'const map = new Map([["a", 1], ["b", 2]]);',
+          setupCode: 'let map = new Map([["a", 1], ["b", 2]]);',
+          starterCode: '// Available: map\n// TODO\n',
+          collectExpr: '({ map })',
+          expectedOutput: ['1'],
+          expectedState: { map: new Map([['a', 1], ['b', 2]]) },
+          hints: buildHints([
+            'Pentru citire folosești get, nu set.',
+            'Map-ul trebuie să rămână identic.',
+            'console.log(map.get("a"));'
+          ]),
+          solution: 'console.log(map.get("a"));',
+          explanation: 'Nu toate operațiile pe structuri sunt mutative. get doar citește.',
+          modeTags: ['setmap']
+        }),
+        combinedExercise({
+          category: 'mutation_vs_nonmutation',
+          concept: 'set has no mutation',
+          prompt: 'Ai Set-ul new Set([5, 6, 7]). Verifică dacă există 6 și lasă Set-ul nemodificat.',
+          inputData: 'const set = new Set([5, 6, 7]);',
+          setupCode: 'let set = new Set([5, 6, 7]);',
+          starterCode: '// Available: set\n// TODO\n',
+          collectExpr: '({ set })',
+          expectedOutput: ['true'],
+          expectedState: { set: new Set([5, 6, 7]) },
+          hints: buildHints([
+            'has doar citește.',
+            'Nu folosi delete sau add.',
+            'console.log(set.has(6));'
+          ]),
+          solution: 'console.log(set.has(6));',
+          explanation: 'has este non-mutativ, spre deosebire de add/delete/clear.',
+          modeTags: ['setmap']
+        })
+      ].forEach(add);
+
+      [
+        outputExercise({
+          category: 'micro_ops',
+          concept: 'two sum complement check',
+          prompt: 'Ai array-ul [2, 7, 11] și target-ul 9. Pentru primul element, afișează complementul target - arr[0].',
+          inputData: 'const arr = [2, 7, 11];\nconst target = 9;',
+          setupCode: 'let arr = [2, 7, 11];\nlet target = 9;',
+          starterCode: '// Available: arr, target\nconsole.log();\n',
+          expectedOutput: ['7'],
+          hints: buildHints([
+            'Complementul este target minus valoarea curentă.',
+            'Ai nevoie de arr[0].',
+            'console.log(target - arr[0]);'
+          ]),
+          solution: 'console.log(target - arr[0]);',
+          explanation: 'Acesta este micro-reflexul central din pattern-ul Two Sum.',
+          modeTags: ['arrays']
+        }),
+        outputExercise({
+          category: 'micro_ops',
+          concept: 'visited set add then has',
+          prompt: 'Ai un Set visited gol. Adaugă valoarea 5 și apoi afișează dacă visited o conține.',
+          inputData: 'const visited = new Set();',
+          setupCode: 'let visited = new Set();',
+          starterCode: '// Available: visited\n// TODO\n',
+          expectedOutput: ['true'],
+          hints: buildHints([
+            'Întâi adaugi, apoi verifici.',
+            'Folosești add și apoi has.',
+            'visited.add(5);\nconsole.log(visited.has(5));'
+          ]),
+          solution: 'visited.add(5);\nconsole.log(visited.has(5));',
+          explanation: 'Visited-set pattern apare constant în hash-based solutions.',
+          modeTags: ['setmap']
+        }),
+        outputExercise({
+          category: 'micro_ops',
+          concept: 'map default value read',
+          prompt: 'Ai Map-ul new Map(). Afișează valoarea curentă pentru cheia "x" sau 0 dacă nu există.',
+          inputData: 'const map = new Map();',
+          setupCode: 'let map = new Map();',
+          starterCode: '// Available: map\nconsole.log();\n',
+          expectedOutput: ['0'],
+          hints: buildHints([
+            'get întoarce undefined dacă nu există.',
+            'Poți folosi || 0.',
+            'console.log(map.get("x") || 0);'
+          ]),
+          solution: 'console.log(map.get("x") || 0);',
+          explanation: 'Acesta e micro-patternul de bază pentru incrementări în Map.',
+          modeTags: ['setmap']
+        }),
+        stateExercise({
+          category: 'micro_ops',
+          concept: 'prefix sum push',
+          prompt: 'Ai array-ul nums = [2, 3, 5]. Creează array-ul prefix și adaugă doar primul prefix sum corect.',
+          inputData: 'const nums = [2, 3, 5];',
+          setupCode: 'let nums = [2, 3, 5];',
+          starterCode: '// Available: nums\nconst prefix = [];\nprefix.push(/* TODO */);\n',
+          collectExpr: '({ prefix })',
+          expectedState: { prefix: [2] },
+          hints: buildHints([
+            'Primul prefix sum este chiar primul număr.',
+            'Ai nevoie de nums[0].',
+            'prefix.push(nums[0]);'
+          ]),
+          solution: 'const prefix = [];\nprefix.push(nums[0]);',
+          explanation: 'Micro-operațiile mici de prelucrare trebuie să fie automate.',
+          modeTags: ['arrays']
+        })
+      ].forEach(add);
+
+      return exercises;
+    }
+
+    const EXERCISES = createExercises();
+    const EXERCISE_BY_ID = Object.fromEntries(EXERCISES.map((exercise) => [exercise.id, exercise]));
+    els.heroCount.textContent = EXERCISES.length + ' exerciții incluse';
+
+    const defaultState = {
+      version: 1,
+      mode: 'mixed',
+      stats: {
+        done: 0,
+        correct: 0,
+        firstTryCorrect: 0,
+        hintsUsed: 0,
+        solutionsViewed: 0,
+        totalTimeMs: 0
+      },
+      conceptStats: {},
+      sprintHistory: [],
+      history: [],
+      mistakes: {},
+      exerciseStats: {},
+      currentExerciseId: null,
+      currentCode: '',
+      currentSession: null
+    };
+
+    let state = loadState();
+    let currentExercise = null;
+    let sidebarCompact = true;
+    let sprintIntervalId = null;
+    let autoAdvanceTimeoutId = null;
+    let sprint = {
+      active: false,
+      durationMs: 0,
+      endAt: 0,
+      questionLimitMs: 0,
+      questionEndAt: 0,
+      asked: 0,
+      correct: 0,
+      wrong: 0,
+      results: []
+    };
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return clone(defaultState);
+        const parsed = JSON.parse(raw);
+        return Object.assign(clone(defaultState), parsed);
+      } catch (error) {
+        return clone(defaultState);
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function getConceptStat(concept) {
+      if (!state.conceptStats[concept]) {
+        state.conceptStats[concept] = {
+          seen: 0,
+          correct: 0,
+          wrong: 0,
+          firstTryCorrect: 0,
+          hintsUsed: 0,
+          solutionsViewed: 0,
+          totalTimeMs: 0,
+          recentResults: [],
+          lastSeenAt: null
+        };
+      }
+      return state.conceptStats[concept];
+    }
+
+    function getExerciseStat(exerciseId) {
+      if (!state.exerciseStats[exerciseId]) {
+        state.exerciseStats[exerciseId] = {
+          attempts: 0,
+          correct: 0,
+          wrong: 0
+        };
+      }
+      return state.exerciseStats[exerciseId];
+    }
+
+    function ensureSession(exercise) {
+      if (state.currentSession && state.currentSession.exerciseId === exercise.id) {
+        return state.currentSession;
+      }
+      state.currentSession = {
+        exerciseId: exercise.id,
+        startedAt: Date.now(),
+        attempts: 0,
+        incorrectRuns: 0,
+        solved: false,
+        firstRunCorrect: false,
+        hintLevel: 0,
+        solutionViewed: false,
+        feedback: null
+      };
+      return state.currentSession;
+    }
+
+    function filterExercises(mode) {
+      if (mode === 'easy') {
+        return EXERCISES.filter((exercise) => exercise.difficulty === 'easy');
+      }
+      if (mode === 'arrays') {
+        return EXERCISES.filter((exercise) => exercise.modeTags.includes('arrays'));
+      }
+      if (mode === 'objects') {
+        return EXERCISES.filter((exercise) => exercise.modeTags.includes('objects'));
+      }
+      if (mode === 'setmap') {
+        return EXERCISES.filter((exercise) => exercise.modeTags.includes('setmap'));
+      }
+      if (mode === 'stackqueue') {
+        return EXERCISES.filter((exercise) => exercise.modeTags.includes('stackqueue'));
+      }
+      if (mode === 'mistakes') {
+        const ids = Object.keys(state.mistakes).filter((id) => state.mistakes[id] > 0);
+        return EXERCISES.filter((exercise) => ids.includes(exercise.id));
+      }
+      if (mode === 'weak') {
+        const ranked = rankConcepts();
+        const weakConcepts = ranked.slice(0, 6).map((item) => item.concept);
+        const weakExercises = EXERCISES.filter((exercise) => weakConcepts.includes(exercise.concept));
+        return weakExercises.length ? weakExercises : EXERCISES;
+      }
+      return EXERCISES;
+    }
+
+    function rankConcepts() {
+      return Object.entries(state.conceptStats)
+        .map(([concept, stat]) => {
+          const seen = stat.seen || 0;
+          const accuracy = seen ? stat.correct / seen : 0;
+          const weakness = seen === 0 ? 1.15 : (1 - accuracy) + Math.min(0.6, stat.wrong * 0.05) + (stat.recentResults.slice(-3).includes(false) ? 0.35 : 0);
+          return { concept, stat, weakness };
+        })
+        .sort((a, b) => b.weakness - a.weakness);
+    }
+
+    function scoreExercise(exercise) {
+      const conceptStat = getConceptStat(exercise.concept);
+      const exerciseStat = getExerciseStat(exercise.id);
+      const seen = conceptStat.seen || 0;
+      const conceptAccuracy = seen ? conceptStat.correct / seen : 0;
+      const wrongRate = exerciseStat.attempts ? exerciseStat.wrong / exerciseStat.attempts : 0;
+      const recencyPenalty = currentExercise && currentExercise.id === exercise.id ? 0.2 : 1;
+      const recentMissBonus = conceptStat.recentResults.slice(-2).includes(false) ? 1.4 : 1;
+      const unseenBonus = seen === 0 ? 1.55 : 1;
+      const weaknessBonus = 1 + (1 - conceptAccuracy) * 1.9;
+      const mistakeBonus = 1 + Math.min(2, (state.mistakes[exercise.id] || 0) * 0.35);
+      const overtrainedPenalty = conceptAccuracy > 0.84 && seen >= 4 ? 0.65 : 1;
+      return unseenBonus * weaknessBonus * mistakeBonus * recentMissBonus * (1 + wrongRate) * recencyPenalty * overtrainedPenalty;
+    }
+
+    function pickNextExercise(mode, excludeId) {
+      const pool = filterExercises(mode).filter((exercise) => exercise.id !== excludeId);
+      const candidates = pool.length ? pool : filterExercises(mode);
+      let total = 0;
+      const weights = candidates.map((exercise) => {
+        const weight = Math.max(0.05, scoreExercise(exercise));
+        total += weight;
+        return weight;
+      });
+      let roll = Math.random() * total;
+      for (let i = 0; i < candidates.length; i++) {
+        roll -= weights[i];
+        if (roll <= 0) return candidates[i];
+      }
+      return candidates[0];
+    }
+
+    function finalizeCurrentExercise() {
+      const session = state.currentSession;
+      if (!session) return;
+      const exercise = EXERCISE_BY_ID[session.exerciseId];
+      if (!exercise) return;
+      const touched = session.attempts > 0 || session.hintLevel > 0 || session.solutionViewed || state.currentCode !== exercise.starterCode;
+      if (!touched) {
+        state.currentSession = null;
+        saveState();
+        return;
+      }
+      const conceptStat = getConceptStat(exercise.concept);
+      const exerciseStat = getExerciseStat(exercise.id);
+      const solved = Boolean(session.solved);
+      const spentMs = Math.max(0, Date.now() - session.startedAt);
+
+      state.stats.done += 1;
+      state.stats.hintsUsed += session.hintLevel;
+      state.stats.solutionsViewed += session.solutionViewed ? 1 : 0;
+      state.stats.totalTimeMs += spentMs;
+
+      conceptStat.seen += 1;
+      conceptStat.totalTimeMs += spentMs;
+      conceptStat.hintsUsed += session.hintLevel;
+      conceptStat.solutionsViewed += session.solutionViewed ? 1 : 0;
+      conceptStat.lastSeenAt = new Date().toISOString();
+
+      exerciseStat.attempts += 1;
+
+      if (solved) {
+        state.stats.correct += 1;
+        conceptStat.correct += 1;
+        exerciseStat.correct += 1;
+        if (session.firstRunCorrect) {
+          state.stats.firstTryCorrect += 1;
+          conceptStat.firstTryCorrect += 1;
+        }
+        if (state.mistakes[exercise.id]) {
+          state.mistakes[exercise.id] = Math.max(0, state.mistakes[exercise.id] - 1);
+        }
+      } else {
+        conceptStat.wrong += 1;
+        exerciseStat.wrong += 1;
+        state.mistakes[exercise.id] = (state.mistakes[exercise.id] || 0) + 1;
+      }
+
+      conceptStat.recentResults.push(solved);
+      conceptStat.recentResults = conceptStat.recentResults.slice(-6);
+
+      state.history.unshift({
+        exerciseId: exercise.id,
+        concept: exercise.concept,
+        category: exercise.category,
+        prompt: exercise.prompt,
+        correct: solved,
+        firstTryCorrect: session.firstRunCorrect,
+        hintsUsed: session.hintLevel,
+        solutionViewed: session.solutionViewed,
+        timeMs: spentMs,
+        at: new Date().toISOString()
+      });
+      state.history = state.history.slice(0, 30);
+      if (sprint.active) {
+        sprint.asked += 1;
+        if (solved) sprint.correct += 1;
+        else sprint.wrong += 1;
+        sprint.results.push({ concept: exercise.concept, correct: solved });
+      }
+      state.currentSession = null;
+      saveState();
+    }
+
+    function setFeedback(type, title, text, yourOutput, expectedOutputText) {
+      els.feedbackBox.className = 'feedback ' + type;
+      els.feedbackTitle.textContent = title;
+      els.feedbackText.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+      setHighlightedCode(els.yourOutput, yourOutput || '(nimic)');
+      setHighlightedCode(els.expectedOutput, expectedOutputText || '(nimic)');
+      if (type === 'correct') {
+        els.pacePill.innerHTML = '<span class="pulse-dot"></span>Correct run';
+      } else if (type === 'wrong' || type === 'error') {
+        els.pacePill.innerHTML = '<span class="pulse-dot"></span>Needs fix';
+      } else {
+        els.pacePill.innerHTML = '<span class="pulse-dot"></span>Ready to run';
+      }
+    }
+
+    function expectedSummary(exercise) {
+      const parts = [];
+      if (exercise.validator.expectedOutput) {
+        parts.push(normalizeLines(exercise.validator.expectedOutput).join('\n') || '(nimic)');
+      }
+      if (exercise.validator.expectedState) {
+        parts.push('State:\n' + pretty(exercise.validator.expectedState));
+      }
+      return parts.join('\n\n') || '(nimic)';
+    }
+
+    function explainMismatch(exercise, actual, validation) {
+      if (actual.error) {
+        return 'Codul a aruncat o eroare înainte să termine execuția.';
+      }
+      if (validation.reason === 'output') {
+        return 'Outputul nu corespunde cu ce era cerut. Verifică ordinea, valorile și dacă ai afișat exact ce trebuie.';
+      }
+      if (validation.reason === 'state') {
+        return 'Outputul poate fi ok, dar structura finală nu a rămas în starea cerută.';
+      }
+      if (validation.reason === 'combined') {
+        return 'Aici se verifică și outputul, și starea finală a datelor. Una dintre ele nu corespunde.';
+      }
+      return 'Rezultatul nu corespunde cerinței. Verifică atât operația, cât și structura folosită.';
+    }
+
+    function validateExercise(exercise, actual) {
+      const actualOutput = normalizeLines(actual.logs);
+      const expectedOutput = normalizeLines(exercise.validator.expectedOutput || []);
+      const outputOk = stableStringify(actualOutput) === stableStringify(expectedOutput);
+      const stateOk = exercise.validator.expectedState
+        ? stableStringify(actual.state) === stableStringify(exercise.validator.expectedState)
+        : true;
+
+      if (exercise.validator.type === 'output') {
+        return { ok: outputOk, reason: 'output' };
+      }
+      if (exercise.validator.type === 'state') {
+        return { ok: stateOk, reason: 'state' };
+      }
+      return { ok: outputOk && stateOk, reason: 'combined' };
+    }
+
+    function createRunnerWorker() {
+      const workerSource = `
+        function normalize(value) {
+          if (value instanceof Set) {
+            return { __type: 'set', values: Array.from(value).map(normalize) };
+          }
+          if (value instanceof Map) {
+            return { __type: 'map', entries: Array.from(value.entries()).map(function(entry) { return [normalize(entry[0]), normalize(entry[1])]; }) };
+          }
+          if (Array.isArray(value)) {
+            return value.map(normalize);
+          }
+          if (value && typeof value === 'object') {
+            const out = {};
+            Object.keys(value).sort().forEach(function(key) {
+              out[key] = normalize(value[key]);
+            });
+            return out;
+          }
+          return value;
+        }
+
+        function pretty(value) {
+          if (value === undefined) return 'undefined';
+          if (typeof value === 'string') return value;
+          return JSON.stringify(normalize(value), null, 2);
+        }
+
+        self.onmessage = function(event) {
+          const data = event.data;
+          const logs = [];
+          const console = {
+            log: function() {
+              logs.push(Array.from(arguments).map(pretty).join(' '));
+            },
+            error: function() {
+              logs.push(Array.from(arguments).map(pretty).join(' '));
+            },
+            warn: function() {
+              logs.push(Array.from(arguments).map(pretty).join(' '));
+            }
+          };
+
+          try {
+            const source =
+              '"use strict";\\n' +
+              data.setupCode + '\\n' +
+              data.code + '\\n' +
+              'const __collected = ' + data.collectExpr + ';\\n' +
+              'return __collected;';
+            const fn = new Function('console', source);
+            const state = fn(console);
+            self.postMessage({ ok: true, logs: logs, state: normalize(state) });
+          } catch (error) {
+            self.postMessage({
+              ok: false,
+              logs: logs,
+              error: error && error.message ? error.message : String(error)
+            });
+          }
+        };
+      `;
+      const blob = new Blob([workerSource], { type: 'application/javascript' });
+      return new Worker(URL.createObjectURL(blob));
+    }
+
+    function runExercise(exercise, code) {
+      return new Promise((resolve) => {
+        const worker = createRunnerWorker();
+        const timer = setTimeout(() => {
+          worker.terminate();
+          resolve({
+            ok: false,
+            logs: [],
+            error: 'Execuția a depășit limita de timp. Verifică dacă ai o buclă infinită.'
+          });
+        }, 1200);
+
+        worker.onmessage = function(event) {
+          clearTimeout(timer);
+          worker.terminate();
+          resolve(event.data);
+        };
+
+        worker.postMessage({
+          code,
+          setupCode: exercise.setupCode,
+          collectExpr: exercise.collectExpr || 'undefined'
+        });
+      });
+    }
+
+    function renderMetrics() {
+      const pendingHints = state.currentSession ? state.currentSession.hintLevel : 0;
+      const pendingSolutions = state.currentSession && state.currentSession.solutionViewed ? 1 : 0;
+      const done = state.stats.done;
+      const correct = state.stats.correct;
+      const accuracy = pct(correct, done);
+      const firstTry = pct(state.stats.firstTryCorrect, done);
+      const avgTime = done ? Math.round(state.stats.totalTimeMs / done / 1000) : 0;
+      const sprintLast = state.sprintHistory[0] || null;
+
+      els.metricDone.textContent = String(done);
+      els.metricCorrect.textContent = String(correct);
+      els.metricAccuracy.textContent = accuracy + '%';
+      els.metricFirstTry.textContent = firstTry + '%';
+      els.metricHints.textContent = String(state.stats.hintsUsed + pendingHints);
+      els.metricSolutions.textContent = String(state.stats.solutionsViewed + pendingSolutions);
+      els.metricAvgTime.textContent = avgTime + 's';
+      els.metricMode.textContent = sprint.active
+        ? 'Sprint ' + Math.round(sprint.durationMs / 60000) + 'm'
+        : MODES.find((mode) => mode.id === state.mode).label;
+      els.heroAccuracy.textContent = 'Accuracy total: ' + accuracy + '%';
+      els.heroMode.textContent = sprint.active
+        ? 'Sprint active'
+        : 'Mode: ' + MODES.find((mode) => mode.id === state.mode).label;
+      if (!sprint.active && sprintLast) {
+        els.adaptiveMessage.textContent = 'Ultimul sprint: ' + sprintLast.correct + '/' + sprintLast.asked + ' corecte în ' + sprintLast.durationLabel + '.';
+      }
+    }
+
+    function renderConceptStats() {
+      const ranked = rankConcepts();
+      if (!ranked.length) {
+        els.conceptStats.innerHTML = '<div class="small">Încă nu există istoric. După câteva runde apar conceptele slabe și cele stabile.</div>';
+        return;
+      }
+
+      const weakest = ranked.slice(0, 4);
+      const strongest = [...ranked].sort((a, b) => {
+        const accA = a.stat.seen ? a.stat.correct / a.stat.seen : 0;
+        const accB = b.stat.seen ? b.stat.correct / b.stat.seen : 0;
+        return accB - accA;
+      }).slice(0, 4);
+
+      const sections = [];
+      sections.push('<div class="small"><strong>Weak concepts</strong></div>');
+      weakest.forEach((item) => {
+        const acc = pct(item.stat.correct, item.stat.seen);
+        sections.push(
+          '<div class="concept-item">' +
+            '<div class="concept-row"><strong>' + escapeHtml(item.concept) + '</strong><span class="small">' + acc + '%</span></div>' +
+            '<div class="small">seen ' + item.stat.seen + ' • wrong ' + item.stat.wrong + ' • avg ' + formatDuration(item.stat.totalTimeMs / Math.max(1, item.stat.seen)) + '</div>' +
+            '<div class="bar"><span style="width:' + acc + '%;"></span></div>' +
+          '</div>'
+        );
+      });
+      sections.push('<div class="small" style="margin-top:4px;"><strong>Strong concepts</strong></div>');
+      strongest.forEach((item) => {
+        const acc = pct(item.stat.correct, item.stat.seen);
+        sections.push(
+          '<div class="concept-item">' +
+            '<div class="concept-row"><strong>' + escapeHtml(item.concept) + '</strong><span class="small">' + acc + '%</span></div>' +
+            '<div class="small">seen ' + item.stat.seen + ' • first try ' + item.stat.firstTryCorrect + '</div>' +
+            '<div class="bar"><span style="width:' + acc + '%;"></span></div>' +
+          '</div>'
+        );
+      });
+      els.conceptStats.innerHTML = sections.join('');
+    }
+
+    function renderHistory() {
+      if (!state.history.length) {
+        els.historyList.innerHTML = '<div class="small">Istoricul recent apare după primele exerciții completate.</div>';
+        return;
+      }
+      els.historyList.innerHTML = state.history.slice(0, 8).map((item) => {
+        return (
+          '<div class="history-item">' +
+            '<div class="history-row"><strong>' + escapeHtml(item.concept) + '</strong><span class="small">' + (item.correct ? 'Corect' : 'Greșit') + '</span></div>' +
+            '<div class="small">' + escapeHtml(item.prompt) + '</div>' +
+            '<div class="small">hint ' + item.hintsUsed + ' • soluție ' + (item.solutionViewed ? 'da' : 'nu') + ' • ' + formatDuration(item.timeMs) + '</div>' +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    function getAdaptiveMessage() {
+      const ranked = rankConcepts();
+      if (!state.history.length) {
+        return sprint.active
+          ? 'Sprint activ: scrii, submit, vezi soluția și mergi automat mai departe.'
+          : 'Start rapid: trainer-ul îți va da exerciții mixed până apare suficient istoric pentru adaptive drilling.';
+      }
+      const weak = ranked[0];
+      if (weak && weak.stat.wrong >= 2) {
+        return 'Ai greșit des la ' + weak.concept + '. Hai să mai facem unul curând până devine reflex.';
+      }
+      const recent = state.history[0];
+      if (recent && recent.correct && recent.firstTryCorrect) {
+        return 'Ultimul exercițiu a ieșit din prima. Frecvența pentru conceptul respectiv scade puțin și mutăm focusul pe zone mai slabe.';
+      }
+      return 'Trainer-ul urmărește corectitudinea, hint-urile, soluțiile văzute și timpul aproximativ, apoi reintroduce conceptele slabe mai des.';
+    }
+
+    function updateSprintUI() {
+      if (!sprint.active) {
+        els.sprintTimer.textContent = 'Sprint off';
+        els.sprintTimer.classList.remove('alert');
+        els.questionTimer.textContent = 'Question 00:00';
+        els.questionTimer.classList.remove('alert');
+        return;
+      }
+      const sprintLeft = sprint.endAt - Date.now();
+      const questionLeft = sprint.questionEndAt - Date.now();
+      els.sprintTimer.textContent = 'Sprint ' + mmss(sprintLeft);
+      els.questionTimer.textContent = 'Question ' + mmss(questionLeft);
+      els.sprintTimer.classList.toggle('alert', sprintLeft <= 30000);
+      els.questionTimer.classList.toggle('alert', questionLeft <= 8000);
+    }
+
+    function stopTimers() {
+      if (sprintIntervalId) {
+        clearInterval(sprintIntervalId);
+        sprintIntervalId = null;
+      }
+      if (autoAdvanceTimeoutId) {
+        clearTimeout(autoAdvanceTimeoutId);
+        autoAdvanceTimeoutId = null;
+      }
+    }
+
+    function summarizeSprint() {
+      const byConcept = {};
+      sprint.results.forEach((item) => {
+        if (!byConcept[item.concept]) {
+          byConcept[item.concept] = { correct: 0, wrong: 0 };
+        }
+        byConcept[item.concept][item.correct ? 'correct' : 'wrong'] += 1;
+      });
+      const weak = Object.entries(byConcept)
+        .sort((a, b) => (b[1].wrong - b[1].correct) - (a[1].wrong - a[1].correct))
+        .slice(0, 3)
+        .map(([concept, stats]) => concept + ' (' + stats.correct + '/' + (stats.correct + stats.wrong) + ')');
+      const strong = Object.entries(byConcept)
+        .sort((a, b) => (b[1].correct - b[1].wrong) - (a[1].correct - a[1].wrong))
+        .slice(0, 3)
+        .map(([concept, stats]) => concept + ' (' + stats.correct + '/' + (stats.correct + stats.wrong) + ')');
+
+      const summary = {
+        at: new Date().toISOString(),
+        asked: sprint.asked,
+        correct: sprint.correct,
+        wrong: sprint.wrong,
+        durationMs: sprint.durationMs,
+        durationLabel: Math.round(sprint.durationMs / 60000) + 'm',
+        weak,
+        strong
+      };
+      state.sprintHistory.unshift(summary);
+      state.sprintHistory = state.sprintHistory.slice(0, 12);
+      saveState();
+      els.sessionSummary.hidden = false;
+      els.sessionSummary.innerHTML =
+        '<div style="font-weight:800; margin-bottom:8px;">Sprint finished</div>' +
+        '<div class="small">Ai făcut <strong>' + summary.correct + '</strong> corecte din <strong>' + summary.asked + '</strong> în ' + summary.durationLabel + '.</div>' +
+        '<div class="small" style="margin-top:8px;"><strong>Strong:</strong> ' + escapeHtml(summary.strong.join(', ') || '—') + '</div>' +
+        '<div class="small" style="margin-top:4px;"><strong>Repeat:</strong> ' + escapeHtml(summary.weak.join(', ') || '—') + '</div>';
+    }
+
+    function endSprint(showSummary) {
+      const wasActive = sprint.active;
+      if (wasActive && currentExercise) {
+        finalizeCurrentExercise();
+      }
+      sprint.active = false;
+      stopTimers();
+      updateSprintUI();
+      if (showSummary && wasActive) {
+        summarizeSprint();
+      }
+      renderMetrics();
+    }
+
+    function queueAutoAdvance() {
+      if (!sprint.active) return;
+      if (autoAdvanceTimeoutId) clearTimeout(autoAdvanceTimeoutId);
+      autoAdvanceTimeoutId = setTimeout(() => {
+        autoAdvanceTimeoutId = null;
+        handleNext();
+      }, 3200);
+    }
+
+    function handleQuestionTimeout() {
+      if (!sprint.active || !currentExercise) return;
+      const session = ensureSession(currentExercise);
+      if (session.solved || session.attempts > 0) return;
+      session.attempts += 1;
+      session.incorrectRuns += 1;
+      session.solutionViewed = true;
+      els.solutionBox.hidden = false;
+      els.solutionBox.innerHTML =
+        '<div><strong>Timp expirat. Soluția</strong></div>' +
+        '<pre class="plain-code syntax" style="margin-top:10px;">' + highlightCode(currentExercise.solution) + '</pre>' +
+        '<div style="margin-top:10px;"><strong>De ce</strong><br>' + escapeHtml(currentExercise.explanation) + '</div>';
+      setFeedback(
+        'wrong',
+        'Time up',
+        'A expirat timpul pe întrebare. Uită-te rapid la soluție și trecem mai departe.',
+        '',
+        expectedSummary(currentExercise)
+      );
+      queueAutoAdvance();
+      saveState();
+    }
+
+    function startSprint(minutes) {
+      stopTimers();
+      els.sessionSummary.hidden = true;
+      sprint = {
+        active: true,
+        durationMs: minutes * 60 * 1000,
+        endAt: Date.now() + minutes * 60 * 1000,
+        questionLimitMs: minutes <= 5 ? 30000 : 45000,
+        questionEndAt: 0,
+        asked: 0,
+        correct: 0,
+        wrong: 0,
+        results: []
+      };
+      if (currentExercise) {
+        state.currentSession = null;
+      }
+      handleNext();
+      sprintIntervalId = setInterval(() => {
+        if (!sprint.active) return;
+        const now = Date.now();
+        if (now >= sprint.endAt) {
+          endSprint(true);
+          return;
+        }
+        if (now >= sprint.questionEndAt) {
+          handleQuestionTimeout();
+        }
+        updateSprintUI();
+      }, 250);
+      updateSprintUI();
+      renderMetrics();
+    }
+
+    function renderExercise(exercise) {
+      currentExercise = exercise;
+      ensureSession(exercise);
+      els.categoryBadge.textContent = CATEGORY_LABELS[exercise.category];
+      els.conceptBadge.textContent = exercise.concept;
+      els.difficultyBadge.textContent = 'Difficulty: ' + exercise.difficulty;
+      els.promptText.innerHTML = formatPromptText(exercise.prompt);
+      els.inputData.textContent = exercise.inputData;
+      setHighlightedCode(els.inputData, exercise.inputData);
+      setHighlightedCode(els.expectedPreview, expectedSummary(exercise));
+      els.exerciseCounter.textContent = 'ID: ' + exercise.id + ' • ' + EXERCISES.length + ' total';
+      els.editorStatus.textContent = sprint.active
+        ? 'Sprint mode: Submit, verdict, soluție, auto-next'
+        : 'Shortcut: Ctrl+Enter pentru Submit • Alt+N pentru Next';
+      if (sprint.active) {
+        sprint.questionEndAt = Date.now() + sprint.questionLimitMs;
+        updateSprintUI();
+      }
+      els.editor.value = state.currentExerciseId === exercise.id && state.currentCode ? state.currentCode : exercise.starterCode;
+      syncHighlight();
+      els.hintBox.hidden = true;
+      els.solutionBox.hidden = true;
+      setFeedback('',
+        'Pregătit pentru exercițiu',
+        'Scrie codul, rulează și verifică feedback-ul imediat.',
+        '',
+        expectedSummary(exercise)
+      );
+      els.adaptiveMessage.textContent = getAdaptiveMessage();
+      saveCurrentDraft();
+    }
+
+    function saveCurrentDraft() {
+      if (!currentExercise) return;
+      state.currentExerciseId = currentExercise.id;
+      state.currentCode = els.editor.value;
+      saveState();
+    }
+
+    function syncHighlight() {
+      els.editorHighlight.innerHTML = highlightCode(els.editor.value || ' ');
+      els.editorHighlight.scrollTop = els.editor.scrollTop;
+      els.editorHighlight.scrollLeft = els.editor.scrollLeft;
+    }
+
+    async function handleRun() {
+      if (!currentExercise) return;
+      const session = ensureSession(currentExercise);
+      session.attempts += 1;
+      saveCurrentDraft();
+
+      const result = await runExercise(currentExercise, els.editor.value);
+      if (!result.ok) {
+        session.incorrectRuns += 1;
+        setFeedback(
+          'error',
+          'Eroare la execuție',
+          result.error || 'A apărut o eroare.',
+          normalizeLines(result.logs).join('\n'),
+          expectedSummary(currentExercise)
+        );
+        saveState();
+        return;
+      }
+
+      const validation = validateExercise(currentExercise, result);
+      if (validation.ok) {
+        if (!session.solved) {
+          session.solved = true;
+          session.firstRunCorrect = session.attempts === 1;
+        }
+        setFeedback(
+          'correct',
+          'Corect',
+          'Rezultatul corespunde cerinței.',
+          normalizeLines(result.logs).join('\n'),
+          expectedSummary(currentExercise)
+        );
+        if (sprint.active) {
+          els.solutionBox.hidden = false;
+          els.solutionBox.innerHTML =
+            '<div><strong>Model answer</strong></div>' +
+            '<pre class="plain-code syntax" style="margin-top:10px;">' + highlightCode(currentExercise.solution) + '</pre>' +
+            '<div style="margin-top:10px;"><strong>Why</strong><br>' + escapeHtml(currentExercise.explanation) + '</div>';
+          queueAutoAdvance();
+        }
+      } else {
+        session.incorrectRuns += 1;
+        setFeedback(
+          'wrong',
+          'Greșit',
+          explainMismatch(currentExercise, result, validation),
+          normalizeLines(result.logs).join('\n'),
+          expectedSummary(currentExercise)
+        );
+        els.solutionBox.hidden = false;
+        els.solutionBox.innerHTML =
+          '<div><strong>Soluție</strong></div>' +
+          '<pre class="plain-code syntax" style="margin-top:10px;">' + highlightCode(currentExercise.solution) + '</pre>' +
+          '<div style="margin-top:10px;"><strong>De ce e corectă</strong><br>' + escapeHtml(currentExercise.explanation) + '</div>';
+        if (sprint.active) {
+          queueAutoAdvance();
+        }
+      }
+      saveState();
+    }
+
+    function handleNext() {
+      if (currentExercise) {
+        finalizeCurrentExercise();
+      }
+      const nextExercise = pickNextExercise(state.mode, currentExercise ? currentExercise.id : null);
+      renderMetrics();
+      renderConceptStats();
+      renderHistory();
+      renderExercise(nextExercise);
+    }
+
+    function handleHint() {
+      if (!currentExercise) return;
+      const session = ensureSession(currentExercise);
+      session.hintLevel = Math.min(3, session.hintLevel + 1);
+      els.hintBox.hidden = false;
+      els.hintBox.innerHTML =
+        '<strong>Hint ' + session.hintLevel + ':</strong><br>' +
+        escapeHtml(currentExercise.hints[session.hintLevel - 1] || currentExercise.hints[currentExercise.hints.length - 1]);
+      saveState();
+      renderMetrics();
+    }
+
+    function handleSolution() {
+      if (!currentExercise) return;
+      const session = ensureSession(currentExercise);
+      session.solutionViewed = true;
+      els.solutionBox.hidden = false;
+      els.solutionBox.innerHTML =
+        '<div><strong>Soluție</strong></div>' +
+        '<pre class="plain-code syntax" style="margin-top:10px;">' + highlightCode(currentExercise.solution) + '</pre>' +
+        '<div style="margin-top:10px;"><strong>De ce e corectă</strong><br>' + escapeHtml(currentExercise.explanation) + '</div>';
+      saveState();
+      renderMetrics();
+    }
+
+    function resetProgress() {
+      const ok = window.confirm('Resetez tot progresul local pentru trainer?');
+      if (!ok) return;
+      localStorage.removeItem(STORAGE_KEY);
+      state = clone(defaultState);
+      initialize();
+    }
+
+    function populateModes() {
+      els.modeSelect.innerHTML = MODES.map((mode) => {
+        return '<option value="' + mode.id + '">' + mode.label + '</option>';
+      }).join('');
+      els.modeSelect.value = state.mode;
+    }
+
+    function bindEvents() {
+      els.editor.addEventListener('input', function() {
+        syncHighlight();
+        saveCurrentDraft();
+      });
+      els.editor.addEventListener('scroll', syncHighlight);
+      els.runBtn.addEventListener('click', handleRun);
+      els.nextBtn.addEventListener('click', handleNext);
+      els.hintBtn.addEventListener('click', handleHint);
+      els.solutionBtn.addEventListener('click', handleSolution);
+      els.resetBtn.addEventListener('click', resetProgress);
+      els.start5Btn.addEventListener('click', function() { startSprint(5); });
+      els.start10Btn.addEventListener('click', function() { startSprint(10); });
+      els.stopSprintBtn.addEventListener('click', function() { endSprint(true); });
+      els.sidebarToggle.addEventListener('click', function() {
+        sidebarCompact = !sidebarCompact;
+        document.querySelector('.sidebar-stack').classList.toggle('compact', sidebarCompact);
+        els.sidebarToggle.textContent = sidebarCompact ? 'Expand stats' : 'Compact stats';
+      });
+      els.modeSelect.addEventListener('change', function(event) {
+        state.mode = event.target.value;
+        saveState();
+        handleNext();
+      });
+      document.addEventListener('keydown', function(event) {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+          event.preventDefault();
+          handleRun();
+        }
+        if (event.altKey && event.key.toLowerCase() === 'n') {
+          event.preventDefault();
+          handleNext();
+        }
+      });
+    }
+
+    function initialize() {
+      populateModes();
+      document.querySelector('.sidebar-stack').classList.toggle('compact', sidebarCompact);
+      els.sidebarToggle.textContent = sidebarCompact ? 'Expand stats' : 'Compact stats';
+      els.sessionSummary.hidden = true;
+      updateSprintUI();
+      renderMetrics();
+      renderConceptStats();
+      renderHistory();
+      const savedExercise = state.currentExerciseId ? EXERCISE_BY_ID[state.currentExerciseId] : null;
+      const firstExercise = savedExercise && filterExercises(state.mode).some((exercise) => exercise.id === savedExercise.id)
+        ? savedExercise
+        : pickNextExercise(state.mode, null);
+      renderExercise(firstExercise);
+      els.adaptiveMessage.textContent = getAdaptiveMessage();
+    }
+
+    bindEvents();
+    initialize();
+  </script>
+</body>
+</html>
