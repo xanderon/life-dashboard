@@ -142,18 +142,22 @@ function hashString(input: string) {
   return (hash >>> 0).toString(16);
 }
 
-function buildSourceHash({
-  store,
-  receiptDate,
-  sourceFileName,
-}: {
-  store?: string | null;
-  receiptDate?: string | null;
-  sourceFileName?: string | null;
-}) {
-  const base = [store, receiptDate, sourceFileName].filter(Boolean).join('|');
-  if (!base) return null;
-  return `auto_${hashString(base)}`;
+function buildManualSourceHash(seed?: string | null) {
+  const rawSeed =
+    (seed && seed.trim()) ||
+    (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}_${Math.random()}`);
+  return `manual_${hashString(rawSeed)}`;
+}
+
+function resolveReceiptSourceHash(receipt: Pick<ReceiptRow, 'id' | 'source_hash'>) {
+  const existing = receipt.source_hash?.trim();
+  if (existing) return existing;
+  if (receipt.id?.trim()) {
+    return buildManualSourceHash(`receipt:${receipt.id}`);
+  }
+  return buildManualSourceHash();
 }
 
 const ITEM_CORE_KEYS = new Set([
@@ -182,13 +186,7 @@ function extractItemMeta(item: any) {
 
 function buildJsonExport(selected: ReceiptRow, items: ReceiptItemRow[]) {
   const sourceHash =
-    (selected.source_hash && selected.source_hash.trim()) ||
-    buildSourceHash({
-      store: selected.store,
-      receiptDate: selected.receipt_date,
-      sourceFileName: selected.source_file_name,
-    }) ||
-    null;
+    (selected.source_hash && selected.source_hash.trim()) || resolveReceiptSourceHash(selected);
   const warnings = Array.isArray(selected.processing_warnings) ? selected.processing_warnings : [];
   const exportedItems = items.map((item) => {
     const itemMeta =
@@ -516,12 +514,7 @@ export default function ReceiptsPage() {
     const processing = payload?.processing ?? {};
     const source = payload?.source ?? {};
     const fallbackHash =
-      source?.source_hash ||
-      buildSourceHash({
-        store,
-        receiptDate: timestamp,
-        sourceFileName: source?.file_name,
-      });
+      source?.source_hash || buildManualSourceHash(source?.file_name);
 
     setSelected({
       id: '',
@@ -712,14 +705,7 @@ export default function ReceiptsPage() {
     setErr(null);
     setSuccess(null);
 
-    const computedSourceHash =
-      (selected.source_hash && selected.source_hash.trim()) ||
-      buildSourceHash({
-        store: selected.store,
-        receiptDate: selected.receipt_date,
-        sourceFileName: selected.source_file_name,
-      }) ||
-      '';
+    const computedSourceHash = resolveReceiptSourceHash(selected);
 
     const payload = {
       store: selected.store,
@@ -773,7 +759,7 @@ export default function ReceiptsPage() {
         return;
       }
       receiptId = inserted.id;
-      setSelected({ ...selected, id: receiptId, owner_id: ownerId });
+      setSelected({ ...selected, id: receiptId, owner_id: ownerId, source_hash: computedSourceHash });
     }
 
     const existingItems = items.map((item) => {
@@ -966,7 +952,7 @@ export default function ReceiptsPage() {
                     processing_warnings: [],
                     source_file_name: '',
                     source_rel_path: '',
-                    source_hash: '',
+                    source_hash: buildManualSourceHash(),
                     schema_version: 3,
                     });
                     setItems([]);
