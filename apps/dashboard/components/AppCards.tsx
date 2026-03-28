@@ -4,7 +4,18 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { AppCard, type AppRow } from './AppCard';
 
-export function AppCards() {
+type AppCardsProps = {
+  slugs?: string[];
+  excludeSlugs?: string[];
+};
+
+type ReceiptSummaryRow = {
+  total_amount: number | null;
+  receipt_date: string | null;
+  currency: string | null;
+};
+
+export function AppCards({ slugs, excludeSlugs }: AppCardsProps) {
   const [apps, setApps] = useState<AppRow[] | null>(null);
   const [receiptsSummary, setReceiptsSummary] = useState<{
     count: number;
@@ -31,7 +42,7 @@ export function AppCards() {
         setApps([]);
         return;
       }
-      setApps((data as any) ?? []);
+      setApps((data as AppRow[] | null) ?? []);
     })();
 
     return () => {
@@ -78,7 +89,7 @@ export function AppCards() {
       let totalMonth = 0;
       let totalPrevMonth = 0;
 
-      (latest ?? []).forEach((row: any) => {
+      ((latest as ReceiptSummaryRow[] | null) ?? []).forEach((row) => {
         const ts = row.receipt_date ? new Date(row.receipt_date).getTime() : null;
         if (!ts) return;
         const amount = row.total_amount ?? 0;
@@ -120,10 +131,20 @@ export function AppCards() {
     );
   }
 
+  const filteredApps = apps.filter((app) => {
+    if (slugs?.length) return slugs.includes(app.slug);
+    if (excludeSlugs?.length) return !excludeSlugs.includes(app.slug);
+    return true;
+  });
+
+  const orderedApps = slugs?.length
+    ? [...filteredApps].sort((a, b) => slugs.indexOf(a.slug) - slugs.indexOf(b.slug))
+    : filteredApps;
+
   // IMPORTANT: fără wrapper “Apps”. Returnăm direct cardurile.
   return (
     <>
-      {apps.map((a) => (
+      {orderedApps.map((a) => (
         <AppCard
           key={a.id}
           app={a}

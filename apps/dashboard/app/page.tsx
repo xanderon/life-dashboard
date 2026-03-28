@@ -4,7 +4,6 @@ import { AppCards } from '@/components/AppCards';
 import { DevicesCard } from '@/components/DevicesCard';
 import { SprintPulseCard } from '@/components/SprintPulseCard';
 import { StudyCoachCard } from '@/components/StudyCoachCard';
-import { JsSyntaxDrillCard } from '@/components/JsSyntaxDrillCard';
 import { TricorderCard } from '@/components/TricorderCard';
 
 
@@ -22,12 +21,12 @@ export default function HomePage() {
 
         <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <ClockCard />
+          <AppCards slugs={['receipts']} />
           <DevicesCard />
           <SprintPulseCard />
           <StudyCoachCard />
-          <JsSyntaxDrillCard />
           <TricorderCard />
-          <AppCards />
+          <AppCards excludeSlugs={['receipts']} />
         </section>
       </div>
     </main>

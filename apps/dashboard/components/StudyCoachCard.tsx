@@ -60,10 +60,10 @@ export function StudyCoachCard() {
     <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Study Coach</h2>
-          <p className="mt-1 text-xs text-[var(--muted)]">Now / Next / Recall / Gap cards</p>
+          <h2 className="text-lg font-semibold">Warcraft III</h2>
+          <p className="mt-1 text-xs text-[var(--muted)]">Study Coach + JS Drill Trainer</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link
             className="rounded-md border border-sky-500/40 bg-sky-500/20 px-2 py-1 text-xs font-semibold hover:bg-sky-500/30"
             href="/study-coach"
@@ -82,16 +82,27 @@ export function StudyCoachCard() {
           >
             LeetCode HTMLs
           </Link>
+          <Link
+            className="rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2 py-1 text-xs font-semibold hover:bg-emerald-500/30"
+            href="/js-syntax-drill-trainer.html"
+          >
+            JS Drill
+          </Link>
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
+      <div className="mt-3 grid grid-cols-2 gap-2 text-sm md:grid-cols-5">
         <Tile label="Done today" value={String(done)} />
         <Tile label="Pass rate" value={passRate === null ? '—' : `${passRate}%`} />
         <Tile label="Due reviews" value={dueCount === null ? '—' : String(dueCount)} />
+        <Tile label="Drill focus" value="Run -> feedback -> next" />
+        <Tile label="Drill set" value="82 micro" />
       </div>
 
-      <div className="mt-3 text-xs text-[var(--muted)]">Default flow: read → recall → check → mini-test.</div>
+      <div className="mt-3 space-y-2 text-xs text-[var(--muted)]">
+        <p>Study flow: read -&gt; recall -&gt; check -&gt; mini-test.</p>
+        <p>Drill flow: sintaxa, structuri de date, micro-operatii si repetitie adaptiva.</p>
+      </div>
     </section>
   );
 }
