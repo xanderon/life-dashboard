@@ -259,6 +259,7 @@ export default function ReceiptsPage() {
   const [metaLocked, setMetaLocked] = useState(true);
   const itemPrefillCache = useRef<Record<string, Partial<ReceiptItemRow>>>({});
   const prevSelectionRef = useRef<ReceiptRow | null>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
 
   const stores = useMemo(() => storeOptions, [storeOptions]);
   const todayKey = useMemo(() => dayKey(new Date().toISOString()), []);
@@ -296,6 +297,17 @@ export default function ReceiptsPage() {
     });
     return groups;
   }, [receipts]);
+
+  useEffect(() => {
+    if (!selected || typeof window === 'undefined') return;
+    if (!window.matchMedia('(max-width: 1023px)').matches) return;
+
+    const id = window.requestAnimationFrame(() => {
+      editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    return () => window.cancelAnimationFrame(id);
+  }, [selected]);
 
   useEffect(() => {
     let alive = true;
@@ -1044,7 +1056,11 @@ export default function ReceiptsPage() {
             selected ? 'lg:grid-cols-[0.3fr_1.7fr]' : ''
           }`}
         >
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm">
+          <div
+            className={`rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm ${
+              selected ? 'order-2 lg:order-1' : ''
+            }`}
+          >
             <div className="text-base font-semibold">Bonuri</div>
             {!groupedReceipts.length ? (
               <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-4 text-sm text-[var(--muted)]">
@@ -1136,7 +1152,10 @@ export default function ReceiptsPage() {
           </div>
 
             {selected ? (
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm">
+              <div
+                ref={editorRef}
+                className="order-1 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm lg:order-2"
+              >
               <div className="flex items-center justify-between">
                 <div className="text-xl font-semibold">Editor bon</div>
                 <div className="flex items-center gap-2">
