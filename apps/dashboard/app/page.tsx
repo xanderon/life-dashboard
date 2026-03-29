@@ -5,6 +5,7 @@ import { DevicesCard } from '@/components/DevicesCard';
 import { SprintPulseCard } from '@/components/SprintPulseCard';
 import { StudyCoachCard } from '@/components/StudyCoachCard';
 import { TricorderCard } from '@/components/TricorderCard';
+import { CutCoachCard } from '@/components/CutCoachCard';
 
 
 
@@ -21,6 +22,7 @@ export default function HomePage() {
 
         <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <ClockCard />
+          <CutCoachCard />
           <AppCards slugs={['receipts']} />
           <DevicesCard />
           <SprintPulseCard />
