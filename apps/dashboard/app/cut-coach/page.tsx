@@ -118,6 +118,8 @@ export default function CutCoachPage() {
   const [data, setData] = useState<BootstrapPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [showSetupPanel, setShowSetupPanel] = useState(false);
   const [setup, setSetup] = useState<SetupState>(defaultSetup);
   const [logState, setLogState] = useState<LogState>(defaultLog);
   const [weightState, setWeightState] = useState<WeightState>({
@@ -136,14 +138,17 @@ export default function CutCoachPage() {
 
   async function loadBootstrap() {
     setError(null);
+    setIsBootstrapping(true);
     const res = await fetch('/api/cut-coach/bootstrap', { cache: 'no-store' });
     if (!res.ok) {
       const payload = (await res.json().catch(() => ({}))) as { error?: string };
       setError(payload.error ?? 'Failed to load cut coach.');
+      setIsBootstrapping(false);
       return;
     }
     const payload = (await res.json()) as BootstrapPayload;
     setData(payload);
+    setShowSetupPanel(!payload.profile);
     if (payload.profile) {
       setSetup({
         age: String(payload.profile.age),
@@ -163,6 +168,7 @@ export default function CutCoachPage() {
         weight_kg: payload.trends.latest ? String(payload.trends.latest.weight_kg) : current.weight_kg,
       }));
     }
+    setIsBootstrapping(false);
   }
 
   useEffect(() => {
@@ -199,6 +205,7 @@ export default function CutCoachPage() {
         goal_type: 'cut',
       });
       await loadBootstrap();
+      setShowSetupPanel(false);
     });
   }
 
@@ -294,21 +301,63 @@ export default function CutCoachPage() {
                 Deterministic calorie and macro planning for your cut, built into Life Dashboard.
               </p>
             </div>
-            <button
-              className="rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold hover:bg-emerald-500/25"
-              onClick={recomputePlan}
-              type="button"
-            >
-              {isPending ? 'Working...' : 'Recompute week'}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              {data?.profile ? (
+                <button
+                  className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-4 py-2 text-sm font-semibold hover:bg-[#214547]"
+                  onClick={() => setShowSetupPanel((value) => !value)}
+                  type="button"
+                >
+                  {showSetupPanel ? 'Hide profile setup' : 'Profile setup'}
+                </button>
+              ) : null}
+              <button
+                className="rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold hover:bg-emerald-500/25"
+                onClick={recomputePlan}
+                type="button"
+              >
+                {isPending ? 'Working...' : 'Recompute week'}
+              </button>
+            </div>
           </div>
           {error ? <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-100">{error}</div> : null}
         </header>
 
-        {!data?.profile ? (
+        {isBootstrapping ? (
           <section className="rounded-3xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
-            <h2 className="text-xl font-semibold">Initial setup</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">Start with profile, weight and training day pattern.</p>
+            <div className="animate-pulse space-y-3">
+              <div className="h-5 w-48 rounded bg-[var(--panel-2)]" />
+              <div className="h-4 w-80 rounded bg-[var(--panel-2)]" />
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {Array.from({ length: 8 }, (_, index) => (
+                  <div key={index} className="h-20 rounded-2xl bg-[var(--panel-2)]" />
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {!isBootstrapping && (!data?.profile || showSetupPanel) ? (
+          <section className="rounded-3xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold">{data?.profile ? 'Profile setup' : 'Initial setup'}</h2>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  {data?.profile
+                    ? 'Adjust calories, training day pattern and baseline data only when needed.'
+                    : 'Start with profile, weight and training day pattern.'}
+                </p>
+              </div>
+              {data?.profile ? (
+                <button
+                  className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm font-semibold hover:bg-[#214547]"
+                  onClick={() => setShowSetupPanel(false)}
+                  type="button"
+                >
+                  Close
+                </button>
+              ) : null}
+            </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <Field label="Age" value={setup.age} onChange={(value) => setSetup((s) => ({ ...s, age: value }))} />
               <SelectField
@@ -407,7 +456,7 @@ export default function CutCoachPage() {
           </section>
         ) : null}
 
-        {data?.profile ? (
+        {!isBootstrapping && data?.profile ? (
           <>
             <section className="grid gap-4 xl:grid-cols-[1.25fr_0.95fr]">
               <Panel title="Today">
