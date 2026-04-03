@@ -53,6 +53,18 @@ create table if not exists public.cut_coach_foods (
   updated_at timestamptz not null default now()
 );
 
+alter table public.cut_coach_foods add column if not exists barcode text;
+alter table public.cut_coach_foods add column if not exists source_kind text not null default 'generic';
+alter table public.cut_coach_foods add column if not exists package_size_grams numeric(8,2);
+alter table public.cut_coach_foods add column if not exists serving_label text;
+alter table public.cut_coach_foods add column if not exists image_url text;
+
+alter table public.cut_coach_foods
+  drop constraint if exists cut_coach_foods_source_kind_check;
+alter table public.cut_coach_foods
+  add constraint cut_coach_foods_source_kind_check
+  check (source_kind in ('generic', 'product', 'imported_product'));
+
 create table if not exists public.cut_coach_food_logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null,
@@ -203,18 +215,6 @@ for all using (
 drop policy if exists cut_coach_adjustments_rw on public.cut_coach_plan_adjustments;
 create policy cut_coach_adjustments_rw on public.cut_coach_plan_adjustments
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
-alter table public.cut_coach_foods add column if not exists barcode text;
-alter table public.cut_coach_foods add column if not exists source_kind text not null default 'generic';
-alter table public.cut_coach_foods add column if not exists package_size_grams numeric(8,2);
-alter table public.cut_coach_foods add column if not exists serving_label text;
-alter table public.cut_coach_foods add column if not exists image_url text;
-
-alter table public.cut_coach_foods
-  drop constraint if exists cut_coach_foods_source_kind_check;
-alter table public.cut_coach_foods
-  add constraint cut_coach_foods_source_kind_check
-  check (source_kind in ('generic', 'product', 'imported_product'));
 
 create unique index if not exists cut_coach_foods_user_barcode_unique_idx
   on public.cut_coach_foods(user_id, barcode)
