@@ -32,6 +32,8 @@ export type CutCoachFoodRow = {
   user_id: string;
   name: string;
   brand: string | null;
+  barcode: string | null;
+  source_kind: 'generic' | 'product' | 'imported_product';
   unit_type: '100g' | 'serving' | 'piece';
   calories: number;
   protein: number;
@@ -39,6 +41,9 @@ export type CutCoachFoodRow = {
   fat: number;
   fiber: number | null;
   default_serving_grams: number | null;
+  package_size_grams: number | null;
+  serving_label: string | null;
+  image_url: string | null;
   is_favorite: boolean;
   is_custom: boolean;
   last_used_at: string | null;
@@ -134,6 +139,21 @@ export type DailySummary = {
   adjustments: CutCoachAdjustmentRow[];
 };
 
+export type OpenFoodFactsProduct = {
+  barcode: string;
+  name: string;
+  brand: string | null;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number | null;
+  defaultServingGrams: number | null;
+  packageSizeGrams: number | null;
+  servingLabel: string | null;
+  imageUrl: string | null;
+};
+
 type PlannerDay = {
   date: string;
   dayType: DayType;
@@ -188,6 +208,42 @@ export function round1(value: number) {
 
 export function roundInt(value: number) {
   return Math.round(value);
+}
+
+export function humanizeAdjustmentReason(reason: string | null | undefined, context: 'today' | 'tomorrow' = 'tomorrow') {
+  if (!reason) {
+    return context === 'tomorrow'
+      ? 'No adjustment needed. Tomorrow stays aligned with the current weekly plan.'
+      : 'No adjustment needed. You are still on track.';
+  }
+
+  if (reason === 'bootstrap-refresh' || reason === 'manual-recompute') {
+    return 'Plan refreshed using your current profile, recent weight trend, and today intake.';
+  }
+  if (reason === 'profile-update') {
+    return 'Targets were refreshed because your profile or calorie setup changed.';
+  }
+  if (reason === 'weight-update') {
+    return 'Targets were refreshed after the latest weight update.';
+  }
+  if (reason === 'food-log-update') {
+    return context === 'tomorrow'
+      ? 'Tomorrow was recalculated after today intake changed.'
+      : 'Today summary was recalculated after your latest food log.';
+  }
+  if (reason.startsWith('Trend over 14 days is slower')) {
+    return 'Weight trend is slower than expected, so calories were tightened slightly.';
+  }
+  if (reason.startsWith('Trend over 14 days is faster')) {
+    return 'Weight trend is dropping faster than expected, so calories were eased slightly.';
+  }
+  if (reason.startsWith('Redistributed')) {
+    return 'A small correction was spread across the next few days instead of cutting hard tomorrow.';
+  }
+  if (reason.startsWith('Small redistribution after')) {
+    return 'A small correction was spread across the next few days to keep the week on track.';
+  }
+  return reason;
 }
 
 export function isTrainingDay(profile: CutCoachProfileRow, isoDate: string) {
@@ -342,6 +398,51 @@ export async function getFoods(client: SupabaseClient, userId: string) {
     .order('is_favorite', { ascending: false })
     .order('last_used_at', { ascending: false, nullsFirst: false })
     .order('name', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as CutCoachFoodRow[];
+}
+
+export async function getFoodById(client: SupabaseClient, userId: string, foodId: string) {
+  const { data, error } = await client
+    .from('cut_coach_foods')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('id', foodId)
+    .single();
+
+  if (error) throw error;
+  return data as CutCoachFoodRow;
+}
+
+export async function findFoodByBarcode(client: SupabaseClient, userId: string, barcode: string) {
+  const { data, error } = await client
+    .from('cut_coach_foods')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('barcode', barcode)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as CutCoachFoodRow | null) ?? null;
+}
+
+export async function searchFoods(client: SupabaseClient, userId: string, query: string, limit = 20) {
+  const trimmed = query.trim();
+  const request = client
+    .from('cut_coach_foods')
+    .select('*')
+    .eq('user_id', userId)
+    .order('is_favorite', { ascending: false })
+    .order('last_used_at', { ascending: false, nullsFirst: false })
+    .limit(limit);
+
+  const { data, error } =
+    !trimmed
+      ? await request
+      : /^\d{6,14}$/.test(trimmed)
+        ? await request.or(`barcode.eq.${trimmed},name.ilike.%${trimmed}%`)
+        : await request.ilike('name', `%${trimmed}%`);
 
   if (error) throw error;
   return (data ?? []) as CutCoachFoodRow[];
@@ -841,4 +942,123 @@ export function parseTrainingDays(value: unknown) {
     .map((entry) => Number(entry))
     .filter((entry) => Number.isInteger(entry) && entry >= 0 && entry <= 6);
   return parsed.length ? parsed : [1, 3, 5];
+}
+
+export function parseGramsFromText(text: string | null | undefined) {
+  if (!text) return null;
+  const match = text.match(/(\d+(?:[.,]\d+)?)\s*(kg|g|ml|l)\b/i);
+  if (!match) return null;
+  const amount = Number(match[1].replace(',', '.'));
+  if (!Number.isFinite(amount)) return null;
+  const unit = match[2].toLowerCase();
+  if (unit === 'kg' || unit === 'l') return round1(amount * 1000);
+  return round1(amount);
+}
+
+type OpenFoodFactsResponse = {
+  code?: string;
+  product?: {
+    product_name?: string;
+    brands?: string;
+    image_front_small_url?: string;
+    image_front_url?: string;
+    serving_size?: string;
+    quantity?: string;
+    nutriments?: {
+      'energy-kcal_100g'?: number | string;
+      energy_kcal_100g?: number | string;
+      proteins_100g?: number | string;
+      carbohydrates_100g?: number | string;
+      fat_100g?: number | string;
+      fiber_100g?: number | string;
+    };
+  };
+  status?: number;
+};
+
+export async function fetchOpenFoodFactsProduct(barcode: string) {
+  const fields = [
+    'product_name',
+    'brands',
+    'image_front_small_url',
+    'image_front_url',
+    'serving_size',
+    'quantity',
+    'nutriments',
+  ].join(',');
+  const response = await fetch(
+    `https://world.openfoodfacts.net/api/v2/product/${encodeURIComponent(barcode)}?fields=${fields}`,
+    {
+      headers: {
+        'User-Agent': 'life-dashboard-cut-coach/1.0 (contact: local-app)',
+      },
+      cache: 'no-store',
+    }
+  );
+
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    throw new Error(`Open Food Facts lookup failed: ${response.status}`);
+  }
+
+  const payload = (await response.json()) as OpenFoodFactsResponse;
+  if (!payload.product || payload.status === 0) return null;
+
+  const nutriments = payload.product.nutriments ?? {};
+  const calories = toNumber(nutriments['energy-kcal_100g'] ?? nutriments.energy_kcal_100g);
+  const protein = toNumber(nutriments.proteins_100g);
+  const carbs = toNumber(nutriments.carbohydrates_100g);
+  const fat = toNumber(nutriments.fat_100g);
+  const fiber = nutriments.fiber_100g == null ? null : toNumber(nutriments.fiber_100g);
+
+  if (!payload.product.product_name || calories <= 0) {
+    return null;
+  }
+
+  return {
+    barcode,
+    name: payload.product.product_name.trim(),
+    brand: payload.product.brands?.split(',')[0]?.trim() ?? null,
+    calories,
+    protein,
+    carbs,
+    fat,
+    fiber,
+    defaultServingGrams: parseGramsFromText(payload.product.serving_size) ?? null,
+    packageSizeGrams: parseGramsFromText(payload.product.quantity) ?? null,
+    servingLabel: payload.product.serving_size?.trim() ?? null,
+    imageUrl: payload.product.image_front_small_url ?? payload.product.image_front_url ?? null,
+  } satisfies OpenFoodFactsProduct;
+}
+
+export async function importFoodByBarcode(client: SupabaseClient, userId: string, barcode: string) {
+  const existing = await findFoodByBarcode(client, userId, barcode);
+  if (existing) return { food: existing, imported: false };
+
+  const external = await fetchOpenFoodFactsProduct(barcode);
+  if (!external) return { food: null, imported: false };
+
+  const payload = {
+    user_id: userId,
+    name: external.name,
+    brand: external.brand,
+    barcode: external.barcode,
+    source_kind: 'imported_product',
+    unit_type: external.defaultServingGrams ? 'serving' : '100g',
+    calories: external.calories,
+    protein: external.protein,
+    carbs: external.carbs,
+    fat: external.fat,
+    fiber: external.fiber,
+    default_serving_grams: external.defaultServingGrams,
+    package_size_grams: external.packageSizeGrams,
+    serving_label: external.servingLabel,
+    image_url: external.imageUrl,
+    is_favorite: false,
+    is_custom: false,
+  };
+
+  const { data, error } = await client.from('cut_coach_foods').insert(payload).select('*').single();
+  if (error) throw error;
+  return { food: data as CutCoachFoodRow, imported: true };
 }

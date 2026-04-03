@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState, useTransition, type ReactNode } from 'react';
+import { BarcodeScanner } from '@/components/BarcodeScanner';
+import { humanizeAdjustmentReason } from '@/lib/cutCoach';
 import type {
   CutCoachDailyTargetRow,
   CutCoachFoodLogRow,
@@ -75,11 +77,15 @@ type WeightState = {
 
 type FoodState = {
   name: string;
+  brand: string;
+  barcode: string;
   calories: string;
   protein: string;
   carbs: string;
   fat: string;
   default_serving_grams: string;
+  package_size_grams: string;
+  serving_label: string;
   is_favorite: boolean;
 };
 
@@ -103,6 +109,19 @@ const defaultLog: LogState = {
   grams_total: '100',
   quantity: '1',
 };
+
+const quickAddSuggestions = [
+  '5 eggs',
+  'kefir',
+  'lipie',
+  'telemea',
+  'cascaval',
+  'protein bar',
+  'eugenie',
+  'covrig',
+  'chicken + potatoes',
+  'standard breakfast',
+];
 
 const weekdayLabels = [
   { value: 0, label: 'Sun' },
@@ -128,13 +147,22 @@ export default function CutCoachPage() {
   });
   const [foodState, setFoodState] = useState<FoodState>({
     name: '',
+    brand: '',
+    barcode: '',
     calories: '',
     protein: '',
     carbs: '',
     fat: '',
     default_serving_grams: '100',
+    package_size_grams: '',
+    serving_label: '',
     is_favorite: true,
   });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<CutCoachFoodRow[]>([]);
+  const [selectedFood, setSelectedFood] = useState<CutCoachFoodRow | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [searchBusy, setSearchBusy] = useState(false);
 
   async function loadBootstrap() {
     setError(null);
@@ -168,6 +196,11 @@ export default function CutCoachPage() {
         weight_kg: payload.trends.latest ? String(payload.trends.latest.weight_kg) : current.weight_kg,
       }));
     }
+    setSearchResults([]);
+    setSelectedFood((current) => {
+      if (!current) return null;
+      return payload.foods.find((food) => food.id === current.id) ?? current;
+    });
     setIsBootstrapping(false);
   }
 
@@ -176,6 +209,50 @@ export default function CutCoachPage() {
       await loadBootstrap();
     })();
   }, []);
+
+  useEffect(() => {
+    if (!data?.foods) return;
+    const trimmed = searchQuery.trim().toLowerCase();
+    if (!trimmed) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearchBusy(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const local = data.foods
+          .filter((food) => {
+            const hay = `${food.name} ${food.brand ?? ''} ${food.barcode ?? ''}`.toLowerCase();
+            return hay.includes(trimmed);
+          })
+          .slice(0, 12);
+
+        if (local.length >= 8 || /^\d{6,14}$/.test(trimmed) === false) {
+          setSearchResults(local);
+          setSearchBusy(false);
+          return;
+        }
+
+        const res = await fetch(`/api/cut-coach/foods/search?q=${encodeURIComponent(trimmed)}`, {
+          cache: 'no-store',
+        });
+        if (!res.ok) {
+          setSearchResults(local);
+          setSearchBusy(false);
+          return;
+        }
+        const payload = (await res.json()) as { foods: CutCoachFoodRow[] };
+        setSearchResults(payload.foods);
+      } finally {
+        setSearchBusy(false);
+      }
+    }, 180);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [data?.foods, searchQuery]);
 
   async function postJson(url: string, method: string, body?: unknown) {
     const res = await fetch(url, {
@@ -210,6 +287,10 @@ export default function CutCoachPage() {
   }
 
   function submitLog() {
+    if (!logState.food_id) {
+      setError('Pick a food or product first.');
+      return;
+    }
     mutate(async () => {
       await postJson('/api/cut-coach/logs', 'POST', {
         ...logState,
@@ -233,6 +314,44 @@ export default function CutCoachPage() {
     });
   }
 
+  function selectFood(food: CutCoachFoodRow) {
+    setSelectedFood(food);
+    setLogState((state) => ({
+      ...state,
+      food_id: food.id,
+      grams_total: String(Math.round(food.default_serving_grams ?? food.package_size_grams ?? 100)),
+      quantity: '1',
+    }));
+  }
+
+  function applyQuantityPreset(mode: '30g' | '50g' | '100g' | '150g' | '200g' | 'serving' | 'half-pack' | 'pack') {
+    if (!selectedFood) return;
+    const serving = selectedFood.default_serving_grams ?? 100;
+    const pack = selectedFood.package_size_grams ?? selectedFood.default_serving_grams ?? 100;
+    const grams =
+      mode === '30g'
+        ? 30
+        : mode === '50g'
+          ? 50
+          : mode === '100g'
+            ? 100
+            : mode === '150g'
+              ? 150
+              : mode === '200g'
+                ? 200
+                : mode === 'serving'
+                  ? serving
+                  : mode === 'half-pack'
+                    ? Math.round(pack / 2)
+                    : pack;
+    setLogState((state) => ({
+      ...state,
+      food_id: selectedFood.id,
+      grams_total: String(grams),
+      quantity: mode === 'half-pack' ? '0.5' : '1',
+    }));
+  }
+
   function deleteLog(id: string) {
     mutate(async () => {
       await postJson(`/api/cut-coach/logs/${id}`, 'DELETE');
@@ -254,19 +373,29 @@ export default function CutCoachPage() {
     mutate(async () => {
       await postJson('/api/cut-coach/foods', 'POST', {
         ...foodState,
+        brand: foodState.brand || null,
+        barcode: foodState.barcode || null,
         calories: Number(foodState.calories),
         protein: Number(foodState.protein),
         carbs: Number(foodState.carbs),
         fat: Number(foodState.fat),
-        default_serving_grams: Number(foodState.default_serving_grams),
+        default_serving_grams: foodState.default_serving_grams ? Number(foodState.default_serving_grams) : null,
+        package_size_grams: foodState.package_size_grams ? Number(foodState.package_size_grams) : null,
+        serving_label: foodState.serving_label || null,
+        source_kind: foodState.barcode ? 'product' : 'generic',
+        unit_type: foodState.barcode ? 'serving' : '100g',
       });
       setFoodState({
         name: '',
+        brand: '',
+        barcode: '',
         calories: '',
         protein: '',
         carbs: '',
         fat: '',
         default_serving_grams: '100',
+        package_size_grams: '',
+        serving_label: '',
         is_favorite: true,
       });
       await loadBootstrap();
@@ -280,8 +409,26 @@ export default function CutCoachPage() {
     });
   }
 
+  function handleBarcodeDetected(barcode: string) {
+    mutate(async () => {
+      const payload = (await postJson('/api/cut-coach/foods/scan', 'POST', { barcode })) as {
+        food: CutCoachFoodRow;
+      };
+      selectFood(payload.food);
+      setSearchQuery(payload.food.name);
+      await loadBootstrap();
+    });
+  }
+
   const today = data?.today;
   const tomorrow = data?.tomorrow;
+  const loggedWithRunningTotals =
+    today?.logs.reduce<Array<CutCoachFoodLogRow & { runningCalories: number }>>((acc, log) => {
+      const previous = acc.at(-1)?.runningCalories ?? 0;
+      acc.push({ ...log, runningCalories: previous + log.calories_total });
+      return acc;
+    }, []) ?? [];
+  const quickAddFoods = (data?.favorites.length ? data.favorites : data?.recentFoods ?? []).slice(0, 8);
 
   return (
     <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
@@ -479,7 +626,7 @@ export default function CutCoachPage() {
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {(data.favorites.length ? data.favorites : data.recentFoods).slice(0, 8).map((food) => (
+                    {quickAddFoods.map((food) => (
                       <button
                         key={food.id}
                         className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-sm hover:bg-emerald-500/20"
@@ -489,21 +636,46 @@ export default function CutCoachPage() {
                         {food.name}
                       </button>
                     ))}
+                    {quickAddSuggestions
+                      .filter(
+                        (label) =>
+                          !quickAddFoods.some((food) => food.name.toLowerCase().includes(label.toLowerCase()))
+                      )
+                      .slice(0, 6)
+                      .map((label) => (
+                        <button
+                          key={label}
+                          className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-sm text-[var(--muted)] hover:text-white"
+                          onClick={() => setSearchQuery(label)}
+                          type="button"
+                        >
+                          {label}
+                        </button>
+                      ))}
                   </div>
                 </div>
 
                 <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1.1fr]">
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-4">
-                    <div className="text-sm font-semibold">Manual log</div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold">Search or scan</div>
+                        <div className="text-xs text-[var(--muted)]">Search eggs, kefir, products, or scan a barcode on mobile.</div>
+                      </div>
+                      <button
+                        className="rounded-xl border border-amber-500/40 bg-amber-500/15 px-3 py-2 text-sm font-semibold hover:bg-amber-500/25"
+                        onClick={() => setScannerOpen(true)}
+                        type="button"
+                      >
+                        Scan barcode
+                      </button>
+                    </div>
                     <div className="mt-3 grid gap-3">
-                      <SelectField
-                        label="Food"
-                        value={logState.food_id}
-                        options={[
-                          { value: '', label: 'Select food' },
-                          ...data.foods.map((food) => ({ value: food.id, label: food.name })),
-                        ]}
-                        onChange={(value) => setLogState((state) => ({ ...state, food_id: value }))}
+                      <Field
+                        label="Search food or product"
+                        type="text"
+                        value={searchQuery}
+                        onChange={setSearchQuery}
                       />
                       <SelectField
                         label="Meal"
@@ -516,16 +688,117 @@ export default function CutCoachPage() {
                         ]}
                         onChange={(value) => setLogState((state) => ({ ...state, meal_type: value as LogState['meal_type'] }))}
                       />
-                      <Field
-                        label="Grams"
-                        value={logState.grams_total}
-                        onChange={(value) => setLogState((state) => ({ ...state, grams_total: value }))}
-                      />
-                      <Field
-                        label="Quantity"
-                        value={logState.quantity}
-                        onChange={(value) => setLogState((state) => ({ ...state, quantity: value }))}
-                      />
+                      {selectedFood ? (
+                        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="font-semibold">{selectedFood.name}</div>
+                              <div className="text-xs text-[var(--muted)]">
+                                {selectedFood.brand ? `${selectedFood.brand} • ` : ''}
+                                {Math.round(selectedFood.calories)} kcal • P {Math.round(selectedFood.protein)} / C {Math.round(selectedFood.carbs)} / F {Math.round(selectedFood.fat)}
+                              </div>
+                              {selectedFood.barcode ? (
+                                <div className="mt-1 text-[11px] text-[var(--muted)]">
+                                  barcode {selectedFood.barcode}
+                                </div>
+                              ) : null}
+                            </div>
+                            <button
+                              className="rounded-lg border border-[var(--border)] px-2 py-1 text-xs"
+                              onClick={() => {
+                                setSelectedFood(null);
+                                setLogState(defaultLog);
+                              }}
+                              type="button"
+                            >
+                              Clear
+                            </button>
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {(['30g', '50g', '100g', '150g', '200g', 'serving'] as const).map((preset) => (
+                              <button
+                                key={preset}
+                                className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold hover:bg-sky-500/20"
+                                onClick={() => applyQuantityPreset(preset)}
+                                type="button"
+                              >
+                                {preset === 'serving'
+                                  ? selectedFood.serving_label ?? `${Math.round(selectedFood.default_serving_grams ?? 100)}g serving`
+                                  : preset}
+                              </button>
+                            ))}
+                            {selectedFood.package_size_grams ? (
+                              <>
+                                <button
+                                  className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold hover:bg-cyan-500/20"
+                                  onClick={() => applyQuantityPreset('half-pack')}
+                                  type="button"
+                                >
+                                  half pack
+                                </button>
+                                <button
+                                  className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold hover:bg-cyan-500/20"
+                                  onClick={() => applyQuantityPreset('pack')}
+                                  type="button"
+                                >
+                                  full pack
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : null}
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field
+                          label="Grams eaten"
+                          value={logState.grams_total}
+                          onChange={(value) => setLogState((state) => ({ ...state, grams_total: value }))}
+                        />
+                        <Field
+                          label="Quantity"
+                          value={logState.quantity}
+                          onChange={(value) => setLogState((state) => ({ ...state, quantity: value }))}
+                        />
+                      </div>
+                      {searchBusy ? <div className="text-xs text-[var(--muted)]">Searching...</div> : null}
+                      {searchQuery.trim() ? (
+                        <div className="max-h-56 space-y-2 overflow-auto pr-1">
+                          {searchResults.length ? (
+                            searchResults.map((food) => (
+                              <button
+                                key={food.id}
+                                className={`w-full rounded-xl border px-3 py-2 text-left ${
+                                  selectedFood?.id === food.id
+                                    ? 'border-emerald-500/40 bg-emerald-500/10'
+                                    : 'border-[var(--border)] bg-transparent hover:bg-[rgba(255,255,255,0.03)]'
+                                }`}
+                                onClick={() => selectFood(food)}
+                                type="button"
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <div>
+                                    <div className="font-medium">
+                                      {food.name}
+                                      {food.brand ? <span className="text-[var(--muted)]"> • {food.brand}</span> : null}
+                                    </div>
+                                    <div className="text-xs text-[var(--muted)]">
+                                      {Math.round(food.calories)} kcal • P {Math.round(food.protein)} / C {Math.round(food.carbs)} / F {Math.round(food.fat)}
+                                    </div>
+                                  </div>
+                                  <div className="text-right text-[11px] text-[var(--muted)]">
+                                    {food.source_kind === 'generic' ? 'generic' : 'product'}
+                                  </div>
+                                </div>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="rounded-xl border border-dashed border-[var(--border)] px-3 py-4 text-sm text-[var(--muted)]">
+                              No matches yet. You can still add it manually in My foods below.
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
                     </div>
                     <button
                       className="mt-4 rounded-xl border border-sky-500/40 bg-sky-500/15 px-4 py-2 text-sm font-semibold hover:bg-sky-500/25"
@@ -540,18 +813,21 @@ export default function CutCoachPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-sm font-semibold">Meals logged today</div>
-                        <div className="text-xs text-[var(--muted)]">Snapshots stay immutable even if the food changes later.</div>
+                        <div className="text-xs text-[var(--muted)]">Food, meal, calories and running total for the day.</div>
                       </div>
                     </div>
                     <div className="mt-3 space-y-2">
-                      {today?.logs.length ? (
-                        today.logs.map((log) => (
+                      {loggedWithRunningTotals.length ? (
+                        loggedWithRunningTotals.map((log) => (
                           <div key={log.id} className="rounded-xl border border-[var(--border)] px-3 py-2">
                             <div className="flex items-center justify-between gap-3">
                               <div>
                                 <div className="font-medium">{log.custom_food_name ?? data.foods.find((food) => food.id === log.food_id)?.name ?? 'Food'}</div>
                                 <div className="text-xs text-[var(--muted)]">
                                   {log.meal_type} • {Math.round(log.grams_total)} g • {Math.round(log.calories_total)} kcal
+                                </div>
+                                <div className="mt-1 text-[11px] text-[var(--muted)]">
+                                  running total {Math.round(log.runningCalories)} kcal
                                 </div>
                               </div>
                               <button
@@ -583,10 +859,12 @@ export default function CutCoachPage() {
                 <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-4">
                   <div className="text-sm font-semibold">Adjustment explanation</div>
                   <div className="mt-2 text-sm text-[var(--muted)]">
-                    {tomorrow?.target?.adjustment_reason ??
-                      (tomorrow?.adjustments.length
-                        ? tomorrow.adjustments[0].reason
-                        : 'No aggressive correction. Tomorrow follows the current weekly plan.')}
+                    {humanizeAdjustmentReason(
+                      tomorrow?.target?.adjustment_reason ??
+                        tomorrow?.adjustments[0]?.reason ??
+                        null,
+                      'tomorrow'
+                    )}
                   </div>
                 </div>
                 <div className="mt-4 space-y-3">
@@ -623,6 +901,15 @@ export default function CutCoachPage() {
                   <Metric label="7d avg" value={data.trends.avg7 ? `${data.trends.avg7} kg` : '—'} />
                   <Metric label="14d avg" value={data.trends.avg14 ? `${data.trends.avg14} kg` : '—'} />
                   <Metric label="30d avg" value={data.trends.avg30 ? `${data.trends.avg30} kg` : '—'} />
+                </div>
+                <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-sm text-[var(--muted)]">
+                  {data.trends.delta7 == null
+                    ? 'Trend note appears after more weight entries.'
+                    : data.trends.delta7 > 0.15
+                      ? `Average weight is down ${data.trends.delta7.toFixed(1)} kg vs the previous week.`
+                      : data.trends.delta7 < -0.15
+                        ? `Average weight is up ${Math.abs(data.trends.delta7).toFixed(1)} kg vs the previous week.`
+                        : 'Trend is mostly flat this week.'}
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <Field
@@ -673,8 +960,12 @@ export default function CutCoachPage() {
                 </div>
               </Panel>
 
-              <Panel title="Food library">
-                <div className="grid gap-3">
+              <Panel title="My foods">
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-4">
+                  <div className="text-sm font-semibold">Add or edit food</div>
+                  <div className="mt-1 text-xs text-[var(--muted)]">Generic foods and scanned products live in one search, but creation stays simple.</div>
+                </div>
+                <div className="mt-4 grid gap-3">
                   <Field
                     label="Food name"
                     type="text"
@@ -682,15 +973,42 @@ export default function CutCoachPage() {
                     onChange={(value) => setFoodState((state) => ({ ...state, name: value }))}
                   />
                   <div className="grid grid-cols-2 gap-3">
+                    <Field
+                      label="Brand"
+                      type="text"
+                      value={foodState.brand}
+                      onChange={(value) => setFoodState((state) => ({ ...state, brand: value }))}
+                    />
+                    <Field
+                      label="Barcode"
+                      type="text"
+                      value={foodState.barcode}
+                      onChange={(value) => setFoodState((state) => ({ ...state, barcode: value }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
                     <Field label="Calories / 100g" value={foodState.calories} onChange={(value) => setFoodState((state) => ({ ...state, calories: value }))} />
                     <Field label="Protein" value={foodState.protein} onChange={(value) => setFoodState((state) => ({ ...state, protein: value }))} />
                     <Field label="Carbs" value={foodState.carbs} onChange={(value) => setFoodState((state) => ({ ...state, carbs: value }))} />
                     <Field label="Fat" value={foodState.fat} onChange={(value) => setFoodState((state) => ({ ...state, fat: value }))} />
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field
+                      label="Default serving grams"
+                      value={foodState.default_serving_grams}
+                      onChange={(value) => setFoodState((state) => ({ ...state, default_serving_grams: value }))}
+                    />
+                    <Field
+                      label="Package size grams"
+                      value={foodState.package_size_grams}
+                      onChange={(value) => setFoodState((state) => ({ ...state, package_size_grams: value }))}
+                    />
+                  </div>
                   <Field
-                    label="Default serving grams"
-                    value={foodState.default_serving_grams}
-                    onChange={(value) => setFoodState((state) => ({ ...state, default_serving_grams: value }))}
+                    label="Serving label"
+                    type="text"
+                    value={foodState.serving_label}
+                    onChange={(value) => setFoodState((state) => ({ ...state, serving_label: value }))}
                   />
                   <label className="flex items-center gap-2 text-sm text-[var(--muted)]">
                     <input
@@ -717,6 +1035,10 @@ export default function CutCoachPage() {
                           <div className="text-xs text-[var(--muted)]">
                             {Math.round(food.calories)} kcal • P {Math.round(food.protein)} / C {Math.round(food.carbs)} / F {Math.round(food.fat)}
                           </div>
+                          <div className="mt-1 text-[11px] text-[var(--muted)]">
+                            {food.source_kind === 'generic' ? 'generic food' : 'barcode product'}
+                            {food.barcode ? ` • ${food.barcode}` : ''}
+                          </div>
                         </div>
                         {food.is_favorite ? <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-xs">favorite</span> : null}
                       </div>
@@ -728,6 +1050,7 @@ export default function CutCoachPage() {
           </>
         ) : null}
       </div>
+      <BarcodeScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onDetected={handleBarcodeDetected} />
     </main>
   );
 }

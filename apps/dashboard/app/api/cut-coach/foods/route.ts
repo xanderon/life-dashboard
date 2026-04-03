@@ -23,6 +23,8 @@ export async function POST(req: Request) {
       user_id: user.id,
       name: String(body.name ?? '').trim(),
       brand: body.brand ? String(body.brand).trim() : null,
+      barcode: body.barcode ? String(body.barcode).trim() : null,
+      source_kind: body.source_kind ?? 'generic',
       unit_type: body.unit_type ?? '100g',
       calories: toNumber(body.calories),
       protein: toNumber(body.protein),
@@ -31,6 +33,9 @@ export async function POST(req: Request) {
       fiber: body.fiber == null ? null : toNumber(body.fiber),
       default_serving_grams:
         body.default_serving_grams == null ? null : toNumber(body.default_serving_grams),
+      package_size_grams: body.package_size_grams == null ? null : toNumber(body.package_size_grams),
+      serving_label: body.serving_label ? String(body.serving_label).trim() : null,
+      image_url: body.image_url ? String(body.image_url).trim() : null,
       is_favorite: Boolean(body.is_favorite),
       is_custom: body.is_custom !== false,
     };

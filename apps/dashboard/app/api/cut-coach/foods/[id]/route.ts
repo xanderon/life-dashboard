@@ -18,10 +18,10 @@ export async function PATCH(req: Request, { params }: Params) {
 
     const body = await req.json();
     const patch: Record<string, unknown> = {};
-    ['name', 'brand', 'unit_type', 'is_favorite', 'is_custom'].forEach((field) => {
+    ['name', 'brand', 'barcode', 'source_kind', 'unit_type', 'serving_label', 'image_url', 'is_favorite', 'is_custom'].forEach((field) => {
       if (field in body) patch[field] = body[field];
     });
-    ['calories', 'protein', 'carbs', 'fat', 'fiber', 'default_serving_grams'].forEach((field) => {
+    ['calories', 'protein', 'carbs', 'fat', 'fiber', 'default_serving_grams', 'package_size_grams'].forEach((field) => {
       if (field in body) patch[field] = body[field] == null ? null : toNumber(body[field]);
     });
 

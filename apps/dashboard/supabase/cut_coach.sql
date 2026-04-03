@@ -34,6 +34,8 @@ create table if not exists public.cut_coach_foods (
   user_id uuid not null,
   name text not null,
   brand text,
+  barcode text,
+  source_kind text not null default 'generic' check (source_kind in ('generic', 'product', 'imported_product')),
   unit_type text not null default '100g' check (unit_type in ('100g', 'serving', 'piece')),
   calories numeric(8,2) not null check (calories >= 0),
   protein numeric(8,2) not null default 0 check (protein >= 0),
@@ -41,6 +43,9 @@ create table if not exists public.cut_coach_foods (
   fat numeric(8,2) not null default 0 check (fat >= 0),
   fiber numeric(8,2) check (fiber >= 0),
   default_serving_grams numeric(8,2) check (default_serving_grams > 0),
+  package_size_grams numeric(8,2) check (package_size_grams > 0),
+  serving_label text,
+  image_url text,
   is_favorite boolean not null default false,
   is_custom boolean not null default true,
   last_used_at timestamptz,
@@ -123,6 +128,7 @@ create table if not exists public.cut_coach_plan_adjustments (
 
 create index if not exists cut_coach_foods_user_favorite_idx on public.cut_coach_foods(user_id, is_favorite desc, updated_at desc);
 create index if not exists cut_coach_foods_user_last_used_idx on public.cut_coach_foods(user_id, last_used_at desc nulls last);
+create index if not exists cut_coach_foods_user_barcode_idx on public.cut_coach_foods(user_id, barcode);
 create index if not exists cut_coach_logs_user_date_idx on public.cut_coach_food_logs(user_id, date desc);
 create index if not exists cut_coach_weights_user_date_idx on public.cut_coach_body_metrics(user_id, date desc);
 create index if not exists cut_coach_targets_user_date_idx on public.cut_coach_daily_targets(user_id, date desc);
@@ -197,3 +203,19 @@ for all using (
 drop policy if exists cut_coach_adjustments_rw on public.cut_coach_plan_adjustments;
 create policy cut_coach_adjustments_rw on public.cut_coach_plan_adjustments
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+alter table public.cut_coach_foods add column if not exists barcode text;
+alter table public.cut_coach_foods add column if not exists source_kind text not null default 'generic';
+alter table public.cut_coach_foods add column if not exists package_size_grams numeric(8,2);
+alter table public.cut_coach_foods add column if not exists serving_label text;
+alter table public.cut_coach_foods add column if not exists image_url text;
+
+alter table public.cut_coach_foods
+  drop constraint if exists cut_coach_foods_source_kind_check;
+alter table public.cut_coach_foods
+  add constraint cut_coach_foods_source_kind_check
+  check (source_kind in ('generic', 'product', 'imported_product'));
+
+create unique index if not exists cut_coach_foods_user_barcode_unique_idx
+  on public.cut_coach_foods(user_id, barcode)
+  where barcode is not null;
