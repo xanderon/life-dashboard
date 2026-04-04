@@ -492,9 +492,9 @@ export default function CutCoachPage() {
   return (
     <main className="cut-coach-shell min-h-screen bg-[linear-gradient(180deg,#f6f8fb_0%,#eef3f8_45%,#e6edf5_100%)] p-4 text-slate-900 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
-        <section className="grid gap-4 xl:grid-cols-[0.88fr_1.12fr]">
+        <section className="grid gap-5 xl:grid-cols-[0.88fr_1.12fr]">
           <div className="space-y-4">
-            <div className="cc-card rounded-[28px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+            <div className="cc-card border-0 bg-transparent p-0 shadow-none sm:rounded-[28px] sm:border sm:border-slate-200/70 sm:bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] sm:p-5 sm:shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-600">Today</div>
@@ -508,9 +508,9 @@ export default function CutCoachPage() {
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center gap-4">
+              <div className="mt-4 flex items-center gap-3 sm:gap-4">
                 <div
-                  className="relative flex h-36 w-36 shrink-0 items-center justify-center rounded-full border border-white/70 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.96),rgba(241,245,249,0.92)_58%,rgba(226,232,240,0.86)_100%)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.8),0_16px_48px_rgba(15,23,42,0.10)] sm:h-40 sm:w-40"
+                  className="relative flex h-32 w-32 shrink-0 items-center justify-center rounded-full border border-white/70 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.96),rgba(241,245,249,0.92)_58%,rgba(226,232,240,0.86)_100%)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.8),0_16px_48px_rgba(15,23,42,0.10)] sm:h-40 sm:w-40"
                   style={{
                     backgroundImage: `conic-gradient(from 270deg, #0ea5e9 0% ${calorieRatio}%, rgba(148,163,184,0.18) ${calorieRatio}% 100%)`,
                   }}
@@ -518,7 +518,7 @@ export default function CutCoachPage() {
                   <div className="absolute inset-[9px] rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.98),rgba(248,250,252,0.95)_62%,rgba(241,245,249,0.9)_100%)]" />
                   <div className="relative z-10 text-center">
                     <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Remaining</div>
-                    <div className="mt-1 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">{remainingCalories}</div>
+                    <div className="mt-1 text-[1.7rem] font-semibold tracking-tight text-slate-950 sm:text-4xl">{remainingCalories}</div>
                     <div className="mt-0.5 text-xs text-slate-500">kcal</div>
                   </div>
                 </div>
@@ -557,7 +557,7 @@ export default function CutCoachPage() {
               </div>
             </div>
 
-            <div className="cc-card rounded-[24px] border border-slate-200/70 p-4 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
+            <div className="cc-card border-t border-slate-200/70 pt-4 sm:rounded-[24px] sm:border sm:p-4 sm:shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm font-semibold text-slate-900">Quick add</div>
                 <button
@@ -606,7 +606,7 @@ export default function CutCoachPage() {
             {error ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
           </div>
 
-          <div className="cc-card rounded-[28px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] p-4 shadow-[0_20px_60px_rgba(15,23,42,0.08)] sm:p-5">
+          <div className="cc-card border-t border-slate-200/70 pt-4 sm:rounded-[28px] sm:border sm:bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] sm:p-5 sm:shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-slate-950">Meals</div>
@@ -618,7 +618,7 @@ export default function CutCoachPage() {
             </div>
             <div className="space-y-3">
               {mealGroups.map((group) => (
-                <div key={group.value} className="cc-subcard rounded-[24px] border border-slate-200 bg-white/75 p-4">
+                <div key={group.value} className="cc-subcard rounded-[22px] border border-slate-200 bg-white/75 p-3 sm:p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="text-base font-semibold text-slate-950">{group.label}</div>
