@@ -491,9 +491,9 @@ export default function CutCoachPage() {
 
   return (
     <main className="cut-coach-shell min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#f6f8fb_0%,#eef3f8_45%,#e6edf5_100%)] p-4 text-slate-900 sm:p-6">
-      <div className="mx-auto max-w-7xl space-y-4">
-        <section className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
-          <div className="space-y-5">
+      <div className="cut-coach-viewport mx-auto max-w-7xl space-y-4">
+        <section className="grid min-w-0 gap-6 xl:grid-cols-[0.88fr_1.12fr]">
+          <div className="min-w-0 space-y-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-600">Today</div>
@@ -612,7 +612,7 @@ export default function CutCoachPage() {
             {error ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
           </div>
 
-          <div className="border-t border-slate-200/80 pt-4 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
+          <div className="min-w-0 border-t border-slate-200/80 pt-4 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-slate-950">Meals</div>
@@ -1150,6 +1150,22 @@ export default function CutCoachPage() {
           color: var(--cc-text) !important;
           -webkit-text-size-adjust: 100%;
           text-size-adjust: 100%;
+        }
+
+        .cut-coach-viewport {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          overflow-x: clip;
+        }
+
+        .cut-coach-viewport > * {
+          min-width: 0;
+          max-width: 100%;
+        }
+
+        .cut-coach-viewport * {
+          box-sizing: border-box;
         }
 
         .cut-coach-shell .cc-card,
