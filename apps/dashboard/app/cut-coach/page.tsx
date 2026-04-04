@@ -472,78 +472,84 @@ export default function CutCoachPage() {
   return (
     <main className="cut-coach-shell min-h-screen bg-[linear-gradient(180deg,#f6f8fb_0%,#eef3f8_45%,#e6edf5_100%)] p-4 text-slate-900 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
-        <header className="cc-card rounded-[32px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-xs uppercase tracking-[0.35em] text-sky-600">Today</div>
-                <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
-                  <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                    {Math.round(today?.consumed.calories ?? 0)}
-                  </h1>
-                  <div className="pb-1 text-sm text-slate-500">
-                    / {Math.round(today?.target?.kcal_target ?? 0)} kcal
+        <header className="cc-card rounded-[32px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] sm:p-6">
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+                  <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Today</h1>
+                  <div className="pb-0.5 text-sm text-slate-500">
+                    {Math.round(today?.consumed.calories ?? 0)} / {Math.round(today?.target?.kcal_target ?? 0)} kcal
                     {today?.target?.day_type ? ` • ${today.target.day_type}` : ''}
                   </div>
                 </div>
-              </div>
-              <div className="rounded-2xl bg-slate-50 px-3 py-2 text-right">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Left</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">
-                  {Math.round(today?.remaining?.calories ?? 0)} kcal
+
+                <div className="mt-3 flex flex-wrap gap-2 text-sm">
+                  <div className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-slate-700">
+                    <span className="text-slate-500">Left</span>{' '}
+                    <span className="font-semibold text-slate-950">{Math.round(today?.remaining?.calories ?? 0)} kcal</span>
+                  </div>
+                  <div className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-slate-700">
+                    <span className="text-slate-500">Protein left</span>{' '}
+                    <span className="font-semibold text-slate-950">{Math.round(today?.remaining?.protein ?? 0)} g</span>
+                  </div>
+                  <div className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-slate-700">
+                    <span className="text-slate-500">Carbs left</span>{' '}
+                    <span className="font-semibold text-slate-950">{Math.round(today?.remaining?.carbs ?? 0)} g</span>
+                  </div>
+                  <div className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-slate-700">
+                    <span className="text-slate-500">Fat left</span>{' '}
+                    <span className="font-semibold text-slate-950">{Math.round(today?.remaining?.fat ?? 0)} g</span>
+                  </div>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:w-auto">
+                <button
+                  className="rounded-xl border border-sky-300 bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-sky-600"
+                  onClick={() => openComposer()}
+                  type="button"
+                >
+                  Add food
+                </button>
+                <button
+                  className="rounded-xl border border-violet-200 bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700"
+                  onClick={() => setScannerOpen(true)}
+                  type="button"
+                >
+                  Scan barcode
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <Metric label="Consumed" value={`${Math.round(today?.consumed.calories ?? 0)}`} />
-              <Metric label="Remaining" value={`${Math.round(today?.remaining?.calories ?? 0)}`} />
-              <Metric label="Protein left" value={`${Math.round(today?.remaining?.protein ?? 0)}g`} />
-            </div>
+            <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr] xl:gap-6">
+              <div className="space-y-4">
+                <div className="grid gap-2">
+                  <MacroBar title="Calories" current={today?.consumed.calories ?? 0} target={today?.target?.kcal_target ?? 1} />
+                  <MacroBar title="Protein" current={today?.consumed.protein ?? 0} target={today?.target?.protein_target ?? 1} />
+                  <MacroBar title="Carbs" current={today?.consumed.carbs ?? 0} target={today?.target?.carbs_target ?? 1} />
+                  <MacroBar title="Fat" current={today?.consumed.fat ?? 0} target={today?.target?.fat_target ?? 1} />
+                </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              <button
-                className="rounded-xl border border-sky-300 bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-sky-600"
-                onClick={() => openComposer()}
-                type="button"
-              >
-                Add food
-              </button>
-              <button
-                className="rounded-xl border border-violet-200 bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700"
-                onClick={() => setScannerOpen(true)}
-                type="button"
-              >
-                Scan barcode
-              </button>
-            </div>
-
-            <div className="mt-1 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-              <div>
-                <MacroBar title="Calories" current={today?.consumed.calories ?? 0} target={today?.target?.kcal_target ?? 1} />
-                <MacroBar title="Protein" current={today?.consumed.protein ?? 0} target={today?.target?.protein_target ?? 1} />
-                <MacroBar title="Carbs" current={today?.consumed.carbs ?? 0} target={today?.target?.carbs_target ?? 1} />
-                <MacroBar title="Fat" current={today?.consumed.fat ?? 0} target={today?.target?.fat_target ?? 1} />
-
-                <div className="cc-subcard mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="border-t border-slate-200/80 pt-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold">Quick add</div>
-                      <div className="text-xs text-slate-500">Tap one to open the add drawer already filled.</div>
+                      <div className="text-sm font-semibold text-slate-900">Quick add</div>
+                      <div className="text-xs text-slate-500">One tap opens the add flow with that food already selected.</div>
                     </div>
                     <button
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
                       onClick={() => openComposer()}
                       type="button"
                     >
-                      Browse all
+                      Search all
                     </button>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {quickAddFoods.map((food) => (
                       <button
                         key={food.id}
-                        className="rounded-full border border-sky-200 bg-white px-3 py-1 text-sm text-slate-700 hover:bg-sky-50"
+                        className="rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
                         onClick={() => openComposer(food)}
                         type="button"
                       >
@@ -555,11 +561,11 @@ export default function CutCoachPage() {
                         (label) =>
                           !quickAddFoods.some((food) => food.name.toLowerCase().includes(label.toLowerCase()))
                       )
-                      .slice(0, 6)
+                      .slice(0, 5)
                       .map((label) => (
                         <button
                           key={label}
-                          className="rounded-full border border-dashed border-slate-300 px-3 py-1 text-sm text-slate-500 hover:border-slate-400 hover:text-slate-800"
+                          className="rounded-2xl border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-500 transition hover:border-slate-400 hover:bg-white/70 hover:text-slate-800"
                           onClick={() => {
                             setSearchQuery(label);
                             setSelectedFood(null);
@@ -575,29 +581,34 @@ export default function CutCoachPage() {
                 </div>
               </div>
 
-              <div className="cc-subcard rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center justify-between">
+              <div className="border-t border-slate-200/80 pt-4 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
+                <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-sm font-semibold">Meals logged today</div>
-                    <div className="text-xs text-slate-500">Running total after each item.</div>
+                    <div className="text-sm font-semibold text-slate-900">Meals logged</div>
+                    <div className="text-xs text-slate-500">Today, in order, with running kcal total.</div>
+                  </div>
+                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                    {loggedWithRunningTotals.length} items
                   </div>
                 </div>
                 <div className="mt-3 space-y-2">
                   {loggedWithRunningTotals.length ? (
                     loggedWithRunningTotals.map((log) => (
-                      <div key={log.id} className="rounded-xl border border-slate-200 px-3 py-2">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <div className="font-medium">{log.custom_food_name ?? data?.foods.find((food) => food.id === log.food_id)?.name ?? 'Food'}</div>
-                            <div className="text-xs text-slate-500">
+                      <div key={log.id} className="rounded-2xl border border-slate-200 bg-white/70 px-3 py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate font-medium text-slate-900">
+                              {log.custom_food_name ?? data?.foods.find((food) => food.id === log.food_id)?.name ?? 'Food'}
+                            </div>
+                            <div className="mt-0.5 text-xs text-slate-500">
                               {log.meal_type} • {Math.round(log.grams_total)} g • {Math.round(log.calories_total)} kcal
                             </div>
                             <div className="mt-1 text-[11px] text-slate-500">
-                              running total {Math.round(log.runningCalories)} kcal
+                              total after this: {Math.round(log.runningCalories)} kcal
                             </div>
                           </div>
                           <button
-                            className="rounded-md border border-red-500/30 px-2 py-1 text-xs text-red-100 hover:bg-red-500/10"
+                            className="rounded-lg border border-red-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
                             onClick={() => deleteLog(log.id)}
                             type="button"
                           >
@@ -607,8 +618,8 @@ export default function CutCoachPage() {
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-xl border border-dashed border-slate-300 px-3 py-5 text-sm text-slate-500">
-                      No food logged yet for today.
+                    <div className="rounded-2xl border border-dashed border-slate-300 px-3 py-5 text-sm text-slate-500">
+                      Nothing logged yet. Start with quick add or barcode scan.
                     </div>
                   )}
                 </div>
