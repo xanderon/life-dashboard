@@ -473,77 +473,49 @@ export default function CutCoachPage() {
     <main className="cut-coach-shell min-h-screen bg-[linear-gradient(180deg,#f6f8fb_0%,#eef3f8_45%,#e6edf5_100%)] p-4 text-slate-900 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
         <header className="cc-card rounded-[32px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
-          <div className="flex flex-col gap-5">
-            <div>
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <div className="text-xs uppercase tracking-[0.35em] text-sky-600">Today</div>
-                  <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
-                    <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                      {Math.round(today?.consumed.calories ?? 0)}
-                    </h1>
-                    <div className="pb-1 text-sm text-slate-500">
-                      / {Math.round(today?.target?.kcal_target ?? 0)} kcal
-                      {today?.target?.day_type ? ` • ${today.target.day_type}` : ''}
-                    </div>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-xs uppercase tracking-[0.35em] text-sky-600">Today</div>
+                <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
+                  <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                    {Math.round(today?.consumed.calories ?? 0)}
+                  </h1>
+                  <div className="pb-1 text-sm text-slate-500">
+                    / {Math.round(today?.target?.kcal_target ?? 0)} kcal
+                    {today?.target?.day_type ? ` • ${today.target.day_type}` : ''}
                   </div>
                 </div>
-                <div className="text-right text-xs text-slate-500">
-                  <div>Remaining</div>
-                  <div className="mt-1 text-sm font-semibold text-slate-900">
-                    {Math.round(today?.remaining?.calories ?? 0)} kcal
-                  </div>
+              </div>
+              <div className="rounded-2xl bg-slate-50 px-3 py-2 text-right">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Left</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">
+                  {Math.round(today?.remaining?.calories ?? 0)} kcal
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-3">
-              <Metric label="Consumed" value={`${Math.round(today?.consumed.calories ?? 0)} kcal`} />
-              <Metric label="Remaining" value={`${Math.round(today?.remaining?.calories ?? 0)} kcal`} />
-              <Metric label="Protein left" value={`${Math.round(today?.remaining?.protein ?? 0)} g`} />
+            <div className="grid grid-cols-3 gap-2">
+              <Metric label="Consumed" value={`${Math.round(today?.consumed.calories ?? 0)}`} />
+              <Metric label="Remaining" value={`${Math.round(today?.remaining?.calories ?? 0)}`} />
+              <Metric label="Protein left" value={`${Math.round(today?.remaining?.protein ?? 0)}g`} />
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               <button
-                className="rounded-xl border border-sky-300 bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-600"
+                className="rounded-xl border border-sky-300 bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-sky-600"
                 onClick={() => openComposer()}
                 type="button"
               >
                 Add food
               </button>
               <button
-                className="rounded-xl border border-violet-200 bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+                className="rounded-xl border border-violet-200 bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700"
                 onClick={() => setScannerOpen(true)}
                 type="button"
               >
                 Scan barcode
               </button>
-              {data?.profile ? (
-              <button
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                onClick={() => setShowSetupPanel((value) => !value)}
-                type="button"
-              >
-                  {showSetupPanel ? 'Hide settings' : 'Settings'}
-                </button>
-              ) : null}
-              <button
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                onClick={recomputePlan}
-                type="button"
-              >
-                {isPending ? 'Working...' : 'Refresh plan'}
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between gap-3 pt-1 text-xs text-slate-500">
-              <div />
-              <Link
-                className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500 hover:text-slate-900"
-                href="/"
-              >
-                Back to dashboard
-              </Link>
             </div>
           </div>
           {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
@@ -1029,6 +1001,33 @@ export default function CutCoachPage() {
                 </div>
               </Panel>
             </section>
+
+            <Panel title="Controls">
+              <div className="grid gap-2 sm:grid-cols-3">
+                {data?.profile ? (
+                  <button
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    onClick={() => setShowSetupPanel((value) => !value)}
+                    type="button"
+                  >
+                    {showSetupPanel ? 'Hide settings' : 'Settings'}
+                  </button>
+                ) : null}
+                <button
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  onClick={recomputePlan}
+                  type="button"
+                >
+                  {isPending ? 'Working...' : 'Refresh plan'}
+                </button>
+                <Link
+                  className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  href="/"
+                >
+                  Back to dashboard
+                </Link>
+              </div>
+            </Panel>
           </>
         ) : null}
       </div>
