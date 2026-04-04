@@ -473,7 +473,7 @@ export default function CutCoachPage() {
     <main className="cut-coach-shell min-h-screen bg-[linear-gradient(180deg,#f6f8fb_0%,#eef3f8_45%,#e6edf5_100%)] p-4 text-slate-900 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
         <header className="cc-card rounded-[32px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-col gap-5">
             <div>
               <Link
                 className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500 hover:text-slate-900"
@@ -481,28 +481,52 @@ export default function CutCoachPage() {
               >
                 Back to dashboard
               </Link>
-              <div className="mt-4 text-xs uppercase tracking-[0.35em] text-sky-600">Adaptive Cut Coach</div>
-              <h1 className="mt-2 max-w-4xl text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                Log food fast, scan products on mobile, and keep today under control.
+              <div className="mt-4 text-xs uppercase tracking-[0.35em] text-sky-600">Today</div>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                {Math.round(today?.consumed.calories ?? 0)} / {Math.round(today?.target?.kcal_target ?? 0)} kcal
               </h1>
-              <p className="mt-3 max-w-3xl text-sm text-slate-600">Today first. Add food fast. See tomorrow clearly.</p>
+              <div className="mt-2 text-sm text-slate-500">
+                Remaining {Math.round(today?.remaining?.calories ?? 0)} kcal
+                {today?.target?.day_type ? ` • ${today.target.day_type} day` : ''}
+              </div>
             </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Metric label="Consumed" value={`${Math.round(today?.consumed.calories ?? 0)} kcal`} />
+              <Metric label="Remaining" value={`${Math.round(today?.remaining?.calories ?? 0)} kcal`} />
+              <Metric label="Protein left" value={`${Math.round(today?.remaining?.protein ?? 0)} g`} />
+            </div>
+
             <div className="flex flex-wrap gap-2">
+              <button
+                className="rounded-xl border border-sky-300 bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-600"
+                onClick={() => openComposer()}
+                type="button"
+              >
+                Add food
+              </button>
+              <button
+                className="rounded-xl border border-violet-200 bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+                onClick={() => setScannerOpen(true)}
+                type="button"
+              >
+                Scan barcode
+              </button>
               {data?.profile ? (
                 <button
                   className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                   onClick={() => setShowSetupPanel((value) => !value)}
                   type="button"
                 >
-                  {showSetupPanel ? 'Hide profile setup' : 'Profile setup'}
+                  {showSetupPanel ? 'Hide settings' : 'Settings'}
                 </button>
               ) : null}
               <button
-                className="rounded-xl border border-sky-300 bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-600"
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 onClick={recomputePlan}
                 type="button"
               >
-                {isPending ? 'Working...' : 'Recompute week'}
+                {isPending ? 'Working...' : 'Refresh plan'}
               </button>
             </div>
           </div>
@@ -696,12 +720,6 @@ export default function CutCoachPage() {
 
             <section className="grid gap-4 xl:grid-cols-[1.25fr_0.95fr]">
               <Panel title="Today">
-                <div className="grid gap-3 sm:grid-cols-4">
-                  <Metric label="Target" value={`${Math.round(today?.target?.kcal_target ?? 0)} kcal`} />
-                  <Metric label="Consumed" value={`${Math.round(today?.consumed.calories ?? 0)} kcal`} />
-                  <Metric label="Remaining" value={`${Math.round(today?.remaining?.calories ?? 0)} kcal`} />
-                  <Metric label="Protein left" value={`${Math.round(today?.remaining?.protein ?? 0)} g`} />
-                </div>
                 <MacroBar title="Calories" current={today?.consumed.calories ?? 0} target={today?.target?.kcal_target ?? 1} />
                 <MacroBar title="Protein" current={today?.consumed.protein ?? 0} target={today?.target?.protein_target ?? 1} />
                 <MacroBar title="Carbs" current={today?.consumed.carbs ?? 0} target={today?.target?.carbs_target ?? 1} />
@@ -1039,13 +1057,13 @@ export default function CutCoachPage() {
         @media (prefers-color-scheme: dark) {
           .cut-coach-shell,
           .cc-drawer {
-            --cc-bg: #090b11;
-            --cc-surface: #11131a;
-            --cc-surface-2: #171a22;
-            --cc-border: #252a36;
-            --cc-text: #f2f5f9;
-            --cc-muted: #94a3b8;
-            --cc-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+            --cc-bg: #12161d;
+            --cc-surface: #181d26;
+            --cc-surface-2: #202634;
+            --cc-border: #31384a;
+            --cc-text: #eef2f7;
+            --cc-muted: #a2aec2;
+            --cc-shadow: 0 24px 64px rgba(2, 6, 23, 0.38);
           }
         }
 
@@ -1110,6 +1128,33 @@ export default function CutCoachPage() {
         .cc-drawer .border-slate-200,
         .cc-drawer .border-slate-300 {
           border-color: var(--cc-border) !important;
+        }
+
+        .cut-coach-shell .bg-white,
+        .cc-drawer .bg-white {
+          background: var(--cc-surface) !important;
+        }
+
+        .cut-coach-shell .bg-slate-50,
+        .cut-coach-shell .bg-slate-50\/90,
+        .cc-drawer .bg-slate-50,
+        .cc-drawer .bg-slate-50\/90 {
+          background: var(--cc-surface-2) !important;
+        }
+
+        .cut-coach-shell .hover\:bg-slate-50:hover,
+        .cc-drawer .hover\:bg-slate-50:hover {
+          background: color-mix(in srgb, var(--cc-surface-2) 88%, white 12%) !important;
+        }
+
+        .cut-coach-shell .bg-red-50,
+        .cc-drawer .bg-red-50 {
+          background: color-mix(in srgb, #ef4444 10%, var(--cc-surface) 90%) !important;
+        }
+
+        .cut-coach-shell .bg-emerald-50,
+        .cc-drawer .bg-emerald-50 {
+          background: color-mix(in srgb, #10b981 12%, var(--cc-surface) 88%) !important;
         }
       `}</style>
     </main>
