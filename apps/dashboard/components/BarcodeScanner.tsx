@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 
 type DetectedBarcode = {
   rawValue?: string;
@@ -31,6 +32,7 @@ export function BarcodeScanner({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
+  const html5QrRef = useRef<Html5Qrcode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [manualBarcode, setManualBarcode] = useState('');
 
@@ -40,54 +42,86 @@ export function BarcodeScanner({
   }, []);
 
   useEffect(() => {
-    if (!open || !supported) return;
+    if (!open) return;
 
     let cancelled = false;
 
+    async function startNativeDetector() {
+      const media = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      });
+      if (cancelled) {
+        media.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      streamRef.current = media;
+      const video = videoRef.current;
+      if (!video) return;
+      video.srcObject = media;
+      await video.play();
+
+      const WindowCtor = window as BrowserWindow;
+      const Detector = WindowCtor.BarcodeDetector;
+      if (!Detector) return;
+
+      const formats = Detector.getSupportedFormats ? await Detector.getSupportedFormats() : [];
+      const preferred = formats.filter((format) => ['ean_13', 'ean_8', 'upc_a', 'upc_e'].includes(format));
+      const detector = new Detector(preferred.length ? { formats: preferred } : undefined);
+
+      const scan = async () => {
+        if (cancelled || !videoRef.current) return;
+        try {
+          const results = await detector.detect(videoRef.current);
+          const raw = results.find((item) => item.rawValue?.match(/^\d{6,14}$/))?.rawValue;
+          if (raw) {
+            onDetected(raw);
+            onClose();
+            return;
+          }
+        } catch {
+          // Continue polling while stream is live.
+        }
+        rafRef.current = window.setTimeout(() => {
+          void scan();
+        }, 250) as unknown as number;
+      };
+
+      void scan();
+    }
+
+    async function startHtml5QrFallback() {
+      const scanner = new Html5Qrcode('cut-coach-barcode-scanner');
+      html5QrRef.current = scanner;
+
+      await scanner.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          qrbox: { width: 260, height: 180 },
+          aspectRatio: 1.3333333,
+          disableFlip: true,
+        },
+        (decodedText) => {
+          if (!decodedText.match(/^\d{6,14}$/)) return;
+          onDetected(decodedText);
+          onClose();
+        },
+        () => {
+          // Ignore frame-level decode misses.
+        }
+      );
+    }
+
     async function start() {
+      setError(null);
       try {
-        const media = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
-          audio: false,
-        });
-        if (cancelled) {
-          media.getTracks().forEach((track) => track.stop());
+        if (supported) {
+          await startNativeDetector();
           return;
         }
-
-        streamRef.current = media;
-        const video = videoRef.current;
-        if (!video) return;
-        video.srcObject = media;
-        await video.play();
-
-        const WindowCtor = window as BrowserWindow;
-        const Detector = WindowCtor.BarcodeDetector;
-        if (!Detector) return;
-
-        const formats = Detector.getSupportedFormats ? await Detector.getSupportedFormats() : [];
-        const preferred = formats.filter((format) => ['ean_13', 'ean_8', 'upc_a', 'upc_e'].includes(format));
-        const detector = new Detector(preferred.length ? { formats: preferred } : undefined);
-
-        const scan = async () => {
-          if (cancelled || !videoRef.current) return;
-          try {
-            const results = await detector.detect(videoRef.current);
-            const raw = results.find((item) => item.rawValue?.match(/^\d{6,14}$/))?.rawValue;
-            if (raw) {
-              onDetected(raw);
-              onClose();
-              return;
-            }
-          } catch {
-            // Keep scanning; camera access is already validated.
-          }
-          rafRef.current = window.setTimeout(() => {
-            void scan();
-          }, 250) as unknown as number;
-        };
-
-        void scan();
+        await startHtml5QrFallback();
       } catch (scanError) {
         setError(scanError instanceof Error ? scanError.message : 'Could not start camera.');
       }
@@ -103,6 +137,15 @@ export function BarcodeScanner({
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
+      }
+      if (html5QrRef.current) {
+        void html5QrRef.current
+          .stop()
+          .catch(() => undefined)
+          .finally(() => {
+            html5QrRef.current?.clear();
+            html5QrRef.current = null;
+          });
       }
     };
   }, [onClose, onDetected, open, supported]);
@@ -131,8 +174,8 @@ export function BarcodeScanner({
             <video className="aspect-[3/4] w-full object-cover" muted playsInline ref={videoRef} />
           </div>
         ) : (
-          <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-4 text-sm text-[var(--muted)]">
-            Barcode scanning is not supported in this browser. Paste the barcode manually below.
+          <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border)] bg-black">
+            <div className="aspect-[3/4] w-full" id="cut-coach-barcode-scanner" />
           </div>
         )}
 
