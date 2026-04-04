@@ -490,19 +490,19 @@ export default function CutCoachPage() {
     targetCalories > 0 ? Math.max(0, Math.min(100, Math.round((consumedCalories / targetCalories) * 100))) : 0;
 
   return (
-    <main className="cut-coach-shell min-h-screen bg-[linear-gradient(180deg,#f6f8fb_0%,#eef3f8_45%,#e6edf5_100%)] p-4 text-slate-900 sm:p-6">
+    <main className="cut-coach-shell min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#f6f8fb_0%,#eef3f8_45%,#e6edf5_100%)] p-4 text-slate-900 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
         <section className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
           <div className="space-y-5">
             <div className="flex items-start justify-between gap-4">
-              <div>
+              <div className="min-w-0">
                 <div className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-600">Today</div>
                 <div className="mt-1 text-xs text-slate-500">
                   {consumedCalories} eaten / {targetCalories} target
                   {today?.target?.day_type ? ` • ${today.target.day_type}` : ''}
                 </div>
               </div>
-              <div className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-500">
+              <div className="shrink-0 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-500">
                 {calorieRatio}% used
               </div>
             </div>
@@ -524,7 +524,7 @@ export default function CutCoachPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-1">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-1">
                 <Metric
                   label="Protein"
                   value={`${Math.round(today?.consumed.protein ?? 0)} / ${Math.round(today?.target?.protein_target ?? 0)}`}
@@ -572,9 +572,10 @@ export default function CutCoachPage() {
                 {quickAddFoods.map((food) => (
                   <button
                     key={food.id}
-                    className="rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
+                    className="max-w-full truncate rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
                     onClick={() => openComposer(food)}
                     type="button"
+                    title={food.name}
                   >
                     {food.name}
                   </button>
@@ -588,7 +589,7 @@ export default function CutCoachPage() {
                   .map((label) => (
                     <button
                       key={label}
-                      className="rounded-2xl border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-500 transition hover:border-slate-400 hover:bg-white/70 hover:text-slate-800"
+                      className="max-w-full truncate rounded-2xl border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-500 transition hover:border-slate-400 hover:bg-white/70 hover:text-slate-800"
                       onClick={() => {
                         setSearchQuery(label);
                         setSelectedFood(null);
@@ -596,6 +597,7 @@ export default function CutCoachPage() {
                         setIsComposerOpen(true);
                       }}
                       type="button"
+                      title={label}
                     >
                       {label}
                     </button>
