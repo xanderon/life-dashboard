@@ -492,46 +492,54 @@ export default function CutCoachPage() {
   return (
     <main className="cut-coach-shell min-h-screen bg-[linear-gradient(180deg,#f6f8fb_0%,#eef3f8_45%,#e6edf5_100%)] p-4 text-slate-900 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
-        <header className="cc-card rounded-[32px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] sm:p-6">
-          <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-            <div className="space-y-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-600">Today</div>
-              <div className="flex justify-center xl:justify-start">
+        <section className="grid gap-4 xl:grid-cols-[0.88fr_1.12fr]">
+          <div className="space-y-4">
+            <div className="cc-card rounded-[28px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-600">Today</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {consumedCalories} eaten / {targetCalories} target
+                    {today?.target?.day_type ? ` • ${today.target.day_type}` : ''}
+                  </div>
+                </div>
+                <div className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-500">
+                  {calorieRatio}% used
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center gap-4">
                 <div
-                  className="relative flex h-56 w-56 items-center justify-center rounded-full border border-white/70 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.96),rgba(241,245,249,0.92)_58%,rgba(226,232,240,0.86)_100%)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.8),0_16px_48px_rgba(15,23,42,0.10)]"
+                  className="relative flex h-36 w-36 shrink-0 items-center justify-center rounded-full border border-white/70 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.96),rgba(241,245,249,0.92)_58%,rgba(226,232,240,0.86)_100%)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.8),0_16px_48px_rgba(15,23,42,0.10)] sm:h-40 sm:w-40"
                   style={{
                     backgroundImage: `conic-gradient(from 270deg, #0ea5e9 0% ${calorieRatio}%, rgba(148,163,184,0.18) ${calorieRatio}% 100%)`,
                   }}
                 >
-                  <div className="absolute inset-[11px] rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.98),rgba(248,250,252,0.95)_62%,rgba(241,245,249,0.9)_100%)]" />
+                  <div className="absolute inset-[9px] rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.98),rgba(248,250,252,0.95)_62%,rgba(241,245,249,0.9)_100%)]" />
                   <div className="relative z-10 text-center">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Remaining</div>
-                    <div className="mt-2 text-5xl font-semibold tracking-tight text-slate-950">{remainingCalories}</div>
-                    <div className="mt-1 text-sm text-slate-500">kcal left today</div>
-                    <div className="mt-4 text-xs text-slate-400">
-                      {consumedCalories} eaten / {targetCalories} target
-                      {today?.target?.day_type ? ` • ${today.target.day_type}` : ''}
-                    </div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Remaining</div>
+                    <div className="mt-1 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">{remainingCalories}</div>
+                    <div className="mt-0.5 text-xs text-slate-500">kcal</div>
                   </div>
+                </div>
+
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Metric
+                    label="Protein"
+                    value={`${Math.round(today?.consumed.protein ?? 0)} / ${Math.round(today?.target?.protein_target ?? 0)}`}
+                  />
+                  <Metric
+                    label="Carbs"
+                    value={`${Math.round(today?.consumed.carbs ?? 0)} / ${Math.round(today?.target?.carbs_target ?? 0)}`}
+                  />
+                  <Metric
+                    label="Fat"
+                    value={`${Math.round(today?.consumed.fat ?? 0)} / ${Math.round(today?.target?.fat_target ?? 0)}`}
+                  />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <Metric
-                  label="Protein"
-                  value={`${Math.round(today?.consumed.protein ?? 0)} / ${Math.round(today?.target?.protein_target ?? 0)}`}
-                />
-                <Metric
-                  label="Carbs"
-                  value={`${Math.round(today?.consumed.carbs ?? 0)} / ${Math.round(today?.target?.carbs_target ?? 0)}`}
-                />
-                <Metric
-                  label="Fat"
-                  value={`${Math.round(today?.consumed.fat ?? 0)} / ${Math.round(today?.target?.fat_target ?? 0)}`}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
+              <div className="mt-4 grid grid-cols-2 gap-2">
                 <button
                   className="rounded-2xl border border-sky-300 bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-sky-600"
                   onClick={() => openComposer()}
@@ -547,54 +555,67 @@ export default function CutCoachPage() {
                   Scan barcode
                 </button>
               </div>
+            </div>
 
-              <div className="border-t border-slate-200/80 pt-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-slate-900">Quick add</div>
+            <div className="cc-card rounded-[24px] border border-slate-200/70 p-4 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-semibold text-slate-900">Quick add</div>
+                <button
+                  className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
+                  onClick={() => openComposer()}
+                  type="button"
+                >
+                  Search all
+                </button>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {quickAddFoods.map((food) => (
                   <button
-                    className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
-                    onClick={() => openComposer()}
+                    key={food.id}
+                    className="rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
+                    onClick={() => openComposer(food)}
                     type="button"
                   >
-                    Search all
+                    {food.name}
                   </button>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {quickAddFoods.map((food) => (
+                ))}
+                {quickAddSuggestions
+                  .filter(
+                    (label) =>
+                      !quickAddFoods.some((food) => food.name.toLowerCase().includes(label.toLowerCase()))
+                  )
+                  .slice(0, 4)
+                  .map((label) => (
                     <button
-                      key={food.id}
-                      className="rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
-                      onClick={() => openComposer(food)}
+                      key={label}
+                      className="rounded-2xl border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-500 transition hover:border-slate-400 hover:bg-white/70 hover:text-slate-800"
+                      onClick={() => {
+                        setSearchQuery(label);
+                        setSelectedFood(null);
+                        setScanReview(null);
+                        setIsComposerOpen(true);
+                      }}
                       type="button"
                     >
-                      {food.name}
+                      {label}
                     </button>
                   ))}
-                  {quickAddSuggestions
-                    .filter(
-                      (label) =>
-                        !quickAddFoods.some((food) => food.name.toLowerCase().includes(label.toLowerCase()))
-                    )
-                    .slice(0, 4)
-                    .map((label) => (
-                      <button
-                        key={label}
-                        className="rounded-2xl border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-500 transition hover:border-slate-400 hover:bg-white/70 hover:text-slate-800"
-                        onClick={() => {
-                          setSearchQuery(label);
-                          setSelectedFood(null);
-                          setScanReview(null);
-                          setIsComposerOpen(true);
-                        }}
-                        type="button"
-                      >
-                        {label}
-                      </button>
-                    ))}
-                </div>
               </div>
             </div>
 
+            {error ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+          </div>
+
+          <div className="cc-card rounded-[28px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] p-4 shadow-[0_20px_60px_rgba(15,23,42,0.08)] sm:p-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-950">Meals</div>
+                <div className="text-xs text-slate-500">Breakfast, lunch, dinner, snack.</div>
+              </div>
+              <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                {loggedWithRunningTotals.length} items
+              </div>
+            </div>
             <div className="space-y-3">
               {mealGroups.map((group) => (
                 <div key={group.value} className="cc-subcard rounded-[24px] border border-slate-200 bg-white/75 p-4">
@@ -652,8 +673,7 @@ export default function CutCoachPage() {
               ))}
             </div>
           </div>
-          {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
-        </header>
+        </section>
 
         {isBootstrapping ? (
           <section className="cc-card rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
