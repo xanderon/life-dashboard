@@ -145,6 +145,7 @@ export default function CutCoachPage() {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [showSetupPanel, setShowSetupPanel] = useState(false);
   const [setup, setSetup] = useState<SetupState>(defaultSetup);
   const [logState, setLogState] = useState<LogState>(defaultLog);
@@ -172,9 +173,11 @@ export default function CutCoachPage() {
   const [searchBusy, setSearchBusy] = useState(false);
   const [scanReview, setScanReview] = useState<ScanReviewState | null>(null);
 
-  async function loadBootstrap() {
+  async function loadBootstrap(options?: { silent?: boolean }) {
     setError(null);
-    setIsBootstrapping(true);
+    if (!options?.silent) {
+      setIsBootstrapping(true);
+    }
     const res = await fetch('/api/cut-coach/bootstrap', { cache: 'no-store' });
     if (!res.ok) {
       const payload = (await res.json().catch(() => ({}))) as { error?: string };
@@ -209,7 +212,9 @@ export default function CutCoachPage() {
       if (!current) return null;
       return payload.foods.find((food) => food.id === current.id) ?? current;
     });
-    setIsBootstrapping(false);
+    if (!options?.silent) {
+      setIsBootstrapping(false);
+    }
   }
 
   useEffect(() => {
@@ -300,27 +305,34 @@ export default function CutCoachPage() {
       return;
     }
     mutate(async () => {
-      await postJson('/api/cut-coach/logs', 'POST', {
+      const payload = (await postJson('/api/cut-coach/logs', 'POST', {
         ...logState,
         quantity: Number(logState.quantity),
         grams_total: Number(logState.grams_total),
-      });
+      })) as { summary?: DaySnapshot };
+      const summary = payload.summary;
+      if (summary) {
+        setData((current) => {
+          if (!current) return current;
+          return { ...current, today: summary };
+        });
+      }
       setLogState(defaultLog);
       setScanReview(null);
-      await loadBootstrap();
+      setSelectedFood(null);
+      setSearchQuery('');
+      setSearchResults([]);
+      setIsComposerOpen(false);
+      await loadBootstrap({ silent: true });
     });
   }
 
-  function quickAdd(food: CutCoachFoodRow) {
-    mutate(async () => {
-      await postJson('/api/cut-coach/logs', 'POST', {
-        food_id: food.id,
-        grams_total: food.default_serving_grams ?? 100,
-        quantity: 1,
-        meal_type: 'snack',
-      });
-      await loadBootstrap();
-    });
+  function openComposer(food?: CutCoachFoodRow | null) {
+    setIsComposerOpen(true);
+    if (food) {
+      selectFood(food);
+      setSearchQuery(food.name);
+    }
   }
 
   function selectFood(food: CutCoachFoodRow) {
@@ -364,8 +376,15 @@ export default function CutCoachPage() {
 
   function deleteLog(id: string) {
     mutate(async () => {
-      await postJson(`/api/cut-coach/logs/${id}`, 'DELETE');
-      await loadBootstrap();
+      const payload = (await postJson(`/api/cut-coach/logs/${id}`, 'DELETE')) as { summary?: DaySnapshot };
+      const summary = payload.summary;
+      if (summary) {
+        setData((current) => {
+          if (!current) return current;
+          return { ...current, today: summary };
+        });
+      }
+      await loadBootstrap({ silent: true });
     });
   }
 
@@ -375,7 +394,7 @@ export default function CutCoachPage() {
         ...weightState,
         weight_kg: Number(weightState.weight_kg),
       });
-      await loadBootstrap();
+      await loadBootstrap({ silent: true });
     });
   }
 
@@ -408,14 +427,14 @@ export default function CutCoachPage() {
         serving_label: '',
         is_favorite: true,
       });
-      await loadBootstrap();
+      await loadBootstrap({ silent: true });
     });
   }
 
   function recomputePlan() {
     mutate(async () => {
       await postJson('/api/cut-coach/plans/recompute', 'POST');
-      await loadBootstrap();
+      await loadBootstrap({ silent: true });
     });
   }
 
@@ -437,6 +456,7 @@ export default function CutCoachPage() {
       barcode,
       imported: Boolean(payload.imported),
     });
+    setIsComposerOpen(true);
   }
 
   const today = data?.today;
@@ -510,7 +530,7 @@ export default function CutCoachPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-xl font-semibold">{data?.profile ? 'Profile setup' : 'Initial setup'}</h2>
-                <p className="mt-1 text-sm text-[var(--muted)]">
+                <p className="mt-1 text-sm text-slate-500">
                   {data?.profile
                     ? 'Adjust calories, training day pattern and baseline data only when needed.'
                     : 'Start with profile, weight and training day pattern.'}
@@ -689,19 +709,26 @@ export default function CutCoachPage() {
                 <MacroBar title="Carbs" current={today?.consumed.carbs ?? 0} target={today?.target?.carbs_target ?? 1} />
                 <MacroBar title="Fat" current={today?.consumed.fat ?? 0} target={today?.target?.fat_target ?? 1} />
 
-                <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-4">
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="text-sm font-semibold">Quick add</div>
-                      <div className="text-xs text-[var(--muted)]">Favorites first. One tap inserts a default serving.</div>
+                      <div className="text-xs text-slate-500">Open the add drawer already pointed at a likely food.</div>
                     </div>
+                    <button
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      onClick={() => openComposer()}
+                      type="button"
+                    >
+                      Add food
+                    </button>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {quickAddFoods.map((food) => (
                       <button
                         key={food.id}
-                        className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-sm hover:bg-emerald-500/20"
-                        onClick={() => quickAdd(food)}
+                        className="rounded-full border border-sky-200 bg-white px-3 py-1 text-sm text-slate-700 hover:bg-sky-50"
+                        onClick={() => openComposer(food)}
                         type="button"
                       >
                         {food.name}
@@ -716,8 +743,13 @@ export default function CutCoachPage() {
                       .map((label) => (
                         <button
                           key={label}
-                          className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-sm text-[var(--muted)] hover:text-white"
-                          onClick={() => setSearchQuery(label)}
+                          className="rounded-full border border-dashed border-slate-300 px-3 py-1 text-sm text-slate-500 hover:border-slate-400 hover:text-slate-800"
+                          onClick={() => {
+                            setSearchQuery(label);
+                            setSelectedFood(null);
+                            setScanReview(null);
+                            setIsComposerOpen(true);
+                          }}
                           type="button"
                         >
                           {label}
@@ -726,162 +758,8 @@ export default function CutCoachPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1.1fr]">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-4" id="cut-coach-log-composer">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-semibold">Search or scan</div>
-                        <div className="text-xs text-slate-500">Search eggs, kefir, products, or scan a barcode on mobile.</div>
-                      </div>
-                      <button
-                        className="rounded-xl border border-violet-200 bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-700"
-                        onClick={() => setScannerOpen(true)}
-                        type="button"
-                      >
-                        Scan barcode
-                      </button>
-                    </div>
-                    <div className="mt-3 grid gap-3">
-                      <Field
-                        label="Search food or product"
-                        type="text"
-                        value={searchQuery}
-                        onChange={setSearchQuery}
-                      />
-                      <SelectField
-                        label="Meal"
-                        value={logState.meal_type}
-                        options={[
-                          { value: 'breakfast', label: 'Breakfast' },
-                          { value: 'lunch', label: 'Lunch' },
-                          { value: 'dinner', label: 'Dinner' },
-                          { value: 'snack', label: 'Snack' },
-                        ]}
-                        onChange={(value) => setLogState((state) => ({ ...state, meal_type: value as LogState['meal_type'] }))}
-                      />
-                      {selectedFood ? (
-                        <div className="rounded-2xl border border-sky-200 bg-white p-3 shadow-sm">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="font-semibold">{selectedFood.name}</div>
-                              <div className="text-xs text-slate-500">
-                                {selectedFood.brand ? `${selectedFood.brand} • ` : ''}
-                                {Math.round(selectedFood.calories)} kcal • P {Math.round(selectedFood.protein)} / C {Math.round(selectedFood.carbs)} / F {Math.round(selectedFood.fat)}
-                              </div>
-                              {selectedFood.barcode ? (
-                                <div className="mt-1 text-[11px] text-slate-500">
-                                  barcode {selectedFood.barcode}
-                                </div>
-                              ) : null}
-                            </div>
-                            <button
-                              className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600"
-                              onClick={() => {
-                                setSelectedFood(null);
-                                setLogState(defaultLog);
-                                setScanReview(null);
-                              }}
-                              type="button"
-                            >
-                              Clear
-                            </button>
-                          </div>
-
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {(['30g', '50g', '100g', '150g', '200g', 'serving'] as const).map((preset) => (
-                              <button
-                                key={preset}
-                                className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-100"
-                                onClick={() => applyQuantityPreset(preset)}
-                                type="button"
-                              >
-                                {preset === 'serving'
-                                  ? selectedFood.serving_label ?? `${Math.round(selectedFood.default_serving_grams ?? 100)}g serving`
-                                  : preset}
-                              </button>
-                            ))}
-                            {selectedFood.package_size_grams ? (
-                              <>
-                                <button
-                                  className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-100"
-                                  onClick={() => applyQuantityPreset('half-pack')}
-                                  type="button"
-                                >
-                                  half pack
-                                </button>
-                                <button
-                                  className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-100"
-                                  onClick={() => applyQuantityPreset('pack')}
-                                  type="button"
-                                >
-                                  full pack
-                                </button>
-                              </>
-                            ) : null}
-                          </div>
-                        </div>
-                      ) : null}
-                      <div className="grid grid-cols-2 gap-3">
-                        <Field
-                          label="Grams eaten"
-                          value={logState.grams_total}
-                          onChange={(value) => setLogState((state) => ({ ...state, grams_total: value }))}
-                        />
-                        <Field
-                          label="Quantity"
-                          value={logState.quantity}
-                          onChange={(value) => setLogState((state) => ({ ...state, quantity: value }))}
-                        />
-                      </div>
-                      {searchBusy ? <div className="text-xs text-slate-500">Searching...</div> : null}
-                      {searchQuery.trim() ? (
-                        <div className="max-h-56 space-y-2 overflow-auto pr-1">
-                          {searchResults.length ? (
-                            searchResults.map((food) => (
-                              <button
-                                key={food.id}
-                                className={`w-full rounded-xl border px-3 py-2 text-left ${
-                                  selectedFood?.id === food.id
-                                    ? 'border-emerald-500/40 bg-emerald-500/10'
-                                    : 'border-[var(--border)] bg-transparent hover:bg-[rgba(255,255,255,0.03)]'
-                                }`}
-                                onClick={() => selectFood(food)}
-                                type="button"
-                              >
-                                <div className="flex items-center justify-between gap-3">
-                                  <div>
-                                    <div className="font-medium">
-                                      {food.name}
-                                      {food.brand ? <span className="text-[var(--muted)]"> • {food.brand}</span> : null}
-                                    </div>
-                                    <div className="text-xs text-[var(--muted)]">
-                                      {Math.round(food.calories)} kcal • P {Math.round(food.protein)} / C {Math.round(food.carbs)} / F {Math.round(food.fat)}
-                                    </div>
-                                  </div>
-                                  <div className="text-right text-[11px] text-[var(--muted)]">
-                                    {food.source_kind === 'generic' ? 'generic' : 'product'}
-                                  </div>
-                                </div>
-                              </button>
-                            ))
-                          ) : (
-                            <div className="rounded-xl border border-dashed border-slate-300 px-3 py-4 text-sm text-slate-500">
-                              No matches yet. You can still add it manually in My foods below.
-                            </div>
-                          )}
-                        </div>
-                      ) : null}
-                    </div>
-                    <button
-                      className="mt-4 rounded-xl border border-emerald-300 bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
-                      onClick={submitLog}
-                      type="button"
-                    >
-                      Save to today
-                    </button>
-                  </div>
-
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-4">
+                <div className="mt-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-sm font-semibold">Meals logged today</div>
@@ -891,7 +769,7 @@ export default function CutCoachPage() {
                     <div className="mt-3 space-y-2">
                       {loggedWithRunningTotals.length ? (
                         loggedWithRunningTotals.map((log) => (
-                          <div key={log.id} className="rounded-xl border border-[var(--border)] px-3 py-2">
+                          <div key={log.id} className="rounded-xl border border-slate-200 px-3 py-2">
                             <div className="flex items-center justify-between gap-3">
                               <div>
                                 <div className="font-medium">{log.custom_food_name ?? data.foods.find((food) => food.id === log.food_id)?.name ?? 'Food'}</div>
@@ -928,7 +806,7 @@ export default function CutCoachPage() {
                   <Metric label="Protein" value={`${Math.round(tomorrow?.target?.protein_target ?? 0)} g`} />
                   <Metric label="Day type" value={tomorrow?.target?.day_type ?? '—'} />
                 </div>
-                <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-4">
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="text-sm font-semibold">Adjustment explanation</div>
                   <div className="mt-2 text-sm text-slate-600">
                     {humanizeAdjustmentReason(
@@ -942,7 +820,7 @@ export default function CutCoachPage() {
                 <div className="mt-4 space-y-3">
                   {tomorrow?.planItems.length ? (
                     tomorrow.planItems.map((item) => (
-                      <div key={item.id} className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-4">
+                      <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <div className="text-sm font-semibold capitalize">{item.meal_slot}</div>
@@ -1009,7 +887,7 @@ export default function CutCoachPage() {
                 <div className="space-y-3">
                   {data.week.length ? (
                     data.week.map((day) => (
-                      <div key={day.date} className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
+                      <div key={day.date} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <div className="font-medium">{day.date}</div>
@@ -1100,7 +978,7 @@ export default function CutCoachPage() {
                 </div>
                 <div className="mt-4 max-h-80 space-y-2 overflow-auto pr-1">
                   {data.foods.map((food) => (
-                    <div key={food.id} className="rounded-xl border border-[var(--border)] px-3 py-2">
+                    <div key={food.id} className="rounded-xl border border-slate-200 px-3 py-2">
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <div className="font-medium">{food.name}</div>
@@ -1122,6 +1000,29 @@ export default function CutCoachPage() {
           </>
         ) : null}
       </div>
+      {isComposerOpen ? (
+        <AddFoodDrawer
+          isPending={isPending}
+          logState={logState}
+          onClose={() => {
+            setIsComposerOpen(false);
+            setScanReview(null);
+          }}
+          onMealChange={(value) => setLogState((state) => ({ ...state, meal_type: value }))}
+          onQuantityChange={(value) => setLogState((state) => ({ ...state, quantity: value }))}
+          onSave={submitLog}
+          onScan={() => setScannerOpen(true)}
+          onSearchChange={setSearchQuery}
+          onSelectFood={selectFood}
+          onGramsChange={(value) => setLogState((state) => ({ ...state, grams_total: value }))}
+          onUsePreset={applyQuantityPreset}
+          scanReview={scanReview}
+          searchBusy={searchBusy}
+          searchQuery={searchQuery}
+          searchResults={searchResults}
+          selectedFood={selectedFood}
+        />
+      ) : null}
       {scannerOpen ? (
         <BarcodeScanner onClose={() => setScannerOpen(false)} onDetected={handleBarcodeDetected} />
       ) : null}
@@ -1212,6 +1113,205 @@ function MacroBar({ title, current, target }: { title: string; current: number; 
       </div>
       <div className="h-3 overflow-hidden rounded-full bg-slate-100">
         <div className="h-full rounded-full bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400" style={{ width: `${ratio * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function AddFoodDrawer({
+  isPending,
+  logState,
+  onClose,
+  onMealChange,
+  onQuantityChange,
+  onSave,
+  onScan,
+  onSearchChange,
+  onSelectFood,
+  onGramsChange,
+  onUsePreset,
+  scanReview,
+  searchBusy,
+  searchQuery,
+  searchResults,
+  selectedFood,
+}: {
+  isPending: boolean;
+  logState: LogState;
+  onClose: () => void;
+  onMealChange: (value: LogState['meal_type']) => void;
+  onQuantityChange: (value: string) => void;
+  onSave: () => void;
+  onScan: () => void;
+  onSearchChange: (value: string) => void;
+  onSelectFood: (food: CutCoachFoodRow) => void;
+  onGramsChange: (value: string) => void;
+  onUsePreset: (mode: '30g' | '50g' | '100g' | '150g' | '200g' | 'serving' | 'half-pack' | 'pack') => void;
+  scanReview: ScanReviewState | null;
+  searchBusy: boolean;
+  searchQuery: string;
+  searchResults: CutCoachFoodRow[];
+  selectedFood: CutCoachFoodRow | null;
+}) {
+  return (
+    <div className="fixed inset-0 z-40 bg-slate-950/45 p-0 backdrop-blur-sm">
+      <div className="absolute inset-x-0 bottom-0 top-12 overflow-auto rounded-t-[32px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f6f9fc_100%)] p-5 shadow-[0_-24px_60px_rgba(15,23,42,0.18)] sm:left-auto sm:right-4 sm:top-4 sm:w-[32rem] sm:rounded-[32px]">
+        <div className="mx-auto h-1.5 w-14 rounded-full bg-slate-200 sm:hidden" />
+        <div className="mt-4 flex items-start justify-between gap-3">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.28em] text-violet-600">Add To Today</div>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Choose product, quantity, save.</h2>
+            <p className="mt-2 text-sm text-slate-500">This drawer keeps the add flow separate, then returns you to the full dashboard view.</p>
+          </div>
+          <button
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            onClick={onClose}
+            type="button"
+          >
+            Close
+          </button>
+        </div>
+
+        {scanReview ? (
+          <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Scanned just now</div>
+            <div className="mt-2 text-lg font-semibold text-slate-950">{scanReview.food.name}</div>
+            <div className="mt-1 text-sm text-slate-600">
+              {scanReview.food.brand ? `${scanReview.food.brand} • ` : ''}
+              barcode {scanReview.barcode}
+              {scanReview.imported ? ' • imported now' : ' • found locally'}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-4 flex gap-2">
+          <button
+            className="flex-1 rounded-xl border border-violet-200 bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700"
+            onClick={onScan}
+            type="button"
+          >
+            Scan barcode
+          </button>
+          <button
+            className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            onClick={() => onSearchChange('')}
+            type="button"
+          >
+            Clear search
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-3">
+          <Field label="Search food or product" type="text" value={searchQuery} onChange={onSearchChange} />
+          <SelectField
+            label="Meal"
+            value={logState.meal_type}
+            options={[
+              { value: 'breakfast', label: 'Breakfast' },
+              { value: 'lunch', label: 'Lunch' },
+              { value: 'dinner', label: 'Dinner' },
+              { value: 'snack', label: 'Snack' },
+            ]}
+            onChange={(value) => onMealChange(value as LogState['meal_type'])}
+          />
+
+          {selectedFood ? (
+            <div className="rounded-2xl border border-sky-200 bg-white p-4 shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">Selected</div>
+              <div className="mt-2 text-lg font-semibold text-slate-950">{selectedFood.name}</div>
+              <div className="mt-1 text-sm text-slate-500">
+                {selectedFood.brand ? `${selectedFood.brand} • ` : ''}
+                {Math.round(selectedFood.calories)} kcal • P {Math.round(selectedFood.protein)} / C {Math.round(selectedFood.carbs)} / F {Math.round(selectedFood.fat)}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(['30g', '50g', '100g', '150g', '200g', 'serving'] as const).map((preset) => (
+                  <button
+                    key={preset}
+                    className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-100"
+                    onClick={() => onUsePreset(preset)}
+                    type="button"
+                  >
+                    {preset === 'serving'
+                      ? selectedFood.serving_label ?? `${Math.round(selectedFood.default_serving_grams ?? 100)}g serving`
+                      : preset}
+                  </button>
+                ))}
+                {selectedFood.package_size_grams ? (
+                  <>
+                    <button
+                      className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-100"
+                      onClick={() => onUsePreset('half-pack')}
+                      type="button"
+                    >
+                      half pack
+                    </button>
+                    <button
+                      className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-100"
+                      onClick={() => onUsePreset('pack')}
+                      type="button"
+                    >
+                      full pack
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Grams eaten" value={logState.grams_total} onChange={onGramsChange} />
+            <Field label="Quantity" value={logState.quantity} onChange={onQuantityChange} />
+          </div>
+
+          {searchBusy ? <div className="text-xs text-slate-500">Searching...</div> : null}
+          {searchQuery.trim() ? (
+            <div className="max-h-64 space-y-2 overflow-auto pr-1">
+              {searchResults.length ? (
+                searchResults.map((food) => (
+                  <button
+                    key={food.id}
+                    className={`w-full rounded-xl border px-3 py-3 text-left ${
+                      selectedFood?.id === food.id
+                        ? 'border-sky-300 bg-sky-50'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                    onClick={() => onSelectFood(food)}
+                    type="button"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-slate-900">
+                          {food.name}
+                          {food.brand ? <span className="text-slate-500"> • {food.brand}</span> : null}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {Math.round(food.calories)} kcal • P {Math.round(food.protein)} / C {Math.round(food.carbs)} / F {Math.round(food.fat)}
+                        </div>
+                      </div>
+                      <div className="text-right text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                        {food.source_kind === 'generic' ? 'generic' : 'product'}
+                      </div>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="rounded-xl border border-dashed border-slate-300 px-3 py-4 text-sm text-slate-500">
+                  No matches yet. Add it manually in My foods if needed.
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="sticky bottom-0 mt-6 bg-[linear-gradient(180deg,rgba(246,249,252,0)_0%,#f6f9fc_25%,#f6f9fc_100%)] pt-4">
+          <button
+            className="w-full rounded-2xl border border-emerald-300 bg-emerald-500 px-4 py-4 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600"
+            onClick={onSave}
+            type="button"
+          >
+            {isPending ? 'Saving...' : 'Save to today'}
+          </button>
+        </div>
       </div>
     </div>
   );
