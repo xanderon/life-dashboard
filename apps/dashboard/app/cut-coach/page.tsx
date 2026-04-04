@@ -863,7 +863,7 @@ export default function CutCoachPage() {
             ) : null}
 
             <section className="grid gap-4">
-              <Panel title="Tomorrow">
+              <AccordionSection defaultOpen title="Tomorrow">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <Metric label="Target" value={`${Math.round(tomorrow?.target?.kcal_target ?? 0)} kcal`} />
                   <Metric label="Protein" value={`${Math.round(tomorrow?.target?.protein_target ?? 0)} g`} />
@@ -904,11 +904,11 @@ export default function CutCoachPage() {
                     </div>
                   )}
                 </div>
-              </Panel>
+              </AccordionSection>
             </section>
 
             <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr_1fr]">
-              <Panel title="Weight & trend">
+              <AccordionSection title="Weight & trend">
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
                   <Metric label="Latest" value={data.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} />
                   <Metric label="7d avg" value={data.trends.avg7 ? `${data.trends.avg7} kg` : '—'} />
@@ -942,11 +942,11 @@ export default function CutCoachPage() {
                   onClick={submitWeight}
                   type="button"
                 >
-                  Log weight
-                </button>
-              </Panel>
+                    Log weight
+                  </button>
+              </AccordionSection>
 
-              <Panel title="Week compliance">
+              <AccordionSection title="Week compliance">
                 <div className="space-y-3">
                   {data.week.length ? (
                     data.week.map((day) => (
@@ -971,9 +971,9 @@ export default function CutCoachPage() {
                     </div>
                   )}
                 </div>
-              </Panel>
+              </AccordionSection>
 
-              <Panel title="My foods">
+              <AccordionSection title="My foods">
                 <div className="cc-subcard rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="text-sm font-semibold">Add or edit food</div>
                   <div className="mt-1 text-xs text-slate-500">Generic foods and barcode products.</div>
@@ -1058,10 +1058,10 @@ export default function CutCoachPage() {
                     </div>
                   ))}
                 </div>
-              </Panel>
+              </AccordionSection>
             </section>
 
-            <Panel title="Controls">
+            <AccordionSection title="Controls">
               <div className="grid gap-2 sm:grid-cols-3">
                 {data?.profile ? (
                   <button
@@ -1086,7 +1086,7 @@ export default function CutCoachPage() {
                   Back to dashboard
                 </Link>
               </div>
-            </Panel>
+            </AccordionSection>
           </>
         ) : null}
       </div>
@@ -1144,6 +1144,8 @@ export default function CutCoachPage() {
         .cut-coach-shell {
           background: linear-gradient(180deg, var(--cc-bg) 0%, color-mix(in srgb, var(--cc-bg) 88%, #ffffff 12%) 100%) !important;
           color: var(--cc-text) !important;
+          -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
         }
 
         .cut-coach-shell .cc-card,
@@ -1235,12 +1237,26 @@ export default function CutCoachPage() {
   );
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
+function AccordionSection({
+  title,
+  children,
+  defaultOpen = false,
+}: {
+  title: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
   return (
-    <section className="cc-card rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
-      <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
-      <div className="mt-4">{children}</div>
-    </section>
+    <details
+      className="cc-card group overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.06)]"
+      open={defaultOpen}
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-left marker:hidden">
+        <span className="text-base font-semibold text-slate-950">{title}</span>
+        <span className="rounded-full border border-slate-200 px-2 py-0.5 text-xs text-slate-500 transition group-open:rotate-180">⌄</span>
+      </summary>
+      <div className="border-t border-slate-200 px-4 py-4">{children}</div>
+    </details>
   );
 }
 
