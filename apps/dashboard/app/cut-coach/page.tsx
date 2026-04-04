@@ -475,23 +475,29 @@ export default function CutCoachPage() {
         <header className="cc-card rounded-[32px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
           <div className="flex flex-col gap-5">
             <div>
-              <Link
-                className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500 hover:text-slate-900"
-                href="/"
-              >
-                Back to dashboard
-              </Link>
-              <div className="mt-4 text-xs uppercase tracking-[0.35em] text-sky-600">Today</div>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                {Math.round(today?.consumed.calories ?? 0)} / {Math.round(today?.target?.kcal_target ?? 0)} kcal
-              </h1>
-              <div className="mt-2 text-sm text-slate-500">
-                Remaining {Math.round(today?.remaining?.calories ?? 0)} kcal
-                {today?.target?.day_type ? ` • ${today.target.day_type} day` : ''}
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.35em] text-sky-600">Today</div>
+                  <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
+                    <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                      {Math.round(today?.consumed.calories ?? 0)}
+                    </h1>
+                    <div className="pb-1 text-sm text-slate-500">
+                      / {Math.round(today?.target?.kcal_target ?? 0)} kcal
+                      {today?.target?.day_type ? ` • ${today.target.day_type}` : ''}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right text-xs text-slate-500">
+                  <div>Remaining</div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900">
+                    {Math.round(today?.remaining?.calories ?? 0)} kcal
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-3">
               <Metric label="Consumed" value={`${Math.round(today?.consumed.calories ?? 0)} kcal`} />
               <Metric label="Remaining" value={`${Math.round(today?.remaining?.calories ?? 0)} kcal`} />
               <Metric label="Protein left" value={`${Math.round(today?.remaining?.protein ?? 0)} g`} />
@@ -513,11 +519,11 @@ export default function CutCoachPage() {
                 Scan barcode
               </button>
               {data?.profile ? (
-                <button
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                  onClick={() => setShowSetupPanel((value) => !value)}
-                  type="button"
-                >
+              <button
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                onClick={() => setShowSetupPanel((value) => !value)}
+                type="button"
+              >
                   {showSetupPanel ? 'Hide settings' : 'Settings'}
                 </button>
               ) : null}
@@ -528,6 +534,16 @@ export default function CutCoachPage() {
               >
                 {isPending ? 'Working...' : 'Refresh plan'}
               </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-1 text-xs text-slate-500">
+              <div />
+              <Link
+                className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500 hover:text-slate-900"
+                href="/"
+              >
+                Back to dashboard
+              </Link>
             </div>
           </div>
           {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
@@ -1172,9 +1188,9 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="cc-stat rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-3">
+    <div className="cc-stat rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-2.5">
       <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{label}</div>
-      <div className="mt-1 text-lg font-semibold text-slate-950">{value}</div>
+      <div className="mt-0.5 text-base font-semibold text-slate-950 sm:text-lg">{value}</div>
     </div>
   );
 }
