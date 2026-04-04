@@ -140,6 +140,13 @@ const weekdayLabels = [
   { value: 6, label: 'Sat' },
 ];
 
+const mealSections: Array<{ value: LogState['meal_type']; label: string }> = [
+  { value: 'breakfast', label: 'Breakfast' },
+  { value: 'lunch', label: 'Lunch' },
+  { value: 'dinner', label: 'Dinner' },
+  { value: 'snack', label: 'Snack' },
+];
+
 export default function CutCoachPage() {
   const [data, setData] = useState<BootstrapPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -327,8 +334,11 @@ export default function CutCoachPage() {
     });
   }
 
-  function openComposer(food?: CutCoachFoodRow | null) {
+  function openComposer(food?: CutCoachFoodRow | null, mealType?: LogState['meal_type']) {
     setIsComposerOpen(true);
+    if (mealType) {
+      setLogState((state) => ({ ...state, meal_type: mealType }));
+    }
     if (food) {
       selectFood(food);
       setSearchQuery(food.name);
@@ -468,162 +478,178 @@ export default function CutCoachPage() {
       return acc;
     }, []) ?? [];
   const quickAddFoods = (data?.favorites.length ? data.favorites : data?.recentFoods ?? []).slice(0, 8);
+  const mealGroups = mealSections.map((section) => {
+    const items = loggedWithRunningTotals.filter((log) => log.meal_type === section.value);
+    const calories = items.reduce((sum, item) => sum + item.calories_total, 0);
+    return { ...section, items, calories };
+  });
+  const remainingCalories = Math.round(today?.remaining?.calories ?? 0);
+  const consumedCalories = Math.round(today?.consumed.calories ?? 0);
+  const targetCalories = Math.round(today?.target?.kcal_target ?? 0);
+  const calorieRatio =
+    targetCalories > 0 ? Math.max(0, Math.min(100, Math.round((consumedCalories / targetCalories) * 100))) : 0;
 
   return (
     <main className="cut-coach-shell min-h-screen bg-[linear-gradient(180deg,#f6f8fb_0%,#eef3f8_45%,#e6edf5_100%)] p-4 text-slate-900 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
         <header className="cc-card rounded-[32px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] sm:p-6">
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
-                  <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Today</h1>
-                  <div className="pb-0.5 text-sm text-slate-500">
-                    {Math.round(today?.consumed.calories ?? 0)} / {Math.round(today?.target?.kcal_target ?? 0)} kcal
-                    {today?.target?.day_type ? ` • ${today.target.day_type}` : ''}
-                  </div>
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2 text-sm">
-                  <div className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-slate-700">
-                    <span className="text-slate-500">Left</span>{' '}
-                    <span className="font-semibold text-slate-950">{Math.round(today?.remaining?.calories ?? 0)} kcal</span>
-                  </div>
-                  <div className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-slate-700">
-                    <span className="text-slate-500">Protein left</span>{' '}
-                    <span className="font-semibold text-slate-950">{Math.round(today?.remaining?.protein ?? 0)} g</span>
-                  </div>
-                  <div className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-slate-700">
-                    <span className="text-slate-500">Carbs left</span>{' '}
-                    <span className="font-semibold text-slate-950">{Math.round(today?.remaining?.carbs ?? 0)} g</span>
-                  </div>
-                  <div className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-slate-700">
-                    <span className="text-slate-500">Fat left</span>{' '}
-                    <span className="font-semibold text-slate-950">{Math.round(today?.remaining?.fat ?? 0)} g</span>
+          <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+            <div className="space-y-5">
+              <div className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-600">Today</div>
+              <div className="flex justify-center xl:justify-start">
+                <div
+                  className="relative flex h-56 w-56 items-center justify-center rounded-full border border-white/70 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.96),rgba(241,245,249,0.92)_58%,rgba(226,232,240,0.86)_100%)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.8),0_16px_48px_rgba(15,23,42,0.10)]"
+                  style={{
+                    backgroundImage: `conic-gradient(from 270deg, #0ea5e9 0% ${calorieRatio}%, rgba(148,163,184,0.18) ${calorieRatio}% 100%)`,
+                  }}
+                >
+                  <div className="absolute inset-[11px] rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.98),rgba(248,250,252,0.95)_62%,rgba(241,245,249,0.9)_100%)]" />
+                  <div className="relative z-10 text-center">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Remaining</div>
+                    <div className="mt-2 text-5xl font-semibold tracking-tight text-slate-950">{remainingCalories}</div>
+                    <div className="mt-1 text-sm text-slate-500">kcal left today</div>
+                    <div className="mt-4 text-xs text-slate-400">
+                      {consumedCalories} eaten / {targetCalories} target
+                      {today?.target?.day_type ? ` • ${today.target.day_type}` : ''}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 sm:w-auto">
+              <div className="grid grid-cols-3 gap-2">
+                <Metric
+                  label="Protein"
+                  value={`${Math.round(today?.consumed.protein ?? 0)} / ${Math.round(today?.target?.protein_target ?? 0)}`}
+                />
+                <Metric
+                  label="Carbs"
+                  value={`${Math.round(today?.consumed.carbs ?? 0)} / ${Math.round(today?.target?.carbs_target ?? 0)}`}
+                />
+                <Metric
+                  label="Fat"
+                  value={`${Math.round(today?.consumed.fat ?? 0)} / ${Math.round(today?.target?.fat_target ?? 0)}`}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
                 <button
-                  className="rounded-xl border border-sky-300 bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-sky-600"
+                  className="rounded-2xl border border-sky-300 bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-sky-600"
                   onClick={() => openComposer()}
                   type="button"
                 >
                   Add food
                 </button>
                 <button
-                  className="rounded-xl border border-violet-200 bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700"
+                  className="rounded-2xl border border-violet-200 bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700"
                   onClick={() => setScannerOpen(true)}
                   type="button"
                 >
                   Scan barcode
                 </button>
               </div>
-            </div>
 
-            <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr] xl:gap-6">
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <MacroBar title="Calories" current={today?.consumed.calories ?? 0} target={today?.target?.kcal_target ?? 1} />
-                  <MacroBar title="Protein" current={today?.consumed.protein ?? 0} target={today?.target?.protein_target ?? 1} />
-                  <MacroBar title="Carbs" current={today?.consumed.carbs ?? 0} target={today?.target?.carbs_target ?? 1} />
-                  <MacroBar title="Fat" current={today?.consumed.fat ?? 0} target={today?.target?.fat_target ?? 1} />
+              <div className="border-t border-slate-200/80 pt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-slate-900">Quick add</div>
+                  <button
+                    className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
+                    onClick={() => openComposer()}
+                    type="button"
+                  >
+                    Search all
+                  </button>
                 </div>
-
-                <div className="border-t border-slate-200/80 pt-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900">Quick add</div>
-                      <div className="text-xs text-slate-500">One tap opens the add flow with that food already selected.</div>
-                    </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {quickAddFoods.map((food) => (
                     <button
-                      className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
-                      onClick={() => openComposer()}
+                      key={food.id}
+                      className="rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
+                      onClick={() => openComposer(food)}
                       type="button"
                     >
-                      Search all
+                      {food.name}
                     </button>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {quickAddFoods.map((food) => (
+                  ))}
+                  {quickAddSuggestions
+                    .filter(
+                      (label) =>
+                        !quickAddFoods.some((food) => food.name.toLowerCase().includes(label.toLowerCase()))
+                    )
+                    .slice(0, 4)
+                    .map((label) => (
                       <button
-                        key={food.id}
-                        className="rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
-                        onClick={() => openComposer(food)}
+                        key={label}
+                        className="rounded-2xl border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-500 transition hover:border-slate-400 hover:bg-white/70 hover:text-slate-800"
+                        onClick={() => {
+                          setSearchQuery(label);
+                          setSelectedFood(null);
+                          setScanReview(null);
+                          setIsComposerOpen(true);
+                        }}
                         type="button"
                       >
-                        {food.name}
+                        {label}
                       </button>
                     ))}
-                    {quickAddSuggestions
-                      .filter(
-                        (label) =>
-                          !quickAddFoods.some((food) => food.name.toLowerCase().includes(label.toLowerCase()))
-                      )
-                      .slice(0, 5)
-                      .map((label) => (
-                        <button
-                          key={label}
-                          className="rounded-2xl border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-500 transition hover:border-slate-400 hover:bg-white/70 hover:text-slate-800"
-                          onClick={() => {
-                            setSearchQuery(label);
-                            setSelectedFood(null);
-                            setScanReview(null);
-                            setIsComposerOpen(true);
-                          }}
-                          type="button"
-                        >
-                          {label}
-                        </button>
-                      ))}
-                  </div>
                 </div>
               </div>
+            </div>
 
-              <div className="border-t border-slate-200/80 pt-4 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900">Meals logged</div>
-                    <div className="text-xs text-slate-500">Today, in order, with running kcal total.</div>
-                  </div>
-                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-                    {loggedWithRunningTotals.length} items
-                  </div>
-                </div>
-                <div className="mt-3 space-y-2">
-                  {loggedWithRunningTotals.length ? (
-                    loggedWithRunningTotals.map((log) => (
-                      <div key={log.id} className="rounded-2xl border border-slate-200 bg-white/70 px-3 py-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="truncate font-medium text-slate-900">
-                              {log.custom_food_name ?? data?.foods.find((food) => food.id === log.food_id)?.name ?? 'Food'}
-                            </div>
-                            <div className="mt-0.5 text-xs text-slate-500">
-                              {log.meal_type} • {Math.round(log.grams_total)} g • {Math.round(log.calories_total)} kcal
-                            </div>
-                            <div className="mt-1 text-[11px] text-slate-500">
-                              total after this: {Math.round(log.runningCalories)} kcal
-                            </div>
-                          </div>
-                          <button
-                            className="rounded-lg border border-red-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
-                            onClick={() => deleteLog(log.id)}
-                            type="button"
-                          >
-                            Delete
-                          </button>
-                        </div>
+            <div className="space-y-3">
+              {mealGroups.map((group) => (
+                <div key={group.value} className="cc-subcard rounded-[24px] border border-slate-200 bg-white/75 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-base font-semibold text-slate-950">{group.label}</div>
+                      <div className="text-xs text-slate-500">
+                        {Math.round(group.calories)} kcal {group.items.length ? `• ${group.items.length} items` : ''}
                       </div>
-                    ))
-                  ) : (
-                    <div className="rounded-2xl border border-dashed border-slate-300 px-3 py-5 text-sm text-slate-500">
-                      Nothing logged yet. Start with quick add or barcode scan.
                     </div>
-                  )}
+                    <button
+                      className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-xl font-medium text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                      onClick={() => openComposer(null, group.value)}
+                      type="button"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {group.items.length ? (
+                      group.items.map((log) => (
+                        <div key={log.id} className="rounded-2xl border border-slate-200/90 bg-white/80 px-3 py-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="truncate font-medium text-slate-900">
+                                {log.custom_food_name ?? data?.foods.find((food) => food.id === log.food_id)?.name ?? 'Food'}
+                              </div>
+                              <div className="mt-0.5 text-xs text-slate-500">
+                                {Math.round(log.grams_total)} g • {Math.round(log.calories_total)} kcal
+                              </div>
+                            </div>
+                            <button
+                              className="rounded-lg border border-red-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                              onClick={() => deleteLog(log.id)}
+                              type="button"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <button
+                        className="flex w-full items-center justify-between rounded-2xl border border-dashed border-slate-300 px-3 py-3 text-left text-sm text-slate-500 hover:border-sky-300 hover:bg-sky-50 hover:text-slate-700"
+                        onClick={() => openComposer(null, group.value)}
+                        type="button"
+                      >
+                        <span>Nothing here yet</span>
+                        <span className="font-medium text-sky-600">Add</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
           {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
@@ -1255,23 +1281,6 @@ function SelectField({
         ))}
       </select>
     </label>
-  );
-}
-
-function MacroBar({ title, current, target }: { title: string; current: number; target: number }) {
-  const ratio = target > 0 ? Math.min(1, current / target) : 0;
-  return (
-    <div className="mt-3">
-      <div className="mb-1 flex items-center justify-between text-sm">
-        <span>{title}</span>
-        <span className="text-slate-500">
-          {Math.round(current)} / {Math.round(target)}
-        </span>
-      </div>
-      <div className="cc-meter h-3 overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full rounded-full bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400" style={{ width: `${ratio * 100}%` }} />
-      </div>
-    </div>
   );
 }
 
