@@ -517,6 +517,103 @@ export default function CutCoachPage() {
                 Scan barcode
               </button>
             </div>
+
+            <div className="mt-1 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+              <div>
+                <MacroBar title="Calories" current={today?.consumed.calories ?? 0} target={today?.target?.kcal_target ?? 1} />
+                <MacroBar title="Protein" current={today?.consumed.protein ?? 0} target={today?.target?.protein_target ?? 1} />
+                <MacroBar title="Carbs" current={today?.consumed.carbs ?? 0} target={today?.target?.carbs_target ?? 1} />
+                <MacroBar title="Fat" current={today?.consumed.fat ?? 0} target={today?.target?.fat_target ?? 1} />
+
+                <div className="cc-subcard mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold">Quick add</div>
+                      <div className="text-xs text-slate-500">Tap one to open the add drawer already filled.</div>
+                    </div>
+                    <button
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      onClick={() => openComposer()}
+                      type="button"
+                    >
+                      Browse all
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {quickAddFoods.map((food) => (
+                      <button
+                        key={food.id}
+                        className="rounded-full border border-sky-200 bg-white px-3 py-1 text-sm text-slate-700 hover:bg-sky-50"
+                        onClick={() => openComposer(food)}
+                        type="button"
+                      >
+                        {food.name}
+                      </button>
+                    ))}
+                    {quickAddSuggestions
+                      .filter(
+                        (label) =>
+                          !quickAddFoods.some((food) => food.name.toLowerCase().includes(label.toLowerCase()))
+                      )
+                      .slice(0, 6)
+                      .map((label) => (
+                        <button
+                          key={label}
+                          className="rounded-full border border-dashed border-slate-300 px-3 py-1 text-sm text-slate-500 hover:border-slate-400 hover:text-slate-800"
+                          onClick={() => {
+                            setSearchQuery(label);
+                            setSelectedFood(null);
+                            setScanReview(null);
+                            setIsComposerOpen(true);
+                          }}
+                          type="button"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="cc-subcard rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-semibold">Meals logged today</div>
+                    <div className="text-xs text-slate-500">Running total after each item.</div>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {loggedWithRunningTotals.length ? (
+                    loggedWithRunningTotals.map((log) => (
+                      <div key={log.id} className="rounded-xl border border-slate-200 px-3 py-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="font-medium">{log.custom_food_name ?? data?.foods.find((food) => food.id === log.food_id)?.name ?? 'Food'}</div>
+                            <div className="text-xs text-slate-500">
+                              {log.meal_type} • {Math.round(log.grams_total)} g • {Math.round(log.calories_total)} kcal
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-500">
+                              running total {Math.round(log.runningCalories)} kcal
+                            </div>
+                          </div>
+                          <button
+                            className="rounded-md border border-red-500/30 px-2 py-1 text-xs text-red-100 hover:bg-red-500/10"
+                            onClick={() => deleteLog(log.id)}
+                            type="button"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-slate-300 px-3 py-5 text-sm text-slate-500">
+                      No food logged yet for today.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
           {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
         </header>
@@ -706,104 +803,7 @@ export default function CutCoachPage() {
               </section>
             ) : null}
 
-            <section className="grid gap-4 xl:grid-cols-[1.25fr_0.95fr]">
-              <Panel title="Today">
-                <MacroBar title="Calories" current={today?.consumed.calories ?? 0} target={today?.target?.kcal_target ?? 1} />
-                <MacroBar title="Protein" current={today?.consumed.protein ?? 0} target={today?.target?.protein_target ?? 1} />
-                <MacroBar title="Carbs" current={today?.consumed.carbs ?? 0} target={today?.target?.carbs_target ?? 1} />
-                <MacroBar title="Fat" current={today?.consumed.fat ?? 0} target={today?.target?.fat_target ?? 1} />
-
-                <div className="cc-subcard mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold">Quick add</div>
-                      <div className="text-xs text-slate-500">Most-used foods first.</div>
-                    </div>
-                    <button
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                      onClick={() => openComposer()}
-                      type="button"
-                    >
-                      Add food
-                    </button>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {quickAddFoods.map((food) => (
-                      <button
-                        key={food.id}
-                        className="rounded-full border border-sky-200 bg-white px-3 py-1 text-sm text-slate-700 hover:bg-sky-50"
-                        onClick={() => openComposer(food)}
-                        type="button"
-                      >
-                        {food.name}
-                      </button>
-                    ))}
-                    {quickAddSuggestions
-                      .filter(
-                        (label) =>
-                          !quickAddFoods.some((food) => food.name.toLowerCase().includes(label.toLowerCase()))
-                      )
-                      .slice(0, 6)
-                      .map((label) => (
-                        <button
-                          key={label}
-                          className="rounded-full border border-dashed border-slate-300 px-3 py-1 text-sm text-slate-500 hover:border-slate-400 hover:text-slate-800"
-                          onClick={() => {
-                            setSearchQuery(label);
-                            setSelectedFood(null);
-                            setScanReview(null);
-                            setIsComposerOpen(true);
-                          }}
-                          type="button"
-                        >
-                          {label}
-                        </button>
-                      ))}
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <div className="cc-subcard rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-semibold">Meals logged today</div>
-                        <div className="text-xs text-slate-500">Food, meal, calories and running total for the day.</div>
-                      </div>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      {loggedWithRunningTotals.length ? (
-                        loggedWithRunningTotals.map((log) => (
-                          <div key={log.id} className="rounded-xl border border-slate-200 px-3 py-2">
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <div className="font-medium">{log.custom_food_name ?? data.foods.find((food) => food.id === log.food_id)?.name ?? 'Food'}</div>
-                                <div className="text-xs text-slate-500">
-                                  {log.meal_type} • {Math.round(log.grams_total)} g • {Math.round(log.calories_total)} kcal
-                                </div>
-                                <div className="mt-1 text-[11px] text-slate-500">
-                                  running total {Math.round(log.runningCalories)} kcal
-                                </div>
-                              </div>
-                              <button
-                                className="rounded-md border border-red-500/30 px-2 py-1 text-xs text-red-100 hover:bg-red-500/10"
-                                onClick={() => deleteLog(log.id)}
-                                type="button"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="rounded-xl border border-dashed border-slate-300 px-3 py-5 text-sm text-slate-500">
-                          No food logged yet for today.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </Panel>
-
+            <section className="grid gap-4">
               <Panel title="Tomorrow">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <Metric label="Target" value={`${Math.round(tomorrow?.target?.kcal_target ?? 0)} kcal`} />
