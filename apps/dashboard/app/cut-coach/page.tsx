@@ -470,9 +470,9 @@ export default function CutCoachPage() {
   const quickAddFoods = (data?.favorites.length ? data.favorites : data?.recentFoods ?? []).slice(0, 8);
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f6f8fb_0%,#eef3f8_45%,#e6edf5_100%)] p-4 text-slate-900 sm:p-6">
+    <main className="cut-coach-shell min-h-screen bg-[linear-gradient(180deg,#f6f8fb_0%,#eef3f8_45%,#e6edf5_100%)] p-4 text-slate-900 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
-        <header className="rounded-[32px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+        <header className="cc-card rounded-[32px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <Link
@@ -485,9 +485,7 @@ export default function CutCoachPage() {
               <h1 className="mt-2 max-w-4xl text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
                 Log food fast, scan products on mobile, and keep today under control.
               </h1>
-              <p className="mt-3 max-w-3xl text-sm text-slate-600">
-                Deterministic calorie and macro planning for your cut, built into Life Dashboard.
-              </p>
+              <p className="mt-3 max-w-3xl text-sm text-slate-600">Today first. Add food fast. See tomorrow clearly.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {data?.profile ? (
@@ -512,7 +510,7 @@ export default function CutCoachPage() {
         </header>
 
         {isBootstrapping ? (
-          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+          <section className="cc-card rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
             <div className="animate-pulse space-y-3">
               <div className="h-5 w-48 rounded bg-slate-200" />
               <div className="h-4 w-80 rounded bg-slate-200" />
@@ -526,13 +524,13 @@ export default function CutCoachPage() {
         ) : null}
 
         {!isBootstrapping && (!data?.profile || showSetupPanel) ? (
-          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+          <section className="cc-card rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-xl font-semibold">{data?.profile ? 'Profile setup' : 'Initial setup'}</h2>
                 <p className="mt-1 text-sm text-slate-500">
                   {data?.profile
-                    ? 'Adjust calories, training day pattern and baseline data only when needed.'
+                    ? 'Change profile only when needed.'
                     : 'Start with profile, weight and training day pattern.'}
                 </p>
               </div>
@@ -647,7 +645,7 @@ export default function CutCoachPage() {
         {!isBootstrapping && data?.profile ? (
           <>
             {scanReview ? (
-              <section className="rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,#ecfdf5_0%,#f0fdf4_35%,#ffffff_100%)] p-5 shadow-[0_18px_40px_rgba(16,185,129,0.12)]">
+              <section className="cc-card rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,#ecfdf5_0%,#f0fdf4_35%,#ffffff_100%)] p-5 shadow-[0_18px_40px_rgba(16,185,129,0.12)]">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex items-start gap-4">
                     {scanReview.food.image_url ? (
@@ -709,11 +707,11 @@ export default function CutCoachPage() {
                 <MacroBar title="Carbs" current={today?.consumed.carbs ?? 0} target={today?.target?.carbs_target ?? 1} />
                 <MacroBar title="Fat" current={today?.consumed.fat ?? 0} target={today?.target?.fat_target ?? 1} />
 
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="cc-subcard mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="text-sm font-semibold">Quick add</div>
-                      <div className="text-xs text-slate-500">Open the add drawer already pointed at a likely food.</div>
+                      <div className="text-xs text-slate-500">Most-used foods first.</div>
                     </div>
                     <button
                       className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
@@ -759,7 +757,7 @@ export default function CutCoachPage() {
                 </div>
 
                 <div className="mt-4">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="cc-subcard rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-sm font-semibold">Meals logged today</div>
@@ -806,7 +804,7 @@ export default function CutCoachPage() {
                   <Metric label="Protein" value={`${Math.round(tomorrow?.target?.protein_target ?? 0)} g`} />
                   <Metric label="Day type" value={tomorrow?.target?.day_type ?? '—'} />
                 </div>
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="cc-subcard mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="text-sm font-semibold">Adjustment explanation</div>
                   <div className="mt-2 text-sm text-slate-600">
                     {humanizeAdjustmentReason(
@@ -820,7 +818,7 @@ export default function CutCoachPage() {
                 <div className="mt-4 space-y-3">
                   {tomorrow?.planItems.length ? (
                     tomorrow.planItems.map((item) => (
-                      <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div key={item.id} className="cc-subcard rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <div className="text-sm font-semibold capitalize">{item.meal_slot}</div>
@@ -852,7 +850,7 @@ export default function CutCoachPage() {
                   <Metric label="14d avg" value={data.trends.avg14 ? `${data.trends.avg14} kg` : '—'} />
                   <Metric label="30d avg" value={data.trends.avg30 ? `${data.trends.avg30} kg` : '—'} />
                 </div>
-                <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                <div className="cc-subcard mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
                   {data.trends.delta7 == null
                     ? 'Trend note appears after more weight entries.'
                     : data.trends.delta7 > 0.15
@@ -887,7 +885,7 @@ export default function CutCoachPage() {
                 <div className="space-y-3">
                   {data.week.length ? (
                     data.week.map((day) => (
-                      <div key={day.date} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                      <div key={day.date} className="cc-subcard rounded-2xl border border-slate-200 bg-slate-50 p-3">
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <div className="font-medium">{day.date}</div>
@@ -911,9 +909,9 @@ export default function CutCoachPage() {
               </Panel>
 
               <Panel title="My foods">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="cc-subcard rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="text-sm font-semibold">Add or edit food</div>
-                  <div className="mt-1 text-xs text-slate-500">Generic foods and scanned products live in one search, but creation stays simple.</div>
+                  <div className="mt-1 text-xs text-slate-500">Generic foods and barcode products.</div>
                 </div>
                 <div className="mt-4 grid gap-3">
                   <Field
@@ -1026,13 +1024,101 @@ export default function CutCoachPage() {
       {scannerOpen ? (
         <BarcodeScanner onClose={() => setScannerOpen(false)} onDetected={handleBarcodeDetected} />
       ) : null}
+      <style jsx global>{`
+        .cut-coach-shell,
+        .cc-drawer {
+          --cc-bg: #eef3f8;
+          --cc-surface: #ffffff;
+          --cc-surface-2: #f8fafc;
+          --cc-border: #dbe4ee;
+          --cc-text: #0f172a;
+          --cc-muted: #64748b;
+          --cc-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .cut-coach-shell,
+          .cc-drawer {
+            --cc-bg: #090b11;
+            --cc-surface: #11131a;
+            --cc-surface-2: #171a22;
+            --cc-border: #252a36;
+            --cc-text: #f2f5f9;
+            --cc-muted: #94a3b8;
+            --cc-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+          }
+        }
+
+        .cut-coach-shell {
+          background: linear-gradient(180deg, var(--cc-bg) 0%, color-mix(in srgb, var(--cc-bg) 88%, #ffffff 12%) 100%) !important;
+          color: var(--cc-text) !important;
+        }
+
+        .cut-coach-shell .cc-card,
+        .cc-drawer .cc-card {
+          background: linear-gradient(180deg, color-mix(in srgb, var(--cc-surface) 96%, white 4%) 0%, var(--cc-surface) 100%) !important;
+          border-color: var(--cc-border) !important;
+          box-shadow: var(--cc-shadow) !important;
+          color: var(--cc-text) !important;
+        }
+
+        .cut-coach-shell .cc-subcard,
+        .cc-drawer .cc-subcard,
+        .cut-coach-shell .cc-stat {
+          background: var(--cc-surface-2) !important;
+          border-color: var(--cc-border) !important;
+          color: var(--cc-text) !important;
+        }
+
+        .cut-coach-shell .cc-input,
+        .cc-drawer .cc-input {
+          background: var(--cc-surface) !important;
+          border-color: var(--cc-border) !important;
+          color: var(--cc-text) !important;
+        }
+
+        .cut-coach-shell .cc-input::placeholder,
+        .cc-drawer .cc-input::placeholder {
+          color: var(--cc-muted) !important;
+        }
+
+        .cut-coach-shell .cc-meter,
+        .cc-drawer .cc-meter {
+          background: color-mix(in srgb, var(--cc-border) 65%, transparent) !important;
+        }
+
+        .cut-coach-shell .text-slate-950,
+        .cut-coach-shell .text-slate-900,
+        .cc-drawer .text-slate-950,
+        .cc-drawer .text-slate-900 {
+          color: var(--cc-text) !important;
+        }
+
+        .cut-coach-shell .text-slate-700,
+        .cut-coach-shell .text-slate-600,
+        .cut-coach-shell .text-slate-500,
+        .cut-coach-shell .text-slate-400,
+        .cc-drawer .text-slate-700,
+        .cc-drawer .text-slate-600,
+        .cc-drawer .text-slate-500,
+        .cc-drawer .text-slate-400 {
+          color: var(--cc-muted) !important;
+        }
+
+        .cut-coach-shell .border-slate-200,
+        .cut-coach-shell .border-slate-300,
+        .cc-drawer .border-slate-200,
+        .cc-drawer .border-slate-300 {
+          border-color: var(--cc-border) !important;
+        }
+      `}</style>
     </main>
   );
 }
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+    <section className="cc-card rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
       <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
@@ -1041,7 +1127,7 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-3">
+    <div className="cc-stat rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-3">
       <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{label}</div>
       <div className="mt-1 text-lg font-semibold text-slate-950">{value}</div>
     </div>
@@ -1063,7 +1149,7 @@ function Field({
     <label className="block">
       <div className="mb-1 text-sm font-medium text-slate-700">{label}</div>
       <input
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none ring-0 placeholder:text-slate-400"
+        className="cc-input w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none ring-0 placeholder:text-slate-400"
         onChange={(event) => onChange(event.target.value)}
         type={type}
         value={value}
@@ -1087,7 +1173,7 @@ function SelectField({
     <label className="block">
       <div className="mb-1 text-sm font-medium text-slate-700">{label}</div>
       <select
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none ring-0"
+        className="cc-input w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none ring-0"
         onChange={(event) => onChange(event.target.value)}
         value={value}
       >
@@ -1111,7 +1197,7 @@ function MacroBar({ title, current, target }: { title: string; current: number; 
           {Math.round(current)} / {Math.round(target)}
         </span>
       </div>
-      <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+      <div className="cc-meter h-3 overflow-hidden rounded-full bg-slate-100">
         <div className="h-full rounded-full bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400" style={{ width: `${ratio * 100}%` }} />
       </div>
     </div>
@@ -1154,14 +1240,14 @@ function AddFoodDrawer({
   selectedFood: CutCoachFoodRow | null;
 }) {
   return (
-    <div className="fixed inset-0 z-40 bg-slate-950/45 p-0 backdrop-blur-sm">
-      <div className="absolute inset-x-0 bottom-0 top-12 overflow-auto rounded-t-[32px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f6f9fc_100%)] p-5 shadow-[0_-24px_60px_rgba(15,23,42,0.18)] sm:left-auto sm:right-4 sm:top-4 sm:w-[32rem] sm:rounded-[32px]">
+    <div className="cc-drawer fixed inset-0 z-40 bg-slate-950/45 p-0 backdrop-blur-sm">
+      <div className="cc-card absolute inset-x-0 bottom-0 top-12 overflow-auto rounded-t-[32px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f6f9fc_100%)] p-5 shadow-[0_-24px_60px_rgba(15,23,42,0.18)] sm:left-auto sm:right-4 sm:top-4 sm:w-[32rem] sm:rounded-[32px]">
         <div className="mx-auto h-1.5 w-14 rounded-full bg-slate-200 sm:hidden" />
         <div className="mt-4 flex items-start justify-between gap-3">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.28em] text-violet-600">Add To Today</div>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Choose product, quantity, save.</h2>
-            <p className="mt-2 text-sm text-slate-500">This drawer keeps the add flow separate, then returns you to the full dashboard view.</p>
+            <p className="mt-2 text-sm text-slate-500">Search, scan, pick quantity, save.</p>
           </div>
           <button
             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
@@ -1173,7 +1259,7 @@ function AddFoodDrawer({
         </div>
 
         {scanReview ? (
-          <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <div className="cc-subcard mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
             <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Scanned just now</div>
             <div className="mt-2 text-lg font-semibold text-slate-950">{scanReview.food.name}</div>
             <div className="mt-1 text-sm text-slate-600">
@@ -1216,7 +1302,7 @@ function AddFoodDrawer({
           />
 
           {selectedFood ? (
-            <div className="rounded-2xl border border-sky-200 bg-white p-4 shadow-sm">
+            <div className="cc-subcard rounded-2xl border border-sky-200 bg-white p-4 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">Selected</div>
               <div className="mt-2 text-lg font-semibold text-slate-950">{selectedFood.name}</div>
               <div className="mt-1 text-sm text-slate-500">
@@ -1316,3 +1402,5 @@ function AddFoodDrawer({
     </div>
   );
 }
+
+/* cut coach theme: slate neutrals + cool accents, system light/dark */
