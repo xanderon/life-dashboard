@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, useTransition, type ReactNode } from 'react';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
@@ -89,6 +90,12 @@ type FoodState = {
   is_favorite: boolean;
 };
 
+type ScanReviewState = {
+  food: CutCoachFoodRow;
+  barcode: string;
+  imported: boolean;
+};
+
 const defaultSetup: SetupState = {
   age: '33',
   sex: 'male',
@@ -163,6 +170,7 @@ export default function CutCoachPage() {
   const [selectedFood, setSelectedFood] = useState<CutCoachFoodRow | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [searchBusy, setSearchBusy] = useState(false);
+  const [scanReview, setScanReview] = useState<ScanReviewState | null>(null);
 
   async function loadBootstrap() {
     setError(null);
@@ -298,6 +306,7 @@ export default function CutCoachPage() {
         grams_total: Number(logState.grams_total),
       });
       setLogState(defaultLog);
+      setScanReview(null);
       await loadBootstrap();
     });
   }
@@ -316,6 +325,7 @@ export default function CutCoachPage() {
 
   function selectFood(food: CutCoachFoodRow) {
     setSelectedFood(food);
+    setScanReview(null);
     setLogState((state) => ({
       ...state,
       food_id: food.id,
@@ -409,14 +419,23 @@ export default function CutCoachPage() {
     });
   }
 
-  function handleBarcodeDetected(barcode: string) {
-    mutate(async () => {
-      const payload = (await postJson('/api/cut-coach/foods/scan', 'POST', { barcode })) as {
-        food: CutCoachFoodRow;
-      };
-      selectFood(payload.food);
-      setSearchQuery(payload.food.name);
-      await loadBootstrap();
+  async function handleBarcodeDetected(barcode: string) {
+    const payload = (await postJson('/api/cut-coach/foods/scan', 'POST', { barcode })) as {
+      food: CutCoachFoodRow;
+      imported?: boolean;
+    };
+    setSelectedFood(payload.food);
+    setLogState((state) => ({
+      ...state,
+      food_id: payload.food.id,
+      grams_total: String(Math.round(payload.food.default_serving_grams ?? payload.food.package_size_grams ?? 100)),
+      quantity: '1',
+    }));
+    setSearchQuery(payload.food.name);
+    setScanReview({
+      food: payload.food,
+      barcode,
+      imported: Boolean(payload.imported),
     });
   }
 
@@ -431,27 +450,29 @@ export default function CutCoachPage() {
   const quickAddFoods = (data?.favorites.length ? data.favorites : data?.recentFoods ?? []).slice(0, 8);
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f6f8fb_0%,#eef3f8_45%,#e6edf5_100%)] p-4 text-slate-900 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
-        <header className="rounded-3xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
+        <header className="rounded-[32px] border border-slate-200/70 bg-[radial-gradient(circle_at_top_left,#ffffff_0%,#f7fafc_45%,#edf3f8_100%)] p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <Link
-                className="inline-flex rounded-full border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs font-semibold text-[var(--muted)] hover:text-white"
+                className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500 hover:text-slate-900"
                 href="/"
               >
                 Back to dashboard
               </Link>
-              <div className="text-xs uppercase tracking-[0.3em] text-[var(--muted)]">Adaptive Cut Coach</div>
-              <h1 className="mt-2 text-3xl font-semibold">Today first. Tomorrow visible. Adjustments explainable.</h1>
-              <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
+              <div className="mt-4 text-xs uppercase tracking-[0.35em] text-sky-600">Adaptive Cut Coach</div>
+              <h1 className="mt-2 max-w-4xl text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                Log food fast, scan products on mobile, and keep today under control.
+              </h1>
+              <p className="mt-3 max-w-3xl text-sm text-slate-600">
                 Deterministic calorie and macro planning for your cut, built into Life Dashboard.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               {data?.profile ? (
                 <button
-                  className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-4 py-2 text-sm font-semibold hover:bg-[#214547]"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                   onClick={() => setShowSetupPanel((value) => !value)}
                   type="button"
                 >
@@ -459,7 +480,7 @@ export default function CutCoachPage() {
                 </button>
               ) : null}
               <button
-                className="rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold hover:bg-emerald-500/25"
+                className="rounded-xl border border-sky-300 bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-600"
                 onClick={recomputePlan}
                 type="button"
               >
@@ -467,17 +488,17 @@ export default function CutCoachPage() {
               </button>
             </div>
           </div>
-          {error ? <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-100">{error}</div> : null}
+          {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
         </header>
 
         {isBootstrapping ? (
-          <section className="rounded-3xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
+          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
             <div className="animate-pulse space-y-3">
-              <div className="h-5 w-48 rounded bg-[var(--panel-2)]" />
-              <div className="h-4 w-80 rounded bg-[var(--panel-2)]" />
+              <div className="h-5 w-48 rounded bg-slate-200" />
+              <div className="h-4 w-80 rounded bg-slate-200" />
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {Array.from({ length: 8 }, (_, index) => (
-                  <div key={index} className="h-20 rounded-2xl bg-[var(--panel-2)]" />
+                  <div key={index} className="h-20 rounded-2xl bg-slate-200" />
                 ))}
               </div>
             </div>
@@ -485,7 +506,7 @@ export default function CutCoachPage() {
         ) : null}
 
         {!isBootstrapping && (!data?.profile || showSetupPanel) ? (
-          <section className="rounded-3xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
+          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-xl font-semibold">{data?.profile ? 'Profile setup' : 'Initial setup'}</h2>
@@ -497,7 +518,7 @@ export default function CutCoachPage() {
               </div>
               {data?.profile ? (
                 <button
-                  className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm font-semibold hover:bg-[#214547]"
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
                   onClick={() => setShowSetupPanel(false)}
                   type="button"
                 >
@@ -574,8 +595,8 @@ export default function CutCoachPage() {
                       key={day.value}
                       className={`rounded-full border px-3 py-1 text-sm ${
                         active
-                          ? 'border-emerald-500/50 bg-emerald-500/20 text-white'
-                          : 'border-[var(--border)] bg-[var(--panel-2)] text-[var(--muted)]'
+                          ? 'border-sky-400 bg-sky-500 text-white'
+                          : 'border-slate-200 bg-slate-50 text-slate-500'
                       }`}
                       onClick={() =>
                         setSetup((state) => ({
@@ -594,7 +615,7 @@ export default function CutCoachPage() {
               </div>
             </div>
             <button
-              className="mt-5 rounded-xl border border-emerald-500/40 bg-emerald-500/20 px-4 py-2 font-semibold hover:bg-emerald-500/30"
+              className="mt-5 rounded-xl border border-sky-300 bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-600"
               onClick={submitSetup}
               type="button"
             >
@@ -605,6 +626,56 @@ export default function CutCoachPage() {
 
         {!isBootstrapping && data?.profile ? (
           <>
+            {scanReview ? (
+              <section className="rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,#ecfdf5_0%,#f0fdf4_35%,#ffffff_100%)] p-5 shadow-[0_18px_40px_rgba(16,185,129,0.12)]">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-start gap-4">
+                    {scanReview.food.image_url ? (
+                      <Image
+                        alt={scanReview.food.name}
+                        className="h-20 w-20 rounded-2xl border border-emerald-100 object-cover"
+                        height={80}
+                        src={scanReview.food.image_url}
+                        width={80}
+                      />
+                    ) : (
+                      <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-emerald-100 text-2xl text-emerald-700">▣</div>
+                    )}
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-700">Scanned product ready</div>
+                      <div className="mt-1 text-2xl font-semibold text-slate-950">{scanReview.food.name}</div>
+                      <div className="mt-1 text-sm text-slate-600">
+                        {scanReview.food.brand ? `${scanReview.food.brand} • ` : ''}
+                        barcode {scanReview.barcode}
+                        {scanReview.imported ? ' • imported now' : ' • found in your foods'}
+                      </div>
+                      <div className="mt-2 text-sm text-slate-700">
+                        {Math.round(scanReview.food.calories)} kcal • P {Math.round(scanReview.food.protein)} / C {Math.round(scanReview.food.carbs)} / F {Math.round(scanReview.food.fat)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      onClick={() => setScanReview(null)}
+                      type="button"
+                    >
+                      Dismiss
+                    </button>
+                    <button
+                      className="rounded-xl border border-emerald-300 bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
+                      onClick={() => {
+                        document.getElementById('cut-coach-log-composer')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }}
+                      type="button"
+                    >
+                      Continue to quantity
+                    </button>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
             <section className="grid gap-4 xl:grid-cols-[1.25fr_0.95fr]">
               <Panel title="Today">
                 <div className="grid gap-3 sm:grid-cols-4">
@@ -656,14 +727,14 @@ export default function CutCoachPage() {
                 </div>
 
                 <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1.1fr]">
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-4">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-4" id="cut-coach-log-composer">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <div className="text-sm font-semibold">Search or scan</div>
-                        <div className="text-xs text-[var(--muted)]">Search eggs, kefir, products, or scan a barcode on mobile.</div>
+                        <div className="text-xs text-slate-500">Search eggs, kefir, products, or scan a barcode on mobile.</div>
                       </div>
                       <button
-                        className="rounded-xl border border-amber-500/40 bg-amber-500/15 px-3 py-2 text-sm font-semibold hover:bg-amber-500/25"
+                        className="rounded-xl border border-violet-200 bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-700"
                         onClick={() => setScannerOpen(true)}
                         type="button"
                       >
@@ -689,25 +760,26 @@ export default function CutCoachPage() {
                         onChange={(value) => setLogState((state) => ({ ...state, meal_type: value as LogState['meal_type'] }))}
                       />
                       {selectedFood ? (
-                        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+                        <div className="rounded-2xl border border-sky-200 bg-white p-3 shadow-sm">
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <div className="font-semibold">{selectedFood.name}</div>
-                              <div className="text-xs text-[var(--muted)]">
+                              <div className="text-xs text-slate-500">
                                 {selectedFood.brand ? `${selectedFood.brand} • ` : ''}
                                 {Math.round(selectedFood.calories)} kcal • P {Math.round(selectedFood.protein)} / C {Math.round(selectedFood.carbs)} / F {Math.round(selectedFood.fat)}
                               </div>
                               {selectedFood.barcode ? (
-                                <div className="mt-1 text-[11px] text-[var(--muted)]">
+                                <div className="mt-1 text-[11px] text-slate-500">
                                   barcode {selectedFood.barcode}
                                 </div>
                               ) : null}
                             </div>
                             <button
-                              className="rounded-lg border border-[var(--border)] px-2 py-1 text-xs"
+                              className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600"
                               onClick={() => {
                                 setSelectedFood(null);
                                 setLogState(defaultLog);
+                                setScanReview(null);
                               }}
                               type="button"
                             >
@@ -719,7 +791,7 @@ export default function CutCoachPage() {
                             {(['30g', '50g', '100g', '150g', '200g', 'serving'] as const).map((preset) => (
                               <button
                                 key={preset}
-                                className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold hover:bg-sky-500/20"
+                                className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-100"
                                 onClick={() => applyQuantityPreset(preset)}
                                 type="button"
                               >
@@ -731,14 +803,14 @@ export default function CutCoachPage() {
                             {selectedFood.package_size_grams ? (
                               <>
                                 <button
-                                  className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold hover:bg-cyan-500/20"
+                                  className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-100"
                                   onClick={() => applyQuantityPreset('half-pack')}
                                   type="button"
                                 >
                                   half pack
                                 </button>
                                 <button
-                                  className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold hover:bg-cyan-500/20"
+                                  className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-100"
                                   onClick={() => applyQuantityPreset('pack')}
                                   type="button"
                                 >
@@ -761,7 +833,7 @@ export default function CutCoachPage() {
                           onChange={(value) => setLogState((state) => ({ ...state, quantity: value }))}
                         />
                       </div>
-                      {searchBusy ? <div className="text-xs text-[var(--muted)]">Searching...</div> : null}
+                      {searchBusy ? <div className="text-xs text-slate-500">Searching...</div> : null}
                       {searchQuery.trim() ? (
                         <div className="max-h-56 space-y-2 overflow-auto pr-1">
                           {searchResults.length ? (
@@ -793,7 +865,7 @@ export default function CutCoachPage() {
                               </button>
                             ))
                           ) : (
-                            <div className="rounded-xl border border-dashed border-[var(--border)] px-3 py-4 text-sm text-[var(--muted)]">
+                            <div className="rounded-xl border border-dashed border-slate-300 px-3 py-4 text-sm text-slate-500">
                               No matches yet. You can still add it manually in My foods below.
                             </div>
                           )}
@@ -801,11 +873,11 @@ export default function CutCoachPage() {
                       ) : null}
                     </div>
                     <button
-                      className="mt-4 rounded-xl border border-sky-500/40 bg-sky-500/15 px-4 py-2 text-sm font-semibold hover:bg-sky-500/25"
+                      className="mt-4 rounded-xl border border-emerald-300 bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
                       onClick={submitLog}
                       type="button"
                     >
-                      Add food
+                      Save to today
                     </button>
                   </div>
 
@@ -813,7 +885,7 @@ export default function CutCoachPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-sm font-semibold">Meals logged today</div>
-                        <div className="text-xs text-[var(--muted)]">Food, meal, calories and running total for the day.</div>
+                        <div className="text-xs text-slate-500">Food, meal, calories and running total for the day.</div>
                       </div>
                     </div>
                     <div className="mt-3 space-y-2">
@@ -823,10 +895,10 @@ export default function CutCoachPage() {
                             <div className="flex items-center justify-between gap-3">
                               <div>
                                 <div className="font-medium">{log.custom_food_name ?? data.foods.find((food) => food.id === log.food_id)?.name ?? 'Food'}</div>
-                                <div className="text-xs text-[var(--muted)]">
+                                <div className="text-xs text-slate-500">
                                   {log.meal_type} • {Math.round(log.grams_total)} g • {Math.round(log.calories_total)} kcal
                                 </div>
-                                <div className="mt-1 text-[11px] text-[var(--muted)]">
+                                <div className="mt-1 text-[11px] text-slate-500">
                                   running total {Math.round(log.runningCalories)} kcal
                                 </div>
                               </div>
@@ -841,7 +913,7 @@ export default function CutCoachPage() {
                           </div>
                         ))
                       ) : (
-                        <div className="rounded-xl border border-dashed border-[var(--border)] px-3 py-5 text-sm text-[var(--muted)]">
+                        <div className="rounded-xl border border-dashed border-slate-300 px-3 py-5 text-sm text-slate-500">
                           No food logged yet for today.
                         </div>
                       )}
@@ -858,7 +930,7 @@ export default function CutCoachPage() {
                 </div>
                 <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-4">
                   <div className="text-sm font-semibold">Adjustment explanation</div>
-                  <div className="mt-2 text-sm text-[var(--muted)]">
+                  <div className="mt-2 text-sm text-slate-600">
                     {humanizeAdjustmentReason(
                       tomorrow?.target?.adjustment_reason ??
                         tomorrow?.adjustments[0]?.reason ??
@@ -874,11 +946,11 @@ export default function CutCoachPage() {
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <div className="text-sm font-semibold capitalize">{item.meal_slot}</div>
-                            <div className="mt-1 text-sm text-[var(--muted)]">{item.suggested_food_text}</div>
+                            <div className="mt-1 text-sm text-slate-500">{item.suggested_food_text}</div>
                           </div>
                           <div className="text-right text-sm">
                             <div className="font-semibold">{Math.round(item.suggested_calories)} kcal</div>
-                            <div className="text-xs text-[var(--muted)]">
+                            <div className="text-xs text-slate-500">
                               P {Math.round(item.suggested_protein)} / C {Math.round(item.suggested_carbs)} / F {Math.round(item.suggested_fat)}
                             </div>
                           </div>
@@ -886,7 +958,7 @@ export default function CutCoachPage() {
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-xl border border-dashed border-[var(--border)] px-3 py-5 text-sm text-[var(--muted)]">
+                    <div className="rounded-xl border border-dashed border-slate-300 px-3 py-5 text-sm text-slate-500">
                       Tomorrow meal suggestions appear after setup and recompute.
                     </div>
                   )}
@@ -902,7 +974,7 @@ export default function CutCoachPage() {
                   <Metric label="14d avg" value={data.trends.avg14 ? `${data.trends.avg14} kg` : '—'} />
                   <Metric label="30d avg" value={data.trends.avg30 ? `${data.trends.avg30} kg` : '—'} />
                 </div>
-                <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-sm text-[var(--muted)]">
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
                   {data.trends.delta7 == null
                     ? 'Trend note appears after more weight entries.'
                     : data.trends.delta7 > 0.15
@@ -941,19 +1013,19 @@ export default function CutCoachPage() {
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <div className="font-medium">{day.date}</div>
-                            <div className="text-xs text-[var(--muted)] capitalize">
+                            <div className="text-xs text-slate-500 capitalize">
                               {day.target?.day_type ?? 'rest'} • {day.target?.plan_status ?? 'planned'}
                             </div>
                           </div>
                           <div className="text-right text-sm">
                             <div>{Math.round(day.consumed.calories)} / {Math.round(day.target?.kcal_target ?? 0)} kcal</div>
-                            <div className="text-xs text-[var(--muted)]">remaining {Math.round(day.remaining?.calories ?? 0)} kcal</div>
+                            <div className="text-xs text-slate-500">remaining {Math.round(day.remaining?.calories ?? 0)} kcal</div>
                           </div>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-xl border border-dashed border-[var(--border)] px-3 py-5 text-sm text-[var(--muted)]">
+                    <div className="rounded-xl border border-dashed border-slate-300 px-3 py-5 text-sm text-slate-500">
                       Week summary appears after setup.
                     </div>
                   )}
@@ -961,9 +1033,9 @@ export default function CutCoachPage() {
               </Panel>
 
               <Panel title="My foods">
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-4">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="text-sm font-semibold">Add or edit food</div>
-                  <div className="mt-1 text-xs text-[var(--muted)]">Generic foods and scanned products live in one search, but creation stays simple.</div>
+                  <div className="mt-1 text-xs text-slate-500">Generic foods and scanned products live in one search, but creation stays simple.</div>
                 </div>
                 <div className="mt-4 grid gap-3">
                   <Field
@@ -1010,7 +1082,7 @@ export default function CutCoachPage() {
                     value={foodState.serving_label}
                     onChange={(value) => setFoodState((state) => ({ ...state, serving_label: value }))}
                   />
-                  <label className="flex items-center gap-2 text-sm text-[var(--muted)]">
+                  <label className="flex items-center gap-2 text-sm text-slate-500">
                     <input
                       checked={foodState.is_favorite}
                       onChange={(event) => setFoodState((state) => ({ ...state, is_favorite: event.target.checked }))}
@@ -1019,7 +1091,7 @@ export default function CutCoachPage() {
                     Pin as favorite
                   </label>
                   <button
-                    className="rounded-xl border border-cyan-500/40 bg-cyan-500/15 px-4 py-2 text-sm font-semibold hover:bg-cyan-500/25"
+                    className="rounded-xl border border-violet-300 bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
                     onClick={submitFood}
                     type="button"
                   >
@@ -1032,10 +1104,10 @@ export default function CutCoachPage() {
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <div className="font-medium">{food.name}</div>
-                          <div className="text-xs text-[var(--muted)]">
+                          <div className="text-xs text-slate-500">
                             {Math.round(food.calories)} kcal • P {Math.round(food.protein)} / C {Math.round(food.carbs)} / F {Math.round(food.fat)}
                           </div>
-                          <div className="mt-1 text-[11px] text-[var(--muted)]">
+                          <div className="mt-1 text-[11px] text-slate-500">
                             {food.source_kind === 'generic' ? 'generic food' : 'barcode product'}
                             {food.barcode ? ` • ${food.barcode}` : ''}
                           </div>
@@ -1050,15 +1122,17 @@ export default function CutCoachPage() {
           </>
         ) : null}
       </div>
-      <BarcodeScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onDetected={handleBarcodeDetected} />
+      {scannerOpen ? (
+        <BarcodeScanner onClose={() => setScannerOpen(false)} onDetected={handleBarcodeDetected} />
+      ) : null}
     </main>
   );
 }
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-3xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
-      <h2 className="text-xl font-semibold">{title}</h2>
+    <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+      <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -1066,9 +1140,9 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-4 py-3">
-      <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">{label}</div>
-      <div className="mt-1 text-lg font-semibold">{value}</div>
+    <div className="rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-3">
+      <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{label}</div>
+      <div className="mt-1 text-lg font-semibold text-slate-950">{value}</div>
     </div>
   );
 }
@@ -1086,9 +1160,9 @@ function Field({
 }) {
   return (
     <label className="block">
-      <div className="mb-1 text-sm font-medium">{label}</div>
+      <div className="mb-1 text-sm font-medium text-slate-700">{label}</div>
       <input
-        className="w-full rounded-xl border border-[var(--border)] bg-[#102b2d] px-3 py-2 outline-none ring-0"
+        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none ring-0 placeholder:text-slate-400"
         onChange={(event) => onChange(event.target.value)}
         type={type}
         value={value}
@@ -1110,9 +1184,9 @@ function SelectField({
 }) {
   return (
     <label className="block">
-      <div className="mb-1 text-sm font-medium">{label}</div>
+      <div className="mb-1 text-sm font-medium text-slate-700">{label}</div>
       <select
-        className="w-full rounded-xl border border-[var(--border)] bg-[#102b2d] px-3 py-2 outline-none ring-0"
+        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none ring-0"
         onChange={(event) => onChange(event.target.value)}
         value={value}
       >
@@ -1132,12 +1206,12 @@ function MacroBar({ title, current, target }: { title: string; current: number; 
     <div className="mt-3">
       <div className="mb-1 flex items-center justify-between text-sm">
         <span>{title}</span>
-        <span className="text-[var(--muted)]">
+        <span className="text-slate-500">
           {Math.round(current)} / {Math.round(target)}
         </span>
       </div>
-      <div className="h-3 overflow-hidden rounded-full bg-[#102b2d]">
-        <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-300" style={{ width: `${ratio * 100}%` }} />
+      <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400" style={{ width: `${ratio * 100}%` }} />
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 
 type DetectedBarcode = {
@@ -21,13 +21,11 @@ type BrowserWindow = Window & {
 };
 
 export function BarcodeScanner({
-  open,
   onClose,
   onDetected,
 }: {
-  open: boolean;
   onClose: () => void;
-  onDetected: (barcode: string) => void;
+  onDetected: (barcode: string) => Promise<void> | void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -35,15 +33,32 @@ export function BarcodeScanner({
   const html5QrRef = useRef<Html5Qrcode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [manualBarcode, setManualBarcode] = useState('');
+  const [detectedCode, setDetectedCode] = useState<string | null>(null);
+  const [isResolving, setIsResolving] = useState(false);
 
   const supported = useMemo(() => {
     if (typeof window === 'undefined') return false;
     return typeof (window as BrowserWindow).BarcodeDetector !== 'undefined';
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
+  const resolveDetectedBarcode = useCallback(
+    async (raw: string) => {
+      if (!raw.match(/^\d{6,14}$/) || isResolving) return;
+      setDetectedCode(raw);
+      setIsResolving(true);
+      setError(null);
+      try {
+        await onDetected(raw);
+        onClose();
+      } catch (scanError) {
+        setError(scanError instanceof Error ? scanError.message : 'Could not resolve product.');
+        setIsResolving(false);
+      }
+    },
+    [isResolving, onClose, onDetected]
+  );
 
+  useEffect(() => {
     let cancelled = false;
 
     async function startNativeDetector() {
@@ -76,8 +91,7 @@ export function BarcodeScanner({
           const results = await detector.detect(videoRef.current);
           const raw = results.find((item) => item.rawValue?.match(/^\d{6,14}$/))?.rawValue;
           if (raw) {
-            onDetected(raw);
-            onClose();
+            await resolveDetectedBarcode(raw);
             return;
           }
         } catch {
@@ -103,10 +117,9 @@ export function BarcodeScanner({
           aspectRatio: 1.3333333,
           disableFlip: true,
         },
-        (decodedText) => {
+        async (decodedText) => {
           if (!decodedText.match(/^\d{6,14}$/)) return;
-          onDetected(decodedText);
-          onClose();
+          await resolveDetectedBarcode(decodedText);
         },
         () => {
           // Ignore frame-level decode misses.
@@ -148,20 +161,18 @@ export function BarcodeScanner({
           });
       }
     };
-  }, [onClose, onDetected, open, supported]);
-
-  if (!open) return null;
+  }, [resolveDetectedBarcode, supported]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/70 p-3 sm:items-center sm:justify-center">
-      <div className="w-full max-w-md rounded-3xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-2xl">
+      <div className="w-full max-w-md rounded-[28px] border border-white/15 bg-[#0c1820] p-4 shadow-2xl shadow-black/50 backdrop-blur">
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-lg font-semibold">Scan barcode</div>
             <div className="text-sm text-[var(--muted)]">Use the back camera on mobile, or paste the code manually.</div>
           </div>
           <button
-            className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm font-semibold"
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white/90"
             onClick={onClose}
             type="button"
           >
@@ -180,12 +191,20 @@ export function BarcodeScanner({
         )}
 
         {error ? <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-100">{error}</div> : null}
+        {detectedCode ? (
+          <div className="mt-3 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-3 py-3 text-sm text-emerald-50">
+            <div className="font-semibold">{isResolving ? 'Barcode detected' : 'Try again'}</div>
+            <div className="mt-1 text-emerald-100/80">
+              {isResolving ? `Found ${detectedCode}. Looking up the product now...` : `Found ${detectedCode}, but resolution failed.`}
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-4">
           <label className="block">
             <div className="mb-1 text-sm font-medium">Manual barcode</div>
             <input
-              className="w-full rounded-xl border border-[var(--border)] bg-[#102b2d] px-3 py-2 outline-none ring-0"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 outline-none ring-0"
               inputMode="numeric"
               onChange={(event) => setManualBarcode(event.target.value)}
               placeholder="5941234567890"
@@ -194,15 +213,15 @@ export function BarcodeScanner({
             />
           </label>
           <button
-            className="mt-3 w-full rounded-xl border border-emerald-500/40 bg-emerald-500/20 px-4 py-2 text-sm font-semibold hover:bg-emerald-500/30"
+            className="mt-3 w-full rounded-xl border border-emerald-500/40 bg-emerald-500/20 px-4 py-2 text-sm font-semibold hover:bg-emerald-500/30 disabled:opacity-50"
             onClick={() => {
               if (!manualBarcode.trim()) return;
-              onDetected(manualBarcode.trim());
-              onClose();
+              void resolveDetectedBarcode(manualBarcode.trim());
             }}
+            disabled={isResolving}
             type="button"
           >
-            Use barcode
+            {isResolving ? 'Looking up product...' : 'Use barcode'}
           </button>
         </div>
       </div>
