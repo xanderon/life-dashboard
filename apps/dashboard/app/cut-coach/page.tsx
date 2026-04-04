@@ -524,36 +524,40 @@ export default function CutCoachPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-1">
-                <Metric
+              <div className="grid grid-cols-3 gap-2">
+                <CompactMetric
                   label="Protein"
-                  value={`${Math.round(today?.consumed.protein ?? 0)} / ${Math.round(today?.target?.protein_target ?? 0)}`}
+                  value={`${Math.round(today?.consumed.protein ?? 0)}`}
+                  target={`${Math.round(today?.target?.protein_target ?? 0)}`}
                 />
-                <Metric
+                <CompactMetric
                   label="Carbs"
-                  value={`${Math.round(today?.consumed.carbs ?? 0)} / ${Math.round(today?.target?.carbs_target ?? 0)}`}
+                  value={`${Math.round(today?.consumed.carbs ?? 0)}`}
+                  target={`${Math.round(today?.target?.carbs_target ?? 0)}`}
                 />
-                <Metric
+                <CompactMetric
                   label="Fat"
-                  value={`${Math.round(today?.consumed.fat ?? 0)} / ${Math.round(today?.target?.fat_target ?? 0)}`}
+                  value={`${Math.round(today?.consumed.fat ?? 0)}`}
+                  target={`${Math.round(today?.target?.fat_target ?? 0)}`}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <button
-                className="rounded-2xl border border-sky-300 bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-sky-600"
+                className="min-w-0 overflow-hidden rounded-2xl border border-sky-300 bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-sky-600"
                 onClick={() => openComposer()}
                 type="button"
               >
                 Add food
               </button>
               <button
-                className="rounded-2xl border border-violet-200 bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700"
+                className="min-w-0 overflow-hidden rounded-2xl border border-violet-200 bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700"
                 onClick={() => setScannerOpen(true)}
                 type="button"
               >
-                Scan barcode
+                <span className="sm:hidden">Scan</span>
+                <span className="hidden sm:inline">Scan barcode</span>
               </button>
             </div>
 
@@ -568,11 +572,11 @@ export default function CutCoachPage() {
                   Search all
                 </button>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
                 {quickAddFoods.map((food) => (
                   <button
                     key={food.id}
-                    className="max-w-full truncate rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
+                    className="max-w-[72vw] shrink-0 truncate rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 sm:max-w-full sm:shrink"
                     onClick={() => openComposer(food)}
                     type="button"
                     title={food.name}
@@ -589,7 +593,7 @@ export default function CutCoachPage() {
                   .map((label) => (
                     <button
                       key={label}
-                      className="max-w-full truncate rounded-2xl border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-500 transition hover:border-slate-400 hover:bg-white/70 hover:text-slate-800"
+                      className="max-w-[72vw] shrink-0 truncate rounded-2xl border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-500 transition hover:border-slate-400 hover:bg-white/70 hover:text-slate-800 sm:max-w-full sm:shrink"
                       onClick={() => {
                         setSearchQuery(label);
                         setSelectedFood(null);
@@ -1265,6 +1269,16 @@ function Metric({ label, value }: { label: string; value: string }) {
     <div className="cc-stat rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-2.5">
       <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{label}</div>
       <div className="mt-0.5 text-base font-semibold text-slate-950 sm:text-lg">{value}</div>
+    </div>
+  );
+}
+
+function CompactMetric({ label, value, target }: { label: string; value: string; target: string }) {
+  return (
+    <div className="cc-stat min-w-0 rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-3 py-2.5">
+      <div className="truncate text-[10px] uppercase tracking-[0.18em] text-slate-400">{label}</div>
+      <div className="mt-1 truncate text-lg font-semibold text-slate-950">{value}</div>
+      <div className="truncate text-xs text-slate-500">/ {target}</div>
     </div>
   );
 }
