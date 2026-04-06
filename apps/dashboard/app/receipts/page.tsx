@@ -913,12 +913,20 @@ export default function ReceiptsPage() {
           <Link className="text-sm underline" href="/">
             ← Dashboard
           </Link>
-          <Link
-            className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
-            href="/receipts/charts"
-          >
-            🧠 Charts
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
+              href="/receipts/export"
+            >
+              JSON Export
+            </Link>
+            <Link
+              className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
+              href="/receipts/charts"
+            >
+              🧠 Charts
+            </Link>
+          </div>
         </div>
 
         <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
