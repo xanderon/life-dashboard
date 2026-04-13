@@ -29,7 +29,6 @@ type RunRow = {
 
 const APP_SLUG = 'termo-alert';
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
-const PUSH_SUBSCRIBE_TOKEN = process.env.NEXT_PUBLIC_PUSH_SUBSCRIBE_TOKEN ?? '';
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -149,11 +148,9 @@ export default function TermoPage() {
         });
       }
 
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (PUSH_SUBSCRIBE_TOKEN) headers['x-push-token'] = PUSH_SUBSCRIBE_TOKEN;
       const res = await fetch('/api/push/subscribe', {
         method: 'POST',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           subscription,
           appSlug: APP_SLUG,

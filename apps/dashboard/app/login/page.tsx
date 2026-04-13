@@ -4,55 +4,35 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('alexnutu@gmail.com');
+  const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [message, setMessage] = useState<string>('');
-  const [origin, setOrigin] = useState<string>('');
-
-  // Afișăm origin-ul curent (localhost vs 192.168...) pentru debug
-  useEffect(() => {
-    setOrigin(window.location.origin);
-  }, []);
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
 
   // ✅ IMPORTANT: Dacă Supabase ne redirecționează la /login cu hash tokens,
   // consumăm access_token + refresh_token și facem sesiunea.
- useEffect(() => {
-  (async () => {
-    console.log('[LOGIN] page loaded');
-    console.log('[LOGIN] location.href:', window.location.href);
+  useEffect(() => {
+    (async () => {
+      const hash = window.location.hash;
+      if (!hash) return;
 
-    const hash = window.location.hash;
-    console.log('[LOGIN] hash:', hash);
+      const params = new URLSearchParams(hash.replace('#', ''));
+      const access_token = params.get('access_token');
+      const refresh_token = params.get('refresh_token');
 
-    if (!hash) return;
+      if (access_token && refresh_token) {
+        const { error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
 
-    const params = new URLSearchParams(hash.replace('#', ''));
-    const access_token = params.get('access_token');
-    const refresh_token = params.get('refresh_token');
-
-    console.log('[LOGIN] access_token exists:', !!access_token);
-    console.log('[LOGIN] refresh_token exists:', !!refresh_token);
-
-    if (access_token && refresh_token) {
-      const { data, error } = await supabase.auth.setSession({
-        access_token,
-        refresh_token,
-      });
-
-      console.log('[LOGIN] setSession data:', data);
-      console.log('[LOGIN] setSession error:', error);
-
-      const sessionCheck = await supabase.auth.getSession();
-      console.log('[LOGIN] getSession after setSession:', sessionCheck);
-
-      if (!error) {
-        console.log('[LOGIN] redirecting to /');
-        window.history.replaceState({}, document.title, '/');
-        window.location.href = '/';
+        if (!error) {
+          window.history.replaceState({}, document.title, '/');
+          window.location.href = '/';
+        }
       }
-    }
-  })();
-}, []);
+    })();
+  }, []);
 
 
   async function onSubmit(e: React.FormEvent) {

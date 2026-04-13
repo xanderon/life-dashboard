@@ -183,6 +183,7 @@ async function sendPushNotifications(supabase, payload) {
   const { data: subs, error } = await supabase
     .from('push_subscriptions')
     .select('id,endpoint,p256dh,auth')
+    .eq('owner_id', SUPABASE_OWNER_ID)
     .eq('app_slug', APP_SLUG)
     .eq('enabled', true);
 
