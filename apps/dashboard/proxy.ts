@@ -12,14 +12,10 @@ function isAsset(pathname: string) {
   );
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Nu intercepta assets
   if (isAsset(pathname)) return NextResponse.next();
-
-  // Debug minimal (nu spam assets)
-  console.log('[MW] path:', pathname);
 
   let res = NextResponse.next({
     request: req,
@@ -50,16 +46,10 @@ export async function middleware(req: NextRequest) {
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p));
 
-  // Log cookies only for non-assets
-  console.log('[MW] cookies:', req.cookies.getAll().map((c) => c.name));
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  console.log('[MW] user:', user ? user.email : null);
-
-  // Dacă nu e user și nu e public => redirect la login
   if (!user && !isPublic) {
     const url = req.nextUrl.clone();
     url.pathname = '/login';

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PwaRegister from "./pwa";
@@ -17,7 +17,6 @@ export const metadata: Metadata = {
   title: "Life Dashboard",
   description: "Personal life dashboard",
   manifest: "/manifest.json",
-  themeColor: "#0b0f17",
   icons: {
     icon: [
       { url: "/icon.svg" },
@@ -30,6 +29,10 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Life Dashboard",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0b0f17",
 };
 
 export default function RootLayout({

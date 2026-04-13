@@ -43,7 +43,7 @@ type ReceiptItemQueryRow = ReceiptItemRow & {
   receipt?: unknown;
 };
 
-function isDateOnly(value: string | null) {
+function isDateOnly(value: string | null): value is string {
   return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 }
 
@@ -165,7 +165,10 @@ export async function GET(req: Request) {
       return jsonError('Parametrii start si end trebuie sa fie in format YYYY-MM-DD.', 400);
     }
 
-    if (start > end) {
+    const startDate = start;
+    const endDate = end;
+
+    if (startDate > endDate) {
       return jsonError('Parametrul start trebuie sa fie mai mic sau egal cu end.', 400);
     }
 
@@ -178,8 +181,8 @@ export async function GET(req: Request) {
       return jsonError('Unauthorized', 401);
     }
 
-    const startIso = zonedDateTimeToUtcIso(start, 0, 0, 0);
-    const endExclusiveIso = zonedDateTimeToUtcIso(addDays(end, 1), 0, 0, 0);
+    const startIso = zonedDateTimeToUtcIso(startDate, 0, 0, 0);
+    const endExclusiveIso = zonedDateTimeToUtcIso(addDays(endDate, 1), 0, 0, 0);
 
     const receiptFields =
       'id,store,receipt_date,currency,total_amount,discount_total,sgr_bottle_charge,sgr_recovered_amount,merchant_name,merchant_city,merchant_cif,processing_status,processing_warnings,source_file_name,source_rel_path,source_hash,schema_version';
