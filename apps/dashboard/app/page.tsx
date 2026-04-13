@@ -22,13 +22,13 @@ export default function HomePage() {
 
         <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <ClockCard />
-          <CutCoachCard />
-          <AppCards slugs={['receipts']} />
+          <AppCards slugs={['receipts', 'termo-alert']} />
           <DevicesCard />
-          <SprintPulseCard />
-          <StudyCoachCard />
           <TricorderCard />
-          <AppCards excludeSlugs={['receipts']} />
+          <AppCards excludeSlugs={['receipts', 'termo-alert']} />
+          <StudyCoachCard />
+          <SprintPulseCard />
+          <CutCoachCard />
         </section>
       </div>
     </main>
