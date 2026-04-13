@@ -1,7 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { BackLink, PageShell } from '@/components/PageShell';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   Bar,
   BarChart,
@@ -457,34 +458,44 @@ export default function ReceiptsChartsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
-        <div className="mx-auto max-w-6xl rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 text-sm text-[var(--muted)]">
+      <PageShell width="6xl">
+        <div className="surface-card p-5 text-sm text-[var(--muted)]">
           Se incarca graficele…
         </div>
-      </main>
+      </PageShell>
     );
   }
 
   if (err) {
     return (
-      <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
-        <div className="mx-auto max-w-6xl rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5 text-sm text-rose-200">
+      <PageShell width="6xl">
+        <div className="surface-card surface-card--danger p-5 text-sm">
           {err}
         </div>
-      </main>
+      </PageShell>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold">🧠 Grafice bonuri</h1>
-            <div className="text-sm text-[var(--muted)]">{selectedMonthLabel}</div>
+    <PageShell width="6xl">
+      <div className="space-y-6">
+        <section className="hero-card p-5 sm:p-7">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <span className="eyebrow">Receipts analytics</span>
+              <h1 className="display-title mt-5 text-4xl font-semibold tracking-[-0.06em]">
+                Grafice bonuri
+              </h1>
+              <div className="mt-3 text-base text-[var(--muted)]">{selectedMonthLabel}</div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <ThemeToggle />
+              <BackLink href="/">Dashboard</BackLink>
+              <BackLink href="/receipts">Bonuri</BackLink>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center rounded-full border border-[var(--border)] bg-[var(--panel)] p-1 text-xs text-[var(--muted)]">
+
+          <div className="mt-6 inline-flex flex-wrap items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel)] p-1 text-xs text-[var(--muted)]">
               <button
                 type="button"
                 onClick={() => setMonthOffset((prev) => Math.max(minOffset, prev - 1))}
@@ -527,15 +538,8 @@ export default function ReceiptsChartsPage() {
               >
                 ▶
               </button>
-            </div>
-            <Link className="text-sm underline" href="/">
-              ← Dashboard
-            </Link>
-            <Link className="text-sm underline" href="/receipts">
-              ← Bonuri
-            </Link>
           </div>
-        </div>
+        </section>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <StatCard
@@ -681,7 +685,7 @@ export default function ReceiptsChartsPage() {
           </ChartCard>
         </div>
 
-        <div className="rounded-2xl border border-[var(--border)] bg-gradient-to-r from-[#123b3a] to-[#0e2f2d] p-4">
+        <div className="surface-card p-4">
           <div className="flex items-start gap-3">
             <div className="text-xl">📈</div>
             <div>
@@ -700,7 +704,7 @@ export default function ReceiptsChartsPage() {
           />
         </ChartCard>
       </div>
-    </main>
+    </PageShell>
   );
 }
 
@@ -753,7 +757,7 @@ function StatCard({
 
   return (
     <div
-      className={`group relative overflow-hidden rounded-2xl border p-4 shadow-sm ${accentClass}`}
+      className={`group relative overflow-hidden rounded-[1.6rem] border p-4 shadow-sm ${accentClass}`}
       tabIndex={0}
       aria-label={hoverMessage}
     >
@@ -774,7 +778,7 @@ function StatCard({
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
+    <div className="surface-card p-5">
       <div className="mb-3 text-sm font-semibold text-[var(--text)]">{title}</div>
       {children}
     </div>
@@ -919,7 +923,7 @@ function BudgetBar({
     percentage < 80 ? 'On track' : percentage < 100 ? 'Getting close' : 'Over budget';
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-4 shadow-sm transition hover:border-[var(--accent-2)]">
+    <div className="metric-tile transition hover:border-[var(--accent-2)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="text-lg">{icon}</div>
@@ -957,7 +961,7 @@ function BudgetBar({
         </div>
       </div>
 
-      <div className="relative mt-3 h-6 w-full overflow-hidden rounded-full bg-[#0f2c2a]">
+      <div className="relative mt-3 h-6 w-full overflow-hidden rounded-full bg-black/20">
         <div
           className={`h-full bg-gradient-to-r ${colorClass} relative`}
           style={{

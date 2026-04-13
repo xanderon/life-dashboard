@@ -1,7 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { BackLink, PageShell } from '@/components/PageShell';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const DEFAULT_START = '2026-02-27';
 const DEFAULT_END = '2026-03-26';
@@ -290,26 +291,27 @@ export default function ReceiptsExportPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
-      <div className="mx-auto max-w-6xl space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <Link className="text-sm underline" href="/receipts">
-            ← Receipts
-          </Link>
-          <Link className="text-sm underline" href="/">
-            Dashboard
-          </Link>
-        </div>
-
-        <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+    <PageShell width="6xl">
+      <div className="space-y-6">
+        <section className="hero-card p-5 sm:p-7">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Export bonuri JSON</h1>
-              <p className="mt-1 text-sm text-[var(--muted)]">
+              <span className="eyebrow">Receipts export</span>
+              <h1 className="display-title mt-5 text-4xl font-semibold tracking-[-0.06em]">
+                Export bonuri JSON
+              </h1>
+              <p className="mt-3 text-base leading-7 text-[var(--muted)]">
                 Grupează bonurile pe magazin și îți întoarce un JSON mare, lizibil.
               </p>
             </div>
-            <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <ThemeToggle />
+              <BackLink href="/receipts">Receipts</BackLink>
+              <BackLink href="/">Dashboard</BackLink>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-end gap-3">
               <CalendarDatePicker
                 label="De la"
                 max={endDate}
@@ -330,11 +332,11 @@ export default function ReceiptsExportPage() {
               >
                 {loading ? 'Generez…' : 'Generează JSON'}
               </button>
-            </div>
           </div>
+        </section>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-4">
+        <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="surface-card p-4">
               <div className="text-sm font-semibold text-[var(--text)]">Query Supabase de bază</div>
               <p className="mt-1 text-xs text-[var(--muted)]">
                 Da, Supabase poate întoarce rezultatul. Pentru volume mari însă endpointul de mai jos este
@@ -345,7 +347,7 @@ export default function ReceiptsExportPage() {
               </pre>
             </div>
 
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-4">
+            <div className="surface-card p-4">
               <div className="text-sm font-semibold text-[var(--text)]">Ce întoarce exportul</div>
               <div className="mt-2 text-sm text-[var(--muted)]">
                 Structură:
@@ -366,10 +368,9 @@ export default function ReceiptsExportPage() {
                 </div>
               ) : null}
             </div>
-          </div>
         </section>
 
-        <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
+        <section className="surface-card p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-lg font-semibold">Rezultat</div>
@@ -398,12 +399,12 @@ export default function ReceiptsExportPage() {
           </div>
 
           <textarea
-            className="mt-4 min-h-[520px] w-full rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-4 font-mono text-xs leading-5 text-[var(--text)] outline-none"
+            className="field-base mt-4 min-h-[520px] w-full p-4 font-mono text-xs leading-5"
             readOnly
             value={jsonText}
           />
         </section>
       </div>
-    </main>
+    </PageShell>
   );
 }

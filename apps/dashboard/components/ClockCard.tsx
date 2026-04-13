@@ -29,8 +29,13 @@ export function ClockCard() {
   }, [now]);
 
   return (
-    <Card title="🕒 Ora & data" subtitle={date} right={<span className="text-xs text-[var(--muted)]">local</span>}>
-      <div className="text-4xl font-bold tracking-tight">{time}</div>
+    <Card
+      title="Live clock"
+      subtitle={date}
+      right={<span className="eyebrow">Local</span>}
+      className="hero-card"
+    >
+      <div className="display-title text-5xl font-semibold tracking-[-0.06em]">{time}</div>
     </Card>
   );
 }

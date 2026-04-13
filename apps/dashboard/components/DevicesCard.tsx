@@ -74,31 +74,32 @@ export function DevicesCard() {
 
   if (err) {
     return (
-      <section className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5 shadow-sm">
-        <div className="text-sm font-semibold text-rose-200">Eroare DB</div>
-        <div className="mt-1 text-sm text-rose-200/80">{err}</div>
+      <section className="surface-card surface-card--danger p-5">
+        <div className="text-sm font-semibold">Eroare DB</div>
+        <div className="mt-1 text-sm text-[var(--muted)]">{err}</div>
       </section>
     );
   }
 
   if (devices === null) {
     return (
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
-        <div className="text-lg font-semibold">🖥️ Devices</div>
+      <section className="surface-card p-5">
+        <div className="text-lg font-semibold tracking-tight">Devices</div>
         <div className="mt-2 text-sm text-[var(--muted)]">Loading…</div>
       </section>
     );
   }
 
   return (
-    <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
+    <section className="surface-card p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <div className="text-lg font-semibold">🖥️ Devices</div>
+          <div className="flex items-center gap-3">
+            <span className="eyebrow">Infra</span>
+            <div className="text-lg font-semibold tracking-tight">Devices</div>
             <StatusPill status={derived.overall} />
           </div>
-          <div className="mt-2 text-sm text-[var(--muted)]">
+          <div className="mt-3 text-sm text-[var(--muted)]">
             Online {derived.onlineCount}/{devices.length}
             {derived.warnCount > 0 ? ` · Alerte ${derived.warnCount}` : ''}
             {derived.downCount > 0 ? ` · Offline ${derived.downCount}` : ''}
@@ -106,16 +107,16 @@ export function DevicesCard() {
         </div>
 
         <Link
-          className="rounded-md px-2 py-1 text-xs font-semibold text-[var(--muted)] hover:bg-[var(--panel-2)]"
+          className="page-back-link !px-3 !py-2 !text-[0.72rem]"
           href="/devices"
         >
-          Detalii →
+          Details
         </Link>
       </div>
 
-      <div className="mt-4 grid gap-2 text-xs text-[var(--muted)]">
+      <div className="mt-5 grid gap-3 text-xs text-[var(--muted)]">
         {(derived.enriched.length ? derived.enriched : []).slice(0, 4).map((device) => (
-          <div key={device.id} className="flex items-center justify-between gap-3">
+          <div key={device.id} className="metric-tile flex items-center justify-between gap-3">
             <div className="truncate">
               <span className="font-semibold text-[var(--text)]">{device.name}</span>
               {device.user_name ? ` · ${device.user_name}` : ''}

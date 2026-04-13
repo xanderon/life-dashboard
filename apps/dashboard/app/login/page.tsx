@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { PageShell, SurfaceCard } from '@/components/PageShell';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function LoginPage() {
@@ -62,22 +64,35 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] p-6">
-      <div className="mx-auto max-w-md rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-sm">
-        <h1 className="text-2xl font-bold">Login</h1>
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          Dashboard-ul este privat. Loghează-te ca să continui.
-        </p>
-
-        <div className="mt-3 rounded-xl bg-[var(--panel-2)] p-3 text-xs text-[var(--muted)]">
-          Origin curent: <span className="font-mono">{origin || '(loading...)'}</span>
+    <PageShell width="md" className="flex items-center justify-center">
+      <SurfaceCard className="hero-card p-6 sm:p-7">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <span className="eyebrow">Private access</span>
+            <h1 className="display-title mt-5 text-4xl font-semibold tracking-[-0.06em]">
+              Login
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+              Dashboard-ul este privat. Loghează-te cu magic link și continui exact de unde ai
+              rămas.
+            </p>
+          </div>
         </div>
 
-        <form className="mt-4 space-y-3" onSubmit={onSubmit}>
+        <div className="mt-5">
+          <ThemeToggle />
+        </div>
+
+        <div className="metric-tile mt-5">
+          <div className="metric-tile__label">Origin curent</div>
+          <div className="metric-tile__value font-mono text-sm">{origin || '(loading...)'}</div>
+        </div>
+
+        <form className="mt-5 space-y-4" onSubmit={onSubmit}>
           <label className="block text-sm font-medium text-[var(--muted)]">
             Email
             <input
-              className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)]"
+              className="field-base mt-2 px-4 py-3"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
@@ -88,7 +103,7 @@ export default function LoginPage() {
           </label>
 
           <button
-            className="w-full rounded-xl bg-[var(--accent)] px-4 py-2 text-black disabled:opacity-50"
+            className="btn-base btn-primary w-full disabled:opacity-50"
             disabled={status === 'sending' || !email}
             type="submit"
           >
@@ -96,17 +111,19 @@ export default function LoginPage() {
           </button>
 
           {message ? (
-            <div className="rounded-xl bg-[var(--panel-2)] p-3 text-sm text-[var(--muted)]">{message}</div>
+            <div className="surface-card surface-card--soft p-4 text-sm text-[var(--muted)]">
+              {message}
+            </div>
           ) : null}
 
           {status === 'error' ? (
-            <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-200">
-              Eroare. Dacă ai dat click pe un link mai vechi, cere un magic link nou și folosește-l pe
-              cel mai recent.
+            <div className="surface-card surface-card--danger p-4 text-sm">
+              Eroare. Dacă ai dat click pe un link mai vechi, cere un magic link nou și folosește-l
+              pe cel mai recent.
             </div>
           ) : null}
         </form>
-      </div>
-    </main>
+      </SurfaceCard>
+    </PageShell>
   );
 }

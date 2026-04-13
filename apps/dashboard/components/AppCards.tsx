@@ -15,6 +15,8 @@ type ReceiptSummaryRow = {
   currency: string | null;
 };
 
+const HIDDEN_APP_SLUGS = new Set(['sprintpulse', 'study-coach']);
+
 export function AppCards({ slugs, excludeSlugs }: AppCardsProps) {
   const [apps, setApps] = useState<AppRow[] | null>(null);
   const [receiptsSummary, setReceiptsSummary] = useState<{
@@ -113,25 +115,25 @@ export function AppCards({ slugs, excludeSlugs }: AppCardsProps) {
 
   if (err) {
     return (
-      <section className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5 shadow-sm">
-        <div className="text-sm font-semibold text-rose-200">Eroare DB</div>
-        <div className="mt-1 text-sm text-rose-200/80">{err}</div>
+      <section className="surface-card surface-card--danger p-5">
+        <div className="text-sm font-semibold">Eroare DB</div>
+        <div className="mt-1 text-sm text-[var(--muted)]">{err}</div>
       </section>
     );
   }
 
 
   if (apps === null) {
-    // un card placeholder cât se încarcă, ca să nu fie “gol”
     return (
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
-        <div className="text-lg font-semibold">🧩 Apps</div>
+      <section className="surface-card p-5">
+        <div className="text-lg font-semibold tracking-tight">Apps</div>
         <div className="mt-2 text-sm text-[var(--muted)]">Loading…</div>
       </section>
     );
   }
 
   const filteredApps = apps.filter((app) => {
+    if (HIDDEN_APP_SLUGS.has(app.slug)) return false;
     if (slugs?.length) return slugs.includes(app.slug);
     if (excludeSlugs?.length) return !excludeSlugs.includes(app.slug);
     return true;
@@ -141,7 +143,6 @@ export function AppCards({ slugs, excludeSlugs }: AppCardsProps) {
     ? [...filteredApps].sort((a, b) => slugs.indexOf(a.slug) - slugs.indexOf(b.slug))
     : filteredApps;
 
-  // IMPORTANT: fără wrapper “Apps”. Returnăm direct cardurile.
   return (
     <>
       {orderedApps.map((a) => (

@@ -5,6 +5,7 @@ export const runtime = 'nodejs';
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { PageShell, SurfaceCard } from '@/components/PageShell';
 import { supabase } from '@/lib/supabaseClient';
 
 
@@ -44,10 +45,16 @@ export default function AuthHashCallback() {
   }, [router]);
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] p-6">
-      <div className="mx-auto max-w-md rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-sm">
-        <div className="text-sm text-[var(--muted)]">Finalizing login…</div>
-      </div>
-    </main>
+    <PageShell width="md" className="flex items-center justify-center">
+      <SurfaceCard className="hero-card p-6">
+        <div className="eyebrow">Auth callback</div>
+        <div className="display-title mt-5 text-3xl font-semibold tracking-[-0.06em]">
+          Finalizing login…
+        </div>
+        <p className="mt-3 text-sm text-[var(--muted)]">
+          Validăm sesiunea Supabase și te trimitem imediat în dashboard.
+        </p>
+      </SurfaceCard>
+    </PageShell>
   );
 }

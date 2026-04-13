@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { BackLink, PageShell } from '@/components/PageShell';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { supabase } from '@/lib/supabaseClient';
 
 type ReceiptRow = {
@@ -310,6 +312,7 @@ export default function ReceiptsPage() {
   const itemPrefillCache = useRef<Record<string, Partial<ReceiptItemRow>>>({});
   const prevSelectionRef = useRef<ReceiptRow | null>(null);
   const editorRef = useRef<HTMLDivElement | null>(null);
+  const jsonFileInputRef = useRef<HTMLInputElement | null>(null);
   const selectedId = selected?.id ?? null;
 
   const stores = useMemo(() => storeOptions, [storeOptions]);
@@ -961,41 +964,102 @@ export default function ReceiptsPage() {
     setDeletingReceipt(false);
   }
 
+  async function readJsonFromClipboard(options?: { parseAfterRead?: boolean }) {
+    setErr(null);
+    try {
+      const text = await navigator.clipboard.readText();
+      setJsonInput(text);
+
+      if (options?.parseAfterRead) {
+        const parsed = JSON.parse(text);
+        await applyJsonToEditor(parsed);
+        setSuccess('JSON importat din clipboard.');
+      }
+    } catch {
+      setErr('Clipboard read nu este disponibil aici. Încearcă Import file.');
+    }
+  }
+
+  async function parseJsonInput() {
+    setErr(null);
+    try {
+      const parsed = JSON.parse(jsonInput);
+      await applyJsonToEditor(parsed);
+      setSuccess('JSON importat.');
+    } catch {
+      setErr('JSON invalid.');
+    }
+  }
+
+  async function handleJsonFilePicked(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      setJsonInput(text);
+      setSuccess(`Loaded ${file.name}.`);
+      setErr(null);
+    } catch {
+      setErr('Nu am putut citi fișierul selectat.');
+    } finally {
+      event.target.value = '';
+    }
+  }
+
   return (
-    <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
-      <div className="mx-auto max-w-7xl">
-        <div className="flex items-center justify-between gap-4">
-          <Link className="text-sm underline" href="/">
-            ← Dashboard
-          </Link>
-          <div className="flex items-center gap-2">
+    <>
+      <PageShell>
+        <div className="space-y-6">
+        <section className="hero-card p-5 sm:p-7">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-3xl">
+              <span className="eyebrow">Receipts workspace</span>
+              <h1 className="display-title mt-5 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
+                Receipts
+              </h1>
+              <div className="mt-3 text-base leading-7 text-[var(--muted)]">
+                Listă bonuri, filtrare după magazin, editare detalii și produse.
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <ThemeToggle />
+              <BackLink href="/">Dashboard</BackLink>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
-              className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
+              className="btn-base btn-secondary"
               href="/receipts/export"
             >
               JSON Export
             </Link>
             <Link
-              className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
+              className="btn-base btn-secondary"
               href="/receipts/charts"
             >
-              🧠 Charts
+              Charts
             </Link>
           </div>
-        </div>
+        </section>
 
-        <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm">
+        <div className="surface-card p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <div className="text-xl font-bold">🧾 Receipts</div>
+              <div className="text-xl font-bold tracking-tight">Control panel</div>
               <div className="mt-1 text-sm text-[var(--muted)]">
-                Listă bonuri, filtrare după magazin, editare detalii și produse.
+                Filtre, creare rapidă și import direct în editor.
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-[var(--muted)]">Magazin</label>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                Magazin
+              </label>
               <select
-                className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-sm"
+                className="field-base min-h-10 px-4 text-sm"
                 value={storeFilter}
                 onChange={(e) => setStoreFilter(e.target.value)}
               >
@@ -1006,7 +1070,7 @@ export default function ReceiptsPage() {
                 ))}
               </select>
                 <button
-                  className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
+                  className="btn-base btn-primary"
                   onClick={() => {
                     prevSelectionRef.current = selected;
                     const nowIso = new Date().toISOString();
@@ -1040,7 +1104,7 @@ export default function ReceiptsPage() {
                 + Add receipt
               </button>
               <button
-                className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
+                className="btn-base btn-secondary"
                 onClick={() => setShowJsonImport((v) => !v)}
               >
                 + Add via JSON
@@ -1048,67 +1112,85 @@ export default function ReceiptsPage() {
             </div>
           </div>
           {showJsonImport ? (
-            <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">Import JSON</div>
-                <button
-                  className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-xs text-[var(--text)]"
-                  onClick={async () => {
-                    try {
-                      const text = await navigator.clipboard.readText();
-                      setJsonInput(text);
-                    } catch {
-                      setErr('Nu pot citi din clipboard.');
-                    }
-                  }}
-                  type="button"
-                >
-                  Paste
-                </button>
+            <div className="surface-card surface-card--soft mt-4 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold">Import JSON</div>
+                  <div className="mt-1 text-xs text-[var(--muted)]">
+                    Best on mobile: use clipboard if supported, otherwise load a `.json` file.
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className="btn-base btn-ghost"
+                    onClick={() => void readJsonFromClipboard()}
+                    type="button"
+                  >
+                    Paste
+                  </button>
+                  <button
+                    className="btn-base btn-secondary"
+                    onClick={() => void readJsonFromClipboard({ parseAfterRead: true })}
+                    type="button"
+                  >
+                    Paste + Parse
+                  </button>
+                  <button
+                    className="btn-base btn-ghost"
+                    onClick={() => jsonFileInputRef.current?.click()}
+                    type="button"
+                  >
+                    Import file
+                  </button>
+                </div>
               </div>
+              <input
+                ref={jsonFileInputRef}
+                accept=".json,application/json,text/plain"
+                className="hidden"
+                onChange={(event) => void handleJsonFilePicked(event)}
+                type="file"
+              />
               <textarea
-                className="mt-2 h-36 w-full rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-xs text-[var(--text)]"
+                className="field-base mt-3 block h-56 min-h-56 w-full max-w-full resize-none overflow-auto px-4 py-3 font-mono text-[11px] leading-5 sm:h-72 sm:min-h-72 sm:text-xs"
                 placeholder="Pune aici JSON-ul de la parser (schema v3)"
+                spellCheck={false}
                 value={jsonInput}
                 onChange={(e) => setJsonInput(e.target.value)}
-              />
-              <div className="mt-2 flex items-center gap-2">
+              ></textarea>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-xs text-[var(--muted)]">
+                  {jsonInput ? `${jsonInput.length.toLocaleString('ro-RO')} chars loaded` : 'No JSON loaded'}
+                </div>
+                <div className="flex flex-wrap gap-2">
                 <button
-                  className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-1 text-xs text-[var(--text)]"
-                  onClick={async () => {
-                    setErr(null);
-                    try {
-                      const parsed = JSON.parse(jsonInput);
-                      await applyJsonToEditor(parsed);
-                      setSuccess('JSON importat.');
-                    } catch {
-                      setErr('JSON invalid.');
-                    }
-                  }}
+                  className="btn-base btn-secondary"
+                  onClick={() => void parseJsonInput()}
                   type="button"
                 >
                   Parse
                 </button>
                 <button
-                  className="text-xs text-[var(--muted)]"
+                  className="btn-base btn-ghost"
                   onClick={() => {
                     setJsonInput('');
                     setShowJsonImport(false);
                   }}
                   type="button"
                 >
-                  Închide
+                  Close
                 </button>
+                </div>
               </div>
             </div>
           ) : null}
           {err ? (
-            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
+            <div className="surface-card surface-card--danger mt-3 p-3 text-sm">
               {err}
             </div>
           ) : null}
           {success ? (
-            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+            <div className="surface-card surface-card--success mt-3 p-3 text-sm">
               {success}
             </div>
           ) : null}
@@ -1120,13 +1202,13 @@ export default function ReceiptsPage() {
           }`}
         >
           <div
-            className={`rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm ${
+            className={`surface-card p-3 ${
               selected ? 'order-2 lg:order-1' : ''
             }`}
           >
             <div className="text-base font-semibold">Bonuri</div>
             {!groupedReceipts.length ? (
-              <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-4 text-sm text-[var(--muted)]">
+              <div className="metric-tile mt-2 text-sm text-[var(--muted)]">
                 Nu există bonuri.
               </div>
             ) : null}
@@ -1136,7 +1218,7 @@ export default function ReceiptsPage() {
               return (
                 <details
                   key={group.key}
-                  className="mt-3 rounded-xl border border-[var(--border)]/60 bg-[var(--panel-2)]/30 p-2"
+                  className="mt-3 rounded-[1.35rem] border border-[var(--border)]/60 bg-[var(--panel-2)]/30 p-3"
                   open={hasSelectedInGroup || !isPastMonth}
                 >
                   <summary className="flex cursor-pointer list-none items-center gap-2 text-[10px] uppercase tracking-wide text-[var(--muted)]">
@@ -1217,7 +1299,7 @@ export default function ReceiptsPage() {
             {selected ? (
               <div
                 ref={editorRef}
-                className="order-1 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm lg:order-2"
+                className="surface-card order-1 p-3 lg:order-2"
               >
               <div className="flex items-center justify-between">
                 <div className="text-xl font-semibold">Editor bon</div>
@@ -1833,49 +1915,50 @@ export default function ReceiptsPage() {
             ) : null}
           </div>
         </div>
-        {confirmDeleteReceipt ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div className="w-full max-w-md rounded-2xl border border-rose-500/40 bg-[var(--panel)] p-4 shadow-xl">
-              <div className="text-lg font-semibold text-rose-200">Confirmare ștergere bon</div>
-              <div className="mt-2 text-sm text-[var(--muted)]">
-                Ești sigur că vrei să ștergi acest bon? Acțiunea este ireversibilă.
+      </PageShell>
+      {confirmDeleteReceipt ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="surface-card surface-card--danger w-full max-w-md p-4 shadow-xl">
+            <div className="text-lg font-semibold">Confirmare ștergere bon</div>
+            <div className="mt-2 text-sm text-[var(--muted)]">
+              Ești sigur că vrei să ștergi acest bon? Acțiunea este ireversibilă.
+            </div>
+            <div className="mt-3 space-y-1 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3 text-xs text-[var(--text)]">
+              <div>
+                <span className="text-[var(--muted)]">Magazin:</span> {confirmDeleteReceipt.store || '—'}
               </div>
-              <div className="mt-3 space-y-1 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3 text-xs text-[var(--text)]">
-                <div>
-                  <span className="text-[var(--muted)]">Magazin:</span> {confirmDeleteReceipt.store || '—'}
-                </div>
-                <div>
-                  <span className="text-[var(--muted)]">Data:</span> {fmtDate(confirmDeleteReceipt.receipt_date)}
-                </div>
-                <div>
-                  <span className="text-[var(--muted)]">Total:</span>{' '}
-                  {Number(confirmDeleteReceipt.total_amount || 0).toFixed(2)}{' '}
-                  {confirmDeleteReceipt.currency || 'RON'}
-                </div>
-                <div>
-                  <span className="text-[var(--muted)]">ID:</span> {confirmDeleteReceipt.id}
-                </div>
+              <div>
+                <span className="text-[var(--muted)]">Data:</span> {fmtDate(confirmDeleteReceipt.receipt_date)}
               </div>
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)]"
-                  onClick={() => setConfirmDeleteReceipt(null)}
-                  type="button"
-                >
-                  Cancel
-                </button>
-                <button
-                  className="rounded-lg border border-rose-500/50 bg-rose-500/20 px-3 py-1 text-sm text-rose-200 disabled:opacity-50"
-                  disabled={deletingReceipt}
-                  onClick={deleteReceiptNow}
-                  type="button"
-                >
-                  {deletingReceipt ? 'Se șterge…' : 'Delete'}
-                </button>
+              <div>
+                <span className="text-[var(--muted)]">Total:</span>{' '}
+                {Number(confirmDeleteReceipt.total_amount || 0).toFixed(2)}{' '}
+                {confirmDeleteReceipt.currency || 'RON'}
+              </div>
+              <div>
+                <span className="text-[var(--muted)]">ID:</span> {confirmDeleteReceipt.id}
               </div>
             </div>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                className="btn-base btn-ghost"
+                onClick={() => setConfirmDeleteReceipt(null)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-base btn-danger disabled:opacity-50"
+                disabled={deletingReceipt}
+                onClick={deleteReceiptNow}
+                type="button"
+              >
+                {deletingReceipt ? 'Se șterge…' : 'Delete'}
+              </button>
+            </div>
           </div>
-        ) : null}
-      </main>
+        </div>
+      ) : null}
+    </>
     );
 }

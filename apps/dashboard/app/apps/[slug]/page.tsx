@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { supabase } from '../../../lib/supabaseClient';
-import { StatusPill } from '../../../components/StatusPill';
+import { BackLink, PageShell } from '@/components/PageShell';
+import { StatusPill } from '@/components/StatusPill';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { supabase } from '@/lib/supabaseClient';
 
 type AppRow = {
   id: string;
@@ -84,70 +85,97 @@ export default function AppDetailsPage() {
 
   if (err) {
     return (
-      <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
-        <div className="mx-auto max-w-4xl rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
-          <div className="font-semibold text-rose-300">Eroare</div>
+      <PageShell width="4xl">
+        <div className="surface-card surface-card--danger p-5">
+          <div className="font-semibold">Eroare</div>
           <div className="mt-2 text-sm text-[var(--muted)]">{err}</div>
           <div className="mt-4">
-            <Link className="text-sm underline" href="/">
-              ← Înapoi
-            </Link>
+            <BackLink href="/">Dashboard</BackLink>
           </div>
         </div>
-      </main>
+      </PageShell>
     );
   }
 
   if (!app || runs === null) {
     return (
-      <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
-        <div className="mx-auto max-w-4xl rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
+      <PageShell width="4xl">
+        <div className="surface-card p-5">
           <div className="text-sm text-[var(--muted)]">Se încarcă…</div>
         </div>
-      </main>
+      </PageShell>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
-      <div className="mx-auto max-w-4xl">
-        <div className="flex items-center justify-between gap-4">
-          <Link className="text-sm underline" href="/">
-            ← Înapoi
-          </Link>
-          <StatusPill status={app.status} />
-        </div>
+    <PageShell width="4xl">
+      <div className="space-y-6">
+        <section className="hero-card p-5 sm:p-7">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl">
+              <span className="eyebrow">App details</span>
+              <h1 className="display-title mt-5 text-4xl font-semibold tracking-[-0.06em]">
+                {app.name}
+              </h1>
+              <div className="mt-3 text-base leading-7 text-[var(--muted)]">{app.description}</div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <BackLink href="/">Dashboard</BackLink>
+              <ThemeToggle />
+              <StatusPill status={app.status} />
+            </div>
+          </div>
 
-        <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
-          <div className="text-xl font-bold">{app.name}</div>
-          <div className="mt-2 text-sm text-[var(--muted)]">{app.description}</div>
-
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
-              <div className="text-xs text-[var(--muted)]">Last run</div>
-              <div className="mt-1 text-sm font-semibold">{fmt(app.last_run_at)}</div>
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="metric-tile">
+              <div className="metric-tile__label">Last run</div>
+              <div className="metric-tile__value">{fmt(app.last_run_at)}</div>
             </div>
 
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
-              <div className="text-xs text-[var(--muted)]">Links</div>
-              <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                {app.home_url ? <a className="underline" href={app.home_url}>Open UI</a> : <span className="text-[var(--muted)]">Open UI</span>}
-                {app.github_url ? <a className="underline" href={app.github_url}>GitHub</a> : <span className="text-[var(--muted)]">GitHub</span>}
-                {app.chat_url ? <a className="underline" href={app.chat_url}>Chat</a> : <span className="text-[var(--muted)]">Chat</span>}
+            <div className="metric-tile">
+              <div className="metric-tile__label">Links</div>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                {app.home_url ? (
+                  <a className="page-back-link !px-3 !py-2 !text-[0.72rem]" href={app.home_url}>
+                    Open UI
+                  </a>
+                ) : (
+                  <span className="page-back-link !cursor-default !px-3 !py-2 !text-[0.72rem] opacity-40">
+                    Open UI
+                  </span>
+                )}
+                {app.github_url ? (
+                  <a className="page-back-link !px-3 !py-2 !text-[0.72rem]" href={app.github_url}>
+                    GitHub
+                  </a>
+                ) : (
+                  <span className="page-back-link !cursor-default !px-3 !py-2 !text-[0.72rem] opacity-40">
+                    GitHub
+                  </span>
+                )}
+                {app.chat_url ? (
+                  <a className="page-back-link !px-3 !py-2 !text-[0.72rem]" href={app.chat_url}>
+                    Chat
+                  </a>
+                ) : (
+                  <span className="page-back-link !cursor-default !px-3 !py-2 !text-[0.72rem] opacity-40">
+                    Chat
+                  </span>
+                )}
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm">
-          <div className="text-base font-semibold">🧪 Ultimele rulări</div>
+        <div className="surface-card p-5">
+          <div className="text-base font-semibold tracking-tight">Ultimele rulări</div>
 
           {runs.length === 0 ? (
             <div className="mt-2 text-sm text-[var(--muted)]">Nicio rulare încă.</div>
           ) : (
             <div className="mt-3 space-y-3">
               {runs.map((r) => (
-                <div key={r.id} className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
+                <div key={r.id} className="metric-tile">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold">
                       {r.success === true ? '✅ Success' : r.success === false ? '❌ Failed' : '⏳ Unknown'}
@@ -155,7 +183,7 @@ export default function AppDetailsPage() {
                     <div className="text-xs text-[var(--muted)]">{fmt(r.created_at)}</div>
                   </div>
                   {r.summary ? <div className="mt-2 text-sm text-[var(--muted)]">{r.summary}</div> : null}
-                  <pre className="mt-2 overflow-auto rounded-lg bg-[var(--panel)] p-2 text-xs text-[var(--muted)]">
+                  <pre className="mt-2 overflow-auto rounded-2xl bg-[var(--panel)] p-3 text-xs text-[var(--muted)]">
 {JSON.stringify(r.metrics ?? {}, null, 2)}
                   </pre>
                 </div>
@@ -164,6 +192,6 @@ export default function AppDetailsPage() {
           )}
         </div>
       </div>
-    </main>
+    </PageShell>
   );
 }

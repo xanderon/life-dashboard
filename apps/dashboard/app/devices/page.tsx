@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { BackLink, PageShell } from '@/components/PageShell';
 import { StatusPill } from '@/components/StatusPill';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { supabase } from '@/lib/supabaseClient';
 
 type DeviceRow = {
   id: string;
@@ -76,14 +77,14 @@ function Meter({
       ? Math.min(100, Math.round((used / total) * 100))
       : null;
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2">
+    <div className="metric-tile">
       <div className="flex items-center justify-between text-[11px] uppercase text-[var(--muted)]">
         <span>{label}</span>
         <span>{pct !== null ? `${pct}%` : '—'}</span>
       </div>
       <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/20">
         <div
-          className="h-full rounded-full bg-emerald-400/80"
+          className="h-full rounded-full bg-[var(--accent)]"
           style={{ width: pct !== null ? `${pct}%` : '0%' }}
         />
       </div>
@@ -129,44 +130,45 @@ export default function DevicesPage() {
   }, [devices]);
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] p-4 sm:p-6">
-      <div className="mx-auto max-w-6xl">
-        <header className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">Devices</h1>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Snapshot rapid pentru PC-uri / laptopuri din casa.
-            </p>
+    <PageShell width="6xl">
+      <div className="space-y-6">
+        <section className="hero-card p-5 sm:p-7">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl">
+              <span className="eyebrow">Infrastructure</span>
+              <h1 className="display-title mt-5 text-4xl font-semibold tracking-[-0.06em]">
+                Devices
+              </h1>
+              <p className="mt-3 text-base leading-7 text-[var(--muted)]">
+                Snapshot rapid pentru PC-uri și laptopuri din casă, cu accent pe uptime, RAM,
+                storage și alerte.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <BackLink href="/">Dashboard</BackLink>
+              <ThemeToggle />
+            </div>
           </div>
-          <Link
-            className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm font-semibold hover:bg-[var(--panel-2)]"
-            href="/"
-          >
-            ← Inapoi
-          </Link>
-        </header>
+        </section>
 
         {err ? (
-          <section className="mt-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5 shadow-sm">
-            <div className="text-sm font-semibold text-rose-200">Eroare DB</div>
-            <div className="mt-1 text-sm text-rose-200/80">{err}</div>
+          <section className="surface-card surface-card--danger p-5">
+            <div className="text-sm font-semibold">Eroare DB</div>
+            <div className="mt-1 text-sm text-[var(--muted)]">{err}</div>
           </section>
         ) : null}
 
-        <section className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {derived.length ? (
             derived.map((device) => (
-              <article
-                key={device.id}
-                className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm"
-              >
+              <article key={device.id} className="surface-card p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="truncate text-lg font-semibold">{device.name}</div>
                       <StatusPill status={device.derivedStatus} />
                       {device.os ? (
-                        <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] uppercase text-[var(--muted)]">
+                        <span className="rounded-full border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
                           {device.os}
                         </span>
                       ) : null}
@@ -179,23 +181,23 @@ export default function DevicesPage() {
                   </div>
 
                   <div className="text-right">
-                    <div className="text-[11px] uppercase tracking-wide text-[var(--muted)]">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
                       Last seen
                     </div>
-                    <div className="mt-1 text-xs font-semibold text-[var(--muted)]">
+                    <div className="mt-1 text-xs font-semibold text-[var(--text)]/80">
                       {fmtLastSeen(device.last_seen_at)}
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-[var(--muted)]">
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2">
+                  <div className="metric-tile">
                     <div className="text-[11px] uppercase text-[var(--muted)]">Uptime</div>
                     <div className="mt-1 text-sm font-semibold text-[var(--text)]">
                       {fmtUptime(device.uptime_sec)}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2">
+                  <div className="metric-tile">
                     <div className="text-[11px] uppercase text-[var(--muted)]">RAM</div>
                     <div className="mt-1 text-sm font-semibold text-[var(--text)]">
                       {device.mem_used_mb !== null && device.mem_total_mb !== null
@@ -228,17 +230,14 @@ export default function DevicesPage() {
                       const pct =
                         vol.freePct !== null ? Math.max(0, 100 - vol.freePct) : null;
                       return (
-                        <div
-                          key={vol.path}
-                          className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2"
-                        >
+                        <div key={vol.path} className="metric-tile">
                           <div className="flex items-center justify-between text-[11px] uppercase text-[var(--muted)]">
                             <span>{vol.path}</span>
                             <span>{pct !== null ? `${pct}%` : '—'}</span>
                           </div>
                           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/20">
                             <div
-                              className="h-full rounded-full bg-emerald-400/80"
+                              className="h-full rounded-full bg-[var(--accent)]"
                               style={{ width: pct !== null ? `${pct}%` : '0%' }}
                             />
                           </div>
@@ -252,8 +251,8 @@ export default function DevicesPage() {
                 ) : null}
 
                 {device.alerts && device.alerts.length ? (
-                  <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                    <div className="text-[11px] uppercase text-amber-200">Alerte</div>
+                  <div className="surface-card surface-card--soft mt-4 p-3 text-xs">
+                    <div className="text-[11px] uppercase text-[var(--warning)]">Alerte</div>
                     <div className="mt-1">
                       {device.alerts.map((alert, idx) => (
                         <div key={`${alert.type}-${idx}`}>• {alert.message}</div>
@@ -264,12 +263,12 @@ export default function DevicesPage() {
               </article>
             ))
           ) : (
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 text-sm text-[var(--muted)]">
+            <div className="surface-card p-5 text-sm text-[var(--muted)]">
               Nu exista device-uri inca.
             </div>
           )}
         </section>
       </div>
-    </main>
+    </PageShell>
   );
 }
