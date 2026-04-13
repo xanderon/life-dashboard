@@ -4,16 +4,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card } from './Card';
 
 export function ClockCard() {
-  const [now, setNow] = useState<Date | null>(null);
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    setNow(new Date());
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
 
   const time = useMemo(() => {
-    if (!now) return '--:--:--';
     return now.toLocaleTimeString('ro-RO', {
       hour: '2-digit',
       minute: '2-digit',
@@ -22,7 +20,6 @@ export function ClockCard() {
   }, [now]);
 
   const date = useMemo(() => {
-    if (!now) return '—';
     return now.toLocaleDateString('ro-RO', {
       weekday: 'long',
       year: 'numeric',

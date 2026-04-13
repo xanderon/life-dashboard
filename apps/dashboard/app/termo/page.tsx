@@ -24,7 +24,21 @@ type RunRow = {
   ended_at: string | null;
   success: boolean | null;
   summary: string | null;
-  metrics: any;
+  metrics: {
+    data?: {
+      sector?: string | null;
+      eta?: string | null;
+      agent?: string | null;
+      cause?: string | null;
+      zone?: string | null;
+    };
+    service?: {
+      hot_water?: string | null;
+      heat?: string | null;
+    };
+    service_state?: AppRow['status'];
+    source_url?: string | null;
+  } | null;
 };
 
 const APP_SLUG = 'termo-alert';
@@ -50,9 +64,13 @@ export default function TermoPage() {
   const [app, setApp] = useState<AppRow | null>(null);
   const [run, setRun] = useState<RunRow | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [pushSupported, setPushSupported] = useState(false);
+  const [pushSupported] = useState(
+    () => typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+  );
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [pushPermission, setPushPermission] = useState<NotificationPermission | null>(null);
+  const [pushPermission, setPushPermission] = useState<NotificationPermission | null>(
+    () => (typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : null)
+  );
   const [pushError, setPushError] = useState<string | null>(null);
   const [pushLoading, setPushLoading] = useState(false);
 
@@ -75,12 +93,12 @@ export default function TermoPage() {
         return;
       }
 
-      setApp(appData as any);
+      setApp(appData as AppRow);
 
       const { data: runData, error: runErr } = await supabase
         .from('app_runs')
         .select('id,created_at,started_at,ended_at,success,summary,metrics')
-        .eq('app_id', (appData as any).id)
+        .eq('app_id', appData.id)
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -90,7 +108,7 @@ export default function TermoPage() {
         return;
       }
 
-      setRun((runData as any)?.[0] ?? null);
+      setRun(((runData ?? [])[0] as RunRow | undefined) ?? null);
     })();
 
     return () => {
@@ -99,11 +117,7 @@ export default function TermoPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-    setPushSupported(supported);
-    if (!supported) return;
-    setPushPermission(Notification.permission);
+    if (!pushSupported) return;
     navigator.serviceWorker.ready
       .then((reg) => reg.pushManager.getSubscription())
       .then((sub) => {
@@ -112,7 +126,7 @@ export default function TermoPage() {
       .catch(() => {
         setPushEnabled(false);
       });
-  }, []);
+  }, [pushSupported]);
 
   async function enableNotifications() {
     if (!pushSupported) return;

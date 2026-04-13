@@ -25,7 +25,7 @@ type RunRow = {
   ended_at: string | null;
   success: boolean | null;
   summary: string | null;
-  metrics: any;
+  metrics: Record<string, unknown> | null;
 };
 
 function fmt(ts: string | null) {
@@ -60,12 +60,12 @@ export default function AppDetailsPage() {
         return;
       }
 
-      setApp(appData as any);
+      setApp(appData as AppRow);
 
       const { data: runData, error: runErr } = await supabase
         .from('app_runs')
         .select('id,created_at,started_at,ended_at,success,summary,metrics')
-        .eq('app_id', (appData as any).id)
+        .eq('app_id', appData.id)
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -74,7 +74,7 @@ export default function AppDetailsPage() {
         setErr(runErr.message);
         return;
       }
-      setRuns((runData as any) ?? []);
+      setRuns((runData ?? []) as RunRow[]);
     })();
 
     return () => {
