@@ -18,7 +18,7 @@ type ReceiptRow = {
   merchant_city: string | null;
   merchant_cif: string | null;
   processing_status: string | null;
-  processing_warnings: any[] | null;
+  processing_warnings: unknown[] | null;
   source_file_name: string | null;
   source_rel_path: string | null;
   source_hash: string | null;
@@ -45,7 +45,49 @@ type ReceiptItemRow = {
   needs_review: boolean | null;
   is_food?: boolean | null;
   food_quality?: FoodQuality | null;
-  meta: any;
+  meta: Record<string, unknown>;
+};
+
+type ReceiptItemPrefillRow = Pick<
+  ReceiptItemRow,
+  'name' | 'quantity' | 'unit' | 'unit_price' | 'paid_amount' | 'discount' | 'needs_review' | 'is_food' | 'food_quality' | 'meta'
+> & {
+  created_at?: string | null;
+};
+
+type FoodHintRow = {
+  name: string | null;
+  is_food: boolean | null;
+  food_quality: FoodQuality | null;
+  created_at?: string | null;
+};
+
+type ReceiptImportItem = Record<string, unknown> & {
+  meta?: Record<string, unknown>;
+  name?: string;
+  quantity?: number | string | null;
+  unit?: string | null;
+  unit_price?: number | string | null;
+  paid_amount?: number | string | null;
+  discount?: number | string | null;
+  needs_review?: boolean | null;
+  is_food?: boolean | null;
+  food_quality?: FoodQuality | null;
+};
+
+type ReceiptImportPayload = {
+  store?: string;
+  timestamp?: string;
+  currency?: string;
+  total?: number | string | null;
+  discount_total?: number | string | null;
+  sgr_bottle_charge?: number | string | null;
+  sgr_recovered_amount?: number | string | null;
+  merchant?: Record<string, unknown> | null;
+  processing?: Record<string, unknown> | null;
+  source?: Record<string, unknown> | null;
+  items?: unknown[];
+  schema_version?: number | string | null;
 };
 
 type ReceiptDeleteStep = 'armed' | 'ready';
@@ -160,6 +202,14 @@ function resolveReceiptSourceHash(receipt: Pick<ReceiptRow, 'id' | 'source_hash'
   return buildManualSourceHash();
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: string | null): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 const ITEM_CORE_KEYS = new Set([
   'name',
   'quantity',
@@ -173,9 +223,9 @@ const ITEM_CORE_KEYS = new Set([
   'meta',
 ]);
 
-function extractItemMeta(item: any) {
-  if (!item || typeof item !== 'object' || Array.isArray(item)) return {};
-  const meta: Record<string, any> = {};
+function extractItemMeta(item: unknown) {
+  if (!isRecord(item)) return {};
+  const meta: Record<string, unknown> = {};
   Object.entries(item).forEach(([key, value]) => {
     if (!ITEM_CORE_KEYS.has(key)) {
       meta[key] = value;
@@ -260,6 +310,7 @@ export default function ReceiptsPage() {
   const itemPrefillCache = useRef<Record<string, Partial<ReceiptItemRow>>>({});
   const prevSelectionRef = useRef<ReceiptRow | null>(null);
   const editorRef = useRef<HTMLDivElement | null>(null);
+  const selectedId = selected?.id ?? null;
 
   const stores = useMemo(() => storeOptions, [storeOptions]);
   const todayKey = useMemo(() => dayKey(new Date().toISOString()), []);
@@ -322,7 +373,11 @@ export default function ReceiptsPage() {
         return;
       }
 
-      const set = new Set((data as any[]).map((row) => row.store).filter(Boolean));
+      const set = new Set(
+        ((data as Array<Pick<ReceiptRow, 'store'>> | null) ?? [])
+          .map((row) => row.store)
+          .filter(isNonEmptyString)
+      );
       setStoreOptions(['all', ...Array.from(set).sort()]);
     })();
 
@@ -365,7 +420,7 @@ export default function ReceiptsPage() {
       return;
     }
 
-    let data: any[] | null = null;
+    let data: ReceiptItemPrefillRow[] | null = null;
     const primary = await supabase
       .from('receipt_items')
       .select(
@@ -382,13 +437,13 @@ export default function ReceiptsPage() {
         .ilike('name', cleaned)
         .limit(1);
       if (fallback.error || !fallback.data?.length) return;
-      data = fallback.data as any[];
+      data = (fallback.data ?? []) as ReceiptItemPrefillRow[];
     } else {
-      data = primary.data as any[];
+      data = (primary.data ?? []) as ReceiptItemPrefillRow[];
     }
 
     if (!data?.length) return;
-    const latest = data[0] as any;
+    const latest = data[0];
 
     const suggested: Partial<ReceiptItemRow> = {
       unit: latest.unit ?? 'BUC',
@@ -491,7 +546,7 @@ export default function ReceiptsPage() {
     }
 
     const lookup = new Map<string, { is_food: boolean | null; food_quality: FoodQuality | null }>();
-    (data as any[] | null)?.forEach((row) => {
+    ((data as FoodHintRow[] | null) ?? []).forEach((row) => {
       const key = typeof row.name === 'string' ? row.name.trim().toLowerCase() : '';
       if (!key || lookup.has(key)) return;
       lookup.set(key, {
@@ -519,61 +574,65 @@ export default function ReceiptsPage() {
     }
   }
 
-  async function applyJsonToEditor(payload: any) {
-    const store = payload?.store ?? 'lidl';
-    const timestamp = payload?.timestamp ?? new Date().toISOString();
-    const merchant = payload?.merchant ?? {};
-    const processing = payload?.processing ?? {};
-    const source = payload?.source ?? {};
+  async function applyJsonToEditor(payload: unknown) {
+    const parsedPayload: ReceiptImportPayload = isRecord(payload) ? (payload as ReceiptImportPayload) : {};
+    const merchant = isRecord(parsedPayload.merchant) ? parsedPayload.merchant : {};
+    const processing = isRecord(parsedPayload.processing) ? parsedPayload.processing : {};
+    const source = isRecord(parsedPayload.source) ? parsedPayload.source : {};
+    const store = parsedPayload.store ?? 'lidl';
+    const timestamp = parsedPayload.timestamp ?? new Date().toISOString();
     const fallbackHash =
-      source?.source_hash || buildManualSourceHash(source?.file_name);
+      typeof source.source_hash === 'string'
+        ? source.source_hash
+        : buildManualSourceHash(typeof source.file_name === 'string' ? source.file_name : undefined);
 
     setSelected({
       id: '',
       owner_id: ownerId ?? '',
       store,
       receipt_date: timestamp,
-      currency: payload?.currency ?? 'RON',
-      total_amount: Number(payload?.total ?? 0),
-      discount_total: Number(payload?.discount_total ?? 0),
-      sgr_bottle_charge: Number(payload?.sgr_bottle_charge ?? 0),
-      sgr_recovered_amount: Number(payload?.sgr_recovered_amount ?? 0),
-      merchant_name: merchant?.name ?? '',
-      merchant_city: merchant?.city ?? '',
-      merchant_cif: merchant?.cif ?? '',
-      processing_status: processing?.status ?? 'ok',
-      processing_warnings: processing?.warnings ?? [],
-      source_file_name: source?.file_name ?? '',
-      source_rel_path: source?.rel_path ?? '',
+      currency: parsedPayload.currency ?? 'RON',
+      total_amount: Number(parsedPayload.total ?? 0),
+      discount_total: Number(parsedPayload.discount_total ?? 0),
+      sgr_bottle_charge: Number(parsedPayload.sgr_bottle_charge ?? 0),
+      sgr_recovered_amount: Number(parsedPayload.sgr_recovered_amount ?? 0),
+      merchant_name: typeof merchant.name === 'string' ? merchant.name : '',
+      merchant_city: typeof merchant.city === 'string' ? merchant.city : '',
+      merchant_cif: typeof merchant.cif === 'string' ? merchant.cif : '',
+      processing_status: typeof processing.status === 'string' ? processing.status : 'ok',
+      processing_warnings: Array.isArray(processing.warnings) ? processing.warnings : [],
+      source_file_name: typeof source.file_name === 'string' ? source.file_name : '',
+      source_rel_path: typeof source.rel_path === 'string' ? source.rel_path : '',
       source_hash: fallbackHash ?? '',
-      schema_version: Number(payload?.schema_version ?? 3),
+      schema_version: Number(parsedPayload.schema_version ?? 3),
     });
     setPendingReceiptDelete(null);
     setConfirmDeleteReceipt(null);
 
-    const parsedItems = Array.isArray(payload?.items) ? payload.items : [];
-    const nextItems: ReceiptItemRow[] = parsedItems.map((item: any) => {
-      const quantity = item?.quantity ?? 1;
-      const paidAmount = item?.paid_amount ?? null;
+    const parsedItems = Array.isArray(parsedPayload.items) ? parsedPayload.items : [];
+    const nextItems: ReceiptItemRow[] = parsedItems.map((rawItem) => {
+      const item = isRecord(rawItem) ? (rawItem as ReceiptImportItem) : {};
+      const quantity = item.quantity ?? 1;
+      const paidAmount = item.paid_amount ?? null;
       const unitPrice =
-        item?.unit_price ?? (paidAmount != null && quantity ? Number(paidAmount) / Number(quantity) : null);
-      const isFood = item?.is_food === false ? false : true;
+        item.unit_price ?? (paidAmount != null && quantity ? Number(paidAmount) / Number(quantity) : null);
+      const isFood = item.is_food === false ? false : true;
       const foodQuality =
-        isFood && item?.food_quality ? (item.food_quality as FoodQuality) : null;
+        isFood && item.food_quality ? item.food_quality : null;
       const importedMeta =
-        item?.meta && typeof item.meta === 'object' && !Array.isArray(item.meta) ? item.meta : {};
+        isRecord(item.meta) ? item.meta : {};
       return {
-      receipt_id: '',
-      name: item?.name ?? '',
-      quantity,
-      unit: item?.unit ?? 'BUC',
-      unit_price: unitPrice,
-      paid_amount: paidAmount,
-      discount: item?.discount ?? 0,
-      needs_review: Boolean(item?.needs_review),
-      is_food: isFood,
-      food_quality: foodQuality,
-      meta: { ...importedMeta, ...extractItemMeta(item) },
+        receipt_id: '',
+        name: item.name ?? '',
+        quantity: Number(quantity),
+        unit: item.unit ?? 'BUC',
+        unit_price: unitPrice != null ? Number(unitPrice) : null,
+        paid_amount: paidAmount != null ? Number(paidAmount) : null,
+        discount: item.discount != null ? Number(item.discount) : 0,
+        needs_review: Boolean(item.needs_review),
+        is_food: isFood,
+        food_quality: foodQuality,
+        meta: { ...importedMeta, ...extractItemMeta(item) },
       };
     });
     setItems(nextItems);
@@ -600,7 +659,7 @@ export default function ReceiptsPage() {
       setErr(error.message);
       return;
     }
-    setReceipts((data as any) ?? []);
+    setReceipts((data ?? []) as ReceiptRow[]);
   }
 
   useEffect(() => {
@@ -642,9 +701,9 @@ export default function ReceiptsPage() {
       }
 
       const set = new Set(
-        (data as any[])
+        (((data as Array<Pick<ReceiptItemRow, 'name'>> | null) ?? []))
           .map((row) => row.name)
-          .filter((name) => typeof name === 'string' && name.trim().length)
+          .filter(isNonEmptyString)
       );
       setItemNameOptions(Array.from(set).sort());
     })();
@@ -668,9 +727,9 @@ export default function ReceiptsPage() {
       }
 
       const set = new Set(
-        (data as any[])
+        (((data as Array<Pick<ReceiptItemRow, 'unit'>> | null) ?? []))
           .map((row) => row.unit)
-          .filter((unit) => typeof unit === 'string' && unit.trim().length)
+          .filter(isNonEmptyString)
       );
       setUnitOptions(Array.from(set).sort());
     })();
@@ -681,11 +740,7 @@ export default function ReceiptsPage() {
   }, []);
 
   useEffect(() => {
-    if (!selected) {
-      setItems([]);
-      return;
-    }
-    if (!selected.id) {
+    if (!selectedId) {
       return;
     }
     let alive = true;
@@ -695,7 +750,7 @@ export default function ReceiptsPage() {
         .select(
           'id,receipt_id,name,quantity,unit,unit_price,paid_amount,discount,needs_review,is_food,food_quality,meta'
         )
-        .eq('receipt_id', selected.id)
+        .eq('receipt_id', selectedId)
         .order('id', { ascending: true });
 
       if (!alive) return;
@@ -703,13 +758,13 @@ export default function ReceiptsPage() {
         setErr(error.message);
         return;
       }
-      setItems((data as any) ?? []);
+      setItems((data ?? []) as ReceiptItemRow[]);
     })();
 
     return () => {
       alive = false;
     };
-  }, [selected?.id]);
+  }, [selectedId]);
 
   async function saveChanges() {
     if (!selected) return;
@@ -847,7 +902,7 @@ export default function ReceiptsPage() {
       )
       .eq('receipt_id', receiptId)
       .order('id', { ascending: true });
-    setItems((refreshedItems as any) ?? []);
+    setItems((refreshedItems ?? []) as ReceiptItemRow[]);
     await loadReceipts(storeFilter);
   }
 

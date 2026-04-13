@@ -28,6 +28,10 @@ type DeviceRow = {
   alerts: { type: string; level: string; message: string }[] | null;
 };
 
+type DeviceWithDerivedStatus = DeviceRow & {
+  derivedStatus: DeviceRow['status'];
+};
+
 const OFFLINE_AFTER_MIN = 45;
 
 function fmtLastSeen(ts: string | null) {
@@ -111,7 +115,7 @@ export default function DevicesPage() {
         return;
       }
 
-      setDevices((data as any) ?? []);
+      setDevices((data ?? []) as DeviceRow[]);
     })();
 
     return () => {
@@ -121,7 +125,7 @@ export default function DevicesPage() {
 
   const derived = useMemo(() => {
     const rows = devices ?? [];
-    return rows.map((d) => ({ ...d, derivedStatus: deriveStatus(d) }));
+    return rows.map((d) => ({ ...d, derivedStatus: deriveStatus(d) })) as DeviceWithDerivedStatus[];
   }, [devices]);
 
   return (

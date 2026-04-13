@@ -18,6 +18,10 @@ type DeviceRow = {
   alerts: { type: string; level: string; message: string }[] | null;
 };
 
+type DeviceWithDerivedStatus = DeviceRow & {
+  derivedStatus: Status;
+};
+
 const OFFLINE_AFTER_MIN = 45;
 
 function deriveStatus(device: DeviceRow): Status {
@@ -48,7 +52,7 @@ export function DevicesCard() {
         return;
       }
 
-      setDevices((data as any) ?? []);
+      setDevices((data ?? []) as DeviceRow[]);
     })();
 
     return () => {
@@ -58,7 +62,7 @@ export function DevicesCard() {
 
   const derived = useMemo(() => {
     const rows = devices ?? [];
-    const enriched = rows.map((d) => ({ ...d, derivedStatus: deriveStatus(d) }));
+    const enriched = rows.map((d) => ({ ...d, derivedStatus: deriveStatus(d) })) as DeviceWithDerivedStatus[];
     const hasDown = enriched.some((d) => d.derivedStatus === 'down');
     const hasWarn = enriched.some((d) => d.derivedStatus === 'warn');
     const overall: Status = hasDown ? 'down' : hasWarn ? 'warn' : rows.length ? 'ok' : 'unknown';
@@ -111,17 +115,17 @@ export function DevicesCard() {
 
       <div className="mt-4 grid gap-2 text-xs text-[var(--muted)]">
         {(derived.enriched.length ? derived.enriched : []).slice(0, 4).map((device) => (
-            <div key={device.id} className="flex items-center justify-between gap-3">
-              <div className="truncate">
-                <span className="font-semibold text-[var(--text)]">{device.name}</span>
-                {device.user_name ? ` · ${device.user_name}` : ''}
-                {device.ip_address ? ` · ${device.ip_address}` : ''}
-              </div>
-              <StatusPill status={device.derivedStatus} />
+          <div key={device.id} className="flex items-center justify-between gap-3">
+            <div className="truncate">
+              <span className="font-semibold text-[var(--text)]">{device.name}</span>
+              {device.user_name ? ` · ${device.user_name}` : ''}
+              {device.ip_address ? ` · ${device.ip_address}` : ''}
             </div>
+            <StatusPill status={device.derivedStatus} />
+          </div>
         ))}
-        {!derived.enriched.length ? (
-          <div className="text-sm text-[var(--muted)]">Nu exista device-uri inca.</div>
+      {!derived.enriched.length ? (
+        <div className="text-sm text-[var(--muted)]">Nu exista device-uri inca.</div>
         ) : null}
       </div>
     </section>
