@@ -6,42 +6,18 @@ import { LogoutButton } from '@/components/LogoutButton';
 import { PageShell } from '@/components/PageShell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TricorderCard } from '@/components/TricorderCard';
-import Link from 'next/link';
 
 export default function HomePage() {
   return (
     <PageShell>
-      <div className="space-y-6">
-        <section className="hero-card p-5 sm:p-6">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-            <div className="max-w-2xl">
-              <span className="eyebrow">Dashboard</span>
-              <h1 className="display-title mt-4 text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">
-                Life Dashboard
+      <div className="space-y-4 sm:space-y-6">
+        <section className="flex justify-start">
+          <div className="surface-card surface-card--soft w-full max-w-sm px-4 py-3 sm:w-auto sm:min-w-[19rem]">
+            <div className="flex items-center justify-between gap-3">
+              <h1 className="display-title text-lg font-semibold tracking-[-0.04em] sm:text-xl">
+                Dashboard
               </h1>
-              <div className="mt-2 text-sm text-[var(--muted)]">
-                Receipts, devices and your daily tools.
-              </div>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link className="btn-base btn-primary" href="/receipts">
-                  Open receipts
-                </Link>
-                <Link className="btn-base btn-secondary" href="/receipts/charts">
-                  Spending charts
-                </Link>
-              </div>
-            </div>
-
-            <div className="flex w-full max-w-xl flex-col gap-3 xl:items-end">
-              <div className="flex flex-wrap gap-3">
-                <Link className="page-back-link" href="/devices">
-                  Devices
-                </Link>
-                <LogoutButton />
-              </div>
-              <div className="pt-1">
-                <ThemeToggle />
-              </div>
+              <ThemeToggle />
             </div>
           </div>
         </section>
@@ -53,6 +29,13 @@ export default function HomePage() {
           <TricorderCard />
           <AppCards excludeSlugs={['receipts', 'termo-alert']} />
           <CutCoachCard />
+        </section>
+
+        <section className="surface-card surface-card--soft p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm font-medium text-[var(--muted)]">Session</div>
+            <LogoutButton />
+          </div>
         </section>
       </div>
     </PageShell>

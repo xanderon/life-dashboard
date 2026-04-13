@@ -283,41 +283,45 @@ a {
   color: color-mix(in srgb, var(--danger) 74%, white);
 }
 
-.theme-switcher {
+.theme-dropdown {
   display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+  align-items: center;
+  gap: 0.55rem;
 }
 
-.theme-switcher__button {
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--panel) 46%, transparent);
+.theme-dropdown__label {
   color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.theme-dropdown__select {
+  min-width: 7.4rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 54%, transparent);
+  color: var(--text);
   cursor: pointer;
   font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.01em;
-  padding: 0.46rem 0.68rem;
+  line-height: 1;
+  padding: 0.55rem 2rem 0.55rem 0.8rem;
   transition:
-    transform 160ms ease,
-    color 160ms ease,
     border-color 160ms ease,
     background 160ms ease,
-    opacity 160ms ease;
+    box-shadow 160ms ease;
 }
 
-.theme-switcher__button:hover {
-  transform: translateY(-1px);
-  color: var(--text);
+.theme-dropdown__select:hover {
   border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
-  background: color-mix(in srgb, var(--panel-2) 32%, transparent);
+  background: color-mix(in srgb, var(--panel-2) 36%, transparent);
 }
 
-.theme-switcher__button--active {
-  background: color-mix(in srgb, var(--accent-soft) 38%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
-  color: var(--text);
+.theme-dropdown__select:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-soft) 60%, transparent);
 }
 
 .field-base,
@@ -433,12 +437,17 @@ textarea:focus {
     padding: 0.9rem;
   }
 
-  .theme-switcher {
-    gap: 0.32rem;
+  .theme-dropdown {
+    gap: 0.45rem;
   }
 
-  .theme-switcher__button {
+  .theme-dropdown__label {
     font-size: 0.68rem;
-    padding: 0.44rem 0.6rem;
+  }
+
+  .theme-dropdown__select {
+    min-width: 6.8rem;
+    font-size: 0.68rem;
+    padding: 0.5rem 1.8rem 0.5rem 0.72rem;
   }
 }

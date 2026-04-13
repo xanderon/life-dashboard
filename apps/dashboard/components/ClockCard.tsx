@@ -4,14 +4,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card } from './Card';
 
 export function ClockCard() {
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
+    const tick = () => setNow(new Date());
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
 
   const time = useMemo(() => {
+    if (!now) {
+      return "--:--:--";
+    }
+
     return now.toLocaleTimeString('ro-RO', {
       hour: '2-digit',
       minute: '2-digit',
@@ -20,6 +26,10 @@ export function ClockCard() {
   }, [now]);
 
   const date = useMemo(() => {
+    if (!now) {
+      return '\u00a0';
+    }
+
     return now.toLocaleDateString('ro-RO', {
       weekday: 'long',
       year: 'numeric',
@@ -30,12 +40,11 @@ export function ClockCard() {
 
   return (
     <Card
-      title="Live clock"
+      title="Clock"
       subtitle={date}
-      right={<span className="eyebrow">Local</span>}
-      className="hero-card"
+      className="hero-card p-4 sm:p-5"
     >
-      <div className="display-title text-5xl font-semibold tracking-[-0.06em]">{time}</div>
+      <div className="display-title text-3xl font-semibold tracking-[-0.06em] sm:text-4xl lg:text-5xl">{time}</div>
     </Card>
   );
 }

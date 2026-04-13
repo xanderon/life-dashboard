@@ -1,4 +1,4 @@
-const THEME_BOOTSTRAP_SCRIPT = `
+export const THEME_BOOTSTRAP_SCRIPT = `
 (() => {
   const STORAGE_KEY = "life-dashboard-theme";
   const root = document.documentElement;
@@ -46,12 +46,3 @@ const THEME_BOOTSTRAP_SCRIPT = `
   });
 })();
 `;
-
-export function ThemeScript() {
-  return (
-    <script
-      dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }}
-      suppressHydrationWarning
-    />
-  );
-}

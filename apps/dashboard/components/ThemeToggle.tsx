@@ -54,25 +54,28 @@ export function ThemeToggle() {
   }, [mode]);
 
   return (
-    <div className="theme-switcher" role="group" aria-label="Theme">
-      {THEME_OPTIONS.map((option) => (
-        <button
-          key={option.id}
-          type="button"
-          className={`theme-switcher__button ${
-            mode === option.id ? "theme-switcher__button--active" : ""
-          }`}
-          aria-pressed={mode === option.id}
-          title={option.description}
-          onClick={() => {
-            startTransition(() => {
-              setMode(option.id);
-            });
-          }}
-        >
-          <span>{option.label}</span>
-        </button>
-      ))}
+    <div className="theme-dropdown">
+      <label className="theme-dropdown__label" htmlFor="dashboard-theme-select">
+        Theme
+      </label>
+      <select
+        id="dashboard-theme-select"
+        className="theme-dropdown__select"
+        aria-label="Theme"
+        value={mode}
+        onChange={(event) => {
+          const nextMode = event.target.value as ThemeMode;
+          startTransition(() => {
+            setMode(nextMode);
+          });
+        }}
+      >
+        {THEME_OPTIONS.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

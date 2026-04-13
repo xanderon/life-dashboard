@@ -1013,24 +1013,18 @@ export default function ReceiptsPage() {
     <>
       <PageShell>
         <div className="space-y-6">
-        <section className="hero-card p-5 sm:p-7">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-            <div className="max-w-3xl">
-              <span className="eyebrow">Receipts workspace</span>
-              <h1 className="display-title mt-5 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
-                Receipts
-              </h1>
-              <div className="mt-3 text-base leading-7 text-[var(--muted)]">
-                Listă bonuri, filtrare după magazin, editare detalii și produse.
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
+        <section className="surface-card surface-card--soft p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="display-title text-2xl font-semibold tracking-[-0.06em] sm:text-3xl">
+              Receipts
+            </h1>
+            <div className="flex flex-wrap items-center gap-2">
               <ThemeToggle />
               <BackLink href="/">Dashboard</BackLink>
             </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <Link
               className="btn-base btn-secondary"
               href="/receipts/export"
@@ -1046,20 +1040,14 @@ export default function ReceiptsPage() {
           </div>
         </section>
 
-        <div className="surface-card p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="text-xl font-bold tracking-tight">Control panel</div>
-              <div className="mt-1 text-sm text-[var(--muted)]">
-                Filtre, creare rapidă și import direct în editor.
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
+        <div className="surface-card p-4 sm:p-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
                 Magazin
               </label>
               <select
-                className="field-base min-h-10 px-4 text-sm"
+                className="field-base min-h-10 min-w-[9rem] px-4 text-sm"
                 value={storeFilter}
                 onChange={(e) => setStoreFilter(e.target.value)}
               >
@@ -1069,11 +1057,13 @@ export default function ReceiptsPage() {
                   </option>
                 ))}
               </select>
-                <button
-                  className="btn-base btn-primary"
-                  onClick={() => {
-                    prevSelectionRef.current = selected;
-                    const nowIso = new Date().toISOString();
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                className="btn-base btn-primary"
+                onClick={() => {
+                  prevSelectionRef.current = selected;
+                  const nowIso = new Date().toISOString();
                   setSelected({
                     id: '',
                     owner_id: ownerId ?? '',
@@ -1099,8 +1089,8 @@ export default function ReceiptsPage() {
                     setMetaLocked(false);
                     setPendingReceiptDelete(null);
                     setConfirmDeleteReceipt(null);
-                  }}
-                >
+                }}
+              >
                 + Add receipt
               </button>
               <button
@@ -1116,9 +1106,6 @@ export default function ReceiptsPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold">Import JSON</div>
-                  <div className="mt-1 text-xs text-[var(--muted)]">
-                    Best on mobile: use clipboard if supported, otherwise load a `.json` file.
-                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
