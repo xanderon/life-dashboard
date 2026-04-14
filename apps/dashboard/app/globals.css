@@ -272,6 +272,49 @@ a {
   color: var(--text);
 }
 
+.btn-tonal {
+  justify-content: space-between;
+  min-height: 3.5rem;
+  width: 100%;
+  border-radius: 1.15rem;
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--accent-soft) 78%, var(--surface-highlight)) 0%,
+      color-mix(in srgb, var(--panel-strong) 94%, transparent) 100%
+    );
+  box-shadow:
+    0 14px 30px -26px color-mix(in srgb, var(--accent) 42%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 92%, transparent);
+  color: var(--text);
+  padding-inline: 1rem;
+  text-align: left;
+}
+
+.btn-tonal:hover {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--accent-soft) 92%, var(--surface-highlight)) 0%,
+      color-mix(in srgb, var(--panel-strong) 96%, transparent) 100%
+    );
+}
+
+.btn-tonal__icon {
+  color: color-mix(in srgb, var(--accent) 68%, var(--text));
+  font-size: 1rem;
+  transition:
+    transform 160ms ease,
+    color 160ms ease;
+}
+
+.btn-tonal:hover .btn-tonal__icon {
+  color: var(--accent);
+  transform: translateX(2px);
+}
+
 .btn-ghost {
   background: color-mix(in srgb, var(--panel-2) 84%, transparent);
   color: var(--text);

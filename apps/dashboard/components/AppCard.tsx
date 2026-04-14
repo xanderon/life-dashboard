@@ -71,23 +71,12 @@ export function AppCard({
               </div>
             </div>
             <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-              <Link
-                className="group flex min-h-14 items-center justify-between gap-3 rounded-[1.15rem] border border-[color:color-mix(in_srgb,var(--accent-2)_50%,transparent)] bg-[linear-gradient(135deg,var(--accent)_0%,var(--accent-2)_100%)] px-4 py-3 text-left text-white shadow-[0_18px_40px_-28px_color-mix(in_srgb,var(--accent-2)_75%,transparent)] transition-transform duration-150 hover:-translate-y-[1px]"
-                href="/receipts"
-              >
-                <span className="min-w-0">
-                  <span className="block text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/70">
-                    Primary
-                  </span>
-                  <span className="mt-1 block truncate text-base font-semibold tracking-tight">
-                    Open receipts
-                  </span>
+              <Link className="btn-base btn-tonal" href="/receipts">
+                <span className="truncate text-base font-semibold tracking-tight">
+                  Open receipts
                 </span>
-                <span
-                  aria-hidden="true"
-                  className="text-lg font-semibold text-white/80 transition-transform duration-150 group-hover:translate-x-0.5"
-                >
-                  ↗
+                <span aria-hidden="true" className="btn-tonal__icon">
+                  →
                 </span>
               </Link>
               <Link className="btn-base btn-secondary" href="/receipts/charts">
