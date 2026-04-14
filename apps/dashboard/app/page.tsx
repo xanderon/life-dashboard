@@ -3,6 +3,7 @@ import { ClockCard } from '@/components/ClockCard';
 import { CutCoachCard } from '@/components/CutCoachCard';
 import { DevicesCard } from '@/components/DevicesCard';
 import { LogoutButton } from '@/components/LogoutButton';
+import { MyWorkCard } from '@/components/MyWorkCard';
 import { PageShell } from '@/components/PageShell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TricorderCard } from '@/components/TricorderCard';
@@ -30,6 +31,8 @@ export default function HomePage() {
           <AppCards excludeSlugs={['receipts', 'termo-alert']} />
           <CutCoachCard />
         </section>
+
+        <MyWorkCard />
 
         <section className="surface-card surface-card--soft p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
