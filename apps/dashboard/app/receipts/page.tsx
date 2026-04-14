@@ -1061,6 +1061,12 @@ export default function ReceiptsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 className="btn-base btn-primary"
+                onClick={() => setShowJsonImport((v) => !v)}
+              >
+                + Add via JSON
+              </button>
+              <button
+                className="btn-base btn-secondary"
                 onClick={() => {
                   prevSelectionRef.current = selected;
                   const nowIso = new Date().toISOString();
@@ -1093,12 +1099,6 @@ export default function ReceiptsPage() {
               >
                 + Add receipt
               </button>
-              <button
-                className="btn-base btn-secondary"
-                onClick={() => setShowJsonImport((v) => !v)}
-              >
-                + Add via JSON
-              </button>
             </div>
           </div>
           {showJsonImport ? (
@@ -1116,7 +1116,7 @@ export default function ReceiptsPage() {
                     Paste
                   </button>
                   <button
-                    className="btn-base btn-secondary"
+                    className="btn-base btn-primary"
                     onClick={() => void readJsonFromClipboard({ parseAfterRead: true })}
                     type="button"
                   >
@@ -1151,7 +1151,7 @@ export default function ReceiptsPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                 <button
-                  className="btn-base btn-secondary"
+                  className="btn-base btn-primary"
                   onClick={() => void parseJsonInput()}
                   type="button"
                 >
