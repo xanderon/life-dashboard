@@ -262,9 +262,27 @@ a {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
-  border-color: color-mix(in srgb, var(--accent-2) 55%, transparent);
-  color: white;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--accent-soft) 92%, var(--surface-highlight)) 0%,
+      color-mix(in srgb, var(--panel-2) 94%, transparent) 100%
+    );
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  box-shadow:
+    0 14px 28px -24px color-mix(in srgb, var(--accent) 34%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 92%, transparent);
+  color: var(--text);
+}
+
+.btn-primary:hover {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--accent-soft) 100%, var(--surface-highlight)) 0%,
+      color-mix(in srgb, var(--panel-2) 96%, transparent) 100%
+    );
 }
 
 .btn-secondary {
