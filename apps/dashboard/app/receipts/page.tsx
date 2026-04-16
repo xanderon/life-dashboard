@@ -111,8 +111,8 @@ type ReceiptTotalsSummary = {
   delta: number;
   absDelta: number;
   hasMatch: boolean;
-  likelyMissingSgrCharge: number | null;
-  likelyMissingSgrBottleCount: number | null;
+  likelySgrAdjustment: number | null;
+  likelySgrBottleCount: number | null;
 };
 
 const RECEIPT_TOTAL_MISMATCH_CODE = 'receipt_total_mismatch';
@@ -280,9 +280,9 @@ function buildReceiptTotals(
   }, candidates[0] ?? 0);
   const delta = roundMoney(receiptTotal - bestComputedTotal);
   const absDelta = roundMoney(Math.abs(delta));
-  const likelyMissingSgrCharge = delta > 0 && absDelta >= SGR_BOTTLE_PRICE && isHalfStep(absDelta) ? absDelta : null;
-  const likelyMissingSgrBottleCount =
-    likelyMissingSgrCharge != null ? Math.round(likelyMissingSgrCharge / SGR_BOTTLE_PRICE) : null;
+  const likelySgrAdjustment = absDelta >= SGR_BOTTLE_PRICE && isHalfStep(absDelta) ? absDelta : null;
+  const likelySgrBottleCount =
+    likelySgrAdjustment != null ? Math.round(likelySgrAdjustment / SGR_BOTTLE_PRICE) : null;
 
   return {
     itemsSubtotal,
@@ -296,8 +296,8 @@ function buildReceiptTotals(
     delta,
     absDelta,
     hasMatch: Math.abs(bestComputedTotal - receiptTotal) < 0.01,
-    likelyMissingSgrCharge,
-    likelyMissingSgrBottleCount,
+    likelySgrAdjustment,
+    likelySgrBottleCount,
   };
 }
 
@@ -341,9 +341,9 @@ function mergeSyntheticReceiptWarnings(
     items_sum: totals.itemsSubtotal,
   };
 
-  if (totals.likelyMissingSgrCharge != null) {
-    warning.likely_missing_sgr_charge = totals.likelyMissingSgrCharge;
-    warning.likely_missing_sgr_bottles = totals.likelyMissingSgrBottleCount;
+  if (totals.likelySgrAdjustment != null) {
+    warning.likely_sgr_adjustment = totals.likelySgrAdjustment;
+    warning.likely_sgr_bottles = totals.likelySgrBottleCount;
   }
 
   return [...baseWarnings, warning];
@@ -2065,13 +2065,13 @@ export default function ReceiptsPage() {
                         <span>
                           Diferenta curenta este <span className="font-semibold text-[var(--text)]">{selectedTotals.absDelta.toFixed(2)} {selected?.currency ?? 'RON'}</span>.
                         </span>
-                        {selectedTotals.likelyMissingSgrCharge != null ? (
+                        {selectedTotals.likelySgrAdjustment != null ? (
                           <span className="text-[var(--warning)]">
-                            Probabil lipsește <span className="font-semibold">SGR charge {selectedTotals.likelyMissingSgrCharge.toFixed(2)} {selected?.currency ?? 'RON'}</span>
-                            {selectedTotals.likelyMissingSgrBottleCount != null
-                              ? ` (${selectedTotals.likelyMissingSgrBottleCount} x ${SGR_BOTTLE_PRICE.toFixed(2)})`
+                            Probabil e o diferență legată de <span className="font-semibold">SGR de {selectedTotals.likelySgrAdjustment.toFixed(2)} {selected?.currency ?? 'RON'}</span>
+                            {selectedTotals.likelySgrBottleCount != null
+                              ? ` (${selectedTotals.likelySgrBottleCount} x ${SGR_BOTTLE_PRICE.toFixed(2)})`
                               : ''}
-                            .
+                            . {selectedTotals.delta > 0 ? 'Verifică dacă lipsește SGR charge.' : 'Verifică SGR charge sau sticlele marcate cu garanție.'}
                           </span>
                         ) : (
                           <span>Nu pare un caz clar de SGR la multipli de 0.50.</span>
