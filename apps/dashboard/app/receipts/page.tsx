@@ -212,6 +212,51 @@ function isNonEmptyString(value: string | null): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function roundMoney(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function getItemNetAmount(item: Pick<ReceiptItemRow, 'paid_amount' | 'quantity' | 'unit_price' | 'discount'>) {
+  const paid = item.paid_amount;
+  if (paid != null && !Number.isNaN(Number(paid))) {
+    return roundMoney(Number(paid));
+  }
+  const qty = Number(item.quantity) || 0;
+  const unit = Number(item.unit_price) || 0;
+  const disc = Number(item.discount) || 0;
+  return roundMoney(Math.max(0, qty * unit - disc));
+}
+
+function getReceiptTotals(
+  receipt: Pick<ReceiptRow, 'total_amount' | 'discount_total' | 'sgr_bottle_charge' | 'sgr_recovered_amount'> | null,
+  items: ReceiptItemRow[]
+) {
+  const itemsSubtotal = roundMoney(items.reduce((sum, item) => sum + getItemNetAmount(item), 0));
+  const sgrCharge = roundMoney(Number(receipt?.sgr_bottle_charge ?? 0));
+  const sgrRecovered = roundMoney(Math.abs(Number(receipt?.sgr_recovered_amount ?? 0)));
+  const discountTotal = roundMoney(Number(receipt?.discount_total ?? 0));
+  const receiptTotal = roundMoney(Number(receipt?.total_amount ?? 0));
+  const grossItemsTotal = roundMoney(itemsSubtotal + sgrCharge);
+  const netItemsTotal = roundMoney(grossItemsTotal - sgrRecovered);
+  const discountedItemsTotal = roundMoney(grossItemsTotal - discountTotal);
+  const discountedNetItemsTotal = roundMoney(discountedItemsTotal - sgrRecovered);
+  const candidates = [grossItemsTotal, netItemsTotal, discountedItemsTotal, discountedNetItemsTotal];
+  const bestComputedTotal = candidates.reduce((best, current) => {
+    if (Math.abs(current - receiptTotal) < Math.abs(best - receiptTotal)) {
+      return current;
+    }
+    return best;
+  }, candidates[0] ?? 0);
+
+  return {
+    itemsSubtotal,
+    receiptTotal,
+    bestComputedTotal,
+    fallbackComputedTotal: netItemsTotal,
+    hasMatch: items.length > 0 && Math.abs(bestComputedTotal - receiptTotal) < 0.01,
+  };
+}
+
 const ITEM_CORE_KEYS = new Set([
   'name',
   'quantity',
@@ -1683,14 +1728,7 @@ export default function ReceiptsPage() {
                           <div className="text-[10px] text-[var(--muted)]">
                             Net:{' '}
                             {(() => {
-                              const paid = item.paid_amount;
-                              if (paid != null && !Number.isNaN(Number(paid))) {
-                                return Number(paid).toFixed(2);
-                              }
-                              const qty = Number(item.quantity) || 0;
-                              const unit = Number(item.unit_price) || 0;
-                              const disc = Number(item.discount) || 0;
-                              const net = Math.max(0, qty * unit - disc);
+                              const net = getItemNetAmount(item);
                               if (!net) return '—';
                               return net.toFixed(2);
                             })()}
@@ -1820,25 +1858,9 @@ export default function ReceiptsPage() {
                       </div>
                       <div className="flex items-center gap-2 text-[var(--muted)]">
                         {(() => {
-                          const itemsSubtotal = items.reduce((sum, item) => {
-                            const paid = item.paid_amount;
-                            if (paid != null && !Number.isNaN(Number(paid))) {
-                              return sum + Number(paid);
-                            }
-                            const qty = Number(item.quantity) || 0;
-                            const unit = Number(item.unit_price) || 0;
-                            const disc = Number(item.discount) || 0;
-                            return sum + Math.max(0, qty * unit - disc);
-                          }, 0);
-                          const sgrCharge = Number(selected?.sgr_bottle_charge || 0);
-                          const computedItemsTotal = itemsSubtotal + sgrCharge;
-                          const discountTotal = Number(selected?.discount_total || 0);
-                          const computedItemsTotalWithDiscount = computedItemsTotal - discountTotal;
-                          const receiptTotal = Number(selected?.total_amount || 0);
+                          const totals = getReceiptTotals(selected ?? null, items);
                           if (!items.length) return null;
-                          const directDelta = Math.abs(computedItemsTotal - receiptTotal);
-                          const discountedDelta = Math.abs(computedItemsTotalWithDiscount - receiptTotal);
-                          if (Math.min(directDelta, discountedDelta) < 0.01) {
+                          if (totals.hasMatch) {
                             return <span title="Total ok">✅</span>;
                           }
                           return <span title="Total diferit">⚠️</span>;
@@ -1847,20 +1869,9 @@ export default function ReceiptsPage() {
                           Total items:{" "}
                           <span className="font-semibold text-[var(--text)]">
                             {(() => {
-                              const receiptTotal = Number(selected?.total_amount || 0);
-                              if (receiptTotal > 0) return receiptTotal.toFixed(2);
-                              const computedItemsTotal =
-                                items.reduce((sum, item) => {
-                                  const paid = item.paid_amount;
-                                  if (paid != null && !Number.isNaN(Number(paid))) {
-                                    return sum + Number(paid);
-                                  }
-                                  const qty = Number(item.quantity) || 0;
-                                  const unit = Number(item.unit_price) || 0;
-                                  const disc = Number(item.discount) || 0;
-                                  return sum + Math.max(0, qty * unit - disc);
-                                }, 0) + Number(selected?.sgr_bottle_charge || 0);
-                              return computedItemsTotal.toFixed(2);
+                              const totals = getReceiptTotals(selected ?? null, items);
+                              if (totals.receiptTotal > 0) return totals.receiptTotal.toFixed(2);
+                              return totals.fallbackComputedTotal.toFixed(2);
                             })()}{" "}
                             {selected?.currency ?? "RON"}
                           </span>
