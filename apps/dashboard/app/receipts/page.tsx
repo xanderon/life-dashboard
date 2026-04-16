@@ -429,6 +429,7 @@ function buildJsonExport(selected: ReceiptRow, items: ReceiptItemRow[]) {
 export default function ReceiptsPage() {
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [items, setItems] = useState<ReceiptItemRow[]>([]);
+  const [persistedItemsSnapshot, setPersistedItemsSnapshot] = useState<ReceiptItemRow[]>([]);
   const [receiptTotalsById, setReceiptTotalsById] = useState<Record<string, ReceiptTotalsSummary>>({});
   const [storeFilter, setStoreFilter] = useState<string>('all');
   const [storeOptions, setStoreOptions] = useState<string[]>(['all']);
@@ -447,6 +448,7 @@ export default function ReceiptsPage() {
   const [showJsonImport, setShowJsonImport] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
   const [metaLocked, setMetaLocked] = useState(true);
+  const [deleteItemsAckSignature, setDeleteItemsAckSignature] = useState('');
   const itemPrefillCache = useRef<Record<string, Partial<ReceiptItemRow>>>({});
   const prevSelectionRef = useRef<ReceiptRow | null>(null);
   const editorRef = useRef<HTMLDivElement | null>(null);
@@ -457,6 +459,16 @@ export default function ReceiptsPage() {
   const todayKey = useMemo(() => dayKey(new Date().toISOString()), []);
   const currentMonthKey = useMemo(() => monthKey(new Date().toISOString()), []);
   const selectedTotals = useMemo(() => getReceiptTotals(selected, items), [selected, items]);
+  const pendingDeletedItems = useMemo(() => {
+    const currentIds = new Set(items.map((item) => item.id).filter(Boolean));
+    return persistedItemsSnapshot.filter((item) => item.id && !currentIds.has(item.id));
+  }, [items, persistedItemsSnapshot]);
+  const pendingDeletedItemsSignature = useMemo(
+    () => pendingDeletedItems.map((item) => item.id).filter(Boolean).join('|'),
+    [pendingDeletedItems]
+  );
+  const isDeleteItemsAckValid =
+    !pendingDeletedItems.length || deleteItemsAckSignature === pendingDeletedItemsSignature;
   const groupedReceipts = useMemo(() => {
     const groups: {
       key: string;
@@ -501,6 +513,12 @@ export default function ReceiptsPage() {
 
     return () => window.cancelAnimationFrame(id);
   }, [selected]);
+
+  useEffect(() => {
+    if (deleteItemsAckSignature && deleteItemsAckSignature !== pendingDeletedItemsSignature) {
+      setDeleteItemsAckSignature('');
+    }
+  }, [deleteItemsAckSignature, pendingDeletedItemsSignature]);
 
   useEffect(() => {
     let alive = true;
@@ -924,6 +942,7 @@ export default function ReceiptsPage() {
 
   useEffect(() => {
     if (!selectedId) {
+      setPersistedItemsSnapshot([]);
       return;
     }
     let alive = true;
@@ -941,7 +960,9 @@ export default function ReceiptsPage() {
         setErr(error.message);
         return;
       }
-      setItems((data ?? []) as ReceiptItemRow[]);
+      const nextItems = (data ?? []) as ReceiptItemRow[];
+      setItems(nextItems);
+      setPersistedItemsSnapshot(nextItems);
     })();
 
     return () => {
@@ -965,6 +986,17 @@ export default function ReceiptsPage() {
       }
       return item;
     });
+    const currentPersistedIds = new Set(existingItems.map((item) => item.id).filter(Boolean));
+    const deletedPersistedItems = persistedItemsSnapshot.filter(
+      (item) => item.id && !currentPersistedIds.has(item.id)
+    );
+
+    if (deletedPersistedItems.length && !isDeleteItemsAckValid) {
+      setErr('Confirmă itemele care vor fi șterse definitiv înainte să salvezi.');
+      setSaving(false);
+      return;
+    }
+
     const computedTotals = getReceiptTotals(selected, existingItems);
     const nextProcessingWarnings = mergeSyntheticReceiptWarnings(selected.processing_warnings, computedTotals);
 
@@ -1083,6 +1115,21 @@ export default function ReceiptsPage() {
       }
     }
 
+    if (deletedPersistedItems.length) {
+      const deletedItemIds = deletedPersistedItems.map((item) => item.id).filter(Boolean);
+      const { error: deleteItemsErr } = await supabase
+        .from('receipt_items')
+        .delete()
+        .in('id', deletedItemIds)
+        .eq('receipt_id', receiptId);
+
+      if (deleteItemsErr) {
+        setErr(deleteItemsErr.message);
+        setSaving(false);
+        return;
+      }
+    }
+
     setSaving(false);
     setSuccess('Salvat.');
     setSelected((current) =>
@@ -1104,8 +1151,26 @@ export default function ReceiptsPage() {
       )
       .eq('receipt_id', receiptId)
       .order('id', { ascending: true });
-    setItems((refreshedItems ?? []) as ReceiptItemRow[]);
+    const nextItems = (refreshedItems ?? []) as ReceiptItemRow[];
+    setItems(nextItems);
+    setPersistedItemsSnapshot(nextItems);
+    setDeleteItemsAckSignature('');
     await loadReceipts(storeFilter);
+  }
+
+  function restorePendingDeletedItems() {
+    if (!pendingDeletedItems.length) return;
+    setItems((prev) => {
+      const persistedById = new Map(prev.filter((item) => item.id).map((item) => [item.id as string, item]));
+      const unsavedItems = prev.filter((item) => !item.id);
+      const restoredPersistedItems = persistedItemsSnapshot.map((item) => {
+        const itemId = item.id as string;
+        return persistedById.get(itemId) ?? item;
+      });
+      return [...restoredPersistedItems, ...unsavedItems];
+    });
+    setPendingDeleteKey(null);
+    setDeleteItemsAckSignature('');
   }
 
   async function deleteReceiptNow() {
@@ -1552,8 +1617,13 @@ export default function ReceiptsPage() {
                   </button>
                   <button
                     className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50"
-                    disabled={!selected || saving}
+                    disabled={!selected || saving || !isDeleteItemsAckValid}
                     onClick={saveChanges}
+                    title={
+                      !isDeleteItemsAckValid
+                        ? 'Confirmă mai întâi itemele care vor fi șterse definitiv'
+                        : undefined
+                    }
                 >
                   {saving ? 'Se salvează…' : 'Save'}
                 </button>
@@ -1781,6 +1851,48 @@ export default function ReceiptsPage() {
                         </button>
                       </div>
                     </div>
+                    {pendingDeletedItems.length ? (
+                      <div className="mt-3 rounded-xl border border-rose-400/25 bg-rose-500/10 px-3 py-3 text-xs text-[var(--muted)]">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="font-semibold text-rose-200">
+                            La salvare se vor șterge definitiv {pendingDeletedItems.length} item{pendingDeletedItems.length > 1 ? 'e' : ''} din bon.
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              className="rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 py-1 text-[11px] text-[var(--text)]"
+                              onClick={restorePendingDeletedItems}
+                            >
+                              Restore items
+                            </button>
+                            <button
+                              type="button"
+                              className={`rounded-md border px-2 py-1 text-[11px] ${
+                                isDeleteItemsAckValid
+                                  ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
+                                  : 'border-rose-400/30 bg-rose-500/10 text-rose-100'
+                              }`}
+                              onClick={() => setDeleteItemsAckSignature(pendingDeletedItemsSignature)}
+                            >
+                              {isDeleteItemsAckValid ? 'Ștergerea este confirmată' : 'Confirm ștergerea la Save'}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {pendingDeletedItems.map((item) => (
+                            <span
+                              key={item.id}
+                              className="rounded-full border border-rose-400/20 bg-[var(--panel)] px-2 py-1 text-[11px] text-[var(--text)]"
+                            >
+                              {(item.name ?? 'Item fără nume').trim() || 'Item fără nume'} · {getItemNetAmount(item).toFixed(2)} {selected?.currency ?? 'RON'}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="mt-2 text-[11px]">
+                          Fără confirmarea asta, `Save` rămâne blocat ca să nu ștergi accidental linii deja persistate în DB.
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="mt-2 space-y-2">
                     <datalist id="receipt-item-names">
                       {itemNameOptions.map((name) => (
