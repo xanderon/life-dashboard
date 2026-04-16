@@ -99,6 +99,25 @@ type PendingReceiptDelete = {
   step: ReceiptDeleteStep;
 };
 
+type ReceiptTotalsSummary = {
+  itemsSubtotal: number;
+  receiptTotal: number;
+  grossItemsTotal: number;
+  netItemsTotal: number;
+  discountedItemsTotal: number;
+  discountedNetItemsTotal: number;
+  bestComputedTotal: number;
+  fallbackComputedTotal: number;
+  delta: number;
+  absDelta: number;
+  hasMatch: boolean;
+  likelyMissingSgrCharge: number | null;
+  likelyMissingSgrBottleCount: number | null;
+};
+
+const RECEIPT_TOTAL_MISMATCH_CODE = 'receipt_total_mismatch';
+const SGR_BOTTLE_PRICE = 0.5;
+
 function fmtDate(ts: string | null) {
   if (!ts) return '—';
   return new Date(ts).toLocaleString('ro-RO');
@@ -216,6 +235,18 @@ function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
+function isHalfStep(value: number) {
+  return Math.abs(value * 2 - Math.round(value * 2)) < 0.01;
+}
+
+function snapToHalfStep(value: number) {
+  return roundMoney(Math.round(value * 2) / 2);
+}
+
+function formatSignedMoney(value: number) {
+  return `${value >= 0 ? '+' : '-'}${Math.abs(value).toFixed(2)}`;
+}
+
 function getItemNetAmount(item: Pick<ReceiptItemRow, 'paid_amount' | 'quantity' | 'unit_price' | 'discount'>) {
   const paid = item.paid_amount;
   if (paid != null && !Number.isNaN(Number(paid))) {
@@ -227,11 +258,11 @@ function getItemNetAmount(item: Pick<ReceiptItemRow, 'paid_amount' | 'quantity' 
   return roundMoney(Math.max(0, qty * unit - disc));
 }
 
-function getReceiptTotals(
+function buildReceiptTotals(
   receipt: Pick<ReceiptRow, 'total_amount' | 'discount_total' | 'sgr_bottle_charge' | 'sgr_recovered_amount'> | null,
-  items: ReceiptItemRow[]
-) {
-  const itemsSubtotal = roundMoney(items.reduce((sum, item) => sum + getItemNetAmount(item), 0));
+  itemsSubtotalRaw: number
+): ReceiptTotalsSummary {
+  const itemsSubtotal = roundMoney(itemsSubtotalRaw);
   const sgrCharge = roundMoney(Number(receipt?.sgr_bottle_charge ?? 0));
   const sgrRecovered = roundMoney(Math.abs(Number(receipt?.sgr_recovered_amount ?? 0)));
   const discountTotal = roundMoney(Number(receipt?.discount_total ?? 0));
@@ -247,14 +278,75 @@ function getReceiptTotals(
     }
     return best;
   }, candidates[0] ?? 0);
+  const delta = roundMoney(receiptTotal - bestComputedTotal);
+  const absDelta = roundMoney(Math.abs(delta));
+  const likelyMissingSgrCharge = delta > 0 && absDelta >= SGR_BOTTLE_PRICE && isHalfStep(absDelta) ? absDelta : null;
+  const likelyMissingSgrBottleCount =
+    likelyMissingSgrCharge != null ? Math.round(likelyMissingSgrCharge / SGR_BOTTLE_PRICE) : null;
 
   return {
     itemsSubtotal,
     receiptTotal,
+    grossItemsTotal,
+    netItemsTotal,
+    discountedItemsTotal,
+    discountedNetItemsTotal,
     bestComputedTotal,
     fallbackComputedTotal: netItemsTotal,
-    hasMatch: items.length > 0 && Math.abs(bestComputedTotal - receiptTotal) < 0.01,
+    delta,
+    absDelta,
+    hasMatch: Math.abs(bestComputedTotal - receiptTotal) < 0.01,
+    likelyMissingSgrCharge,
+    likelyMissingSgrBottleCount,
   };
+}
+
+function getReceiptTotals(
+  receipt: Pick<ReceiptRow, 'total_amount' | 'discount_total' | 'sgr_bottle_charge' | 'sgr_recovered_amount'> | null,
+  items: ReceiptItemRow[]
+) {
+  return buildReceiptTotals(
+    receipt,
+    items.reduce((sum, item) => sum + getItemNetAmount(item), 0)
+  );
+}
+
+function hasStoredTotalMismatchWarning(warnings: unknown[] | null | undefined) {
+  if (!Array.isArray(warnings)) return false;
+  return warnings.some(
+    (warning) =>
+      warning === RECEIPT_TOTAL_MISMATCH_CODE ||
+      (isRecord(warning) && warning.code === RECEIPT_TOTAL_MISMATCH_CODE)
+  );
+}
+
+function mergeSyntheticReceiptWarnings(
+  warnings: unknown[] | null | undefined,
+  totals: ReceiptTotalsSummary
+) {
+  const baseWarnings = (Array.isArray(warnings) ? warnings : []).filter((warning) => {
+    if (warning === RECEIPT_TOTAL_MISMATCH_CODE) return false;
+    return !(isRecord(warning) && warning.code === RECEIPT_TOTAL_MISMATCH_CODE);
+  });
+
+  if (totals.hasMatch) {
+    return baseWarnings;
+  }
+
+  const warning: Record<string, unknown> = {
+    code: RECEIPT_TOTAL_MISMATCH_CODE,
+    delta: totals.absDelta,
+    receipt_total: totals.receiptTotal,
+    computed_total: totals.bestComputedTotal,
+    items_sum: totals.itemsSubtotal,
+  };
+
+  if (totals.likelyMissingSgrCharge != null) {
+    warning.likely_missing_sgr_charge = totals.likelyMissingSgrCharge;
+    warning.likely_missing_sgr_bottles = totals.likelyMissingSgrBottleCount;
+  }
+
+  return [...baseWarnings, warning];
 }
 
 const ITEM_CORE_KEYS = new Set([
@@ -337,6 +429,7 @@ function buildJsonExport(selected: ReceiptRow, items: ReceiptItemRow[]) {
 export default function ReceiptsPage() {
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [items, setItems] = useState<ReceiptItemRow[]>([]);
+  const [receiptTotalsById, setReceiptTotalsById] = useState<Record<string, ReceiptTotalsSummary>>({});
   const [storeFilter, setStoreFilter] = useState<string>('all');
   const [storeOptions, setStoreOptions] = useState<string[]>(['all']);
   const [itemNameOptions, setItemNameOptions] = useState<string[]>([]);
@@ -363,6 +456,7 @@ export default function ReceiptsPage() {
   const stores = useMemo(() => storeOptions, [storeOptions]);
   const todayKey = useMemo(() => dayKey(new Date().toISOString()), []);
   const currentMonthKey = useMemo(() => monthKey(new Date().toISOString()), []);
+  const selectedTotals = useMemo(() => getReceiptTotals(selected, items), [selected, items]);
   const groupedReceipts = useMemo(() => {
     const groups: {
       key: string;
@@ -707,7 +801,48 @@ export default function ReceiptsPage() {
       setErr(error.message);
       return;
     }
-    setReceipts((data ?? []) as ReceiptRow[]);
+    const nextReceipts = (data ?? []) as ReceiptRow[];
+    setReceipts(nextReceipts);
+
+    const receiptIds = nextReceipts.map((receipt) => receipt.id).filter(Boolean);
+    if (!receiptIds.length) {
+      setReceiptTotalsById({});
+      return;
+    }
+
+    const itemSubtotals = new Map<string, number>();
+    const chunkSize = 100;
+    type ReceiptItemSummaryRow = Pick<
+      ReceiptItemRow,
+      'receipt_id' | 'quantity' | 'unit_price' | 'paid_amount' | 'discount'
+    >;
+
+    for (let i = 0; i < receiptIds.length; i += chunkSize) {
+      const chunk = receiptIds.slice(i, i + chunkSize);
+      const { data: chunkItems, error: chunkError } = await supabase
+        .from('receipt_items')
+        .select('receipt_id,quantity,unit_price,paid_amount,discount')
+        .in('receipt_id', chunk);
+
+      if (chunkError) {
+        setReceiptTotalsById({});
+        return;
+      }
+
+      const typedChunkItems = ((chunkItems ?? []) as unknown as ReceiptItemSummaryRow[]);
+      typedChunkItems.forEach((item) => {
+        const current = itemSubtotals.get(item.receipt_id) ?? 0;
+        itemSubtotals.set(item.receipt_id, roundMoney(current + getItemNetAmount(item)));
+      });
+    }
+
+    const nextTotalsById: Record<string, ReceiptTotalsSummary> = {};
+    nextReceipts.forEach((receipt) => {
+      const itemsSubtotal = itemSubtotals.get(receipt.id);
+      if (itemsSubtotal == null) return;
+      nextTotalsById[receipt.id] = buildReceiptTotals(receipt, itemsSubtotal);
+    });
+    setReceiptTotalsById(nextTotalsById);
   }
 
   useEffect(() => {
@@ -821,6 +956,17 @@ export default function ReceiptsPage() {
     setSuccess(null);
 
     const computedSourceHash = resolveReceiptSourceHash(selected);
+    const existingItems = items.map((item) => {
+      if (item.unit_price == null && item.quantity && item.paid_amount != null) {
+        return {
+          ...item,
+          unit_price: Number(item.paid_amount) / Number(item.quantity),
+        };
+      }
+      return item;
+    });
+    const computedTotals = getReceiptTotals(selected, existingItems);
+    const nextProcessingWarnings = mergeSyntheticReceiptWarnings(selected.processing_warnings, computedTotals);
 
     const payload = {
       store: selected.store,
@@ -834,7 +980,7 @@ export default function ReceiptsPage() {
       merchant_city: selected.merchant_city,
       merchant_cif: selected.merchant_cif,
       processing_status: selected.processing_status,
-      processing_warnings: selected.processing_warnings ?? [],
+      processing_warnings: nextProcessingWarnings,
       source_file_name: selected.source_file_name,
       source_rel_path: selected.source_rel_path,
       source_hash: computedSourceHash,
@@ -874,18 +1020,15 @@ export default function ReceiptsPage() {
         return;
       }
       receiptId = inserted.id;
-      setSelected({ ...selected, id: receiptId, owner_id: ownerId, source_hash: computedSourceHash });
+      setSelected({
+        ...selected,
+        id: receiptId,
+        owner_id: ownerId,
+        source_hash: computedSourceHash,
+        processing_warnings: nextProcessingWarnings,
+      });
     }
 
-    const existingItems = items.map((item) => {
-      if (item.unit_price == null && item.quantity && item.paid_amount != null) {
-        return {
-          ...item,
-          unit_price: Number(item.paid_amount) / Number(item.quantity),
-        };
-      }
-      return item;
-    });
     const newItems = existingItems.filter((item) => !item.id);
     const persistedItems = existingItems.filter((item) => item.id);
 
@@ -942,6 +1085,17 @@ export default function ReceiptsPage() {
 
     setSaving(false);
     setSuccess('Salvat.');
+    setSelected((current) =>
+      current
+        ? {
+            ...current,
+            id: receiptId,
+            owner_id: current.owner_id || ownerId || '',
+            source_hash: computedSourceHash,
+            processing_warnings: nextProcessingWarnings,
+          }
+        : current
+    );
 
     const { data: refreshedItems } = await supabase
       .from('receipt_items')
@@ -1270,6 +1424,11 @@ export default function ReceiptsPage() {
                     {group.items.map((r) => {
                       const isTodayReceipt = dayKey(r.receipt_date) === todayKey;
                       const isSelected = selected?.id === r.id;
+                      const totals = receiptTotalsById[r.id];
+                      const hasTotalMismatch = totals ? !totals.hasMatch : hasStoredTotalMismatchWarning(r.processing_warnings);
+                      const warningTitle = totals
+                        ? `Delta total: ${formatSignedMoney(totals.delta)} ${r.currency}`
+                        : 'Bon cu diferenta intre total si suma itemelor';
                       return (
                         <button
                           key={r.id}
@@ -1311,8 +1470,13 @@ export default function ReceiptsPage() {
                               </div>
                             </div>
                             <div className="ml-auto text-right">
-                              <div className="text-[9px] uppercase tracking-wide text-[var(--muted)]">
-                                Total
+                              <div className="flex items-center justify-end gap-1 text-[9px] uppercase tracking-wide text-[var(--muted)]">
+                                {hasTotalMismatch ? (
+                                  <span title={warningTitle} className="text-[var(--warning)]">
+                                    ⚠
+                                  </span>
+                                ) : null}
+                                <span>Total</span>
                               </div>
                               <div className="text-sm font-semibold text-[var(--text)]">
                                 {r.total_amount?.toFixed(2)} {r.currency}
@@ -1505,9 +1669,15 @@ export default function ReceiptsPage() {
                       <span className="shrink-0">SGR charge</span>
                       <input
                         type="number"
-                        step="0.01"
+                        step="0.5"
                         className="h-6 w-24 rounded-md border border-[var(--border)] bg-[var(--panel)] px-2 text-[11px] text-[var(--text)]"
                         value={selected.sgr_bottle_charge ?? 0}
+                        onBlur={(e) =>
+                          setSelected({
+                            ...selected,
+                            sgr_bottle_charge: snapToHalfStep(Number(e.target.value) || 0),
+                          })
+                        }
                         onChange={(e) => setSelected({ ...selected, sgr_bottle_charge: Number(e.target.value) })}
                       />
                     </label>
@@ -1856,28 +2026,58 @@ export default function ReceiptsPage() {
                       <div className="text-[var(--muted)]">
                         Items: <span className="font-semibold text-[var(--text)]">{items.length}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-[var(--muted)]">
-                        {(() => {
-                          const totals = getReceiptTotals(selected ?? null, items);
-                          if (!items.length) return null;
-                          if (totals.hasMatch) {
-                            return <span title="Total ok">✅</span>;
-                          }
-                          return <span title="Total diferit">⚠️</span>;
-                        })()}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[var(--muted)]">
+                        {!items.length ? null : selectedTotals.hasMatch ? (
+                          <span title="Total ok">✅</span>
+                        ) : (
+                          <span title="Total diferit">⚠️</span>
+                        )}
                         <span>
-                          Total items:{" "}
+                          Receipt total:{' '}
                           <span className="font-semibold text-[var(--text)]">
-                            {(() => {
-                              const totals = getReceiptTotals(selected ?? null, items);
-                              if (totals.receiptTotal > 0) return totals.receiptTotal.toFixed(2);
-                              return totals.fallbackComputedTotal.toFixed(2);
-                            })()}{" "}
-                            {selected?.currency ?? "RON"}
+                            {selectedTotals.receiptTotal.toFixed(2)} {selected?.currency ?? 'RON'}
                           </span>
                         </span>
+                        <span>
+                          Items sum:{' '}
+                          <span className="font-semibold text-[var(--text)]">
+                            {selectedTotals.itemsSubtotal.toFixed(2)} {selected?.currency ?? 'RON'}
+                          </span>
+                        </span>
+                        <span>
+                          Computed:{' '}
+                          <span className="font-semibold text-[var(--text)]">
+                            {selectedTotals.bestComputedTotal.toFixed(2)} {selected?.currency ?? 'RON'}
+                          </span>
+                        </span>
+                        {!items.length || selectedTotals.hasMatch ? null : (
+                          <span className="text-[var(--warning)]">
+                            Delta:{' '}
+                            <span className="font-semibold">
+                              {formatSignedMoney(selectedTotals.delta)} {selected?.currency ?? 'RON'}
+                            </span>
+                          </span>
+                        )}
                       </div>
                     </div>
+                    {!items.length || selectedTotals.hasMatch ? null : (
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-[var(--warning)]/25 bg-[color-mix(in_srgb,var(--warning)_10%,transparent)] px-3 py-2 text-xs text-[var(--muted)]">
+                        <span>
+                          Diferenta curenta este <span className="font-semibold text-[var(--text)]">{selectedTotals.absDelta.toFixed(2)} {selected?.currency ?? 'RON'}</span>.
+                        </span>
+                        {selectedTotals.likelyMissingSgrCharge != null ? (
+                          <span className="text-[var(--warning)]">
+                            Probabil lipsește <span className="font-semibold">SGR charge {selectedTotals.likelyMissingSgrCharge.toFixed(2)} {selected?.currency ?? 'RON'}</span>
+                            {selectedTotals.likelyMissingSgrBottleCount != null
+                              ? ` (${selectedTotals.likelyMissingSgrBottleCount} x ${SGR_BOTTLE_PRICE.toFixed(2)})`
+                              : ''}
+                            .
+                          </span>
+                        ) : (
+                          <span>Nu pare un caz clar de SGR la multipli de 0.50.</span>
+                        )}
+                      </div>
+                    )}
                     <div className="pt-2">
                       <button
                         className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-xs text-[var(--text)]"
