@@ -103,7 +103,22 @@ create table if not exists public.app_runs (
   summary text,
   metrics jsonb not null default '{}'::jsonb
 );
+
+create table if not exists public.termo_status_periods (
+  id uuid primary key default gen_random_uuid(),
+  app_id uuid not null references public.apps(id) on delete cascade,
+  source_run_id uuid references public.app_runs(id) on delete set null,
+  started_at timestamptz not null,
+  ended_at timestamptz,
+  hot_water_status text not null check (hot_water_status in ('ok', 'down')),
+  heat_status text not null check (heat_status in ('ok', 'down')),
+  eta text,
+  details jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
 ```
+
+Sau rulezi direct fisierul [apps/dashboard/supabase/termo_history.sql](/Users/xan/Documents/Github repos/life-dashboard/apps/dashboard/supabase/termo_history.sql), care include si indexurile/RLS pentru istoricul Termo.
 
 Recomandare: un singur DB Supabase (schema `public`) pentru tot dashboard-ul. Scriptul foloseste service role key, iar UI-ul foloseste anon key pentru read.
 

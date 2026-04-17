@@ -158,6 +158,90 @@ async function getPreviousServiceState(supabase, appId) {
   };
 }
 
+async function getOpenStatusPeriod(supabase, appId) {
+  const { data, error } = await supabase
+    .from('termo_status_periods')
+    .select('id,hot_water_status,heat_status,started_at')
+    .eq('app_id', appId)
+    .is('ended_at', null)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Supabase termo_status_periods select failed: ${error.message}`);
+  }
+
+  return data ?? null;
+}
+
+async function syncStatusPeriod(supabase, { appId, runId, observedAt, metrics }) {
+  const openPeriod = await getOpenStatusPeriod(supabase, appId);
+  const service = metrics?.service ?? null;
+  const hotWaterStatus = service?.hot_water ?? 'down';
+  const heatStatus = service?.heat ?? 'down';
+  const etaText = metrics?.data?.eta ?? null;
+  const details = {
+    source_url: metrics?.source_url ?? SOURCE_URL,
+    target: metrics?.target ?? {
+      street: TARGET_STREET,
+      block: TARGET_BLOCK,
+    },
+    found: Boolean(metrics?.found),
+    data: metrics?.data ?? null,
+    fetched_at: metrics?.fetched_at ?? observedAt,
+  };
+
+  if (
+    openPeriod &&
+    openPeriod.hot_water_status === hotWaterStatus &&
+    openPeriod.heat_status === heatStatus
+  ) {
+    const { error: updateErr } = await supabase
+      .from('termo_status_periods')
+      .update({
+        source_run_id: runId,
+        eta: etaText,
+        details,
+      })
+      .eq('id', openPeriod.id);
+
+    if (updateErr) {
+      throw new Error(`Supabase termo_status_periods update failed: ${updateErr.message}`);
+    }
+    return;
+  }
+
+  if (openPeriod) {
+    const { error: closeErr } = await supabase
+      .from('termo_status_periods')
+      .update({
+        ended_at: observedAt,
+        source_run_id: runId,
+      })
+      .eq('id', openPeriod.id);
+
+    if (closeErr) {
+      throw new Error(`Supabase termo_status_periods close failed: ${closeErr.message}`);
+    }
+  }
+
+  const { error: insertErr } = await supabase.from('termo_status_periods').insert({
+    app_id: appId,
+    source_run_id: runId,
+    started_at: observedAt,
+    ended_at: null,
+    hot_water_status: hotWaterStatus,
+    heat_status: heatStatus,
+    eta: etaText,
+    details,
+  });
+
+  if (insertErr) {
+    throw new Error(`Supabase termo_status_periods insert failed: ${insertErr.message}`);
+  }
+}
+
 function hasServiceChange(prev, curr, etaText) {
   if (!prev) return false;
   if (prev.hot_water && prev.hot_water !== curr.hot_water) return true;
@@ -278,19 +362,30 @@ async function main() {
     const prevService = await getPreviousServiceState(supabase, app.id);
     const endedAt = new Date().toISOString();
 
-    const { error: runErr } = await supabase.from('app_runs').insert({
-      app_id: app.id,
-      created_at: endedAt,
-      started_at: startedAt,
-      ended_at: endedAt,
-      success: true,
-      summary,
-      metrics,
-    });
+    const { data: runRow, error: runErr } = await supabase
+      .from('app_runs')
+      .insert({
+        app_id: app.id,
+        created_at: endedAt,
+        started_at: startedAt,
+        ended_at: endedAt,
+        success: true,
+        summary,
+        metrics,
+      })
+      .select('id')
+      .single();
 
     if (runErr) {
       throw new Error(`Supabase run insert failed: ${runErr.message}`);
     }
+
+    await syncStatusPeriod(supabase, {
+      appId: app.id,
+      runId: runRow.id,
+      observedAt: endedAt,
+      metrics,
+    });
 
     const { error: appErr } = await supabase
       .from('apps')
