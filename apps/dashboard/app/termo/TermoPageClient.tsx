@@ -416,54 +416,6 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
         </section>
 
         <section className="surface-card p-5 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-xl font-semibold">🔎 Detalii complete</div>
-              <div className="mt-1 text-sm text-[var(--muted)]">
-                Statusul curent pentru adresa ta, cu informațiile cele mai recente din CMTEB.
-              </div>
-            </div>
-            <div className="text-xs text-[var(--muted)]">
-              {currentDetails ? 'Există avarie activă în listă.' : 'Nu apare avarie activă pentru adresa urmărită.'}
-            </div>
-          </div>
-
-          {currentDetails ? (
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <DetailCard label="Sector" value={currentDetails.sector ?? '—'} />
-              <DetailCard label="ETA repornire" value={currentEta ?? '—'} />
-              <DetailCard label="Agent termic afectat" value={currentDetails.agent ?? '—'} className="xl:col-span-2" />
-              <DetailCard
-                label="Cauză / descriere"
-                value={currentDetails.cause ?? '—'}
-                className="sm:col-span-2 xl:col-span-4"
-              />
-              <DetailCard
-                label="Zona afectată"
-                value={currentDetails.zone ?? '—'}
-                preformatted
-                className="sm:col-span-2 xl:col-span-4"
-              />
-            </div>
-          ) : (
-            <div className="mt-5 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-3xl border border-emerald-400/24 bg-emerald-500/10 p-5">
-                <div className="text-sm font-semibold text-emerald-200">Apa caldă nu apare ca fiind oprită în CMTEB acum.</div>
-                <div className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  Asta înseamnă că pentru adresa urmărită nu există o avarie activă publicată în lista lor la ultima verificare.
-                </div>
-              </div>
-              <div className="rounded-3xl border border-[var(--border)] bg-[var(--panel-2)]/72 p-5">
-                <div className="text-xs text-[var(--muted)]">Adresă monitorizată</div>
-                <div className="mt-2 text-lg font-semibold text-[var(--text)]">{monitoredAddress || '—'}</div>
-                <div className="mt-4 text-xs text-[var(--muted)]">Ultimul run</div>
-                <div className="mt-1 text-sm text-[var(--text)]">{run?.summary ?? '—'}</div>
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section className="surface-card p-5 sm:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="text-xl font-semibold">📊 Statistici & istoric</div>
@@ -547,6 +499,54 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
               <YearCalendar yearDate={focusDate} periods={periods} now={now} />
             )}
           </div>
+        </section>
+
+        <section className="surface-card p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-xl font-semibold">🔎 Detalii complete</div>
+              <div className="mt-1 text-sm text-[var(--muted)]">
+                Statusul curent pentru adresa ta, cu informațiile cele mai recente din CMTEB.
+              </div>
+            </div>
+            <div className="text-xs text-[var(--muted)]">
+              {currentDetails ? 'Există avarie activă în listă.' : 'Nu apare avarie activă pentru adresa urmărită.'}
+            </div>
+          </div>
+
+          {currentDetails ? (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <DetailCard label="Sector" value={currentDetails.sector ?? '—'} />
+              <DetailCard label="ETA repornire" value={currentEta ?? '—'} />
+              <DetailCard label="Agent termic afectat" value={currentDetails.agent ?? '—'} className="xl:col-span-2" />
+              <DetailCard
+                label="Cauză / descriere"
+                value={currentDetails.cause ?? '—'}
+                className="sm:col-span-2 xl:col-span-4"
+              />
+              <DetailCard
+                label="Zona afectată"
+                value={currentDetails.zone ?? '—'}
+                preformatted
+                className="sm:col-span-2 xl:col-span-4"
+              />
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-3xl border border-emerald-400/24 bg-emerald-500/10 p-5">
+                <div className="text-sm font-semibold text-emerald-200">Apa caldă nu apare ca fiind oprită în CMTEB acum.</div>
+                <div className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                  Asta înseamnă că pentru adresa urmărită nu există o avarie activă publicată în lista lor la ultima verificare.
+                </div>
+              </div>
+              <div className="rounded-3xl border border-[var(--border)] bg-[var(--panel-2)]/72 p-5">
+                <div className="text-xs text-[var(--muted)]">Adresă monitorizată</div>
+                <div className="mt-2 text-lg font-semibold text-[var(--text)]">{monitoredAddress || '—'}</div>
+                <div className="mt-4 text-xs text-[var(--muted)]">Ultimul run</div>
+                <div className="mt-1 text-sm text-[var(--text)]">{run?.summary ?? '—'}</div>
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
