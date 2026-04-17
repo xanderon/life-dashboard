@@ -99,6 +99,19 @@ function dayTitle(day: DayCoverage) {
   return `${formatDayLabel(day.date)} • cu apă ${formatDuration(day.upMs)} • fără apă ${formatDuration(day.downMs)}`;
 }
 
+function dayMetricLines(day: DayCoverage) {
+  if (day.status === 'future' || day.status === 'untracked') return [];
+
+  const lines: string[] = [];
+  if (day.upMs > 0) {
+    lines.push(`Cu: ${formatDuration(day.upMs)}`);
+  }
+  if (day.downMs > 0) {
+    lines.push(`Fără: ${formatDuration(day.downMs)}`);
+  }
+  return lines;
+}
+
 function MonthCalendar({
   month,
   periods,
@@ -123,6 +136,7 @@ function MonthCalendar({
       <div className="mt-3 grid grid-cols-7 gap-2">
         {days.map((day) => {
           const inCurrentMonth = day.date.getMonth() === month.getMonth();
+          const metricLines = dayMetricLines(day);
           return (
             <div
               key={day.dateKey}
@@ -130,26 +144,20 @@ function MonthCalendar({
               style={dayStyle(day)}
               title={dayTitle(day)}
             >
-              <div className="flex items-start justify-between gap-2">
-                <span className={`text-sm font-semibold ${inCurrentMonth ? 'text-[var(--text)]' : 'text-[var(--muted)]'}`}>
+              <div className="flex items-start gap-2">
+                <span
+                  className={`text-sm font-semibold ${inCurrentMonth ? 'text-[var(--text)]' : 'text-[var(--muted)]'}`}
+                >
                   {day.date.getDate()}
                 </span>
-                <span className="text-[10px] text-[var(--muted)]">
-                  {day.status === 'future'
-                    ? '—'
-                    : day.status === 'untracked'
-                      ? 'gri'
-                      : day.status === 'mixed'
-                        ? 'prob'
-                        : day.status === 'ok'
-                          ? 'ok'
-                          : 'off'}
-                </span>
               </div>
-              <div className="mt-3 space-y-1 text-[10px] leading-4 text-[var(--muted)]">
-                <div>Cu: {day.upMs > 0 ? formatDuration(day.upMs) : '0h'}</div>
-                <div>Fără: {day.downMs > 0 ? formatDuration(day.downMs) : '0h'}</div>
-              </div>
+              {metricLines.length > 0 ? (
+                <div className="mt-3 space-y-1 text-[10px] leading-4 text-[var(--muted)]">
+                  {metricLines.map((line) => (
+                    <div key={line}>{line}</div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           );
         })}
