@@ -471,7 +471,7 @@ export default function ReceiptsPage() {
   );
   const isDeleteItemsAckValid =
     !pendingDeletedItems.length || deleteItemsAckSignature === pendingDeletedItemsSignature;
-  const canUseSaveShortcut = Boolean(selected) && !saving && isDeleteItemsAckValid;
+  const canUseSaveShortcut = Boolean(selected) && !saving;
   saveChangesRef.current = saveChanges;
   const groupedReceipts = useMemo(() => {
     const groups: {
@@ -534,14 +534,17 @@ export default function ReceiptsPage() {
     function handleKeyDown(event: KeyboardEvent) {
       const wantsSave = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's';
       if (!wantsSave || event.altKey) return;
-      if (!canUseSaveShortcutRef.current) return;
 
       event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      if (!canUseSaveShortcutRef.current) return;
       void saveChangesRef.current();
     }
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, []);
 
   useEffect(() => {
