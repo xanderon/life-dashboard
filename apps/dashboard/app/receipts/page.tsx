@@ -453,6 +453,8 @@ export default function ReceiptsPage() {
   const prevSelectionRef = useRef<ReceiptRow | null>(null);
   const editorRef = useRef<HTMLDivElement | null>(null);
   const jsonFileInputRef = useRef<HTMLInputElement | null>(null);
+  const saveChangesRef = useRef<() => Promise<void>>(async () => {});
+  const canUseSaveShortcutRef = useRef(false);
   const selectedId = selected?.id ?? null;
 
   const stores = useMemo(() => storeOptions, [storeOptions]);
@@ -469,6 +471,8 @@ export default function ReceiptsPage() {
   );
   const isDeleteItemsAckValid =
     !pendingDeletedItems.length || deleteItemsAckSignature === pendingDeletedItemsSignature;
+  const canUseSaveShortcut = Boolean(selected) && !saving && isDeleteItemsAckValid;
+  saveChangesRef.current = saveChanges;
   const groupedReceipts = useMemo(() => {
     const groups: {
       key: string;
@@ -519,6 +523,26 @@ export default function ReceiptsPage() {
       setDeleteItemsAckSignature('');
     }
   }, [deleteItemsAckSignature, pendingDeletedItemsSignature]);
+
+  useEffect(() => {
+    canUseSaveShortcutRef.current = canUseSaveShortcut;
+  }, [canUseSaveShortcut]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      const wantsSave = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's';
+      if (!wantsSave || event.altKey) return;
+      if (!canUseSaveShortcutRef.current) return;
+
+      event.preventDefault();
+      void saveChangesRef.current();
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -1627,6 +1651,9 @@ export default function ReceiptsPage() {
                 >
                   {saving ? 'Se salvează…' : 'Save'}
                 </button>
+                <span className="text-xs text-[var(--muted)]">
+                  Ctrl/Cmd+S
+                </span>
                 <button
                   className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50"
                   disabled={!selected}
