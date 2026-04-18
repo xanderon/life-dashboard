@@ -99,6 +99,8 @@ type PendingReceiptDelete = {
   step: ReceiptDeleteStep;
 };
 
+type EditorSessionMode = 'existing' | 'draft-empty' | 'draft-imported';
+
 type ReceiptTotalsSummary = {
   itemsSubtotal: number;
   receiptTotal: number;
@@ -407,6 +409,59 @@ function extractItemMeta(item: unknown) {
   return meta;
 }
 
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableSerialize(entry)).join(',')}]`;
+  }
+  if (isRecord(value)) {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableSerialize(value[key])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+function normalizeReceiptForDirtyCheck(receipt: ReceiptRow | null) {
+  if (!receipt) return '';
+  return stableSerialize({
+    id: receipt.id ?? '',
+    store: receipt.store ?? '',
+    receipt_date: receipt.receipt_date ?? '',
+    currency: receipt.currency ?? '',
+    total_amount: Number(receipt.total_amount ?? 0),
+    discount_total: Number(receipt.discount_total ?? 0),
+    sgr_bottle_charge: Number(receipt.sgr_bottle_charge ?? 0),
+    sgr_recovered_amount: Number(receipt.sgr_recovered_amount ?? 0),
+    merchant_name: receipt.merchant_name ?? '',
+    merchant_city: receipt.merchant_city ?? '',
+    merchant_cif: receipt.merchant_cif ?? '',
+    processing_status: receipt.processing_status ?? '',
+    source_file_name: receipt.source_file_name ?? '',
+    source_rel_path: receipt.source_rel_path ?? '',
+    source_hash: receipt.source_hash ?? '',
+    schema_version: Number(receipt.schema_version ?? 3),
+  });
+}
+
+function normalizeItemsForDirtyCheck(receiptItems: ReceiptItemRow[]) {
+  return stableSerialize(
+    receiptItems.map((item) => ({
+      id: item.id ?? '',
+      name: item.name ?? '',
+      quantity: item.quantity == null ? null : Number(item.quantity),
+      unit: item.unit ?? '',
+      unit_price: item.unit_price == null ? null : Number(item.unit_price),
+      paid_amount: item.paid_amount == null ? null : Number(item.paid_amount),
+      discount: item.discount == null ? null : Number(item.discount),
+      needs_review: Boolean(item.needs_review),
+      is_food: item.is_food == null ? null : Boolean(item.is_food),
+      food_quality: item.food_quality ?? null,
+      meta: item.meta ?? {},
+    }))
+  );
+}
+
 function buildJsonExport(selected: ReceiptRow, items: ReceiptItemRow[]) {
   const sourceHash =
     (selected.source_hash && selected.source_hash.trim()) || resolveReceiptSourceHash(selected);
@@ -489,6 +544,16 @@ export default function ReceiptsPage() {
   const jsonFileInputRef = useRef<HTMLInputElement | null>(null);
   const saveChangesRef = useRef<() => Promise<void>>(async () => {});
   const canUseSaveShortcutRef = useRef(false);
+  const closeSelectedEditorRef = useRef<(options?: { skipConfirm?: boolean }) => boolean>(() => false);
+  const closeJsonImportPanelRef = useRef<() => void>(() => {});
+  const selectedRef = useRef<ReceiptRow | null>(null);
+  const showJsonImportRef = useRef(false);
+  const confirmDeleteReceiptRef = useRef<ReceiptRow | null>(null);
+  const savingRef = useRef(false);
+  const deletingReceiptRef = useRef(false);
+  const editorSessionModeRef = useRef<EditorSessionMode | null>(null);
+  const editorBaselineReceiptRef = useRef('');
+  const editorBaselineItemsRef = useRef('');
   const selectedId = selected?.id ?? null;
 
   const stores = useMemo(() => storeOptions, [storeOptions]);
@@ -507,6 +572,11 @@ export default function ReceiptsPage() {
     !pendingDeletedItems.length || deleteItemsAckSignature === pendingDeletedItemsSignature;
   const canUseSaveShortcut = Boolean(selected) && !saving;
   saveChangesRef.current = saveChanges;
+  selectedRef.current = selected;
+  showJsonImportRef.current = showJsonImport;
+  confirmDeleteReceiptRef.current = confirmDeleteReceipt;
+  savingRef.current = saving;
+  deletingReceiptRef.current = deletingReceipt;
   const groupedReceipts = useMemo(() => {
     const groups: {
       key: string;
@@ -582,6 +652,37 @@ export default function ReceiptsPage() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (savingRef.current || deletingReceiptRef.current) return;
+      if (!confirmDeleteReceiptRef.current && !showJsonImportRef.current && !selectedRef.current) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      if (confirmDeleteReceiptRef.current) {
+        setConfirmDeleteReceipt(null);
+        return;
+      }
+
+      if (showJsonImportRef.current) {
+        closeJsonImportPanelRef.current();
+      }
+
+      if (selectedRef.current) {
+        closeSelectedEditorRef.current();
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape, { capture: true });
+    return () => window.removeEventListener('keydown', handleEscape, { capture: true });
+  }, []);
+
+  useEffect(() => {
     let alive = true;
     (async () => {
       const { data, error } = await supabase
@@ -614,6 +715,86 @@ export default function ReceiptsPage() {
       return next;
     });
   }
+
+  function setEditorBaseline(
+    receipt: ReceiptRow | null,
+    nextItems: ReceiptItemRow[],
+    mode: EditorSessionMode | null
+  ) {
+    editorSessionModeRef.current = mode;
+    editorBaselineReceiptRef.current = normalizeReceiptForDirtyCheck(receipt);
+    editorBaselineItemsRef.current = normalizeItemsForDirtyCheck(nextItems);
+  }
+
+  function resetEditorBaseline() {
+    setEditorBaseline(null, [], null);
+  }
+
+  function hasUnsavedEditorChanges() {
+    if (!selected) return false;
+
+    const currentReceiptSnapshot = normalizeReceiptForDirtyCheck(selected);
+    const currentItemsSnapshot = normalizeItemsForDirtyCheck(items);
+
+    if (selected.id) {
+      return (
+        currentReceiptSnapshot !== editorBaselineReceiptRef.current ||
+        currentItemsSnapshot !== editorBaselineItemsRef.current
+      );
+    }
+
+    if (editorSessionModeRef.current === 'draft-imported') {
+      return true;
+    }
+
+    return (
+      currentReceiptSnapshot !== editorBaselineReceiptRef.current ||
+      currentItemsSnapshot !== editorBaselineItemsRef.current
+    );
+  }
+
+  function closeJsonImportPanel() {
+    setJsonInput('');
+    setShowJsonImport(false);
+  }
+
+  function closeSelectedEditor(options?: { skipConfirm?: boolean }) {
+    if (!selected) return false;
+
+    if (!options?.skipConfirm && hasUnsavedEditorChanges()) {
+      const shouldClose =
+        typeof window === 'undefined'
+          ? true
+          : window.confirm('Există modificări nesalvate în bonul curent. Vrei să-l închizi?');
+      if (!shouldClose) {
+        return false;
+      }
+    }
+
+    const previousSelection =
+      selected.id === '' && prevSelectionRef.current?.id ? prevSelectionRef.current : null;
+
+    if (previousSelection) {
+      setEditorBaseline(previousSelection, [], 'existing');
+      setSelected(previousSelection);
+    } else {
+      resetEditorBaseline();
+      setSelected(null);
+    }
+
+    setItems([]);
+    setPersistedItemsSnapshot([]);
+    setSuccess(null);
+    setMetaLocked(true);
+    setPendingDeleteKey(null);
+    setPendingReceiptDelete(null);
+    setConfirmDeleteReceipt(null);
+    setDeleteItemsAckSignature('');
+    return true;
+  }
+
+  closeJsonImportPanelRef.current = closeJsonImportPanel;
+  closeSelectedEditorRef.current = closeSelectedEditor;
 
   function updateItemFoodAt(index: number, patch: Partial<ReceiptItemRow>) {
     setItems((prev) => {
@@ -807,7 +988,7 @@ export default function ReceiptsPage() {
         ? source.source_hash.trim()
         : normalizeImportedSourceHash(parsedPayload);
 
-    setSelected({
+    const nextSelected: ReceiptRow = {
       id: '',
       owner_id: ownerId ?? '',
       store,
@@ -826,7 +1007,7 @@ export default function ReceiptsPage() {
       source_rel_path: typeof source.rel_path === 'string' ? source.rel_path : '',
       source_hash: fallbackHash ?? '',
       schema_version: Number(parsedPayload.schema_version ?? 3),
-    });
+    };
     setPendingReceiptDelete(null);
     setConfirmDeleteReceipt(null);
 
@@ -856,6 +1037,8 @@ export default function ReceiptsPage() {
         meta: { ...importedMeta, ...extractItemMeta(item) },
       };
     });
+    setEditorBaseline(nextSelected, nextItems, 'draft-imported');
+    setSelected(nextSelected);
     setItems(nextItems);
     setMetaLocked(false);
     await populateFoodFromHistory(nextItems, { silent: true });
@@ -1004,6 +1187,11 @@ export default function ReceiptsPage() {
   useEffect(() => {
     if (!selectedId) {
       setPersistedItemsSnapshot([]);
+      if (!selectedRef.current) {
+        editorSessionModeRef.current = null;
+        editorBaselineReceiptRef.current = '';
+        editorBaselineItemsRef.current = '';
+      }
       return;
     }
     let alive = true;
@@ -1024,12 +1212,14 @@ export default function ReceiptsPage() {
       const nextItems = (data ?? []) as ReceiptItemRow[];
       setItems(nextItems);
       setPersistedItemsSnapshot(nextItems);
+      const baselineReceipt = receipts.find((receipt) => receipt.id === selectedId) ?? selectedRef.current;
+      setEditorBaseline(baselineReceipt, nextItems, 'existing');
     })();
 
     return () => {
       alive = false;
     };
-  }, [selectedId]);
+  }, [receipts, selectedId]);
 
   async function saveChanges() {
     if (!selected) return;
@@ -1200,17 +1390,14 @@ export default function ReceiptsPage() {
 
     setSaving(false);
     setSuccess('Salvat.');
-    setSelected((current) =>
-      current
-        ? {
-            ...current,
-            id: receiptId,
-            owner_id: current.owner_id || ownerId || '',
-            source_hash: computedSourceHash,
-            processing_warnings: nextProcessingWarnings,
-          }
-        : current
-    );
+    const nextSelectedReceipt = {
+      ...selected,
+      id: receiptId,
+      owner_id: selected.owner_id || ownerId || '',
+      source_hash: computedSourceHash,
+      processing_warnings: nextProcessingWarnings,
+    };
+    setSelected(nextSelectedReceipt);
 
     const { data: refreshedItems } = await supabase
       .from('receipt_items')
@@ -1223,6 +1410,7 @@ export default function ReceiptsPage() {
     setItems(nextItems);
     setPersistedItemsSnapshot(nextItems);
     setDeleteItemsAckSignature('');
+    setEditorBaseline(nextSelectedReceipt, nextItems, 'existing');
     await loadReceipts(storeFilter);
   }
 
@@ -1402,7 +1590,7 @@ export default function ReceiptsPage() {
                 onClick={() => {
                   prevSelectionRef.current = selected;
                   const nowIso = new Date().toISOString();
-                  setSelected({
+                  const nextSelected: ReceiptRow = {
                     id: '',
                     owner_id: ownerId ?? '',
                     store: storeFilter === 'all' ? 'lidl' : storeFilter,
@@ -1421,12 +1609,17 @@ export default function ReceiptsPage() {
                     source_rel_path: '',
                     source_hash: buildManualSourceHash(),
                     schema_version: 3,
-                    });
-                    setItems([]);
-                    setSuccess(null);
-                    setMetaLocked(false);
-                    setPendingReceiptDelete(null);
-                    setConfirmDeleteReceipt(null);
+                  };
+                  setEditorBaseline(nextSelected, [], 'draft-empty');
+                  setSelected(nextSelected);
+                  setItems([]);
+                  setPersistedItemsSnapshot([]);
+                  setSuccess(null);
+                  setMetaLocked(false);
+                  setPendingDeleteKey(null);
+                  setPendingReceiptDelete(null);
+                  setConfirmDeleteReceipt(null);
+                  setDeleteItemsAckSignature('');
                 }}
               >
                 + Add receipt
@@ -1491,10 +1684,7 @@ export default function ReceiptsPage() {
                 </button>
                 <button
                   className="btn-base btn-ghost"
-                  onClick={() => {
-                    setJsonInput('');
-                    setShowJsonImport(false);
-                  }}
+                  onClick={closeJsonImportPanel}
                   type="button"
                 >
                   Close
@@ -1573,11 +1763,16 @@ export default function ReceiptsPage() {
                                 : 'border-[var(--border)] bg-[var(--panel-2)] hover:bg-[#1b4a45]'
                           }`}
                           onClick={() => {
+                            setEditorBaseline(r, [], 'existing');
                             setSelected(r);
+                            setItems([]);
+                            setPersistedItemsSnapshot([]);
                             setSuccess(null);
                             setMetaLocked(true);
+                            setPendingDeleteKey(null);
                             setPendingReceiptDelete(null);
                             setConfirmDeleteReceipt(null);
+                            setDeleteItemsAckSignature('');
                           }}
                         >
                           <div className="relative flex items-start gap-3">
@@ -1729,16 +1924,7 @@ export default function ReceiptsPage() {
                   <button
                     className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-sm text-[var(--text)]"
                     onClick={() => {
-                    if (selected?.id === '' && prevSelectionRef.current) {
-                      setSelected(prevSelectionRef.current);
-                    } else {
-                      setSelected(null);
-                    }
-                      setItems([]);
-                      setSuccess(null);
-                      setMetaLocked(true);
-                      setPendingReceiptDelete(null);
-                      setConfirmDeleteReceipt(null);
+                      closeSelectedEditor();
                     }}
                     title="Închide editor"
                     type="button"
