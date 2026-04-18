@@ -214,6 +214,40 @@ function buildManualSourceHash(seed?: string | null) {
   return `manual_${hashString(rawSeed)}`;
 }
 
+function normalizeImportedSourceHash(payload: ReceiptImportPayload) {
+  const merchant = isRecord(payload.merchant) ? payload.merchant : {};
+  const source = isRecord(payload.source) ? payload.source : {};
+  const normalizedItems = (Array.isArray(payload.items) ? payload.items : []).map((rawItem) => {
+    const item = isRecord(rawItem) ? rawItem : {};
+    return {
+      name: typeof item.name === 'string' ? item.name.trim() : '',
+      quantity: Number(item.quantity ?? 0),
+      unit: typeof item.unit === 'string' ? item.unit.trim() : '',
+      unit_price: Number(item.unit_price ?? 0),
+      paid_amount: Number(item.paid_amount ?? 0),
+      discount: Number(item.discount ?? 0),
+    };
+  });
+
+  return `import_${hashString(
+    JSON.stringify({
+      store: typeof payload.store === 'string' ? payload.store.trim() : '',
+      timestamp: typeof payload.timestamp === 'string' ? payload.timestamp.trim() : '',
+      currency: typeof payload.currency === 'string' ? payload.currency.trim() : '',
+      total: Number(payload.total ?? 0),
+      discount_total: Number(payload.discount_total ?? 0),
+      sgr_bottle_charge: Number(payload.sgr_bottle_charge ?? 0),
+      sgr_recovered_amount: Number(payload.sgr_recovered_amount ?? 0),
+      merchant_name: typeof merchant.name === 'string' ? merchant.name.trim() : '',
+      merchant_city: typeof merchant.city === 'string' ? merchant.city.trim() : '',
+      merchant_cif: typeof merchant.cif === 'string' ? merchant.cif.trim() : '',
+      source_file_name: typeof source.file_name === 'string' ? source.file_name.trim() : '',
+      source_rel_path: typeof source.rel_path === 'string' ? source.rel_path.trim() : '',
+      items: normalizedItems,
+    })
+  )}`;
+}
+
 function resolveReceiptSourceHash(receipt: Pick<ReceiptRow, 'id' | 'source_hash'>) {
   const existing = receipt.source_hash?.trim();
   if (existing) return existing;
@@ -770,8 +804,8 @@ export default function ReceiptsPage() {
     const timestamp = parsedPayload.timestamp ?? new Date().toISOString();
     const fallbackHash =
       typeof source.source_hash === 'string'
-        ? source.source_hash
-        : buildManualSourceHash(typeof source.file_name === 'string' ? source.file_name : undefined);
+        ? source.source_hash.trim()
+        : normalizeImportedSourceHash(parsedPayload);
 
     setSelected({
       id: '',
@@ -1074,7 +1108,14 @@ export default function ReceiptsPage() {
         .single();
 
       if (insertErr) {
-        setErr(insertErr.message);
+        if (
+          insertErr.code === '23505' &&
+          insertErr.message.includes('receipts_owner_id_store_source_hash_key')
+        ) {
+          setErr('Bonul pare deja importat pentru același magazin și aceeași sursă.');
+        } else {
+          setErr(insertErr.message);
+        }
         setSaving(false);
         return;
       }
