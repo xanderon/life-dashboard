@@ -154,7 +154,7 @@ function MonthCalendar({
   const days = useMemo(() => buildCalendarDays(month, periods, now), [month, now, periods]);
 
   return (
-    <div className="rounded-[1.75rem] border border-[var(--border)] bg-[var(--panel)]/55 p-2 sm:rounded-[2rem] sm:border-0 sm:bg-transparent sm:p-0">
+    <div>
       <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)] sm:gap-2 sm:text-[11px] sm:tracking-[0.2em]">
         {WEEKDAY_LABELS.map((weekday) => (
           <div key={weekday} className="py-1">
@@ -171,7 +171,7 @@ function MonthCalendar({
           return (
             <div
               key={day.dateKey}
-              className={`relative aspect-square min-h-[3.35rem] rounded-[1rem] border p-1.5 transition sm:min-h-[4.9rem] sm:rounded-2xl sm:p-2 ${dayTone(day, inCurrentMonth)}`}
+              className={`relative aspect-square min-h-[3.9rem] rounded-[1rem] border p-1.5 transition sm:min-h-[4.9rem] sm:rounded-2xl sm:p-2 ${dayTone(day, inCurrentMonth)}`}
               style={dayStyle(day, { isToday, inCurrentMonth })}
               title={dayTitle(day)}
             >
@@ -189,7 +189,7 @@ function MonthCalendar({
                 ) : null}
               </div>
               {metricLines.length > 0 ? (
-                <div className="mt-1.5 flex flex-col gap-1 sm:mt-3 sm:space-y-1 sm:gap-0">
+                <div className="mt-2 flex flex-col gap-1 sm:mt-3 sm:space-y-1 sm:gap-0">
                   {metricLines.map((line) => (
                     <div
                       key={line}
@@ -505,16 +505,18 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
             <LegendItem label="Neînregistrat" className="border-white/6 bg-white/6" />
             <LegendItem label="Viitor" className="border-dashed border-[var(--border)] bg-transparent" />
           </div>
+        </section>
 
-          <div className="mt-6">
-            {viewMode === 'month' ? (
-              <MonthCalendar month={focusDate} periods={periods} now={now} />
-            ) : (
-              <YearCalendar yearDate={focusDate} periods={periods} now={now} />
-            )}
-          </div>
+        <section className="surface-card p-4 sm:p-6">
+          {viewMode === 'month' ? (
+            <MonthCalendar month={focusDate} periods={periods} now={now} />
+          ) : (
+            <YearCalendar yearDate={focusDate} periods={periods} now={now} />
+          )}
+        </section>
 
-          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <section className="surface-card p-5 sm:p-6">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <CompactStatCard label="Disponibilitate" value={stats.availabilityPct == null ? '—' : `${stats.availabilityPct.toFixed(0)}%`} />
             <CompactStatCard label="Apă caldă" value={formatDuration(stats.upMs)} />
             <CompactStatCard label="Fără apă" value={formatDuration(stats.downMs)} />
