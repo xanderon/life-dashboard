@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import Link from 'next/link';
 import { BackLink, PageShell } from '@/components/PageShell';
 import { StatusPill } from '@/components/StatusPill';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -125,10 +124,10 @@ function dayMetricLines(day: DayCoverage) {
 
   const lines: string[] = [];
   if (day.upMs > 0) {
-    lines.push(`Cu: ${formatDuration(day.upMs)}`);
+    lines.push(`♨️ ${formatDuration(day.upMs)}`);
   }
   if (day.downMs > 0) {
-    lines.push(`Fără: ${formatDuration(day.downMs)}`);
+    lines.push(`⛔ ${formatDuration(day.downMs)}`);
   }
   return lines;
 }
@@ -385,89 +384,65 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
   return (
     <PageShell width="7xl">
       <div className="space-y-6">
-        <section className="hero-card p-5 sm:p-7">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="eyebrow">Infra</span>
-                <StatusPill status={app.status} />
-              </div>
-              <h1 className="display-title mt-5 text-4xl font-semibold tracking-[-0.06em]">
+        <section className="hero-card p-4 sm:p-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="eyebrow">Infra</span>
+            <StatusPill status={app.status} />
+          </div>
+
+          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="display-title text-3xl font-semibold tracking-[-0.06em] sm:text-[2.35rem]">
                 ♨️ Termo alert
               </h1>
-              <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--muted)]">
-                Status live pentru adresa urmărită, plus istoric compact cu perioadele în care ai avut sau n-ai avut apă caldă.
-              </p>
-
-              <div className="mt-6 grid gap-3 md:grid-cols-3">
-                <div className={`rounded-3xl border p-4 ${serviceTone(currentHotWaterStatus)}`}>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em]">Apă caldă</div>
-                  <div className="mt-3 text-3xl font-semibold">{statusLabel(currentHotWaterStatus)}</div>
-                  <div className="mt-2 text-sm text-[var(--muted)]">
-                    {currentHotWaterStatus === 'ok' ? 'Disponibilă acum' : 'Indisponibilă acum'}
-                  </div>
-                </div>
-                <div className={`rounded-3xl border p-4 ${serviceTone(currentHeatStatus)}`}>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em]">Încălzire</div>
-                  <div className="mt-3 text-3xl font-semibold">{statusLabel(currentHeatStatus)}</div>
-                  <div className="mt-2 text-sm text-[var(--muted)]">
-                    {currentHeatStatus === 'ok' ? 'Disponibilă acum' : 'Indisponibilă acum'}
-                  </div>
-                </div>
-                <div className="rounded-3xl border border-[var(--border)] bg-[var(--panel-2)]/75 p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
-                    Interval curent
-                  </div>
-                  <div className="mt-3 text-3xl font-semibold text-[var(--text)]">{currentPeriodDuration}</div>
-                  <div className="mt-2 text-sm text-[var(--muted)]">
-                    {currentPeriod ? `Din ${fmt(currentPeriod.started_at)}` : 'Încă fără interval înregistrat'}
-                  </div>
-                </div>
-              </div>
             </div>
-
-            <div className="flex flex-wrap items-center gap-3 lg:justify-end">
-              <ThemeToggle />
-              <BackLink href="/">Dashboard</BackLink>
+            <div className="min-w-[10rem] rounded-2xl border border-[var(--border)] bg-[var(--panel-2)]/72 px-3 py-2">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                ETA curent
+              </div>
+              <div className="mt-1 text-sm font-semibold text-[var(--text)]">{currentEta || 'Fără ETA activ'}</div>
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-3">
-            <div className="rounded-3xl border border-[var(--border)] bg-[var(--panel-2)]/72 p-4">
-              <div className="text-xs text-[var(--muted)]">Adresă urmărită</div>
-              <div className="mt-2 text-base font-semibold text-[var(--text)]">{monitoredAddress || '—'}</div>
-            </div>
-            <div className="rounded-3xl border border-[var(--border)] bg-[var(--panel-2)]/72 p-4">
-              <div className="text-xs text-[var(--muted)]">Ultima verificare</div>
-              <div className="mt-2 text-base font-semibold text-[var(--text)]">{fmt(app.last_run_at)}</div>
-            </div>
-            <div className="rounded-3xl border border-[var(--border)] bg-[var(--panel-2)]/72 p-4">
-              <div className="text-xs text-[var(--muted)]">ETA curent</div>
-              <div className="mt-2 text-base font-semibold text-[var(--text)]">{currentEta || 'Fără ETA activ'}</div>
-            </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <HeroMetricCard
+              label="Apă caldă"
+              value={statusLabel(currentHotWaterStatus)}
+              helper={currentHotWaterStatus === 'ok' ? 'Disponibilă acum' : 'Indisponibilă acum'}
+              tone={serviceTone(currentHotWaterStatus)}
+            />
+            <HeroMetricCard
+              label="Încălzire"
+              value={statusLabel(currentHeatStatus)}
+              helper={currentHeatStatus === 'ok' ? 'Disponibilă acum' : 'Indisponibilă acum'}
+              tone={serviceTone(currentHeatStatus)}
+            />
+            <HeroMetricCard
+              label="Interval curent"
+              value={currentPeriodDuration}
+              helper={currentPeriod ? `Din ${fmt(currentPeriod.started_at)}` : 'Încă fără interval'}
+              tone="border-[var(--border)] bg-[var(--panel-2)]/75 text-[var(--text)]"
+              compactValue
+              className="col-span-2 xl:col-span-2"
+            />
           </div>
         </section>
 
         <section className="surface-card p-5 sm:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="text-xl font-semibold">📊 Statistici & istoric</div>
-              <div className="mt-1 text-sm text-[var(--muted)]">
-                Calendar pe lună sau an, calculat din intervalele reale înregistrate în DB.
-              </div>
-            </div>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="text-xl font-semibold">📊 Statistici & istoric</div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
               <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--panel-2)] p-1">
                 <button
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${viewMode === 'month' ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'text-[var(--muted)]'}`}
+                  className={`rounded-full px-3 py-2 text-sm font-semibold transition ${viewMode === 'month' ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'text-[var(--muted)]'}`}
                   onClick={() => setViewMode('month')}
                   type="button"
                 >
                   Lună
                 </button>
                 <button
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${viewMode === 'year' ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'text-[var(--muted)]'}`}
+                  className={`rounded-full px-3 py-2 text-sm font-semibold transition ${viewMode === 'year' ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'text-[var(--muted)]'}`}
                   onClick={() => setViewMode('year')}
                   type="button"
                 >
@@ -496,7 +471,7 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
             </div>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-4">
+          <div className="mt-4 flex flex-wrap gap-3">
             <LegendItem label="Apă caldă" className="border-emerald-400/30 bg-emerald-500/12" />
             <LegendItem label="Fără apă caldă" className="border-rose-400/30 bg-rose-500/14" />
             <LegendItem
@@ -511,20 +486,6 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
             <LegendItem label="Viitor" className="border-dashed border-[var(--border)] bg-transparent" />
           </div>
 
-          <div className="mt-5 grid gap-3 lg:grid-cols-4">
-            <StatCard label="Disponibilitate" value={stats.availabilityPct == null ? '—' : `${stats.availabilityPct.toFixed(0)}%`} hint={viewMode === 'month' ? 'în luna selectată' : 'în anul selectat'} />
-            <StatCard label="Cu apă caldă" value={formatDuration(stats.upMs)} hint="timp înregistrat" />
-            <StatCard label="Fără apă caldă" value={formatDuration(stats.downMs)} hint="timp înregistrat" />
-            <StatCard label="Fără date" value={stats.daysUntracked > 0 ? `${stats.daysUntracked} zile` : '0 zile'} hint="trecut neacoperit" />
-          </div>
-
-          <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-4">
-            <MiniCount label="Zile OK" value={stats.daysOk} tone="text-emerald-200" />
-            <MiniCount label="Zile afectate" value={stats.daysProblematic} tone="text-rose-200" />
-            <MiniCount label="OFF complet" value={stats.daysDown} tone="text-rose-100" />
-            <MiniCount label="Înregistrări" value={periods.length} tone="text-[var(--text)]" />
-          </div>
-
           <div className="mt-6">
             {viewMode === 'month' ? (
               <MonthCalendar month={focusDate} periods={periods} now={now} />
@@ -532,54 +493,22 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
               <YearCalendar yearDate={focusDate} periods={periods} now={now} />
             )}
           </div>
-        </section>
 
-        <section className="surface-card p-5 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-xl font-semibold">🔎 Detalii complete</div>
-              <div className="mt-1 text-sm text-[var(--muted)]">
-                Statusul curent pentru adresa ta, cu informațiile cele mai recente din CMTEB.
-              </div>
-            </div>
-            <div className="text-xs text-[var(--muted)]">
-              {currentDetails ? 'Există avarie activă în listă.' : 'Nu apare avarie activă pentru adresa urmărită.'}
-            </div>
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <CompactStatCard label="Disponibilitate" value={stats.availabilityPct == null ? '—' : `${stats.availabilityPct.toFixed(0)}%`} />
+            <CompactStatCard label="Apă caldă" value={formatDuration(stats.upMs)} />
+            <CompactStatCard label="Fără apă" value={formatDuration(stats.downMs)} />
+            <CompactStatCard label="Fără date" value={stats.daysUntracked > 0 ? `${stats.daysUntracked}z` : '0z'} />
+            <CompactStatCard label="Zile OK" value={String(stats.daysOk)} />
+            <CompactStatCard label="Afectate" value={String(stats.daysProblematic)} />
+            <CompactStatCard label="OFF complet" value={String(stats.daysDown)} />
+            <CompactStatCard label="Înregistrări" value={String(periods.length)} />
           </div>
 
-          {currentDetails ? (
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <DetailCard label="Sector" value={currentDetails.sector ?? '—'} />
-              <DetailCard label="ETA repornire" value={currentEta ?? '—'} />
-              <DetailCard label="Agent termic afectat" value={currentDetails.agent ?? '—'} className="xl:col-span-2" />
-              <DetailCard
-                label="Cauză / descriere"
-                value={currentDetails.cause ?? '—'}
-                className="sm:col-span-2 xl:col-span-4"
-              />
-              <DetailCard
-                label="Zona afectată"
-                value={currentDetails.zone ?? '—'}
-                preformatted
-                className="sm:col-span-2 xl:col-span-4"
-              />
-            </div>
-          ) : (
-            <div className="mt-5 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-3xl border border-emerald-400/24 bg-emerald-500/10 p-5">
-                <div className="text-sm font-semibold text-emerald-200">Apa caldă nu apare ca fiind oprită în CMTEB acum.</div>
-                <div className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  Asta înseamnă că pentru adresa urmărită nu există o avarie activă publicată în lista lor la ultima verificare.
-                </div>
-              </div>
-              <div className="rounded-3xl border border-[var(--border)] bg-[var(--panel-2)]/72 p-5">
-                <div className="text-xs text-[var(--muted)]">Adresă monitorizată</div>
-                <div className="mt-2 text-lg font-semibold text-[var(--text)]">{monitoredAddress || '—'}</div>
-                <div className="mt-4 text-xs text-[var(--muted)]">Ultimul run</div>
-                <div className="mt-1 text-sm text-[var(--text)]">{run?.summary ?? '—'}</div>
-              </div>
-            </div>
-          )}
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <CompactMetaCard label="Adresă urmărită" value={monitoredAddress || '—'} />
+            <CompactMetaCard label="Ultima verificare" value={fmt(app.last_run_at)} />
+          </div>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
@@ -663,10 +592,57 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
           </div>
         </section>
 
-        <section className="flex justify-between">
-          <Link className="page-back-link" href="/">
-            ← Înapoi în dashboard
-          </Link>
+        <section className="surface-card p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-xl font-semibold">🔎 Detalii complete</div>
+              <div className="mt-1 text-sm text-[var(--muted)]">
+                Statusul curent pentru adresa ta, cu informațiile cele mai recente din CMTEB.
+              </div>
+            </div>
+            <div className="text-xs text-[var(--muted)]">
+              {currentDetails ? 'Există avarie activă în listă.' : 'Nu apare avarie activă pentru adresa urmărită.'}
+            </div>
+          </div>
+
+          {currentDetails ? (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <DetailCard label="Sector" value={currentDetails.sector ?? '—'} />
+              <DetailCard label="ETA repornire" value={currentEta ?? '—'} />
+              <DetailCard label="Agent termic afectat" value={currentDetails.agent ?? '—'} className="xl:col-span-2" />
+              <DetailCard
+                label="Cauză / descriere"
+                value={currentDetails.cause ?? '—'}
+                className="sm:col-span-2 xl:col-span-4"
+              />
+              <DetailCard
+                label="Zona afectată"
+                value={currentDetails.zone ?? '—'}
+                preformatted
+                className="sm:col-span-2 xl:col-span-4"
+              />
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-3xl border border-emerald-400/24 bg-emerald-500/10 p-5">
+                <div className="text-sm font-semibold text-emerald-200">Apa caldă nu apare ca fiind oprită în CMTEB acum.</div>
+                <div className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                  Asta înseamnă că pentru adresa urmărită nu există o avarie activă publicată în lista lor la ultima verificare.
+                </div>
+              </div>
+              <div className="rounded-3xl border border-[var(--border)] bg-[var(--panel-2)]/72 p-5">
+                <div className="text-xs text-[var(--muted)]">Adresă monitorizată</div>
+                <div className="mt-2 text-lg font-semibold text-[var(--text)]">{monitoredAddress || '—'}</div>
+                <div className="mt-4 text-xs text-[var(--muted)]">Ultimul run</div>
+                <div className="mt-1 text-sm text-[var(--text)]">{run?.summary ?? '—'}</div>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="flex flex-wrap items-center justify-between gap-3">
+          <ThemeToggle />
+          <BackLink href="/">Dashboard</BackLink>
         </section>
       </div>
     </PageShell>
@@ -696,37 +672,60 @@ function DetailCard({
   );
 }
 
-function StatCard({
+function HeroMetricCard({
   label,
   value,
-  hint,
+  helper,
+  tone,
+  className = '',
+  compactValue = false,
 }: {
   label: string;
   value: string;
-  hint: string;
+  helper: string;
+  tone: string;
+  className?: string;
+  compactValue?: boolean;
 }) {
   return (
-    <div className="rounded-3xl border border-[var(--border)] bg-[var(--panel-2)]/72 p-4">
-      <div className="text-xs text-[var(--muted)]">{label}</div>
-      <div className="mt-2 text-3xl font-semibold text-[var(--text)]">{value}</div>
-      <div className="mt-2 text-sm text-[var(--muted)]">{hint}</div>
+    <div className={`rounded-2xl border px-3 py-3 ${tone} ${className}`}>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em]">{label}</div>
+      <div className={`mt-2 font-semibold ${compactValue ? 'text-2xl sm:text-[1.85rem]' : 'text-2xl sm:text-[2rem]'}`}>
+        {value}
+      </div>
+      <div className="mt-1.5 text-xs text-[var(--muted)]">{helper}</div>
     </div>
   );
 }
 
-function MiniCount({
+function CompactStatCard({
   label,
   value,
-  tone,
 }: {
   label: string;
-  value: number;
-  tone: string;
+  value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)]/65 px-4 py-3">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)]/68 px-3 py-3">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+        {label}
+      </div>
+      <div className="mt-1.5 text-lg font-semibold text-[var(--text)]">{value}</div>
+    </div>
+  );
+}
+
+function CompactMetaCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)]/65 px-3 py-3">
       <div className="text-xs text-[var(--muted)]">{label}</div>
-      <div className={`mt-1 text-lg font-semibold ${tone}`}>{value}</div>
+      <div className="mt-1.5 text-sm font-semibold text-[var(--text)]">{value}</div>
     </div>
   );
 }
