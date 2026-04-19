@@ -8,6 +8,7 @@ import {
   addMonths,
   addYears,
   buildCalendarDays,
+  buildDaySegments,
   buildRangeStats,
   endOfMonthExclusive,
   endOfYearExclusive,
@@ -18,6 +19,7 @@ import {
   getCurrentPeriod,
   startOfMonth,
   startOfYear,
+  toIsoDay,
   type DayCoverage,
   type HistoryViewMode,
   WEEKDAY_LABELS,
@@ -67,43 +69,86 @@ function isSameDay(left: Date, right: Date) {
   );
 }
 
-function dayTone(day: DayCoverage, inCurrentMonth: boolean) {
-  if (day.status === 'ok') {
-    return 'border-emerald-400/28 bg-emerald-500/12 text-emerald-100';
+function daySurfaceClass(day: DayCoverage, inCurrentMonth: boolean, isSelected: boolean) {
+  if (isSelected) {
+    return 'scale-[1.04] border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent-soft)_84%,var(--panel)_16%)] shadow-[0_18px_36px_-24px_color-mix(in_srgb,var(--accent)_70%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--accent)_28%,transparent)]';
   }
-  if (day.status === 'down') {
-    return 'border-rose-400/30 bg-rose-500/14 text-rose-100';
+
+  if (day.status === 'future') {
+    return inCurrentMonth
+      ? 'border-transparent bg-transparent opacity-45'
+      : 'border-transparent bg-transparent opacity-20';
   }
-  if (day.status === 'mixed') {
-    return 'border-rose-400/32 text-rose-50';
-  }
+
   if (day.status === 'untracked') {
-    return 'text-[var(--muted)]';
+    return 'border-[color-mix(in_srgb,var(--border-strong)_70%,transparent)] bg-[color-mix(in_srgb,var(--panel-2)_72%,transparent)]';
   }
+
   return inCurrentMonth
-    ? 'border-dashed border-[var(--border)] bg-transparent text-[var(--muted)]/55'
-    : 'border-transparent bg-transparent text-[var(--muted)]/35';
+    ? 'border-[var(--border)] bg-[color-mix(in_srgb,var(--panel-2)_54%,transparent)]'
+    : 'border-transparent bg-transparent opacity-45';
 }
 
-function dayStyle(day: DayCoverage, options?: { isToday?: boolean; inCurrentMonth?: boolean }) {
-  const style: CSSProperties = {};
+function dayNumberClass(day: DayCoverage, inCurrentMonth: boolean, isSelected: boolean) {
+  if (isSelected) return 'text-[var(--text)]';
+  if (day.status === 'future') return inCurrentMonth ? 'text-[var(--muted)]' : 'text-[var(--muted)]/50';
+  if (!inCurrentMonth) return 'text-[var(--muted)]';
+  return 'text-[var(--text)]';
+}
 
+function dayIndicatorClass(day: DayCoverage) {
+  if (day.status === 'ok') {
+    return 'bg-emerald-400';
+  }
+  if (day.status === 'down' || day.status === 'mixed') {
+    return 'bg-rose-400';
+  }
+  if (day.status === 'untracked') {
+    return 'bg-slate-300/80';
+  }
+  return 'bg-transparent';
+}
+
+function dayIndicatorRing(day: DayCoverage) {
   if (day.status === 'mixed') {
-    style.background =
-      'linear-gradient(135deg, color-mix(in srgb, var(--danger) 20%, transparent) 0%, color-mix(in srgb, var(--danger) 20%, transparent) 58%, color-mix(in srgb, var(--accent-warm) 22%, transparent) 100%)';
-  } else if (day.status === 'untracked') {
-    style.background = 'color-mix(in srgb, var(--panel-2) 76%, transparent)';
-    style.borderColor = 'color-mix(in srgb, var(--border-strong) 82%, transparent)';
-  } else if (day.status === 'future' && options?.inCurrentMonth) {
-    style.background = 'color-mix(in srgb, var(--panel) 42%, transparent)';
+    return 'ring-2 ring-rose-200/25 ring-offset-1 ring-offset-transparent';
   }
+  return '';
+}
 
-  if (options?.isToday) {
-    style.boxShadow =
-      '0 0 0 2px color-mix(in srgb, var(--accent) 65%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--surface-highlight) 70%, transparent)';
+function selectedDayStatusLabel(day: DayCoverage) {
+  if (day.status === 'ok') return 'OK';
+  if (day.status === 'down') return 'Problemă';
+  if (day.status === 'mixed') return 'Afectată parțial';
+  if (day.status === 'future') return 'Viitor';
+  return 'Necunoscut';
+}
+
+function selectedDayTone(day: DayCoverage) {
+  if (day.status === 'ok') return 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200';
+  if (day.status === 'down' || day.status === 'mixed') {
+    return 'border-rose-400/30 bg-rose-500/12 text-rose-200';
   }
+  if (day.status === 'future') return 'border-[var(--border)] bg-[var(--panel-2)]/62 text-[var(--muted)]';
+  return 'border-[var(--border)] bg-[var(--panel-2)]/68 text-[var(--muted)]';
+}
 
-  return Object.keys(style).length > 0 ? style : undefined;
+function segmentTone(status: ServiceStatus) {
+  return status === 'ok'
+    ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-100'
+    : 'border-rose-400/25 bg-rose-500/10 text-rose-100';
+}
+
+function formatClock(date: Date) {
+  return date.toLocaleTimeString('ro-RO', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function parseDayKey(dayKey: string) {
+  const [year, month, day] = dayKey.split('-').map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function dayTitle(day: DayCoverage) {
@@ -119,37 +164,18 @@ function dayTitle(day: DayCoverage) {
   return `${formatDayLabel(day.date)} • cu apă ${formatDuration(day.upMs)} • fără apă ${formatDuration(day.downMs)}`;
 }
 
-function dayMetricLines(day: DayCoverage) {
-  if (day.status === 'future' || day.status === 'untracked') return [];
-
-  const lines: string[] = [];
-  if (day.upMs > 0) {
-    lines.push(`♨️ ${formatDuration(day.upMs)}`);
-  }
-  if (day.downMs > 0) {
-    lines.push(`⛔ ${formatDuration(day.downMs)}`);
-  }
-  return lines;
-}
-
-function dayMetricChipTone(line: string) {
-  if (line.startsWith('♨️')) {
-    return 'border-emerald-400/24 bg-emerald-500/10 text-emerald-100';
-  }
-  if (line.startsWith('⛔')) {
-    return 'border-rose-400/28 bg-rose-500/12 text-rose-100';
-  }
-  return 'border-[var(--border)] bg-[var(--panel)] text-[var(--text)]';
-}
-
 function MonthCalendar({
   month,
   periods,
   now,
+  selectedDayKey,
+  onSelectDay,
 }: {
   month: Date;
   periods: PeriodRow[];
   now: Date;
+  selectedDayKey: string | null;
+  onSelectDay: (dateKey: string) => void;
 }) {
   const days = useMemo(() => buildCalendarDays(month, periods, now), [month, now, periods]);
 
@@ -167,40 +193,31 @@ function MonthCalendar({
         {days.map((day) => {
           const inCurrentMonth = day.date.getMonth() === month.getMonth();
           const isToday = isSameDay(day.date, now);
-          const metricLines = dayMetricLines(day);
+          const isSelected = day.dateKey === selectedDayKey;
           return (
-            <div
+            <button
               key={day.dateKey}
-              className={`relative aspect-square min-h-[3.9rem] rounded-[1rem] border p-1.5 transition sm:min-h-[4.9rem] sm:rounded-2xl sm:p-2 ${dayTone(day, inCurrentMonth)}`}
-              style={dayStyle(day, { isToday, inCurrentMonth })}
+              className={`relative flex aspect-square min-h-[3.9rem] flex-col rounded-[1rem] border p-1.5 text-left transition active:scale-[0.98] sm:min-h-[4.9rem] sm:rounded-2xl sm:p-2 ${daySurfaceClass(day, inCurrentMonth, isSelected)}`}
               title={dayTitle(day)}
+              type="button"
+              onClick={() => onSelectDay(day.dateKey)}
             >
               <div className="flex items-start justify-between gap-2">
-                <span
-                  className={`text-[13px] font-semibold sm:text-sm ${inCurrentMonth ? 'text-[var(--text)]' : 'text-[var(--muted)]'}`}
-                >
+                <span className={`text-[13px] font-semibold sm:text-sm ${dayNumberClass(day, inCurrentMonth, isSelected)}`}>
                   {day.date.getDate()}
                 </span>
                 {isToday ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--accent)]/35 bg-[var(--accent-soft)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--text)] sm:px-0 sm:py-0 sm:text-[0] sm:border-0 sm:bg-transparent">
-                    <span className="hidden sm:inline">azi</span>
-                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                  <span className="inline-flex h-2.5 w-2.5 rounded-full border border-[var(--accent)]/35 bg-[var(--accent)]/18 sm:h-3 sm:w-3">
+                    <span className="m-auto h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
                   </span>
                 ) : null}
               </div>
-              {metricLines.length > 0 ? (
-                <div className="mt-2 flex flex-col gap-1 sm:mt-3 sm:space-y-1 sm:gap-0">
-                  {metricLines.map((line) => (
-                    <div
-                      key={line}
-                      className={`inline-flex w-fit items-center rounded-full border px-1.5 py-0.5 text-[9px] font-semibold leading-none shadow-sm sm:px-2 sm:py-1 sm:text-[10px] ${dayMetricChipTone(line)}`}
-                    >
-                      {line}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+
+              <div className="mt-auto flex items-end justify-between gap-2">
+                <span className={`inline-flex h-2.5 w-2.5 rounded-full ${dayIndicatorClass(day)} ${dayIndicatorRing(day)} ${day.status === 'future' ? 'opacity-0' : ''}`} />
+                {isSelected ? <span className="h-2 w-2 rounded-full bg-[var(--accent)]/75" /> : null}
+              </div>
+            </button>
           );
         })}
       </div>
@@ -212,10 +229,14 @@ function YearCalendar({
   yearDate,
   periods,
   now,
+  selectedDayKey,
+  onSelectDay,
 }: {
   yearDate: Date;
   periods: PeriodRow[];
   now: Date;
+  selectedDayKey: string | null;
+  onSelectDay: (dateKey: string) => void;
 }) {
   const months = useMemo(
     () => Array.from({ length: 12 }, (_, index) => new Date(yearDate.getFullYear(), index, 1)),
@@ -240,24 +261,27 @@ function YearCalendar({
               {days.map((day) => {
                 const inCurrentMonth = day.date.getMonth() === month.getMonth();
                 const isToday = isSameDay(day.date, now);
+                const isSelected = day.dateKey === selectedDayKey;
                 return (
-                  <div
+                  <button
                     key={day.dateKey}
-                    className={`flex aspect-square items-center justify-center rounded-[0.7rem] border text-[9px] font-semibold sm:rounded-[0.85rem] sm:text-[10px] ${dayTone(day, inCurrentMonth)}`}
-                    style={dayStyle(day, { isToday, inCurrentMonth })}
+                    className={`flex aspect-square items-center justify-center rounded-[0.7rem] border text-[9px] font-semibold transition sm:rounded-[0.85rem] sm:text-[10px] ${daySurfaceClass(day, inCurrentMonth, isSelected)}`}
                     title={dayTitle(day)}
+                    type="button"
+                    onClick={() => onSelectDay(day.dateKey)}
                   >
                     {inCurrentMonth ? (
                       <span className="relative inline-flex items-center justify-center">
-                        {day.date.getDate()}
-                        {isToday ? (
-                          <span className="absolute -bottom-1.5 h-1 w-1 rounded-full bg-[var(--accent)]" />
+                        <span className={dayNumberClass(day, inCurrentMonth, isSelected)}>{day.date.getDate()}</span>
+                        {day.status !== 'future' ? (
+                          <span className={`absolute -bottom-1.5 h-1.5 w-1.5 rounded-full ${dayIndicatorClass(day)} ${dayIndicatorRing(day)}`} />
                         ) : null}
+                        {isToday ? <span className="absolute -top-1.5 h-1 w-1 rounded-full bg-[var(--accent)]" /> : null}
                       </span>
                     ) : (
                       ''
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -292,6 +316,7 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
     const base = periods[periods.length - 1]?.started_at ?? run?.created_at ?? new Date().toISOString();
     return new Date(base);
   });
+  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(() => toIsoDay(new Date()));
 
   const [pushSupported] = useState(
     () => typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
@@ -335,6 +360,14 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
   const viewEnd = viewMode === 'month' ? endOfMonthExclusive(focusDate) : endOfYearExclusive(focusDate);
   const viewLabel = viewMode === 'month' ? formatMonthLabel(focusDate) : formatYearLabel(focusDate);
   const stats = useMemo(() => buildRangeStats(periods, viewStart, viewEnd, now), [now, periods, viewEnd, viewStart]);
+  const monthDays = useMemo(() => buildCalendarDays(focusDate, periods, now), [focusDate, now, periods]);
+  const visibleMonthDayKeys = useMemo(
+    () =>
+      monthDays
+        .filter((day) => day.date.getMonth() === focusDate.getMonth())
+        .map((day) => day.dateKey),
+    [focusDate, monthDays]
+  );
   const canGoForward = useMemo(() => {
     if (viewMode === 'month') {
       const currentMonth = startOfMonth(now);
@@ -342,6 +375,37 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
     }
     return startOfYear(focusDate).getTime() < startOfYear(now).getTime();
   }, [focusDate, now, viewMode]);
+
+  function handleSelectDay(dayKey: string) {
+    setSelectedDayKey(dayKey);
+    if (viewMode === 'year') {
+      const nextDate = parseDayKey(dayKey);
+      setFocusDate(nextDate);
+      setViewMode('month');
+    }
+  }
+
+  const resolvedSelectedDayKey = useMemo(() => {
+    const todayKey = toIsoDay(now);
+    const currentMonthStart = startOfMonth(now).getTime();
+    const focusMonthStart = startOfMonth(focusDate).getTime();
+    const defaultKey =
+      focusMonthStart === currentMonthStart && visibleMonthDayKeys.includes(todayKey)
+        ? todayKey
+        : (visibleMonthDayKeys[0] ?? null);
+
+    if (!selectedDayKey) return defaultKey;
+    return visibleMonthDayKeys.includes(selectedDayKey) ? selectedDayKey : defaultKey;
+  }, [focusDate, now, selectedDayKey, visibleMonthDayKeys]);
+
+  const selectedDay = useMemo(
+    () => monthDays.find((day) => day.dateKey === resolvedSelectedDayKey) ?? null,
+    [monthDays, resolvedSelectedDayKey]
+  );
+  const selectedDaySegments = useMemo(
+    () => (selectedDay ? buildDaySegments(periods, selectedDay.date, now) : []),
+    [now, periods, selectedDay]
+  );
 
   async function enableNotifications() {
     if (!pushSupported) return;
@@ -492,30 +556,99 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
           </div>
 
           <div className="mt-4 flex flex-wrap gap-3">
-            <LegendItem label="Apă caldă" className="border-emerald-400/30 bg-emerald-500/12" />
-            <LegendItem label="Fără apă caldă" className="border-rose-400/30 bg-rose-500/14" />
-            <LegendItem
-              label="Zi afectată"
-              className="border-rose-400/32"
-              style={{
-                background:
-                  'linear-gradient(135deg, color-mix(in srgb, var(--danger) 20%, transparent) 0%, color-mix(in srgb, var(--danger) 20%, transparent) 58%, color-mix(in srgb, var(--accent-warm) 22%, transparent) 100%)',
-              }}
-            />
-            <LegendItem label="Neînregistrat" className="border-white/6 bg-white/6" />
-            <LegendItem label="Viitor" className="border-dashed border-[var(--border)] bg-transparent" />
+            <LegendItem label="OK" className="border-emerald-400/30 bg-emerald-500/12" />
+            <LegendItem label="Problemă" className="border-rose-400/30 bg-rose-500/14" />
+            <LegendItem label="Necunoscut" className="border-slate-300/40 bg-slate-300/30" />
           </div>
         </section>
 
         <section className="surface-card p-4 sm:p-6">
           {viewMode === 'month' ? (
-            <MonthCalendar month={focusDate} periods={periods} now={now} />
+            <MonthCalendar
+              month={focusDate}
+              periods={periods}
+              now={now}
+              selectedDayKey={resolvedSelectedDayKey}
+              onSelectDay={handleSelectDay}
+            />
           ) : (
-            <YearCalendar yearDate={focusDate} periods={periods} now={now} />
+            <YearCalendar
+              yearDate={focusDate}
+              periods={periods}
+              now={now}
+              selectedDayKey={resolvedSelectedDayKey}
+              onSelectDay={handleSelectDay}
+            />
           )}
         </section>
 
         <section className="surface-card p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                Zi selectată
+              </div>
+              <div className="mt-1 text-lg font-semibold text-[var(--text)]">
+                {selectedDay ? selectedDay.date.toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
+              </div>
+            </div>
+            {selectedDay ? (
+              <div className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${selectedDayTone(selectedDay)}`}>
+                {selectedDayStatusLabel(selectedDay)}
+              </div>
+            ) : null}
+          </div>
+
+          {selectedDay ? (
+            <>
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <CompactStatCard label="Disponibilitate zi" value={selectedDay.trackedMs > 0 ? `${Math.round((selectedDay.upMs / selectedDay.trackedMs) * 100)}%` : '—'} />
+                <CompactStatCard label="Apă caldă azi" value={selectedDay.upMs > 0 ? formatDuration(selectedDay.upMs) : '—'} />
+                <CompactStatCard label="Fără apă azi" value={selectedDay.downMs > 0 ? formatDuration(selectedDay.downMs) : '—'} />
+                <CompactStatCard label="Acoperire" value={selectedDay.status === 'future' ? 'Viitor' : selectedDay.status === 'untracked' ? 'Fără date' : formatDuration(selectedDay.trackedMs)} />
+              </div>
+
+              <div className="mt-4">
+                {selectedDay.status === 'future' ? (
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)]/62 p-4 text-sm text-[var(--muted)]">
+                    Zi din viitor. Încă nu există intervale de afișat.
+                  </div>
+                ) : selectedDaySegments.length === 0 ? (
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)]/62 p-4 text-sm text-[var(--muted)]">
+                    Nu există segmente înregistrate pentru ziua asta.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedDaySegments.map((segment) => (
+                      <div
+                        key={`${segment.status}-${segment.start.toISOString()}`}
+                        className={`rounded-2xl border px-4 py-3 ${segmentTone(segment.status)}`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-sm font-semibold">
+                            {segment.status === 'ok' ? 'Apă caldă' : 'Problemă'}
+                          </div>
+                          <div className="text-xs font-semibold uppercase tracking-[0.14em]">
+                            {formatDuration(segment.durationMs)}
+                          </div>
+                        </div>
+                        <div className="mt-1 text-sm text-[var(--muted)]">
+                          {formatClock(segment.start)} - {formatClock(segment.end)}
+                        </div>
+                        {segment.eta ? (
+                          <div className="mt-1 text-xs text-[var(--muted)]">ETA: {segment.eta}</div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : null}
+        </section>
+
+        <section className="surface-card p-5 sm:p-6">
+          <div className="mb-4 text-sm text-[var(--muted)]">Statistici pentru {viewLabel}</div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <CompactStatCard label="Disponibilitate" value={stats.availabilityPct == null ? '—' : `${stats.availabilityPct.toFixed(0)}%`} />
             <CompactStatCard label="Apă caldă" value={formatDuration(stats.upMs)} />

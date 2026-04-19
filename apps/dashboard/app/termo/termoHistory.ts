@@ -1,4 +1,5 @@
 import type { PeriodRow } from './types';
+import type { ServiceStatus } from './types';
 
 export const WEEKDAY_LABELS = ['Lu', 'Ma', 'Mi', 'Jo', 'Vi', 'Sa', 'Du'];
 
@@ -12,6 +13,14 @@ export type DayCoverage = {
   upMs: number;
   downMs: number;
   trackedMs: number;
+};
+
+export type DaySegment = {
+  start: Date;
+  end: Date;
+  status: ServiceStatus;
+  durationMs: number;
+  eta: string | null;
 };
 
 export type RangeStats = {
@@ -155,6 +164,39 @@ export function buildRangeStats(periods: PeriodRow[], start: Date, endExclusive:
     daysProblematic: days.filter((day) => day.status === 'down' || day.status === 'mixed').length,
     daysUntracked: days.filter((day) => day.status === 'untracked').length,
   };
+}
+
+export function buildDaySegments(periods: PeriodRow[], day: Date, now = new Date()) {
+  const dayStart = startOfDay(day);
+  const dayEnd = addDays(dayStart, 1);
+  const todayStart = startOfDay(now);
+  const nowMs = now.getTime();
+  const observedEndMs = dayStart.getTime() === todayStart.getTime() ? nowMs : dayEnd.getTime();
+  const segments: DaySegment[] = [];
+
+  if (observedEndMs <= dayStart.getTime()) {
+    return segments;
+  }
+
+  for (const period of periods) {
+    const periodStartMs = new Date(period.started_at).getTime();
+    const periodEndMs = clipPeriodEnd(period, nowMs);
+    if (periodEndMs <= dayStart.getTime() || periodStartMs >= observedEndMs) continue;
+
+    const overlapStart = Math.max(dayStart.getTime(), periodStartMs);
+    const overlapEnd = Math.min(observedEndMs, periodEndMs);
+    if (overlapEnd <= overlapStart) continue;
+
+    segments.push({
+      start: new Date(overlapStart),
+      end: new Date(overlapEnd),
+      status: period.hot_water_status,
+      durationMs: overlapEnd - overlapStart,
+      eta: period.eta,
+    });
+  }
+
+  return segments.sort((left, right) => left.start.getTime() - right.start.getTime());
 }
 
 export function formatDuration(ms: number) {
