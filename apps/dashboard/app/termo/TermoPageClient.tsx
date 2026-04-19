@@ -132,6 +132,16 @@ function dayMetricLines(day: DayCoverage) {
   return lines;
 }
 
+function dayMetricChipTone(line: string) {
+  if (line.startsWith('♨️')) {
+    return 'border-emerald-400/24 bg-emerald-500/10 text-emerald-100';
+  }
+  if (line.startsWith('⛔')) {
+    return 'border-rose-400/28 bg-rose-500/12 text-rose-100';
+  }
+  return 'border-[var(--border)] bg-[var(--panel)] text-[var(--text)]';
+}
+
 function MonthCalendar({
   month,
   periods,
@@ -144,8 +154,8 @@ function MonthCalendar({
   const days = useMemo(() => buildCalendarDays(month, periods, now), [month, now, periods]);
 
   return (
-    <div>
-      <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
+    <div className="rounded-[1.75rem] border border-[var(--border)] bg-[var(--panel)]/55 p-2 sm:rounded-[2rem] sm:border-0 sm:bg-transparent sm:p-0">
+      <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)] sm:gap-2 sm:text-[11px] sm:tracking-[0.2em]">
         {WEEKDAY_LABELS.map((weekday) => (
           <div key={weekday} className="py-1">
             {weekday}
@@ -153,7 +163,7 @@ function MonthCalendar({
         ))}
       </div>
 
-      <div className="mt-3 grid grid-cols-7 gap-2">
+      <div className="mt-2 grid grid-cols-7 gap-1.5 sm:mt-3 sm:gap-2">
         {days.map((day) => {
           const inCurrentMonth = day.date.getMonth() === month.getMonth();
           const isToday = isSameDay(day.date, now);
@@ -161,22 +171,32 @@ function MonthCalendar({
           return (
             <div
               key={day.dateKey}
-              className={`min-h-[4.9rem] rounded-2xl border p-2 transition ${dayTone(day, inCurrentMonth)}`}
+              className={`relative aspect-square min-h-[3.35rem] rounded-[1rem] border p-1.5 transition sm:min-h-[4.9rem] sm:rounded-2xl sm:p-2 ${dayTone(day, inCurrentMonth)}`}
               style={dayStyle(day, { isToday, inCurrentMonth })}
               title={dayTitle(day)}
             >
-              <div className="flex items-start gap-2">
+              <div className="flex items-start justify-between gap-2">
                 <span
-                  className={`text-sm font-semibold ${inCurrentMonth ? 'text-[var(--text)]' : 'text-[var(--muted)]'}`}
+                  className={`text-[13px] font-semibold sm:text-sm ${inCurrentMonth ? 'text-[var(--text)]' : 'text-[var(--muted)]'}`}
                 >
                   {day.date.getDate()}
                 </span>
-                {isToday ? <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" /> : null}
+                {isToday ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--accent)]/35 bg-[var(--accent-soft)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--text)] sm:px-0 sm:py-0 sm:text-[0] sm:border-0 sm:bg-transparent">
+                    <span className="hidden sm:inline">azi</span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                  </span>
+                ) : null}
               </div>
               {metricLines.length > 0 ? (
-                <div className="mt-3 space-y-1 text-[10px] leading-4 text-[var(--muted)]">
+                <div className="mt-1.5 flex flex-col gap-1 sm:mt-3 sm:space-y-1 sm:gap-0">
                   {metricLines.map((line) => (
-                    <div key={line}>{line}</div>
+                    <div
+                      key={line}
+                      className={`inline-flex w-fit items-center rounded-full border px-1.5 py-0.5 text-[9px] font-semibold leading-none shadow-sm sm:px-2 sm:py-1 sm:text-[10px] ${dayMetricChipTone(line)}`}
+                    >
+                      {line}
+                    </div>
                   ))}
                 </div>
               ) : null}
@@ -203,15 +223,15 @@ function YearCalendar({
   );
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {months.map((month) => {
         const days = buildCalendarDays(month, periods, now);
         return (
-          <div key={month.toISOString()} className="rounded-3xl border border-[var(--border)] bg-[var(--panel-2)]/70 p-3">
-            <div className="mb-3 text-sm font-semibold capitalize text-[var(--text)]">
+          <div key={month.toISOString()} className="rounded-[1.65rem] border border-[var(--border)] bg-[var(--panel-2)]/70 p-2.5 sm:rounded-3xl sm:p-3">
+            <div className="mb-2 text-sm font-semibold capitalize text-[var(--text)] sm:mb-3">
               {month.toLocaleDateString('ro-RO', { month: 'long' })}
             </div>
-            <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+            <div className="grid grid-cols-7 gap-1 text-center text-[8px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)] sm:text-[9px] sm:tracking-[0.16em]">
               {WEEKDAY_LABELS.map((weekday) => (
                 <div key={`${month.getMonth()}-${weekday}`}>{weekday}</div>
               ))}
@@ -223,7 +243,7 @@ function YearCalendar({
                 return (
                   <div
                     key={day.dateKey}
-                    className={`flex aspect-square items-center justify-center rounded-[0.85rem] border text-[10px] font-semibold ${dayTone(day, inCurrentMonth)}`}
+                    className={`flex aspect-square items-center justify-center rounded-[0.7rem] border text-[9px] font-semibold sm:rounded-[0.85rem] sm:text-[10px] ${dayTone(day, inCurrentMonth)}`}
                     style={dayStyle(day, { isToday, inCurrentMonth })}
                     title={dayTitle(day)}
                   >
