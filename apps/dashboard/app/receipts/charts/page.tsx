@@ -940,6 +940,7 @@ function BudgetBar({
   const monthDeltaPct = prevSpent > 0 ? (monthDelta / prevSpent) * 100 : null;
   const isOver = hasBudget ? spent > budget : false;
   const isWarning = hasBudget && percentage >= 80 && percentage < 100;
+  const overBudgetAmount = hasBudget ? spent - budget : 0;
 
   const colorClass =
     !hasBudget
@@ -1053,7 +1054,7 @@ function BudgetBar({
 
       {isOver ? (
         <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200 animate-[shake_0.5s_ease-in-out]">
-          Depasire buget: <span className="font-semibold">{(spent - budget).toFixed(0)} {currency}</span>
+          Depasire buget: <span className="font-semibold">{overBudgetAmount.toFixed(0)} {currency}</span>
         </div>
       ) : null}
     </div>
