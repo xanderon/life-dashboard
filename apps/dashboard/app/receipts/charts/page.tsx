@@ -55,6 +55,7 @@ type WeekBucket = {
   healthy: number;
   balanced: number;
   junk: number;
+  unclassified: number;
   nonFood: number;
 };
 
@@ -70,6 +71,8 @@ const FOOD_COLORS: Record<FoodQuality, string> = {
   balanced: '#f1c36d',
   junk: '#ff7b7b',
 };
+
+const UNCLASSIFIED_COLOR = '#8fa3b8';
 
 function startOfWeek(date: Date) {
   const d = new Date(date);
@@ -224,6 +227,7 @@ export default function ReceiptsChartsPage() {
         healthy: 0,
         balanced: 0,
         junk: 0,
+        unclassified: 0,
         nonFood: 0,
       });
     });
@@ -233,12 +237,14 @@ export default function ReceiptsChartsPage() {
     let healthyMonth = 0;
     let balancedMonth = 0;
     let junkMonth = 0;
+    let unclassifiedMonth = 0;
 
     let foodPrev = 0;
     let nonFoodPrev = 0;
     let healthyPrev = 0;
     let balancedPrev = 0;
     let junkPrev = 0;
+    let unclassifiedPrev = 0;
 
     const junkMap = new Map<string, { spent: number; count: number }>();
 
@@ -302,6 +308,7 @@ export default function ReceiptsChartsPage() {
           if (quality === 'healthy') healthyMonth += amount;
           if (quality === 'balanced') balancedMonth += amount;
           if (quality === 'junk') junkMonth += amount;
+          if (!isTrackedFoodQuality) unclassifiedMonth += amount;
         } else {
           nonFoodMonth += amount;
         }
@@ -332,6 +339,7 @@ export default function ReceiptsChartsPage() {
           if (quality === 'healthy') healthyPrev += amount;
           if (quality === 'balanced') balancedPrev += amount;
           if (quality === 'junk') junkPrev += amount;
+          if (!isTrackedFoodQuality) unclassifiedPrev += amount;
         } else {
           nonFoodPrev += amount;
         }
@@ -355,6 +363,7 @@ export default function ReceiptsChartsPage() {
           if (quality === 'healthy') bucket.healthy += amount;
           else if (quality === 'balanced') bucket.balanced += amount;
           else if (quality === 'junk') bucket.junk += amount;
+          else bucket.unclassified += amount;
         } else {
           bucket.nonFood += amount;
         }
@@ -383,7 +392,8 @@ export default function ReceiptsChartsPage() {
       { name: 'Healthy', value: healthyMonth, color: FOOD_COLORS.healthy },
       { name: 'Balanced', value: balancedMonth, color: FOOD_COLORS.balanced },
       { name: 'Junk', value: junkMonth, color: FOOD_COLORS.junk },
-    ];
+      { name: 'Neclasificat', value: unclassifiedMonth, color: UNCLASSIFIED_COLOR },
+    ].filter((entry) => entry.value > 0);
 
     const topJunk = Array.from(junkMap.entries())
       .map(([name, entry]) => ({ name, spent: entry.spent, count: entry.count }))
@@ -392,8 +402,12 @@ export default function ReceiptsChartsPage() {
 
     const lastWeek = weeklyBuckets[weeklyBuckets.length - 1];
     const prevWeek = weeklyBuckets[weeklyBuckets.length - 2];
-    const lastWeekFood = lastWeek ? lastWeek.healthy + lastWeek.balanced + lastWeek.junk : 0;
-    const prevWeekFood = prevWeek ? prevWeek.healthy + prevWeek.balanced + prevWeek.junk : 0;
+    const lastWeekFood = lastWeek
+      ? lastWeek.healthy + lastWeek.balanced + lastWeek.junk + lastWeek.unclassified
+      : 0;
+    const prevWeekFood = prevWeek
+      ? prevWeek.healthy + prevWeek.balanced + prevWeek.junk + prevWeek.unclassified
+      : 0;
     const lastWeekHealthy = lastWeekFood ? (lastWeek.healthy / lastWeekFood) * 100 : null;
     const prevWeekHealthy = prevWeekFood ? (prevWeek.healthy / prevWeekFood) * 100 : null;
     const deltaHealthy =
@@ -433,6 +447,14 @@ export default function ReceiptsChartsPage() {
         prevSpent: junkPrev,
         budget: FOOD_BUDGET_SPLIT.junk,
         icon: '🔥',
+      },
+      {
+        key: 'unclassified',
+        label: 'Neclasificat',
+        spent: unclassifiedMonth,
+        prevSpent: unclassifiedPrev,
+        budget: null,
+        icon: '🧩',
       },
       {
         key: 'nonFood',
@@ -592,6 +614,12 @@ export default function ReceiptsChartsPage() {
                 <Bar dataKey="healthy" stackId="a" fill={FOOD_COLORS.healthy} name="Healthy" />
                 <Bar dataKey="balanced" stackId="a" fill={FOOD_COLORS.balanced} name="Balanced" />
                 <Bar dataKey="junk" stackId="a" fill={FOOD_COLORS.junk} name="Junk" />
+                <Bar
+                  dataKey="unclassified"
+                  stackId="a"
+                  fill={UNCLASSIFIED_COLOR}
+                  name="Neclasificat"
+                />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -622,7 +650,7 @@ export default function ReceiptsChartsPage() {
               <LineChart
                 data={weeklyBuckets.map((w) => ({
                   label: w.label,
-                  food: w.healthy + w.balanced + w.junk,
+                  food: w.healthy + w.balanced + w.junk + w.unclassified,
                   nonFood: w.nonFood,
                 }))}
               >
@@ -796,7 +824,7 @@ function BudgetProgressBars({
     label: string;
     spent: number;
     prevSpent: number;
-    budget: number;
+    budget: number | null;
     icon: string;
   }[];
   currency: string;
@@ -814,7 +842,7 @@ function BudgetProgressBars({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--muted)]">
         <div>Tracking {monthLabel}</div>
-        <div>Bugete estimative (ajustabile)</div>
+        <div>Bugete estimative + cheltuieli neclasificate</div>
       </div>
       <div className="space-y-4">
         {items.map((item, idx) => (
@@ -898,29 +926,38 @@ function BudgetBar({
   label: string;
   spent: number;
   prevSpent: number;
-  budget: number;
+  budget: number | null;
   currency: string;
   prevMonthLabel: string;
   icon: string;
   delay: number;
   loaded: boolean;
 }) {
-  const ratio = budget ? spent / budget : 0;
-  const percentage = Math.min(ratio * 100, 165);
+  const hasBudget = budget != null && budget > 0;
+  const ratio = hasBudget ? spent / budget : 1;
+  const percentage = hasBudget ? Math.min(ratio * 100, 165) : spent > 0 ? 100 : 0;
   const monthDelta = spent - prevSpent;
   const monthDeltaPct = prevSpent > 0 ? (monthDelta / prevSpent) * 100 : null;
-  const isOver = spent > budget;
-  const isWarning = percentage >= 80 && percentage < 100;
+  const isOver = hasBudget ? spent > budget : false;
+  const isWarning = hasBudget && percentage >= 80 && percentage < 100;
 
   const colorClass =
-    percentage < 80
+    !hasBudget
+      ? 'from-slate-400/80 to-slate-600'
+      : percentage < 80
       ? 'from-emerald-400/80 to-emerald-600'
       : percentage < 100
       ? 'from-amber-400/80 to-orange-500'
       : 'from-rose-500/80 to-rose-700';
 
   const message =
-    percentage < 80 ? 'On track' : percentage < 100 ? 'Getting close' : 'Over budget';
+    !hasBudget
+      ? 'Needs classification'
+      : percentage < 80
+      ? 'On track'
+      : percentage < 100
+      ? 'Getting close'
+      : 'Over budget';
 
   return (
     <div className="metric-tile transition hover:border-[var(--accent-2)]">
@@ -936,7 +973,10 @@ function BudgetBar({
         </div>
         <div className="text-right">
           <div className="text-lg font-semibold text-[var(--text)]">
-            {spent.toFixed(0)} <span className="text-xs text-[var(--muted)]">/ {budget} {currency}</span>
+            {spent.toFixed(0)}{' '}
+            <span className="text-xs text-[var(--muted)]">
+              {hasBudget ? `/ ${budget} ${currency}` : currency}
+            </span>
           </div>
           <div
             className={`text-[11px] ${
@@ -953,7 +993,13 @@ function BudgetBar({
           </div>
           <div
             className={`text-xs font-semibold ${
-              percentage >= 100 ? 'text-rose-300' : isWarning ? 'text-amber-200' : 'text-emerald-300'
+              !hasBudget
+                ? 'text-slate-200'
+                : percentage >= 100
+                ? 'text-rose-300'
+                : isWarning
+                ? 'text-amber-200'
+                : 'text-emerald-300'
             }`}
           >
             {message}
@@ -981,7 +1027,7 @@ function BudgetBar({
         </div>
 
         <div className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-white">
-          {percentage.toFixed(0)}%
+          {hasBudget ? `${percentage.toFixed(0)}%` : 'Review'}
         </div>
 
         {isOver ? (
