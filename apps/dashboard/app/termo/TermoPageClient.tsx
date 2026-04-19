@@ -60,6 +60,14 @@ function serviceTone(status: ServiceStatus | null) {
     : 'border-rose-400/35 bg-rose-500/10 text-rose-200';
 }
 
+function isSameDay(left: Date, right: Date) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
 function dayTone(day: DayCoverage, inCurrentMonth: boolean) {
   if (day.status === 'ok') {
     return 'border-emerald-400/28 bg-emerald-500/12 text-emerald-100';
@@ -71,19 +79,32 @@ function dayTone(day: DayCoverage, inCurrentMonth: boolean) {
     return 'border-rose-400/32 text-rose-50';
   }
   if (day.status === 'untracked') {
-    return 'border-white/6 bg-white/6 text-[var(--muted)]';
+    return 'text-[var(--muted)]';
   }
   return inCurrentMonth
     ? 'border-dashed border-[var(--border)] bg-transparent text-[var(--muted)]/55'
     : 'border-transparent bg-transparent text-[var(--muted)]/35';
 }
 
-function dayStyle(day: DayCoverage) {
-  if (day.status !== 'mixed') return undefined;
-  return {
-    background:
-      'linear-gradient(135deg, color-mix(in srgb, var(--danger) 20%, transparent) 0%, color-mix(in srgb, var(--danger) 20%, transparent) 58%, color-mix(in srgb, var(--accent-warm) 22%, transparent) 100%)',
-  };
+function dayStyle(day: DayCoverage, options?: { isToday?: boolean; inCurrentMonth?: boolean }) {
+  const style: CSSProperties = {};
+
+  if (day.status === 'mixed') {
+    style.background =
+      'linear-gradient(135deg, color-mix(in srgb, var(--danger) 20%, transparent) 0%, color-mix(in srgb, var(--danger) 20%, transparent) 58%, color-mix(in srgb, var(--accent-warm) 22%, transparent) 100%)';
+  } else if (day.status === 'untracked') {
+    style.background = 'color-mix(in srgb, var(--panel-2) 76%, transparent)';
+    style.borderColor = 'color-mix(in srgb, var(--border-strong) 82%, transparent)';
+  } else if (day.status === 'future' && options?.inCurrentMonth) {
+    style.background = 'color-mix(in srgb, var(--panel) 42%, transparent)';
+  }
+
+  if (options?.isToday) {
+    style.boxShadow =
+      '0 0 0 2px color-mix(in srgb, var(--accent) 65%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--surface-highlight) 70%, transparent)';
+  }
+
+  return Object.keys(style).length > 0 ? style : undefined;
 }
 
 function dayTitle(day: DayCoverage) {
@@ -136,12 +157,13 @@ function MonthCalendar({
       <div className="mt-3 grid grid-cols-7 gap-2">
         {days.map((day) => {
           const inCurrentMonth = day.date.getMonth() === month.getMonth();
+          const isToday = isSameDay(day.date, now);
           const metricLines = dayMetricLines(day);
           return (
             <div
               key={day.dateKey}
               className={`min-h-[4.9rem] rounded-2xl border p-2 transition ${dayTone(day, inCurrentMonth)}`}
-              style={dayStyle(day)}
+              style={dayStyle(day, { isToday, inCurrentMonth })}
               title={dayTitle(day)}
             >
               <div className="flex items-start gap-2">
@@ -150,6 +172,7 @@ function MonthCalendar({
                 >
                   {day.date.getDate()}
                 </span>
+                {isToday ? <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" /> : null}
               </div>
               {metricLines.length > 0 ? (
                 <div className="mt-3 space-y-1 text-[10px] leading-4 text-[var(--muted)]">
@@ -197,14 +220,24 @@ function YearCalendar({
             <div className="mt-2 grid grid-cols-7 gap-1">
               {days.map((day) => {
                 const inCurrentMonth = day.date.getMonth() === month.getMonth();
+                const isToday = isSameDay(day.date, now);
                 return (
                   <div
                     key={day.dateKey}
                     className={`flex aspect-square items-center justify-center rounded-[0.85rem] border text-[10px] font-semibold ${dayTone(day, inCurrentMonth)}`}
-                    style={dayStyle(day)}
+                    style={dayStyle(day, { isToday, inCurrentMonth })}
                     title={dayTitle(day)}
                   >
-                    {inCurrentMonth ? day.date.getDate() : ''}
+                    {inCurrentMonth ? (
+                      <span className="relative inline-flex items-center justify-center">
+                        {day.date.getDate()}
+                        {isToday ? (
+                          <span className="absolute -bottom-1.5 h-1 w-1 rounded-full bg-[var(--accent)]" />
+                        ) : null}
+                      </span>
+                    ) : (
+                      ''
+                    )}
                   </div>
                 );
               })}
