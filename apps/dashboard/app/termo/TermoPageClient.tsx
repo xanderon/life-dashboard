@@ -440,30 +440,27 @@ function LiveWaterOrb({ status }: { status: ServiceStatus | null }) {
 
   return (
     <div className={`flex items-center gap-2.5 rounded-[1.2rem] border px-2.5 py-2 sm:gap-3 sm:px-3 ${glowClass}`}>
-      <div className="relative h-10 w-10 shrink-0 sm:h-11 sm:w-11">
+      <div className="relative h-12 w-12 shrink-0 sm:h-14 sm:w-14">
         <div className="absolute inset-0 animate-spin [animation-duration:1.2s] [animation-timing-function:linear]">
           <span
             className="absolute inset-0 rounded-full"
             style={{ backgroundImage: gradient }}
           />
           <span
-            className="absolute inset-0 rounded-full opacity-85 blur-[4px]"
+            className="absolute inset-0 rounded-full opacity-90 blur-[4px]"
             style={{ backgroundImage: gradient }}
           />
           <span
-            className="absolute inset-0 rounded-full opacity-70 blur-[9px]"
+            className="absolute inset-0 rounded-full opacity-75 blur-[10px]"
             style={{ backgroundImage: gradient }}
           />
           <span
-            className="absolute inset-0 rounded-full opacity-55 blur-[18px]"
+            className="absolute inset-0 rounded-full opacity-60 blur-[20px]"
             style={{ backgroundImage: gradient }}
           />
         </div>
         <span
-          className="absolute inset-[7px] rounded-full border border-white/55 bg-[var(--panel)] dark:border-white/20"
-        />
-        <span
-          className="absolute inset-[14px] rounded-full"
+          className="absolute inset-[4px] rounded-full opacity-85 mix-blend-screen"
           style={{ backgroundImage: gradient }}
         />
       </div>
