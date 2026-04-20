@@ -460,7 +460,7 @@ function LiveWaterOrb({ status }: { status: ServiceStatus | null }) {
           />
         </div>
         <span
-          className="absolute inset-[3px] rounded-full opacity-96 saturate-[1.18]"
+          className="absolute inset-[8px] rounded-full opacity-82 brightness-[1.12] saturate-[1.22] sm:inset-[9px]"
           style={{ backgroundImage: gradient }}
         />
       </div>
