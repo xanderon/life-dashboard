@@ -70,23 +70,42 @@ function isSameDay(left: Date, right: Date) {
 }
 
 function daySurfaceClass(day: DayCoverage, inCurrentMonth: boolean, isSelected: boolean) {
+  const selectedClass = isSelected
+    ? 'border-[var(--accent)] shadow-[0_16px_28px_-22px_color-mix(in_srgb,var(--accent)_72%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--accent)_26%,transparent)] md:scale-[1.03]'
+    : '';
+
+  if (!inCurrentMonth) {
+    return day.status === 'future'
+      ? `border-transparent bg-transparent opacity-20 ${selectedClass}`
+      : `border-transparent bg-transparent opacity-45 ${selectedClass}`;
+  }
+
   if (isSelected) {
-    return 'scale-[1.04] border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent-soft)_84%,var(--panel)_16%)] shadow-[0_18px_36px_-24px_color-mix(in_srgb,var(--accent)_70%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--accent)_28%,transparent)]';
+    if (day.status === 'future') {
+      return `bg-[color-mix(in_srgb,var(--panel)_92%,transparent)] ${selectedClass}`;
+    }
+    if (day.status === 'untracked') {
+      return `bg-[color-mix(in_srgb,var(--panel-2)_72%,transparent)] ${selectedClass}`;
+    }
   }
 
   if (day.status === 'future') {
-    return inCurrentMonth
-      ? 'border-transparent bg-transparent opacity-45'
-      : 'border-transparent bg-transparent opacity-20';
+    return `border-[color-mix(in_srgb,var(--border)_55%,transparent)] bg-[color-mix(in_srgb,var(--panel)_94%,transparent)] opacity-55 ${selectedClass}`;
   }
 
   if (day.status === 'untracked') {
-    return 'border-[color-mix(in_srgb,var(--border-strong)_70%,transparent)] bg-[color-mix(in_srgb,var(--panel-2)_72%,transparent)]';
+    return `border-[color-mix(in_srgb,var(--border-strong)_70%,transparent)] bg-[color-mix(in_srgb,var(--panel-2)_72%,transparent)] ${selectedClass}`;
   }
 
-  return inCurrentMonth
-    ? 'border-[var(--border)] bg-[color-mix(in_srgb,var(--panel-2)_54%,transparent)]'
-    : 'border-transparent bg-transparent opacity-45';
+  if (day.status === 'ok') {
+    return `border-emerald-500/24 bg-emerald-500/12 ${selectedClass}`;
+  }
+
+  if (day.status === 'down') {
+    return `border-rose-500/28 bg-rose-500/13 ${selectedClass}`;
+  }
+
+  return `border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[color-mix(in_srgb,var(--panel-2)_54%,transparent)] ${selectedClass}`;
 }
 
 function dayNumberClass(day: DayCoverage, inCurrentMonth: boolean, isSelected: boolean) {
@@ -96,24 +115,57 @@ function dayNumberClass(day: DayCoverage, inCurrentMonth: boolean, isSelected: b
   return 'text-[var(--text)]';
 }
 
-function dayIndicatorClass(day: DayCoverage) {
-  if (day.status === 'ok') {
-    return 'bg-emerald-400';
+function daySurfaceStyle(day: DayCoverage, inCurrentMonth: boolean): CSSProperties | undefined {
+  if (!inCurrentMonth) return undefined;
+
+  if (day.status === 'mixed') {
+    return {
+      background:
+        'linear-gradient(145deg, color-mix(in srgb, rgb(16 185 129) 18%, var(--panel-2) 82%) 0%, color-mix(in srgb, rgb(16 185 129) 14%, var(--panel-2) 86%) 46%, color-mix(in srgb, rgb(244 63 94) 15%, var(--panel-2) 85%) 54%, color-mix(in srgb, rgb(244 63 94) 21%, var(--panel-2) 79%) 100%)',
+    };
   }
-  if (day.status === 'down' || day.status === 'mixed') {
-    return 'bg-rose-400';
-  }
-  if (day.status === 'untracked') {
-    return 'bg-slate-300/80';
-  }
-  return 'bg-transparent';
+
+  return undefined;
 }
 
-function dayIndicatorRing(day: DayCoverage) {
-  if (day.status === 'mixed') {
-    return 'ring-2 ring-rose-200/25 ring-offset-1 ring-offset-transparent';
-  }
-  return '';
+function dayStatusEmoji(day: DayCoverage) {
+  if (day.status === 'ok') return '🟢';
+  if (day.status === 'down') return '🔴';
+  if (day.status === 'mixed') return '🟡';
+  if (day.status === 'future') return '🕒';
+  return '⚪';
+}
+
+function dayStatusText(day: DayCoverage) {
+  if (day.status === 'ok') return 'Apă caldă disponibilă';
+  if (day.status === 'down') return 'Problemă toată perioada observată';
+  if (day.status === 'mixed') return 'Zi afectată parțial';
+  if (day.status === 'future') return 'Zi din viitor';
+  return 'Fără înregistrări';
+}
+
+function DayHoverCard({ day }: { day: DayCoverage }) {
+  const unknownMs = Math.max(0, (day.date > new Date() ? 0 : 24 * 60 * 60 * 1000) - day.trackedMs);
+
+  return (
+    <div className="pointer-events-none absolute bottom-[calc(100%+0.7rem)] left-1/2 z-20 hidden w-56 -translate-x-1/2 rounded-[1.15rem] border border-[var(--border)] bg-[color-mix(in_srgb,var(--panel)_93%,black_7%)] p-3 text-left shadow-[0_24px_50px_-24px_rgba(0,0,0,0.45)] opacity-0 transition duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 md:block">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+        {formatDayLabel(day.date)}
+      </div>
+      <div className="mt-1.5 text-sm font-semibold text-[var(--text)]">
+        {dayStatusEmoji(day)} {dayStatusText(day)}
+      </div>
+      <div className="mt-2 space-y-1.5 text-xs text-[var(--muted)]">
+        {day.upMs > 0 ? <div>♨️ Cu apă: {formatDuration(day.upMs)}</div> : null}
+        {day.downMs > 0 ? <div>⛔ Fără apă: {formatDuration(day.downMs)}</div> : null}
+        {day.status === 'untracked' ? <div>⚪ Nu există înregistrări pentru ziua asta.</div> : null}
+        {day.status === 'future' ? <div>🕒 Ziua nu a început încă.</div> : null}
+        {day.status !== 'future' && day.status !== 'untracked' && unknownMs > 0 && day.trackedMs < 24 * 60 * 60 * 1000 ? (
+          <div>⚪ Acoperire parțială: {formatDuration(unknownMs)}</div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 function selectedDayStatusLabel(day: DayCoverage) {
@@ -189,7 +241,7 @@ function MonthCalendar({
         ))}
       </div>
 
-      <div className="mt-2 grid grid-cols-7 gap-1.5 sm:mt-3 sm:gap-2">
+      <div className="mt-2 grid grid-cols-7 gap-2 sm:mt-3 sm:gap-2.5">
         {days.map((day) => {
           const inCurrentMonth = day.date.getMonth() === month.getMonth();
           const isToday = isSameDay(day.date, now);
@@ -197,26 +249,29 @@ function MonthCalendar({
           return (
             <button
               key={day.dateKey}
-              className={`relative flex aspect-square min-h-[3.9rem] flex-col rounded-[1rem] border p-1.5 text-left transition active:scale-[0.98] sm:min-h-[4.9rem] sm:rounded-2xl sm:p-2 ${daySurfaceClass(day, inCurrentMonth, isSelected)}`}
+              className={`group relative flex aspect-square min-h-[4.15rem] flex-col overflow-visible rounded-[1rem] border p-1.5 text-left transition active:scale-[0.985] sm:min-h-[4.9rem] sm:rounded-2xl sm:p-2 ${daySurfaceClass(day, inCurrentMonth, isSelected)}`}
+              style={daySurfaceStyle(day, inCurrentMonth)}
               title={dayTitle(day)}
               type="button"
               onClick={() => onSelectDay(day.dateKey)}
             >
+              {isToday ? <span className="absolute inset-x-2 top-1.5 h-1 rounded-full bg-[var(--accent)]/70" /> : null}
+              {isSelected ? <span className="absolute bottom-2 right-1.5 top-2 w-1 rounded-full bg-[var(--accent)]/82" /> : null}
+
               <div className="flex items-start justify-between gap-2">
-                <span className={`text-[13px] font-semibold sm:text-sm ${dayNumberClass(day, inCurrentMonth, isSelected)}`}>
+                <span className={`pt-1 text-[13px] font-semibold sm:pt-0 sm:text-sm ${dayNumberClass(day, inCurrentMonth, isSelected)}`}>
                   {day.date.getDate()}
                 </span>
-                {isToday ? (
-                  <span className="inline-flex h-2.5 w-2.5 rounded-full border border-[var(--accent)]/35 bg-[var(--accent)]/18 sm:h-3 sm:w-3">
-                    <span className="m-auto h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-                  </span>
-                ) : null}
+                <span className="text-[11px] opacity-0 md:opacity-100">{inCurrentMonth ? dayStatusEmoji(day) : ''}</span>
               </div>
 
-              <div className="mt-auto flex items-end justify-between gap-2">
-                <span className={`inline-flex h-2.5 w-2.5 rounded-full ${dayIndicatorClass(day)} ${dayIndicatorRing(day)} ${day.status === 'future' ? 'opacity-0' : ''}`} />
-                {isSelected ? <span className="h-2 w-2 rounded-full bg-[var(--accent)]/75" /> : null}
+              <div className="mt-auto flex items-end justify-end gap-2">
+                <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-[var(--muted)]/75">
+                  {isSelected ? 'selectat' : isToday ? 'azi' : ''}
+                </span>
               </div>
+
+              <DayHoverCard day={day} />
             </button>
           );
         })}
@@ -266,6 +321,7 @@ function YearCalendar({
                   <button
                     key={day.dateKey}
                     className={`flex aspect-square items-center justify-center rounded-[0.7rem] border text-[9px] font-semibold transition sm:rounded-[0.85rem] sm:text-[10px] ${daySurfaceClass(day, inCurrentMonth, isSelected)}`}
+                    style={daySurfaceStyle(day, inCurrentMonth)}
                     title={dayTitle(day)}
                     type="button"
                     onClick={() => onSelectDay(day.dateKey)}
@@ -273,10 +329,8 @@ function YearCalendar({
                     {inCurrentMonth ? (
                       <span className="relative inline-flex items-center justify-center">
                         <span className={dayNumberClass(day, inCurrentMonth, isSelected)}>{day.date.getDate()}</span>
-                        {day.status !== 'future' ? (
-                          <span className={`absolute -bottom-1.5 h-1.5 w-1.5 rounded-full ${dayIndicatorClass(day)} ${dayIndicatorRing(day)}`} />
-                        ) : null}
-                        {isToday ? <span className="absolute -top-1.5 h-1 w-1 rounded-full bg-[var(--accent)]" /> : null}
+                        {isToday ? <span className="absolute -top-1.5 left-1/2 h-0.5 w-3 -translate-x-1/2 rounded-full bg-[var(--accent)]" /> : null}
+                        {isSelected ? <span className="absolute -right-1.5 top-1/2 h-3 w-0.5 -translate-y-1/2 rounded-full bg-[var(--accent)]" /> : null}
                       </span>
                     ) : (
                       ''
