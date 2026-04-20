@@ -105,8 +105,8 @@ function serviceTone(status: ServiceStatus | null) {
 
 function liveWaterGradient(status: ServiceStatus | null) {
   return status === 'ok'
-    ? 'linear-gradient(180deg, #10b981 0%, #6ee7b7 48%, #67e8f9 100%)'
-    : 'linear-gradient(180deg, #ef4444 0%, #fb7185 52%, #f59e0b 100%)';
+    ? 'linear-gradient(135deg, #10b981 0%, #6ee7b7 46%, #67e8f9 100%)'
+    : 'linear-gradient(135deg, #ef4444 0%, #fb7185 46%, #f59e0b 100%)';
 }
 
 function liveWaterLabel(status: ServiceStatus | null) {
@@ -441,20 +441,26 @@ function LiveWaterOrb({ status }: { status: ServiceStatus | null }) {
   return (
     <div className={`flex items-center gap-2.5 rounded-[1.2rem] border px-2.5 py-2 sm:gap-3 sm:px-3 ${glowClass}`}>
       <div className="relative h-10 w-10 shrink-0 sm:h-11 sm:w-11">
+        <div className="absolute inset-0 animate-spin [animation-duration:1.2s] [animation-timing-function:linear]">
+          <span
+            className="absolute inset-0 rounded-full"
+            style={{ backgroundImage: gradient }}
+          />
+          <span
+            className="absolute inset-0 rounded-full opacity-85 blur-[4px]"
+            style={{ backgroundImage: gradient }}
+          />
+          <span
+            className="absolute inset-0 rounded-full opacity-70 blur-[9px]"
+            style={{ backgroundImage: gradient }}
+          />
+          <span
+            className="absolute inset-0 rounded-full opacity-55 blur-[18px]"
+            style={{ backgroundImage: gradient }}
+          />
+        </div>
         <span
-          className="absolute inset-0 rounded-full animate-[spin_1.6s_linear_infinite]"
-          style={{ backgroundImage: gradient }}
-        />
-        <span
-          className="absolute inset-0 rounded-full opacity-80 blur-[4px]"
-          style={{ backgroundImage: gradient }}
-        />
-        <span
-          className="absolute inset-0 rounded-full opacity-65 blur-[10px]"
-          style={{ backgroundImage: gradient }}
-        />
-        <span
-          className="absolute inset-[7px] rounded-full border border-white/50 bg-[var(--panel)] dark:border-white/20"
+          className="absolute inset-[7px] rounded-full border border-white/55 bg-[var(--panel)] dark:border-white/20"
         />
         <span
           className="absolute inset-[14px] rounded-full"
