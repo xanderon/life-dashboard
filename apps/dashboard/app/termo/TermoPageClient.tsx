@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { BackLink, PageShell } from '@/components/PageShell';
 import { StatusPill } from '@/components/StatusPill';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -28,12 +28,54 @@ import type { AppRow, PeriodRow, RunRow, ServiceStatus } from './types';
 
 const APP_SLUG = 'termo-alert';
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
+const MOBILE_WEEKDAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
 type TermoPageClientProps = {
   app: AppRow;
   run: RunRow | null;
   periods: PeriodRow[];
 };
+
+type PushEnvironmentSnapshot = {
+  supported: boolean;
+  permission: NotificationPermission | null;
+};
+
+const DEFAULT_PUSH_ENVIRONMENT: PushEnvironmentSnapshot = {
+  supported: false,
+  permission: null,
+};
+let cachedPushEnvironment = DEFAULT_PUSH_ENVIRONMENT;
+
+function subscribeNoop() {
+  return () => {};
+}
+
+function getPushEnvironmentSnapshot(): PushEnvironmentSnapshot {
+  if (
+    typeof window === 'undefined' ||
+    !('serviceWorker' in navigator) ||
+    !('PushManager' in window) ||
+    !('Notification' in window)
+  ) {
+    return DEFAULT_PUSH_ENVIRONMENT;
+  }
+
+  const nextSnapshot: PushEnvironmentSnapshot = {
+    supported: true,
+    permission: Notification.permission,
+  };
+
+  if (
+    cachedPushEnvironment.supported === nextSnapshot.supported &&
+    cachedPushEnvironment.permission === nextSnapshot.permission
+  ) {
+    return cachedPushEnvironment;
+  }
+
+  cachedPushEnvironment = nextSnapshot;
+  return cachedPushEnvironment;
+}
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -71,7 +113,7 @@ function isSameDay(left: Date, right: Date) {
 
 function daySurfaceClass(day: DayCoverage, inCurrentMonth: boolean, isSelected: boolean) {
   const selectedClass = isSelected
-    ? 'border-[var(--accent)] shadow-[0_16px_28px_-22px_color-mix(in_srgb,var(--accent)_72%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--accent)_26%,transparent)] md:scale-[1.03]'
+    ? 'border-[color-mix(in_srgb,var(--accent)_62%,var(--border)_38%)] ring-1 ring-[color-mix(in_srgb,var(--accent)_18%,transparent)] md:shadow-[0_18px_30px_-24px_color-mix(in_srgb,var(--accent)_52%,transparent)]'
     : '';
 
   if (!inCurrentMonth) {
@@ -115,13 +157,24 @@ function dayNumberClass(day: DayCoverage, inCurrentMonth: boolean, isSelected: b
   return 'text-[var(--text)]';
 }
 
+function dayNumberWrapClass(isToday: boolean) {
+  if (!isToday) return '';
+  return 'inline-flex h-5 w-5 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--accent)_42%,transparent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_10%,transparent)] sm:h-8 sm:w-8';
+}
+
 function daySurfaceStyle(day: DayCoverage, inCurrentMonth: boolean): CSSProperties | undefined {
   if (!inCurrentMonth) return undefined;
 
   if (day.status === 'mixed') {
+    const totalMs = Math.max(day.upMs + day.downMs, 1);
+    const hotPct = Math.max(10, Math.min(90, Math.round((day.upMs / totalMs) * 100)));
     return {
       background:
-        'linear-gradient(145deg, color-mix(in srgb, rgb(16 185 129) 18%, var(--panel-2) 82%) 0%, color-mix(in srgb, rgb(16 185 129) 14%, var(--panel-2) 86%) 46%, color-mix(in srgb, rgb(244 63 94) 15%, var(--panel-2) 85%) 54%, color-mix(in srgb, rgb(244 63 94) 21%, var(--panel-2) 79%) 100%)',
+        `linear-gradient(145deg,
+          color-mix(in srgb, rgb(16 185 129) 18%, var(--panel-2) 82%) 0%,
+          color-mix(in srgb, rgb(16 185 129) 16%, var(--panel-2) 84%) ${Math.max(hotPct - 4, 0)}%,
+          color-mix(in srgb, rgb(244 63 94) 13%, var(--panel-2) 87%) ${Math.min(hotPct + 4, 100)}%,
+          color-mix(in srgb, rgb(244 63 94) 21%, var(--panel-2) 79%) 100%)`,
     };
   }
 
@@ -232,49 +285,49 @@ function MonthCalendar({
   const days = useMemo(() => buildCalendarDays(month, periods, now), [month, now, periods]);
 
   return (
-    <div>
-      <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)] sm:gap-2 sm:text-[11px] sm:tracking-[0.2em]">
-        {WEEKDAY_LABELS.map((weekday) => (
-          <div key={weekday} className="py-1">
-            {weekday}
-          </div>
-        ))}
-      </div>
+    <div className="overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      <div className="min-w-[22rem] md:min-w-0">
+        <div className="grid grid-cols-7 gap-0 text-center text-[8px] font-semibold uppercase tracking-[0.02em] text-[var(--muted)] sm:gap-2 sm:text-[11px] sm:tracking-[0.2em]">
+          {WEEKDAY_LABELS.map((weekday, index) => (
+            <div key={weekday} className="py-0.5">
+              <span className="sm:hidden">{MOBILE_WEEKDAY_LABELS[index]}</span>
+              <span className="hidden sm:inline">{weekday}</span>
+            </div>
+          ))}
+        </div>
 
-      <div className="mt-2 grid grid-cols-7 gap-2 sm:mt-3 sm:gap-2.5">
-        {days.map((day) => {
-          const inCurrentMonth = day.date.getMonth() === month.getMonth();
-          const isToday = isSameDay(day.date, now);
-          const isSelected = day.dateKey === selectedDayKey;
-          return (
-            <button
-              key={day.dateKey}
-              className={`group relative flex aspect-square min-h-[4.15rem] flex-col overflow-visible rounded-[1rem] border p-1.5 text-left transition active:scale-[0.985] sm:min-h-[4.9rem] sm:rounded-2xl sm:p-2 ${daySurfaceClass(day, inCurrentMonth, isSelected)}`}
-              style={daySurfaceStyle(day, inCurrentMonth)}
-              title={dayTitle(day)}
-              type="button"
-              onClick={() => onSelectDay(day.dateKey)}
-            >
-              {isToday ? <span className="absolute inset-x-2 top-1.5 h-1 rounded-full bg-[var(--accent)]/70" /> : null}
-              {isSelected ? <span className="absolute bottom-2 right-1.5 top-2 w-1 rounded-full bg-[var(--accent)]/82" /> : null}
+        <div className="mt-1.5 grid grid-cols-7 gap-0.5 sm:mt-3 sm:gap-2.5">
+          {days.map((day) => {
+            const inCurrentMonth = day.date.getMonth() === month.getMonth();
+            const isToday = isSameDay(day.date, now);
+            const isSelected = day.dateKey === selectedDayKey;
+            return (
+              <button
+                key={day.dateKey}
+                className={`group relative z-0 flex aspect-square min-h-[2.95rem] flex-col overflow-hidden rounded-[0.72rem] border p-0.5 text-left transition active:scale-[0.985] sm:min-h-[4.9rem] sm:rounded-2xl sm:p-2 md:overflow-visible ${daySurfaceClass(day, inCurrentMonth, isSelected)}`}
+                style={daySurfaceStyle(day, inCurrentMonth)}
+                title={dayTitle(day)}
+                type="button"
+                onClick={() => onSelectDay(day.dateKey)}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className={`${dayNumberWrapClass(isToday)} ${isToday ? 'mt-0.5 sm:mt-0' : 'pt-0.5 sm:pt-0'} text-[11px] font-semibold sm:text-sm ${dayNumberClass(day, inCurrentMonth, isSelected)}`}>
+                    <span>{day.date.getDate()}</span>
+                  </span>
+                  <span className="text-[11px] opacity-0 md:opacity-100">{inCurrentMonth ? dayStatusEmoji(day) : ''}</span>
+                </div>
 
-              <div className="flex items-start justify-between gap-2">
-                <span className={`pt-1 text-[13px] font-semibold sm:pt-0 sm:text-sm ${dayNumberClass(day, inCurrentMonth, isSelected)}`}>
-                  {day.date.getDate()}
-                </span>
-                <span className="text-[11px] opacity-0 md:opacity-100">{inCurrentMonth ? dayStatusEmoji(day) : ''}</span>
-              </div>
+                <div className="mt-auto flex items-end justify-end gap-2">
+                  {isSelected ? (
+                    <span className="h-1.5 w-1.5 rounded-full bg-[color-mix(in_srgb,var(--accent)_72%,white_28%)] shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_12%,transparent)] sm:h-2 sm:w-2 sm:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent)]" />
+                  ) : null}
+                </div>
 
-              <div className="mt-auto flex items-end justify-end gap-2">
-                <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-[var(--muted)]/75">
-                  {isSelected ? 'selectat' : isToday ? 'azi' : ''}
-                </span>
-              </div>
-
-              <DayHoverCard day={day} />
-            </button>
-          );
-        })}
+                <DayHoverCard day={day} />
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -325,12 +378,17 @@ function YearCalendar({
                     title={dayTitle(day)}
                     type="button"
                     onClick={() => onSelectDay(day.dateKey)}
-                  >
-                    {inCurrentMonth ? (
+                    >
+                      {inCurrentMonth ? (
                       <span className="relative inline-flex items-center justify-center">
-                        <span className={dayNumberClass(day, inCurrentMonth, isSelected)}>{day.date.getDate()}</span>
-                        {isToday ? <span className="absolute -top-1.5 left-1/2 h-0.5 w-3 -translate-x-1/2 rounded-full bg-[var(--accent)]" /> : null}
-                        {isSelected ? <span className="absolute -right-1.5 top-1/2 h-3 w-0.5 -translate-y-1/2 rounded-full bg-[var(--accent)]" /> : null}
+                        <span
+                          className={`${dayNumberWrapClass(isToday)} ${isToday ? '' : 'h-6 w-6 sm:h-7 sm:w-7'} ${dayNumberClass(day, inCurrentMonth, isSelected)}`}
+                        >
+                          {day.date.getDate()}
+                        </span>
+                        {isSelected ? (
+                          <span className="absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full bg-[color-mix(in_srgb,var(--accent)_72%,white_28%)] shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_14%,transparent)]" />
+                        ) : null}
                       </span>
                     ) : (
                       ''
@@ -371,16 +429,17 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
     return new Date(base);
   });
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(() => toIsoDay(new Date()));
+  const pushEnvironment = useSyncExternalStore(
+    subscribeNoop,
+    getPushEnvironmentSnapshot,
+    () => DEFAULT_PUSH_ENVIRONMENT
+  );
 
-  const [pushSupported] = useState(
-    () => typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
-  );
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [pushPermission, setPushPermission] = useState<NotificationPermission | null>(
-    () => (typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : null)
-  );
   const [pushError, setPushError] = useState<string | null>(null);
   const [pushLoading, setPushLoading] = useState(false);
+  const pushSupported = pushEnvironment.supported;
+  const pushPermission = pushEnvironment.permission;
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowTick(Date.now()), 60000);
@@ -473,7 +532,6 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
       }
 
       const permission = await Notification.requestPermission();
-      setPushPermission(permission);
       if (permission !== 'granted') {
         setPushError('Permisiunea pentru notificări nu a fost acordată.');
         setPushLoading(false);
@@ -521,7 +579,7 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
 
   return (
     <PageShell width="7xl">
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <section className="hero-card p-4 sm:p-6">
           <div className="flex flex-wrap items-center gap-3">
             <span className="eyebrow">Infra</span>
@@ -566,21 +624,21 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
           </div>
         </section>
 
-        <section className="surface-card p-5 sm:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="text-xl font-semibold">📊 Statistici & istoric</div>
+        <section className="surface-card px-3 py-4 sm:p-6">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="text-lg font-semibold sm:text-xl">📊 Statistici & istoric</div>
 
-            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-              <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--panel-2)] p-1">
+            <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
+              <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--panel-2)] p-0.5 sm:p-1">
                 <button
-                  className={`rounded-full px-3 py-2 text-sm font-semibold transition ${viewMode === 'month' ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'text-[var(--muted)]'}`}
+                  className={`rounded-full px-2.5 py-1.5 text-xs font-semibold transition sm:px-3 sm:py-2 sm:text-sm ${viewMode === 'month' ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'text-[var(--muted)]'}`}
                   onClick={() => setViewMode('month')}
                   type="button"
                 >
                   Lună
                 </button>
                 <button
-                  className={`rounded-full px-3 py-2 text-sm font-semibold transition ${viewMode === 'year' ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'text-[var(--muted)]'}`}
+                  className={`rounded-full px-2.5 py-1.5 text-xs font-semibold transition sm:px-3 sm:py-2 sm:text-sm ${viewMode === 'year' ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'text-[var(--muted)]'}`}
                   onClick={() => setViewMode('year')}
                   type="button"
                 >
@@ -588,24 +646,26 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
                 </button>
               </div>
 
-              <button
-                className="btn-base btn-secondary !px-3 !py-2"
-                onClick={() => setFocusDate((prev) => (viewMode === 'month' ? addMonths(prev, -1) : addYears(prev, -1)))}
-                type="button"
-              >
-                ←
-              </button>
-              <div className="min-w-[10rem] text-center text-sm font-semibold capitalize text-[var(--text)]">
-                {viewLabel}
+              <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_2.25rem] items-center gap-1">
+                <button
+                  className="btn-base btn-secondary !px-0 !py-1.5 text-sm sm:!px-3 sm:!py-2"
+                  onClick={() => setFocusDate((prev) => (viewMode === 'month' ? addMonths(prev, -1) : addYears(prev, -1)))}
+                  type="button"
+                >
+                  ←
+                </button>
+                <div className="truncate text-center text-xs font-semibold capitalize text-[var(--text)] sm:min-w-[10rem] sm:text-sm">
+                  {viewLabel}
+                </div>
+                <button
+                  className="btn-base btn-secondary !px-0 !py-1.5 text-sm disabled:opacity-45 sm:!px-3 sm:!py-2"
+                  disabled={!canGoForward}
+                  onClick={() => setFocusDate((prev) => (viewMode === 'month' ? addMonths(prev, 1) : addYears(prev, 1)))}
+                  type="button"
+                >
+                  →
+                </button>
               </div>
-              <button
-                className="btn-base btn-secondary !px-3 !py-2 disabled:opacity-45"
-                disabled={!canGoForward}
-                onClick={() => setFocusDate((prev) => (viewMode === 'month' ? addMonths(prev, 1) : addYears(prev, 1)))}
-                type="button"
-              >
-                →
-              </button>
             </div>
           </div>
 
@@ -616,7 +676,7 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
           </div>
         </section>
 
-        <section className="surface-card p-4 sm:p-6">
+        <section className="surface-card px-2 py-3 sm:p-6">
           {viewMode === 'month' ? (
             <MonthCalendar
               month={focusDate}
