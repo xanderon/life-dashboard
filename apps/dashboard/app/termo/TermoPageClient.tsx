@@ -103,6 +103,16 @@ function serviceTone(status: ServiceStatus | null) {
     : 'border-rose-400/35 bg-rose-500/10 text-rose-200';
 }
 
+function liveWaterGradient(status: ServiceStatus | null) {
+  return status === 'ok'
+    ? 'linear-gradient(180deg, #10b981 0%, #6ee7b7 48%, #67e8f9 100%)'
+    : 'linear-gradient(180deg, #ef4444 0%, #fb7185 52%, #f59e0b 100%)';
+}
+
+function liveWaterLabel(status: ServiceStatus | null) {
+  return status === 'ok' ? 'Apă caldă live' : 'Apă caldă oprită';
+}
+
 function isSameDay(left: Date, right: Date) {
   return (
     left.getFullYear() === right.getFullYear() &&
@@ -421,6 +431,49 @@ function LegendItem({
   );
 }
 
+function LiveWaterOrb({ status }: { status: ServiceStatus | null }) {
+  const gradient = liveWaterGradient(status);
+  const glowClass =
+    status === 'ok'
+      ? 'border-emerald-500/24 bg-emerald-500/10'
+      : 'border-rose-500/24 bg-rose-500/10';
+
+  return (
+    <div className={`flex items-center gap-2.5 rounded-[1.2rem] border px-2.5 py-2 sm:gap-3 sm:px-3 ${glowClass}`}>
+      <div className="relative h-10 w-10 shrink-0 sm:h-11 sm:w-11">
+        <span
+          className="absolute inset-0 rounded-full animate-[spin_1.6s_linear_infinite]"
+          style={{ backgroundImage: gradient }}
+        />
+        <span
+          className="absolute inset-0 rounded-full opacity-80 blur-[4px]"
+          style={{ backgroundImage: gradient }}
+        />
+        <span
+          className="absolute inset-0 rounded-full opacity-65 blur-[10px]"
+          style={{ backgroundImage: gradient }}
+        />
+        <span
+          className="absolute inset-[7px] rounded-full border border-white/50 bg-[var(--panel)] dark:border-white/20"
+        />
+        <span
+          className="absolute inset-[14px] rounded-full"
+          style={{ backgroundImage: gradient }}
+        />
+      </div>
+
+      <div className="min-w-0">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)] sm:text-[11px]">
+          Status acum
+        </div>
+        <div className="truncate text-sm font-semibold text-[var(--text)]">
+          {liveWaterLabel(status)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TermoPageClient({ app, run, periods }: TermoPageClientProps) {
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [viewMode, setViewMode] = useState<HistoryViewMode>('month');
@@ -626,9 +679,17 @@ export default function TermoPageClient({ app, run, periods }: TermoPageClientPr
 
         <section className="surface-card px-3 py-4 sm:p-6">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="text-lg font-semibold sm:text-xl">📊 Statistici & istoric</div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-lg font-semibold sm:text-xl">📊 Statistici & istoric</div>
+              <div className="lg:hidden">
+                <LiveWaterOrb status={currentHotWaterStatus} />
+              </div>
+            </div>
 
             <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
+              <div className="hidden lg:block">
+                <LiveWaterOrb status={currentHotWaterStatus} />
+              </div>
               <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--panel-2)] p-0.5 sm:p-1">
                 <button
                   className={`rounded-full px-2.5 py-1.5 text-xs font-semibold transition sm:px-3 sm:py-2 sm:text-sm ${viewMode === 'month' ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'text-[var(--muted)]'}`}
