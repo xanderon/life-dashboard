@@ -105,8 +105,8 @@ function serviceTone(status: ServiceStatus | null) {
 
 function liveWaterGradient(status: ServiceStatus | null) {
   return status === 'ok'
-    ? 'linear-gradient(135deg, #10b981 0%, #6ee7b7 46%, #67e8f9 100%)'
-    : 'linear-gradient(135deg, #ef4444 0%, #fb7185 46%, #f59e0b 100%)';
+    ? 'conic-gradient(from 0deg, #047857 0deg, #10b981 58deg, #34d399 118deg, #99f6e4 178deg, #22d3ee 245deg, #0ea5e9 305deg, #047857 360deg)'
+    : 'conic-gradient(from 0deg, #991b1b 0deg, #dc2626 55deg, #f43f5e 122deg, #fb7185 182deg, #fb923c 248deg, #f59e0b 312deg, #991b1b 360deg)';
 }
 
 function liveWaterLabel(status: ServiceStatus | null) {
@@ -435,32 +435,36 @@ function LiveWaterOrb({ status }: { status: ServiceStatus | null }) {
   const gradient = liveWaterGradient(status);
   const glowClass =
     status === 'ok'
-      ? 'border-emerald-500/24 bg-emerald-500/10'
-      : 'border-rose-500/24 bg-rose-500/10';
+      ? 'border-emerald-400/28 bg-emerald-500/12 shadow-[0_18px_34px_-24px_rgba(16,185,129,0.75)]'
+      : 'border-rose-400/30 bg-rose-500/12 shadow-[0_18px_34px_-24px_rgba(244,63,94,0.78)]';
 
   return (
     <div className={`flex items-center gap-2.5 rounded-[1.2rem] border px-2.5 py-2 sm:gap-3 sm:px-3 ${glowClass}`}>
       <div className="relative h-12 w-12 shrink-0 sm:h-14 sm:w-14">
-        <div className="absolute inset-0 animate-spin [animation-duration:1.2s] [animation-timing-function:linear]">
+        <div className="absolute inset-0 animate-spin [animation-duration:900ms] [animation-timing-function:linear]">
           <span
             className="absolute inset-0 rounded-full"
             style={{ backgroundImage: gradient }}
           />
           <span
-            className="absolute inset-0 rounded-full opacity-90 blur-[4px]"
+            className="absolute inset-0 rounded-full opacity-95 blur-[3px]"
             style={{ backgroundImage: gradient }}
           />
           <span
-            className="absolute inset-0 rounded-full opacity-75 blur-[10px]"
+            className="absolute inset-0 rounded-full opacity-85 blur-[8px]"
             style={{ backgroundImage: gradient }}
           />
           <span
-            className="absolute inset-0 rounded-full opacity-60 blur-[20px]"
+            className="absolute inset-0 rounded-full opacity-75 blur-[16px]"
             style={{ backgroundImage: gradient }}
           />
         </div>
         <span
-          className="absolute inset-[4px] rounded-full opacity-85 mix-blend-screen"
+          className="absolute inset-[2px] rounded-full opacity-80 mix-blend-screen"
+          style={{ backgroundImage: 'radial-gradient(circle at 32% 30%, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.22) 18%, rgba(255,255,255,0) 42%)' }}
+        />
+        <span
+          className="absolute inset-[5px] rounded-full opacity-88"
           style={{ backgroundImage: gradient }}
         />
       </div>
