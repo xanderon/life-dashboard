@@ -736,17 +736,6 @@ export default function ReceiptsPage() {
     const currentReceiptSnapshot = normalizeReceiptForDirtyCheck(selected);
     const currentItemsSnapshot = normalizeItemsForDirtyCheck(items);
 
-    if (selected.id) {
-      return (
-        currentReceiptSnapshot !== editorBaselineReceiptRef.current ||
-        currentItemsSnapshot !== editorBaselineItemsRef.current
-      );
-    }
-
-    if (editorSessionModeRef.current === 'draft-imported') {
-      return true;
-    }
-
     return (
       currentReceiptSnapshot !== editorBaselineReceiptRef.current ||
       currentItemsSnapshot !== editorBaselineItemsRef.current
