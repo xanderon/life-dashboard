@@ -127,6 +127,7 @@ type TodayComposer = 'checkin' | 'weight' | null;
 type SetupComposer = 'profile' | 'challenge' | 'reminders' | null;
 type ProgressComposer = 'character' | 'stash' | null;
 type ItemRarity = 'common' | 'magic' | 'rare' | 'set' | 'legendary';
+type DragOrigin = { kind: 'equipped'; slot: string } | { kind: 'stash'; index: number } | null;
 
 type CharacterItem = {
   slot: string;
@@ -135,6 +136,11 @@ type CharacterItem = {
   source: string;
   statLine: string;
   flavor: string;
+};
+
+type CharacterInventory = {
+  equipped: Record<string, CharacterItem | null>;
+  stash: CharacterItem[];
 };
 
 type CharacterState = {
@@ -146,10 +152,21 @@ type CharacterState = {
   armor: number;
   magicFind: number;
   latestDrop: CharacterItem;
-  equipped: CharacterItem[];
-  stash: CharacterItem[];
+  inventory: CharacterInventory;
   warnings: string[];
 };
+
+const PAPER_DOLL_SLOTS = [
+  { slot: 'helm', label: 'Head', area: 'head' },
+  { slot: 'amulet', label: 'Amulet', area: 'amulet' },
+  { slot: 'weapon', label: 'Weapon', area: 'weapon' },
+  { slot: 'chest', label: 'Chest', area: 'chest' },
+  { slot: 'shield', label: 'Shield', area: 'shield' },
+  { slot: 'gloves', label: 'Gloves', area: 'gloves' },
+  { slot: 'belt', label: 'Belt', area: 'belt' },
+  { slot: 'ring', label: 'Ring', area: 'ring' },
+  { slot: 'boots', label: 'Boots', area: 'boots' },
+] as const;
 
 const DEFAULT_PUSH_ENVIRONMENT: PushEnvironmentSnapshot = {
   supported: false,
@@ -802,11 +819,16 @@ function buildCharacterState(args: {
     weekGreen < 2 ? 'Too few green days this week: resolve stays low.' : null,
   ].filter(Boolean) as string[];
 
-  const equippedSlots = ['helm', 'weapon', 'chest', 'shield', 'gloves', 'belt', 'boots', 'ring', 'amulet'];
-  const equipped = equippedSlots.map((slot, index) =>
-    buildItem(slot, scoreSeed + index * 41, unlockedCount * 6 + weekGreen * 4 + challengeStats.currentDay, 'equipped')
-  );
-  const stash = ['charm', 'ring', 'boots', 'belt', 'amulet', 'weapon'].map((slot, index) =>
+  const activeSlots = ['helm', 'weapon', 'chest', 'amulet'];
+  const equipped = Object.fromEntries(
+    PAPER_DOLL_SLOTS.map(({ slot }, index) => [
+      slot,
+      activeSlots.includes(slot)
+        ? buildItem(slot, scoreSeed + index * 41, unlockedCount * 6 + weekGreen * 4 + challengeStats.currentDay, 'equipped')
+        : null,
+    ])
+  ) as Record<string, CharacterItem | null>;
+  const stash = ['ring', 'boots', 'belt'].map((slot, index) =>
     buildItem(
       slot,
       scoreSeed + 300 + index * 53,
@@ -814,7 +836,7 @@ function buildCharacterState(args: {
       index < 2 ? 'achievement' : index < 4 ? 'daily drop' : 'challenge drop'
     )
   );
-  const latestDrop = stash.at(0) ?? equipped[0]!;
+  const latestDrop = stash.at(0) ?? equipped.helm ?? buildItem('charm', scoreSeed + 999, unlockedCount * 5, 'daily drop');
 
   return {
     archetype,
@@ -825,8 +847,10 @@ function buildCharacterState(args: {
     armor,
     magicFind,
     latestDrop,
-    equipped,
-    stash,
+    inventory: {
+      equipped,
+      stash,
+    },
     warnings,
   } satisfies CharacterState;
 }
@@ -1037,6 +1061,9 @@ export default function CutCoachPage() {
   const [todayComposer, setTodayComposer] = useState<TodayComposer>(null);
   const [setupComposer, setSetupComposer] = useState<SetupComposer>(null);
   const [progressComposer, setProgressComposer] = useState<ProgressComposer>(null);
+  const [inventoryOverride, setInventoryOverride] = useState<CharacterInventory | null>(null);
+  const [draggedItem, setDraggedItem] = useState<DragOrigin>(null);
+  const [characterCollapsed, setCharacterCollapsed] = useState(false);
   const pushEnvironment = useSyncExternalStore(
     subscribeNoop,
     getPushEnvironmentSnapshot,
@@ -1051,6 +1078,8 @@ export default function CutCoachPage() {
 
   function applyBootstrap(payload: BootstrapPayload) {
     setData(payload);
+    setInventoryOverride(null);
+    setDraggedItem(null);
     if (payload.profile) {
       setSetup(fillSetup(payload.profile, payload.trends.latest?.weight_kg ?? null));
     }
@@ -1408,6 +1437,66 @@ export default function CutCoachPage() {
     todayWeightDone,
     overToday,
   });
+  const inventory = inventoryOverride ?? characterState.inventory;
+
+  function startDrag(origin: DragOrigin) {
+    setDraggedItem(origin);
+  }
+
+  function moveToSlot(targetSlot: string) {
+    if (!draggedItem) return;
+    setInventoryOverride((currentValue) => {
+      const current = currentValue ?? characterState.inventory;
+      const nextEquipped = { ...current.equipped };
+      const nextStash = [...current.stash];
+      let movingItem: CharacterItem | null = null;
+
+      if (draggedItem.kind === 'equipped') {
+        movingItem = nextEquipped[draggedItem.slot] ?? null;
+        nextEquipped[draggedItem.slot] = null;
+      } else {
+        movingItem = nextStash[draggedItem.index] ?? null;
+        nextStash.splice(draggedItem.index, 1);
+      }
+
+      if (!movingItem) return current;
+
+      const replaced = nextEquipped[targetSlot] ?? null;
+      nextEquipped[targetSlot] = { ...movingItem, slot: targetSlot };
+      if (replaced) nextStash.unshift({ ...replaced, source: 'swapped' });
+
+      return {
+        equipped: nextEquipped,
+        stash: nextStash,
+      };
+    });
+    setDraggedItem(null);
+  }
+
+  function moveToStash() {
+    if (!draggedItem) return;
+    setInventoryOverride((currentValue) => {
+      const current = currentValue ?? characterState.inventory;
+      const nextEquipped = { ...current.equipped };
+      const nextStash = [...current.stash];
+      let movingItem: CharacterItem | null = null;
+
+      if (draggedItem.kind === 'equipped') {
+        movingItem = nextEquipped[draggedItem.slot] ?? null;
+        nextEquipped[draggedItem.slot] = null;
+      } else {
+        return current;
+      }
+
+      if (!movingItem) return current;
+      nextStash.unshift({ ...movingItem, source: 'stash' });
+      return {
+        equipped: nextEquipped,
+        stash: nextStash,
+      };
+    });
+    setDraggedItem(null);
+  }
 
   return (
     <PageShell width="7xl" className={styles.shell}>
@@ -1907,38 +1996,75 @@ export default function CutCoachPage() {
                   <h3 className={styles.panelTitle}>Character</h3>
                   <p className={styles.panelText}>A Diablo-style layer that reacts to consistency, misses and milestone drops.</p>
                 </div>
-              </div>
-              <div className={styles.composerGrid}>
-                <button
-                  className={`${styles.composerButton} ${progressComposer === 'character' ? styles.composerButtonActive : ''}`}
-                  onClick={() => setProgressComposer((current) => (current === 'character' ? null : 'character'))}
-                  type="button"
-                >
-                  <strong>{characterState.archetype}</strong>
-                  <span>{characterState.title} • HP {characterState.hp}/{characterState.maxHp}</span>
-                </button>
-                <button
-                  className={`${styles.composerButton} ${progressComposer === 'stash' ? styles.composerButtonActive : ''}`}
-                  onClick={() => setProgressComposer((current) => (current === 'stash' ? null : 'stash'))}
-                  type="button"
-                >
-                  <strong>Stash</strong>
-                  <span>Latest drop: {characterState.latestDrop.name}</span>
+                <button className={styles.sectionToggle} onClick={() => setCharacterCollapsed((current) => !current)} type="button">
+                  {characterCollapsed ? 'Expand' : 'Collapse'}
                 </button>
               </div>
+              {!characterCollapsed ? (
+                <div className={styles.composerGrid}>
+                  <button
+                    className={`${styles.composerButton} ${progressComposer === 'character' ? styles.composerButtonActive : ''}`}
+                    onClick={() => setProgressComposer((current) => (current === 'character' ? null : 'character'))}
+                    type="button"
+                  >
+                    <strong>{characterState.archetype}</strong>
+                    <span>{characterState.title} • HP {characterState.hp}/{characterState.maxHp}</span>
+                  </button>
+                  <button
+                    className={`${styles.composerButton} ${progressComposer === 'stash' ? styles.composerButtonActive : ''}`}
+                    onClick={() => setProgressComposer((current) => (current === 'stash' ? null : 'stash'))}
+                    type="button"
+                  >
+                    <strong>Stash</strong>
+                    <span>Latest drop: {characterState.latestDrop.name}</span>
+                  </button>
+                </div>
+              ) : null}
             </section>
 
-            {progressComposer === 'character' ? (
+            {!characterCollapsed && progressComposer === 'character' ? (
               <section className={`surface-card ${styles.panel}`}>
                 <div className={styles.characterGrid}>
                   <div className={styles.paperDoll}>
-                    {characterState.equipped.map((item) => (
-                      <div className={`${styles.itemSlot} ${styles[`rarity${capitalize(item.rarity)}`]}`} key={item.slot}>
-                        <span>{item.slot}</span>
-                        <strong>{item.name}</strong>
-                        <small>{item.statLine}</small>
-                      </div>
-                    ))}
+                    <div className={styles.dollSilhouette}>
+                      <div className={styles.dollHead} />
+                      <div className={styles.dollTorso} />
+                      <div className={styles.dollLegs} />
+                    </div>
+                    {PAPER_DOLL_SLOTS.map(({ slot, label, area }) => {
+                      const item = inventory.equipped[slot] ?? null;
+                      return (
+                        <div
+                          className={`${styles.itemSlot} ${item ? styles[`rarity${capitalize(item.rarity)}`] : styles.itemSlotEmpty}`}
+                          key={slot}
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={(event) => {
+                            event.preventDefault();
+                            moveToSlot(slot);
+                          }}
+                          style={{ gridArea: area }}
+                        >
+                          <span>{label}</span>
+                          {item ? (
+                            <button
+                              className={styles.itemDragButton}
+                              draggable
+                              onDragEnd={() => setDraggedItem(null)}
+                              onDragStart={() => startDrag({ kind: 'equipped', slot })}
+                              type="button"
+                            >
+                              <strong>{item.name}</strong>
+                              <small>{item.statLine}</small>
+                            </button>
+                          ) : (
+                            <button className={styles.itemEmptyButton} type="button">
+                              <strong>Empty</strong>
+                              <small>Drop item here</small>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className={styles.characterInfo}>
                     <div className={styles.characterHeader}>
@@ -1957,6 +2083,16 @@ export default function CutCoachPage() {
                       <SummaryTile label="Latest drop" value={characterState.latestDrop.name} tone="good" />
                       <SummaryTile label="Source" value={characterState.latestDrop.source} tone="warn" />
                     </div>
+                    <div
+                      className={styles.stashDropZone}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        moveToStash();
+                      }}
+                    >
+                      Drop equipped items here to stash them.
+                    </div>
                     <div className={styles.warningList}>
                       {characterState.warnings.length ? (
                         characterState.warnings.map((warning) => <div className={styles.warningChip} key={warning}>{warning}</div>)
@@ -1969,7 +2105,7 @@ export default function CutCoachPage() {
               </section>
             ) : null}
 
-            {progressComposer === 'stash' ? (
+            {!characterCollapsed && progressComposer === 'stash' ? (
               <section className={`surface-card ${styles.panel}`}>
                 <div className={styles.stashHead}>
                   <div>
@@ -1978,8 +2114,15 @@ export default function CutCoachPage() {
                   </div>
                 </div>
                 <div className={styles.stashGrid}>
-                  {characterState.stash.map((item) => (
-                    <div className={`${styles.stashItem} ${styles[`rarity${capitalize(item.rarity)}`]}`} key={`${item.slot}-${item.name}`}>
+                  {inventory.stash.map((item, index) => (
+                    <button
+                      className={`${styles.stashItem} ${styles[`rarity${capitalize(item.rarity)}`]}`}
+                      draggable
+                      key={`${item.slot}-${item.name}-${index}`}
+                      onDragEnd={() => setDraggedItem(null)}
+                      onDragStart={() => startDrag({ kind: 'stash', index })}
+                      type="button"
+                    >
                       <div className={styles.stashTop}>
                         <span>{item.slot}</span>
                         <strong>{item.rarity}</strong>
@@ -1987,7 +2130,7 @@ export default function CutCoachPage() {
                       <h4>{item.name}</h4>
                       <p>{item.statLine}</p>
                       <small>{item.flavor}</small>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </section>
