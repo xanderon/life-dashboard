@@ -757,13 +757,15 @@ function toNumber(value: string, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function buildSetupPreview(setup: SetupState) {
+function buildPreviewContext(setup: SetupState) {
   const weightKg = toNumber(setup.initial_weight_kg);
   const heightCm = toNumber(setup.height_cm);
   const age = toNumber(setup.age);
   if (weightKg <= 0 || heightCm <= 0 || age <= 0) return null;
 
-  const profile: CutCoachProfileRow = {
+  return {
+    weightKg,
+    profile: {
     user_id: 'preview',
     age,
     sex: setup.sex,
@@ -780,11 +782,19 @@ function buildSetupPreview(setup: SetupState) {
     training_days: setup.training_days,
     created_at: '',
     updated_at: '',
+    } satisfies CutCoachProfileRow,
   };
+}
+
+function buildSetupPreview(setup: SetupState) {
+  const previewContext = buildPreviewContext(setup);
+  if (!previewContext) return null;
+  const { profile, weightKg } = previewContext;
 
   const maintenance = computeMaintenanceCalories(profile, weightKg);
   const safeMinimum = computeSafeMinimumCalories(profile, weightKg);
-  const base = Math.max(safeMinimum, computeBaseTargetCalories(profile, weightKg));
+  const rawBase = computeBaseTargetCalories(profile, weightKg);
+  const base = Math.max(safeMinimum, rawBase);
   const trainingCount = profile.training_days.length;
   const restCount = 7 - trainingCount;
   const restDelta = trainingCount > 0 && restCount > 0 ? (trainingCount * profile.training_day_kcal_delta) / restCount : 0;
@@ -793,20 +803,26 @@ function buildSetupPreview(setup: SetupState) {
 
   return {
     maintenance: Math.round(maintenance),
+    safeMinimum: Math.round(safeMinimum),
+    rawBaseTarget: Math.round(rawBase),
     baseTarget: Math.round(base),
     trainingTarget: Math.round(trainingTarget),
     restTarget: Math.round(restTarget),
+    effectiveDeficit: Math.round(Math.max(0, maintenance - base)),
+    floorApplied: base > rawBase + 0.5,
   };
 }
 
-function paceChipText(maintenance: number | null, percentValue: string) {
-  if (!maintenance) return null;
-  const percent = toNumber(percentValue);
-  const deficit = Math.round((maintenance * percent) / 100);
-  const target = Math.round(maintenance - deficit);
+function buildPacePreview(setup: SetupState, percentValue: string) {
+  const preview = buildSetupPreview({
+    ...setup,
+    preferred_deficit_pct: percentValue,
+  });
+  if (!preview) return null;
   return {
-    deficit,
-    target,
+    deficit: preview.effectiveDeficit,
+    floorApplied: preview.floorApplied,
+    target: preview.baseTarget,
   };
 }
 
@@ -864,6 +880,10 @@ export default function CutCoachPage() {
   );
   const pushSupported = pushEnvironment.supported;
   const setupPreview = buildSetupPreview(setup);
+  const selectedPacePreview = buildPacePreview(setup, setup.preferred_deficit_pct);
+  const pacePreviews = Object.fromEntries(
+    PACE_PRESETS.map((preset) => [preset.value, buildPacePreview(setup, preset.value)])
+  ) as Record<string, ReturnType<typeof buildPacePreview>>;
 
   function applyBootstrap(payload: BootstrapPayload) {
     setData(payload);
@@ -1682,9 +1702,42 @@ export default function CutCoachPage() {
                     <option value="athlete">Athlete</option>
                   </select>
                 </label>
-                <label className={styles.field}>
-                  <span>Deficit %</span>
-                  <input value={setup.preferred_deficit_pct} onChange={(event) => setSetup((current) => ({ ...current, preferred_deficit_pct: event.target.value }))} inputMode="numeric" />
+                <label className={`${styles.field} ${styles.sliderField}`}>
+                  <span>Deficit daily</span>
+                  <div className={styles.sliderMeta}>
+                    <strong>{selectedPacePreview ? `${selectedPacePreview.target} kcal/zi` : `${setup.preferred_deficit_pct}%`}</strong>
+                    <small>
+                      {selectedPacePreview
+                        ? `~ -${selectedPacePreview.deficit} kcal sub maintenance`
+                        : 'Miști sliderul și vezi direct targetul.'}
+                    </small>
+                  </div>
+                  <input
+                    className={styles.rangeInput}
+                    max="28"
+                    min="8"
+                    onChange={(event) => setSetup((current) => ({ ...current, preferred_deficit_pct: event.target.value }))}
+                    onMouseUp={(event) =>
+                      void applyProfilePreset(
+                        { preferred_deficit_pct: event.currentTarget.value },
+                        'Deficitul zilnic a fost aplicat în plan.'
+                      )
+                    }
+                    onTouchEnd={(event) =>
+                      void applyProfilePreset(
+                        { preferred_deficit_pct: event.currentTarget.value },
+                        'Deficitul zilnic a fost aplicat în plan.'
+                      )
+                    }
+                    step="1"
+                    type="range"
+                    value={setup.preferred_deficit_pct}
+                  />
+                  <div className={styles.sliderScale}>
+                    <small>Lejer</small>
+                    <small>Standard</small>
+                    <small>Strict</small>
+                  </div>
                 </label>
               </div>
 
@@ -1706,20 +1759,20 @@ export default function CutCoachPage() {
                     <strong>{preset.label}</strong>
                     <span>{preset.description}</span>
                     <small>
-                      {paceChipText(setupPreview?.maintenance ?? null, preset.value)
-                        ? `aprox ${paceChipText(setupPreview?.maintenance ?? null, preset.value)!.target} kcal/zi`
+                      {pacePreviews[preset.value]
+                        ? `aprox ${pacePreviews[preset.value]!.target} kcal/zi`
                         : `${preset.value}% deficit`}
                     </small>
                     <small>
-                      {paceChipText(setupPreview?.maintenance ?? null, preset.value)
-                        ? `~ -${paceChipText(setupPreview?.maintenance ?? null, preset.value)!.deficit} kcal din maintenance`
+                      {pacePreviews[preset.value]
+                        ? `~ -${pacePreviews[preset.value]!.deficit} kcal din maintenance`
                         : ''}
                     </small>
                   </button>
                 ))}
               </div>
               <p className={styles.previewNote}>
-                Alege cât de mare să fie tăierea din `maintenance`. Nu e viteză abstractă, e pur și simplu cât de jos cobori kcal zilnic.
+                Sliderul și cardurile folosesc aceeași formulă ca planul activ. Când dai drumul sliderului sau apeși un preset, planul se resalvează imediat.
               </p>
 
               {setupPreview ? (

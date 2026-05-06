@@ -412,6 +412,53 @@
   margin-top: 0.85rem;
 }
 
+.sliderField {
+  grid-column: 1 / -1;
+}
+
+.sliderMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.45rem 0.8rem;
+  padding: 0.1rem 0 0.2rem;
+}
+
+.sliderMeta strong {
+  color: var(--text);
+  font-size: 1.15rem;
+  letter-spacing: -0.04em;
+}
+
+.sliderMeta small {
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.rangeInput {
+  min-height: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  accent-color: var(--accent);
+}
+
+.sliderScale {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: -0.15rem;
+}
+
+.sliderScale small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+}
+
 .quickSummary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

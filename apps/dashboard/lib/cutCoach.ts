@@ -342,7 +342,8 @@ export function computeBaseTargetCalories(profile: CutCoachProfileRow, weightKg:
 
 export function computeSafeMinimumCalories(profile: CutCoachProfileRow, weightKg: number) {
   const bmr = computeBmr(profile, weightKg);
-  return Math.max(1400, bmr * 0.82, weightKg * 22);
+  const absoluteFloor = profile.sex === 'male' ? 1600 : 1400;
+  return Math.max(absoluteFloor, bmr * 0.78);
 }
 
 export function computeMacroTargets(
