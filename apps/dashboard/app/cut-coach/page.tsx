@@ -123,6 +123,8 @@ type ReminderDraft = {
 };
 
 type SectionKey = 'today' | 'flow' | 'calendar' | 'progress' | 'settings';
+type TodayComposer = 'checkin' | 'weight' | null;
+type SetupComposer = 'profile' | 'challenge' | 'reminders' | null;
 
 const DEFAULT_PUSH_ENVIRONMENT: PushEnvironmentSnapshot = {
   supported: false,
@@ -887,6 +889,8 @@ export default function CutCoachPage() {
     progress: true,
     settings: false,
   });
+  const [todayComposer, setTodayComposer] = useState<TodayComposer>(null);
+  const [setupComposer, setSetupComposer] = useState<SetupComposer>(null);
   const pushEnvironment = useSyncExternalStore(
     subscribeNoop,
     getPushEnvironmentSnapshot,
@@ -1021,13 +1025,15 @@ export default function CutCoachPage() {
     const validationError = validateSetup(setup);
     if (validationError) {
       setNotice(validationError);
-      return;
+      return false;
     }
-    await persistProfile(setup);
+    const ok = await persistProfile(setup);
+    if (ok) setSetupComposer(null);
+    return ok;
   }
 
   async function saveCheckin(copiedFromPrevious = false) {
-    await postJson(
+    const ok = await postJson(
       '/api/cut-coach/checkins',
       {
         ...checkin,
@@ -1035,33 +1041,39 @@ export default function CutCoachPage() {
       },
       'Today check-in saved.'
     );
+    if (ok) setTodayComposer(null);
+    return ok;
   }
 
   async function saveWeight() {
     if (toNumber(weight.weight_kg) <= 0) {
       setNotice('Add a valid weight first.');
-      return;
+      return false;
     }
-    await postJson('/api/cut-coach/weights', weight, 'Weight and measurements saved.');
+    const ok = await postJson('/api/cut-coach/weights', weight, 'Weight and measurements saved.');
+    if (ok) setTodayComposer(null);
+    return ok;
   }
 
   async function saveChallenge() {
     const validationError = validateChallenge(challenge);
     if (validationError) {
       setNotice(validationError);
-      return;
+      return false;
     }
     if (activeChallenge && activeChallenge.id !== challenge.id && activeChallenge.status === 'active') {
       setNotice('A challenge is already active. Edit it or stop it first.');
-      return;
+      return false;
     }
-    await postJson('/api/cut-coach/challenges', challenge, 'Challenge saved.');
+    const ok = await postJson('/api/cut-coach/challenges', challenge, 'Challenge saved.');
+    if (ok) setSetupComposer(null);
+    return ok;
   }
 
   async function startQuick100Challenge() {
     if (activeChallenge?.status === 'active') {
       setNotice('A challenge is already running. Stop it first or edit the current one.');
-      return;
+      return false;
     }
     const nextChallenge = {
       ...challengeDraft(todayIsoDate),
@@ -1070,12 +1082,14 @@ export default function CutCoachPage() {
       status: 'active' as const,
     };
     setChallenge(nextChallenge);
-    await postJson('/api/cut-coach/challenges', nextChallenge, '100-day challenge started.');
+    const ok = await postJson('/api/cut-coach/challenges', nextChallenge, '100-day challenge started.');
+    if (ok) setSetupComposer(null);
+    return ok;
   }
 
   async function stopActiveChallenge() {
     if (!activeChallenge) return;
-    await postJson(
+    const ok = await postJson(
       '/api/cut-coach/challenges',
       {
         ...activeChallenge,
@@ -1083,6 +1097,7 @@ export default function CutCoachPage() {
       },
       'Active challenge stopped.'
     );
+    if (ok) setSetupComposer(null);
   }
 
   async function applyProfilePreset(patch: Partial<SetupState>, successMessage: string) {
@@ -1095,7 +1110,9 @@ export default function CutCoachPage() {
   }
 
   async function saveReminders() {
-    await postJson('/api/cut-coach/reminders', { reminders }, 'Reminders saved.');
+    const ok = await postJson('/api/cut-coach/reminders', { reminders }, 'Reminders saved.');
+    if (ok) setSetupComposer(null);
+    return ok;
   }
 
   function applyTargetToCheckin() {
@@ -1233,6 +1250,8 @@ export default function CutCoachPage() {
   const netKcal = Math.max(0, toNumber(checkin.kcal_actual) - burnedKcal);
   const overToday =
     today?.target && today.caloriesSource !== 'none' ? Math.round(today.consumed.calories - today.target.kcal_target) : null;
+  const todayCheckinDone = Boolean(data && findCheckinForDate(data.checkins, todayIsoDate)?.kcal_actual != null);
+  const todayWeightDone = Boolean(data && findWeightForDate(data.weights, todayIsoDate)?.weight_kg != null);
 
   return (
     <PageShell width="7xl" className={styles.shell}>
@@ -1375,8 +1394,28 @@ export default function CutCoachPage() {
             </div>
           </div>
 
-          {!collapsedSections.today ? <div className={styles.todayGrid}>
-            <section className={`surface-card ${styles.panel}`}>
+          {!collapsedSections.today ? <>
+          <div className={styles.composerGrid}>
+            <button
+              className={`${styles.composerButton} ${todayCheckinDone ? styles.composerButtonDone : ''} ${todayComposer === 'checkin' ? styles.composerButtonActive : ''}`}
+              onClick={() => setTodayComposer((current) => (current === 'checkin' ? null : 'checkin'))}
+              type="button"
+            >
+              <strong>{todayCheckinDone ? 'Kcal check-in done' : 'Open kcal check-in'}</strong>
+              <span>{todayCheckinDone ? 'Edit today if you need to adjust it.' : 'Enter kcal, burned kcal and save once.'}</span>
+            </button>
+            <button
+              className={`${styles.composerButton} ${todayWeightDone ? styles.composerButtonDone : ''} ${todayComposer === 'weight' ? styles.composerButtonActive : ''}`}
+              onClick={() => setTodayComposer((current) => (current === 'weight' ? null : 'weight'))}
+              type="button"
+            >
+              <strong>{todayWeightDone ? 'Weight logged today' : 'Open weight log'}</strong>
+              <span>{todayWeightDone ? 'Edit today if the scale entry needs a correction.' : 'Enter weight and optional tape values.'}</span>
+            </button>
+          </div>
+
+          <div className={styles.todayGrid}>
+            {todayComposer === 'checkin' ? <section className={`surface-card ${styles.panel}`}>
               <div className={styles.panelHead}>
                 <div>
                   <h3 className={styles.panelTitle}>Kcal check-in</h3>
@@ -1451,9 +1490,9 @@ export default function CutCoachPage() {
               <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveCheckin()} type="button">
                 {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Save kcal check-in'}
               </button>
-            </section>
+            </section> : null}
 
-            <section className={`surface-card ${styles.panel}`}>
+            {todayComposer === 'weight' ? <section className={`surface-card ${styles.panel}`}>
               <div className={styles.panelHead}>
                 <div>
                   <h3 className={styles.panelTitle}>Weight + tape</h3>
@@ -1518,8 +1557,9 @@ export default function CutCoachPage() {
               <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveWeight()} type="button">
                 {busy === '/api/cut-coach/weights' ? 'Saving…' : 'Save weight / measurements'}
               </button>
-            </section>
-          </div> : null}
+            </section> : null}
+          </div>
+          </> : null}
         </section>
 
         <section id="flow" className={styles.appSection}>
@@ -1710,8 +1750,36 @@ export default function CutCoachPage() {
             </div>
           </div>
 
-          {!collapsedSections.settings ? <div className={styles.settingsGrid}>
-            <section className={`surface-card ${styles.panel}`}>
+          {!collapsedSections.settings ? <>
+          <div className={`${styles.composerGrid} ${styles.composerGridThree}`}>
+            <button
+              className={`${styles.composerButton} ${setupComposer === 'profile' ? styles.composerButtonActive : ''}`}
+              onClick={() => setSetupComposer((current) => (current === 'profile' ? null : 'profile'))}
+              type="button"
+            >
+              <strong>Profile</strong>
+              <span>Weight, age, height, activity and kcal target tuning.</span>
+            </button>
+            <button
+              className={`${styles.composerButton} ${activeChallenge ? styles.composerButtonDone : ''} ${setupComposer === 'challenge' ? styles.composerButtonActive : ''}`}
+              onClick={() => setSetupComposer((current) => (current === 'challenge' ? null : 'challenge'))}
+              type="button"
+            >
+              <strong>{activeChallenge ? 'Challenge active' : 'Challenge setup'}</strong>
+              <span>{activeChallenge ? 'View or stop the current run.' : 'Create a new cut timeline.'}</span>
+            </button>
+            <button
+              className={`${styles.composerButton} ${setupComposer === 'reminders' ? styles.composerButtonActive : ''}`}
+              onClick={() => setSetupComposer((current) => (current === 'reminders' ? null : 'reminders'))}
+              type="button"
+            >
+              <strong>Reminders</strong>
+              <span>Push reminders and time slots for check-ins.</span>
+            </button>
+          </div>
+
+          <div className={styles.settingsGrid}>
+            {setupComposer === 'profile' ? <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Profile</h3>
               <p className={styles.panelText}>Basic first. The rest is fine tuning.</p>
               <p className={styles.previewNote}>
@@ -1874,9 +1942,9 @@ export default function CutCoachPage() {
               <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveSetup()} type="button">
                 {busy === '/api/cut-coach/profile' ? 'Saving…' : 'Save profile'}
               </button>
-            </section>
+            </section> : null}
 
-            <section className={`surface-card ${styles.panel}`}>
+            {setupComposer === 'challenge' ? <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Challenge</h3>
               <p className={styles.panelText}>Start launches a new run from today. Save only updates the draft in this form.</p>
               {activeChallenge ? (
@@ -1927,9 +1995,9 @@ export default function CutCoachPage() {
               <div className={styles.challengeStatus}>
                 {challenge.start_date ? `Draft starts: ${formatFullDate(challenge.start_date)}` : 'Pick a start date'}
               </div>
-            </section>
+            </section> : null}
 
-            <section className={`surface-card ${styles.panel}`}>
+            {setupComposer === 'reminders' ? <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Reminders + push</h3>
               <div className={styles.reminderList}>
                 {reminders.map((item) => (
@@ -1974,8 +2042,9 @@ export default function CutCoachPage() {
               <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveReminders()} type="button">
                 {busy === '/api/cut-coach/reminders' ? 'Saving…' : 'Save reminders'}
               </button>
-            </section>
-          </div> : null}
+            </section> : null}
+          </div>
+          </> : null}
         </section>
       </div>
     </PageShell>

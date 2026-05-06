@@ -466,6 +466,50 @@
   margin: 1rem 0;
 }
 
+.composerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.composerGridThree {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.composerButton {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-height: 6.25rem;
+  padding: 0.95rem;
+  border-radius: 1.15rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel-2) 82%, transparent);
+  text-align: left;
+}
+
+.composerButton strong {
+  font-size: 0.98rem;
+  letter-spacing: -0.03em;
+}
+
+.composerButton span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.composerButtonDone {
+  border-color: color-mix(in srgb, var(--success) 40%, transparent);
+}
+
+.composerButtonActive {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent-soft) 24%, var(--panel-2));
+}
+
 .summaryTile {
   display: flex;
   flex-direction: column;
@@ -1008,6 +1052,12 @@
   .flowRail {
     padding-left: 0;
     padding-right: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .composerGridThree {
+    grid-template-columns: 1fr;
   }
 }
 
