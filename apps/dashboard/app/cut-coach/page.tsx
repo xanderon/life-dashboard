@@ -1304,61 +1304,60 @@ export default function CutCoachPage() {
                   : `You are on track today. ${today?.remaining ? `${Math.max(0, Math.round(today.remaining.calories))} kcal left.` : ''}`}
             </div>
           ) : null}
-        </section>
-
-        <section className={styles.topFocusGrid}>
-          <section className={`surface-card ${styles.panel}`}>
-            <div className={styles.focusKicker}>Daily focus</div>
-            <div className={styles.focusNow}>{topFocus.now}</div>
-            <div className={styles.focusNext}>{topFocus.next}</div>
-            <div className={styles.quickSummary}>
-              <SummaryTile label="Current kg" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} tone="neutral" />
-              <SummaryTile label="Today target" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : '—'} tone="good" />
-              <SummaryTile label="Tomorrow" value={tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal` : '—'} tone="future" />
-              <SummaryTile label="Day" value={challengeStats.currentDay > 0 ? `${challengeStats.currentDay}/${challengeStats.totalDays}` : '—'} tone="warn" />
-            </div>
-          </section>
-
-          <section className={`surface-card ${styles.panel}`}>
-            <div className={styles.chartHead}>
-              <div>
-                <div className={styles.focusKicker}>Weight trend</div>
-                <div className={styles.chartTitle}>Weight history</div>
+          <div className={styles.heroDeck}>
+            <section className={styles.heroPanel}>
+              <div className={styles.focusKicker}>Today</div>
+              <div className={styles.focusNow}>{topFocus.now}</div>
+              <div className={styles.focusNext}>{topFocus.next}</div>
+              <div className={styles.quickSummary}>
+                <SummaryTile label="Current kg" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} tone="neutral" />
+                <SummaryTile label="Today" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : '—'} tone="good" />
+                <SummaryTile label="Tomorrow" value={tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal` : '—'} tone="future" />
+                <SummaryTile label="Day" value={challengeStats.currentDay > 0 ? `${challengeStats.currentDay}/${challengeStats.totalDays}` : '—'} tone="warn" />
               </div>
-              <div className={styles.chartMeta}>
-                {data?.trends.delta7 != null ? `${data.trends.delta7 > 0 ? '-' : '+'}${Math.abs(data.trends.delta7)} kg / 7 days` : 'Waiting for more data'}
+            </section>
+
+            <section className={styles.heroPanel}>
+              <div className={styles.chartHead}>
+                <div>
+                  <div className={styles.focusKicker}>Weight trend</div>
+                  <div className={styles.chartTitle}>Weight history</div>
+                </div>
+                <div className={styles.chartMeta}>
+                  {data?.trends.delta7 != null ? `${data.trends.delta7 > 0 ? '-' : '+'}${Math.abs(data.trends.delta7)} kg / 7 days` : 'Waiting for more data'}
+                </div>
               </div>
-            </div>
-            <div className={styles.chartBox}>
-              {weightChartData.length > 1 ? (
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={weightChartData} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
-                    <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="date" tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={42} domain={['dataMin - 0.5', 'dataMax + 0.5']} />
-                    <Tooltip
-                      contentStyle={{
-                        background: 'var(--panel-strong)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 14,
-                        color: 'var(--text)',
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="weight"
-                      stroke="var(--accent)"
-                      strokeWidth={3}
-                      dot={{ r: 3, fill: 'var(--accent)' }}
-                      activeDot={{ r: 5 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className={styles.chartEmpty}>Add at least 2 weigh-ins to unlock the chart.</div>
-              )}
-            </div>
-          </section>
+              <div className={styles.chartBox}>
+                {weightChartData.length > 1 ? (
+                  <ResponsiveContainer width="100%" height={190}>
+                    <LineChart data={weightChartData} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
+                      <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="date" tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={42} domain={['dataMin - 0.5', 'dataMax + 0.5']} />
+                      <Tooltip
+                        contentStyle={{
+                          background: 'var(--panel-strong)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 14,
+                          color: 'var(--text)',
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="weight"
+                        stroke="var(--accent)"
+                        strokeWidth={3}
+                        dot={{ r: 3, fill: 'var(--accent)' }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className={styles.chartEmpty}>Add at least 2 weigh-ins to unlock the chart.</div>
+                )}
+              </div>
+            </section>
+          </div>
         </section>
 
         {error ? <section className={`surface-card ${styles.banner} ${styles.bannerError}`}>{error}</section> : null}
@@ -1383,14 +1382,11 @@ export default function CutCoachPage() {
         <section id="today" className={styles.appSection}>
           <div className={styles.sectionHead}>
             <div>
-              <div className={styles.sectionEyebrow}>1 click zone</div>
-              <h2 className={styles.sectionTitle}>Today cockpit</h2>
+              <div className={styles.sectionEyebrow}>today</div>
+              <h2 className={styles.sectionTitle}>Today</h2>
             </div>
             <div className={styles.sectionHeadActions}>
               <div className={styles.sectionMeta}>{formatFullDate(checkin.date)}</div>
-              <button className={styles.sectionToggle} onClick={() => toggleSection('today')} type="button">
-                {collapsedSections.today ? 'Expand' : 'Collapse'}
-              </button>
             </div>
           </div>
 
@@ -1740,13 +1736,10 @@ export default function CutCoachPage() {
           <div className={styles.sectionHead}>
             <div>
               <div className={styles.sectionEyebrow}>setup</div>
-              <h2 className={styles.sectionTitle}>Profile, reminders, challenge</h2>
+              <h2 className={styles.sectionTitle}>Setup</h2>
             </div>
             <div className={styles.sectionHeadActions}>
               <div className={styles.sectionMeta}>flexible, not hardcoded to 100 days</div>
-              <button className={styles.sectionToggle} onClick={() => toggleSection('settings')} type="button">
-                {collapsedSections.settings ? 'Expand' : 'Collapse'}
-              </button>
             </div>
           </div>
 
