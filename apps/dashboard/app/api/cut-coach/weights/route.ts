@@ -24,6 +24,11 @@ export async function POST(req: Request) {
       date: body.date ?? new Date().toISOString().slice(0, 10),
       weight_kg: toNumber(body.weight_kg),
       waist_cm: body.waist_cm == null ? null : toNumber(body.waist_cm),
+      hips_cm: body.hips_cm == null ? null : toNumber(body.hips_cm),
+      chest_cm: body.chest_cm == null ? null : toNumber(body.chest_cm),
+      thigh_cm: body.thigh_cm == null ? null : toNumber(body.thigh_cm),
+      arm_cm: body.arm_cm == null ? null : toNumber(body.arm_cm),
+      neck_cm: body.neck_cm == null ? null : toNumber(body.neck_cm),
       notes: body.notes ?? null,
     };
 

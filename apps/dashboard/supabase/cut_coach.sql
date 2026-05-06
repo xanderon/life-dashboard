@@ -219,3 +219,92 @@ for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create unique index if not exists cut_coach_foods_user_barcode_unique_idx
   on public.cut_coach_foods(user_id, barcode)
   where barcode is not null;
+
+alter table public.cut_coach_body_metrics add column if not exists hips_cm numeric(6,2);
+alter table public.cut_coach_body_metrics add column if not exists chest_cm numeric(6,2);
+alter table public.cut_coach_body_metrics add column if not exists thigh_cm numeric(6,2);
+alter table public.cut_coach_body_metrics add column if not exists arm_cm numeric(6,2);
+alter table public.cut_coach_body_metrics add column if not exists neck_cm numeric(6,2);
+
+create table if not exists public.cut_coach_daily_checkins (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  date date not null,
+  kcal_actual numeric(8,2),
+  activity_kcal_burned numeric(8,2),
+  activity_summary text,
+  steps int check (steps >= 0),
+  walk_minutes int check (walk_minutes >= 0),
+  bike_minutes int check (bike_minutes >= 0),
+  notes text,
+  source_app text,
+  copied_from_previous boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, date)
+);
+
+alter table public.cut_coach_daily_checkins add column if not exists activity_kcal_burned numeric(8,2);
+alter table public.cut_coach_daily_checkins add column if not exists activity_summary text;
+
+create table if not exists public.cut_coach_challenges (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  title text not null,
+  start_date date not null,
+  end_date date not null,
+  target_weight_kg numeric(6,2),
+  notes text,
+  status text not null default 'active' check (status in ('planned', 'active', 'completed', 'archived')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (end_date >= start_date)
+);
+
+create table if not exists public.cut_coach_reminders (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  kind text not null check (kind in ('weigh_in', 'kcal_log', 'weekend_measure', 'over_target_recovery', 'milestone')),
+  title text,
+  local_time text not null default '20:30',
+  weekdays smallint[] not null default '{0,1,2,3,4,5,6}',
+  enabled boolean not null default true,
+  last_sent_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists cut_coach_checkins_user_date_idx on public.cut_coach_daily_checkins(user_id, date desc);
+create index if not exists cut_coach_challenges_user_date_idx on public.cut_coach_challenges(user_id, start_date desc);
+create index if not exists cut_coach_reminders_user_kind_idx on public.cut_coach_reminders(user_id, kind);
+
+drop trigger if exists cut_coach_checkins_updated_at on public.cut_coach_daily_checkins;
+create trigger cut_coach_checkins_updated_at
+before update on public.cut_coach_daily_checkins
+for each row execute function public.cut_coach_set_updated_at();
+
+drop trigger if exists cut_coach_challenges_updated_at on public.cut_coach_challenges;
+create trigger cut_coach_challenges_updated_at
+before update on public.cut_coach_challenges
+for each row execute function public.cut_coach_set_updated_at();
+
+drop trigger if exists cut_coach_reminders_updated_at on public.cut_coach_reminders;
+create trigger cut_coach_reminders_updated_at
+before update on public.cut_coach_reminders
+for each row execute function public.cut_coach_set_updated_at();
+
+alter table public.cut_coach_daily_checkins enable row level security;
+alter table public.cut_coach_challenges enable row level security;
+alter table public.cut_coach_reminders enable row level security;
+
+drop policy if exists cut_coach_checkins_rw on public.cut_coach_daily_checkins;
+create policy cut_coach_checkins_rw on public.cut_coach_daily_checkins
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists cut_coach_challenges_rw on public.cut_coach_challenges;
+create policy cut_coach_challenges_rw on public.cut_coach_challenges
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists cut_coach_reminders_rw on public.cut_coach_reminders;
+create policy cut_coach_reminders_rw on public.cut_coach_reminders
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

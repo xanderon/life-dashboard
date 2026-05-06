@@ -9,11 +9,15 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [message, setMessage] = useState<string>('');
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const [origin, setOrigin] = useState('');
 
   // ✅ IMPORTANT: Dacă Supabase ne redirecționează la /login cu hash tokens,
   // consumăm access_token + refresh_token și facem sesiunea.
   useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setOrigin(window.location.origin);
+    });
+
     (async () => {
       const hash = window.location.hash;
       if (!hash) return;
@@ -34,6 +38,10 @@ export default function LoginPage() {
         }
       }
     })();
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
   }, []);
 
 

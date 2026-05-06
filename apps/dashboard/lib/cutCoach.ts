@@ -7,6 +7,14 @@ export type DayType = 'training' | 'rest';
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 export type PlanStatus = 'planned' | 'adjusted' | 'locked' | 'completed';
 export type LogSource = 'manual' | 'template' | 'ai';
+export type CutCoachReminderKind =
+  | 'weigh_in'
+  | 'kcal_log'
+  | 'weekend_measure'
+  | 'over_target_recovery'
+  | 'milestone';
+export type CutCoachChallengeStatus = 'planned' | 'active' | 'completed' | 'archived';
+export type DailyCaloriesSource = 'checkin' | 'food_logs' | 'none';
 
 export type CutCoachProfileRow = {
   user_id: string;
@@ -77,8 +85,56 @@ export type CutCoachWeightRow = {
   date: string;
   weight_kg: number;
   waist_cm: number | null;
+  hips_cm: number | null;
+  chest_cm: number | null;
+  thigh_cm: number | null;
+  arm_cm: number | null;
+  neck_cm: number | null;
   notes: string | null;
   created_at: string;
+};
+
+export type CutCoachDailyCheckinRow = {
+  id: string;
+  user_id: string;
+  date: string;
+  kcal_actual: number | null;
+  activity_kcal_burned: number | null;
+  activity_summary: string | null;
+  steps: number | null;
+  walk_minutes: number | null;
+  bike_minutes: number | null;
+  notes: string | null;
+  source_app: string | null;
+  copied_from_previous: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CutCoachChallengeRow = {
+  id: string;
+  user_id: string;
+  title: string;
+  start_date: string;
+  end_date: string;
+  target_weight_kg: number | null;
+  notes: string | null;
+  status: CutCoachChallengeStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CutCoachReminderRow = {
+  id: string;
+  user_id: string;
+  kind: CutCoachReminderKind;
+  title: string | null;
+  local_time: string;
+  weekdays: number[];
+  enabled: boolean;
+  last_sent_at: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type CutCoachDailyTargetRow = {
@@ -133,7 +189,10 @@ export type DailySummary = {
   date: string;
   target: CutCoachDailyTargetRow | null;
   consumed: DailyNutritionTotals;
+  loggedCalories: number;
+  caloriesSource: DailyCaloriesSource;
   remaining: DailyNutritionTotals | null;
+  checkin: CutCoachDailyCheckinRow | null;
   logs: CutCoachFoodLogRow[];
   planItems: CutCoachPlanItemRow[];
   adjustments: CutCoachAdjustmentRow[];
@@ -187,9 +246,12 @@ const ACTIVITY_MULTIPLIER: Record<ActivityLevel, number> = {
 
 const DEFAULT_MEALS: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 const PLANNER_ALGO_VERSION = 'v1';
+const CUT_COACH_TIME_ZONE = process.env.CUT_COACH_TIMEZONE ?? process.env.TZ ?? 'Europe/Bucharest';
 
 export function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: CUT_COACH_TIME_ZONE,
+  }).format(new Date());
 }
 
 export function addDays(isoDate: string, days: number) {
@@ -492,6 +554,71 @@ export async function getLatestWeight(client: SupabaseClient, userId: string) {
   return rows[0] ?? null;
 }
 
+export async function getCheckins(client: SupabaseClient, userId: string, limit = 60) {
+  const { data, error } = await client
+    .from('cut_coach_daily_checkins')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data ?? []) as CutCoachDailyCheckinRow[];
+}
+
+export async function getCheckinForDate(client: SupabaseClient, userId: string, isoDate: string) {
+  const { data, error } = await client
+    .from('cut_coach_daily_checkins')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('date', isoDate)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as CutCoachDailyCheckinRow | null) ?? null;
+}
+
+export async function getCheckinsForDateRange(
+  client: SupabaseClient,
+  userId: string,
+  startDate: string,
+  endDate: string
+) {
+  const { data, error } = await client
+    .from('cut_coach_daily_checkins')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as CutCoachDailyCheckinRow[];
+}
+
+export async function getChallenges(client: SupabaseClient, userId: string, limit = 12) {
+  const { data, error } = await client
+    .from('cut_coach_challenges')
+    .select('*')
+    .eq('user_id', userId)
+    .order('start_date', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data ?? []) as CutCoachChallengeRow[];
+}
+
+export async function getReminderSettings(client: SupabaseClient, userId: string) {
+  const { data, error } = await client
+    .from('cut_coach_reminders')
+    .select('*')
+    .eq('user_id', userId)
+    .order('kind', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as CutCoachReminderRow[];
+}
+
 export async function getLogsForDate(client: SupabaseClient, userId: string, isoDate: string) {
   const { data, error } = await client
     .from('cut_coach_food_logs')
@@ -585,17 +712,25 @@ export async function getAdjustmentsForRange(
 }
 
 export async function getDailySummary(client: SupabaseClient, userId: string, isoDate: string) {
-  const [logs, target, adjustments] = await Promise.all([
+  const [logs, target, adjustments, checkin] = await Promise.all([
     getLogsForDate(client, userId, isoDate),
     getTargetForDate(client, userId, isoDate),
     getAdjustmentsForRange(client, userId, isoDate, isoDate),
+    getCheckinForDate(client, userId, isoDate),
   ]);
 
-  const consumed = sumLogs(logs);
+  const loggedNutrition = sumLogs(logs);
+  const consumedCalories = checkin?.kcal_actual != null ? round1(checkin.kcal_actual) : loggedNutrition.calories;
+  const consumed = {
+    ...loggedNutrition,
+    calories: consumedCalories,
+  };
+  const caloriesSource: DailyCaloriesSource =
+    checkin?.kcal_actual != null ? 'checkin' : logs.length > 0 ? 'food_logs' : 'none';
   const planItems = target ? await getPlanItemsByTargetIds(client, [target.id]) : [];
   const remaining = target
     ? {
-        calories: round1(target.kcal_target - consumed.calories),
+        calories: round1(target.kcal_target - consumedCalories),
         protein: round1(target.protein_target - consumed.protein),
         carbs: round1(target.carbs_target - consumed.carbs),
         fat: round1(target.fat_target - consumed.fat),
@@ -606,7 +741,10 @@ export async function getDailySummary(client: SupabaseClient, userId: string, is
     date: isoDate,
     target,
     consumed,
+    loggedCalories: loggedNutrition.calories,
+    caloriesSource,
     remaining,
+    checkin,
     logs,
     planItems,
     adjustments,
@@ -699,6 +837,13 @@ function groupLogsByDate(logs: CutCoachFoodLogRow[]) {
   return logs.reduce<Record<string, CutCoachFoodLogRow[]>>((acc, row) => {
     if (!acc[row.date]) acc[row.date] = [];
     acc[row.date].push(row);
+    return acc;
+  }, {});
+}
+
+function groupCheckinsByDate(checkins: CutCoachDailyCheckinRow[]) {
+  return checkins.reduce<Record<string, CutCoachDailyCheckinRow>>((acc, row) => {
+    acc[row.date] = row;
     return acc;
   }, {});
 }
@@ -869,10 +1014,11 @@ export async function recomputePlan(client: SupabaseClient, userId: string, reas
 
 export async function getWeekSnapshot(client: SupabaseClient, userId: string, startDate = todayIsoDate()) {
   const endDate = addDays(startDate, 6);
-  const [targets, logs, adjustments] = await Promise.all([
+  const [targets, logs, adjustments, checkins] = await Promise.all([
     getTargetsForDateRange(client, userId, startDate, endDate),
     getLogsForDateRange(client, userId, startDate, endDate),
     getAdjustmentsForRange(client, userId, startDate, endDate),
+    getCheckinsForDateRange(client, userId, startDate, endDate),
   ]);
 
   const planItems = await getPlanItemsByTargetIds(
@@ -881,6 +1027,7 @@ export async function getWeekSnapshot(client: SupabaseClient, userId: string, st
   );
 
   const logsByDate = groupLogsByDate(logs);
+  const checkinsByDate = groupCheckinsByDate(checkins);
   const itemsByTarget = planItems.reduce<Record<string, CutCoachPlanItemRow[]>>((acc, item) => {
     if (!acc[item.daily_target_id]) acc[item.daily_target_id] = [];
     acc[item.daily_target_id].push(item);
@@ -889,17 +1036,30 @@ export async function getWeekSnapshot(client: SupabaseClient, userId: string, st
 
   return targets.map((target) => {
     const dateLogs = logsByDate[target.date] ?? [];
-    const consumed = sumLogs(dateLogs);
+    const loggedNutrition = sumLogs(dateLogs);
+    const checkin = checkinsByDate[target.date] ?? null;
+    const consumedCalories =
+      checkin?.kcal_actual != null ? round1(checkin.kcal_actual) : loggedNutrition.calories;
+    const consumed = {
+      ...loggedNutrition,
+      calories: consumedCalories,
+    };
+    const caloriesSource: DailyCaloriesSource =
+      checkin?.kcal_actual != null ? 'checkin' : dateLogs.length > 0 ? 'food_logs' : 'none';
 
     return {
+      date: target.date,
       target,
       consumed,
+      loggedCalories: loggedNutrition.calories,
+      caloriesSource,
       remaining: {
-        calories: round1(target.kcal_target - consumed.calories),
+        calories: round1(target.kcal_target - consumedCalories),
         protein: round1(target.protein_target - consumed.protein),
         carbs: round1(target.carbs_target - consumed.carbs),
         fat: round1(target.fat_target - consumed.fat),
       },
+      checkin,
       logs: dateLogs,
       planItems: itemsByTarget[target.id] ?? [],
       adjustments: adjustments.filter((adjustment) => adjustment.target_date === target.date),

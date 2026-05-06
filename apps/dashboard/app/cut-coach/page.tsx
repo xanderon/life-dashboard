@@ -1,42 +1,54 @@
 'use client';
 
-import Image from 'next/image';
-import Link from 'next/link';
-import { useEffect, useState, useTransition, type ReactNode } from 'react';
-import { BarcodeScanner } from '@/components/BarcodeScanner';
-import { humanizeAdjustmentReason } from '@/lib/cutCoach';
-import type {
-  CutCoachDailyTargetRow,
-  CutCoachFoodLogRow,
-  CutCoachFoodRow,
-  CutCoachPlanItemRow,
-  CutCoachProfileRow,
-  CutCoachWeightRow,
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { BackLink, PageShell } from '@/components/PageShell';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import {
+  addDays,
+  computeBaseTargetCalories,
+  computeMaintenanceCalories,
+  computeSafeMinimumCalories,
+  humanizeAdjustmentReason,
+  type CutCoachChallengeRow,
+  type CutCoachDailyCheckinRow,
+  type CutCoachProfileRow,
+  type CutCoachReminderRow,
+  type CutCoachWeightRow,
+  type DailySummary,
 } from '@/lib/cutCoach';
+import styles from './page.module.css';
 
-type NutritionTotals = {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+const APP_SLUG = 'cut-coach';
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
+const WEEKDAY_LABELS = ['D', 'L', 'Ma', 'Mi', 'J', 'V', 'S'];
+const PACE_PRESETS = [
+  { label: 'Lejer', value: '12', description: 'Mai ușor de ținut' },
+  { label: 'Standard', value: '18', description: 'Ritm bun pentru cut' },
+  { label: 'Strict', value: '24', description: 'Mai greu de ținut' },
+];
+
+type PushEnvironmentSnapshot = {
+  supported: boolean;
+  permission: NotificationPermission | null;
 };
 
-type DaySnapshot = {
-  date: string;
-  target: CutCoachDailyTargetRow | null;
-  consumed: NutritionTotals;
-  remaining: NutritionTotals | null;
-  logs: CutCoachFoodLogRow[];
-  planItems: CutCoachPlanItemRow[];
-  adjustments: Array<{ id: string; delta_kcal: number; reason: string }>;
+type RewardToast = {
+  id: number;
+  title: string;
+  body: string;
+  xp: number;
 };
 
 type BootstrapPayload = {
+  todayIsoDate: string;
   profile: CutCoachProfileRow | null;
-  today: DaySnapshot;
-  tomorrow: DaySnapshot;
-  week: DaySnapshot[];
+  today: DailySummary;
+  tomorrow: DailySummary;
+  week: DailySummary[];
   weights: CutCoachWeightRow[];
+  checkins: CutCoachDailyCheckinRow[];
+  challenges: CutCoachChallengeRow[];
+  reminders: CutCoachReminderRow[];
   trends: {
     latest: CutCoachWeightRow | null;
     avg7: number | null;
@@ -45,9 +57,6 @@ type BootstrapPayload = {
     delta7: number | null;
     delta14: number | null;
   };
-  favorites: CutCoachFoodRow[];
-  recentFoods: CutCoachFoodRow[];
-  foods: CutCoachFoodRow[];
 };
 
 type SetupState = {
@@ -64,1491 +73,1668 @@ type SetupState = {
   training_days: number[];
 };
 
-type LogState = {
-  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
-  food_id: string;
-  grams_total: string;
-  quantity: string;
+type CheckinState = {
+  date: string;
+  kcal_actual: string;
+  activity_kcal_burned: string;
+  activity_summary: string;
+  notes: string;
+  source_app: string;
 };
 
 type WeightState = {
   date: string;
   weight_kg: string;
+  waist_cm: string;
+  hips_cm: string;
+  chest_cm: string;
+  thigh_cm: string;
+  arm_cm: string;
+  neck_cm: string;
+  notes: string;
 };
 
-type FoodState = {
-  name: string;
-  brand: string;
-  barcode: string;
-  calories: string;
-  protein: string;
-  carbs: string;
-  fat: string;
-  default_serving_grams: string;
-  package_size_grams: string;
-  serving_label: string;
-  is_favorite: boolean;
+type ChallengeState = {
+  id?: string;
+  title: string;
+  start_date: string;
+  end_date: string;
+  target_weight_kg: string;
+  notes: string;
+  status: 'planned' | 'active' | 'completed' | 'archived';
 };
 
-type ScanReviewState = {
-  food: CutCoachFoodRow;
-  barcode: string;
-  imported: boolean;
+type ReminderDraft = {
+  id?: string;
+  kind: CutCoachReminderRow['kind'];
+  title: string;
+  local_time: string;
+  weekdays: number[];
+  enabled: boolean;
 };
+
+type SectionKey = 'today' | 'flow' | 'calendar' | 'progress' | 'settings';
+
+const DEFAULT_PUSH_ENVIRONMENT: PushEnvironmentSnapshot = {
+  supported: false,
+  permission: null,
+};
+let cachedPushEnvironment = DEFAULT_PUSH_ENVIRONMENT;
+
+function subscribeNoop() {
+  return () => {};
+}
+
+function getPushEnvironmentSnapshot(): PushEnvironmentSnapshot {
+  if (
+    typeof window === 'undefined' ||
+    !('serviceWorker' in navigator) ||
+    !('PushManager' in window) ||
+    !('Notification' in window)
+  ) {
+    return DEFAULT_PUSH_ENVIRONMENT;
+  }
+
+  const nextSnapshot: PushEnvironmentSnapshot = {
+    supported: true,
+    permission: Notification.permission,
+  };
+
+  if (
+    cachedPushEnvironment.supported === nextSnapshot.supported &&
+    cachedPushEnvironment.permission === nextSnapshot.permission
+  ) {
+    return cachedPushEnvironment;
+  }
+
+  cachedPushEnvironment = nextSnapshot;
+  return cachedPushEnvironment;
+}
 
 const defaultSetup: SetupState = {
   age: '33',
   sex: 'male',
   height_cm: '180',
-  activity_level: 'moderate',
-  preferred_deficit_pct: '18',
+  activity_level: 'sedentary',
+  preferred_deficit_pct: '12',
   protein_target_per_kg: '2',
   fat_min_per_kg: '0.7',
   meals_per_day: '3',
-  initial_weight_kg: '90',
-  training_day_kcal_delta: '150',
-  training_days: [1, 3, 5],
+  initial_weight_kg: '',
+  training_day_kcal_delta: '0',
+  training_days: [],
 };
 
-const defaultLog: LogState = {
-  meal_type: 'lunch',
-  food_id: '',
-  grams_total: '100',
-  quantity: '1',
-};
+function emptyCheckin(date: string): CheckinState {
+  return {
+    date,
+    kcal_actual: '',
+    activity_kcal_burned: '',
+    activity_summary: '',
+    notes: '',
+    source_app: 'LifeSum',
+  };
+}
 
-const quickAddSuggestions = [
-  '5 eggs',
-  'kefir',
-  'lipie',
-  'telemea',
-  'cascaval',
-  'protein bar',
-  'eugenie',
-  'covrig',
-  'chicken + potatoes',
-  'standard breakfast',
-];
+function emptyWeight(date: string): WeightState {
+  return {
+    date,
+    weight_kg: '',
+    waist_cm: '',
+    hips_cm: '',
+    chest_cm: '',
+    thigh_cm: '',
+    arm_cm: '',
+    neck_cm: '',
+    notes: '',
+  };
+}
 
-const weekdayLabels = [
-  { value: 0, label: 'Sun' },
-  { value: 1, label: 'Mon' },
-  { value: 2, label: 'Tue' },
-  { value: 3, label: 'Wed' },
-  { value: 4, label: 'Thu' },
-  { value: 5, label: 'Fri' },
-  { value: 6, label: 'Sat' },
-];
+function challengeDraft(todayIsoDate: string): ChallengeState {
+  const start = addDays(todayIsoDate, 1);
+  return {
+    title: '100 day cut',
+    start_date: start,
+    end_date: addDays(start, 99),
+    target_weight_kg: '',
+    notes: '',
+    status: 'active',
+  };
+}
 
-const mealSections: Array<{ value: LogState['meal_type']; label: string }> = [
-  { value: 'breakfast', label: 'Breakfast' },
-  { value: 'lunch', label: 'Lunch' },
-  { value: 'dinner', label: 'Dinner' },
-  { value: 'snack', label: 'Snack' },
-];
+function defaultReminderDrafts(existing: CutCoachReminderRow[]): ReminderDraft[] {
+  if (existing.length > 0) {
+    return existing.map((row) => ({
+      id: row.id,
+      kind: row.kind,
+      title: row.title ?? reminderTitle(row.kind),
+      local_time: row.local_time,
+      weekdays: row.weekdays,
+      enabled: row.enabled,
+    }));
+  }
+
+  return [
+    { kind: 'weigh_in', title: 'Cântărire', local_time: '08:15', weekdays: [1, 2, 3, 4, 5, 6, 0], enabled: true },
+    { kind: 'kcal_log', title: 'Ai pus kcal?', local_time: '20:45', weekdays: [1, 2, 3, 4, 5, 6, 0], enabled: true },
+    { kind: 'weekend_measure', title: 'Nu uita să te măsori', local_time: '11:00', weekdays: [6, 0], enabled: true },
+    { kind: 'over_target_recovery', title: 'Recuperează după depășire', local_time: '09:30', weekdays: [1, 2, 3, 4, 5, 6, 0], enabled: true },
+  ];
+}
+
+function reminderTitle(kind: CutCoachReminderRow['kind']) {
+  switch (kind) {
+    case 'weigh_in':
+      return 'Cântărire';
+    case 'kcal_log':
+      return 'Log kcal';
+    case 'weekend_measure':
+      return 'Măsurători weekend';
+    case 'over_target_recovery':
+      return 'Recovery prompt';
+    case 'milestone':
+      return 'Milestone';
+    default:
+      return 'Reminder';
+  }
+}
+
+function formatDate(isoDate: string, options?: Intl.DateTimeFormatOptions) {
+  return new Intl.DateTimeFormat('ro-RO', {
+    day: 'numeric',
+    month: 'short',
+    ...options,
+  }).format(new Date(`${isoDate}T12:00:00`));
+}
+
+function formatFullDate(isoDate: string) {
+  return new Intl.DateTimeFormat('ro-RO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(`${isoDate}T12:00:00`));
+}
+
+function shortDay(isoDate: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+  }).format(new Date(`${isoDate}T12:00:00`));
+}
+
+function isoDiff(start: string, end: string) {
+  const left = new Date(`${start}T00:00:00`);
+  const right = new Date(`${end}T00:00:00`);
+  return Math.round((right.getTime() - left.getTime()) / 86400000);
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function findWeekDay(payload: BootstrapPayload | null, date: string) {
+  if (!payload) return null;
+  return payload.week.find((day) => day.date === date) ?? null;
+}
+
+function selectActiveChallenge(challenges: CutCoachChallengeRow[], todayIsoDate: string) {
+  return (
+    challenges.find((item) => item.status === 'active') ??
+    challenges.find((item) => todayIsoDate >= item.start_date && todayIsoDate <= item.end_date) ??
+    challenges[0] ??
+    null
+  );
+}
+
+function findWeightForDate(weights: CutCoachWeightRow[], isoDate: string) {
+  return weights.find((item) => item.date === isoDate) ?? null;
+}
+
+function findCheckinForDate(checkins: CutCoachDailyCheckinRow[], isoDate: string) {
+  return checkins.find((item) => item.date === isoDate) ?? null;
+}
+
+function findNearestWeight(weights: CutCoachWeightRow[], isoDate: string) {
+  const sorted = [...weights].sort((a, b) => a.date.localeCompare(b.date));
+  const onOrBefore = [...sorted].reverse().find((item) => item.date <= isoDate);
+  return onOrBefore ?? sorted.find((item) => item.date >= isoDate) ?? null;
+}
+
+function buildMonthCells(todayIsoDate: string, payload: BootstrapPayload | null) {
+  const current = new Date(`${todayIsoDate}T12:00:00`);
+  const monthStart = new Date(current.getFullYear(), current.getMonth(), 1);
+  const firstWeekday = monthStart.getDay();
+  const gridStart = new Date(monthStart);
+  gridStart.setDate(monthStart.getDate() - firstWeekday);
+
+  return Array.from({ length: 35 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    const isoDate = date.toISOString().slice(0, 10);
+    const summary = findWeekDay(payload, isoDate);
+    const checkin = payload ? findCheckinForDate(payload.checkins, isoDate) : null;
+    const weight = payload ? findWeightForDate(payload.weights, isoDate) : null;
+    return {
+      isoDate,
+      label: date.getDate(),
+      inMonth: date.getMonth() === current.getMonth(),
+      summary,
+      checkin,
+      weight,
+      isToday: isoDate === todayIsoDate,
+    };
+  });
+}
+
+function buildChallengeStats(challenge: CutCoachChallengeRow | null, payload: BootstrapPayload | null) {
+  if (!challenge || !payload) {
+    return {
+      totalDays: 0,
+      currentDay: 0,
+      progress: 0,
+      startWeight: null as number | null,
+      currentWeight: payload?.trends.latest?.weight_kg ?? null,
+      deltaWeight: null as number | null,
+      underTargetDays: 0,
+      checkinDays: 0,
+    };
+  }
+
+  const totalDays = isoDiff(challenge.start_date, challenge.end_date) + 1;
+  const currentDay = clamp(isoDiff(challenge.start_date, payload.todayIsoDate) + 1, 0, totalDays);
+  const progress = totalDays > 0 ? currentDay / totalDays : 0;
+  const startWeight = findNearestWeight(payload.weights, challenge.start_date)?.weight_kg ?? null;
+  const currentWeight = payload.trends.latest?.weight_kg ?? null;
+  const deltaWeight =
+    startWeight != null && currentWeight != null ? Number((currentWeight - startWeight).toFixed(1)) : null;
+  const challengeCheckins = payload.checkins.filter(
+    (item) => item.date >= challenge.start_date && item.date <= payload.todayIsoDate
+  );
+  const challengeWeek = payload.week.filter(
+    (item) => item.date >= challenge.start_date && item.date <= payload.todayIsoDate
+  );
+  const underTargetDays = challengeWeek.filter(
+    (item) => item.target && item.caloriesSource !== 'none' && item.consumed.calories <= item.target.kcal_target + 50
+  ).length;
+
+  return {
+    totalDays,
+    currentDay,
+    progress,
+    startWeight,
+    currentWeight,
+    deltaWeight,
+    underTargetDays,
+    checkinDays: challengeCheckins.filter((item) => item.kcal_actual != null).length,
+  };
+}
+
+function buildXp(payload: BootstrapPayload | null) {
+  if (!payload) return { xp: 0, level: 1 };
+  const kcalDays = payload.checkins.filter((item) => item.kcal_actual != null).length;
+  const weighDays = payload.weights.length;
+  const movementDays = payload.checkins.filter(
+    (item) => (item.activity_kcal_burned ?? 0) > 0 || Boolean(item.activity_summary)
+  ).length;
+  const measurementDays = payload.weights.filter(
+    (item) => item.waist_cm || item.chest_cm || item.hips_cm || item.thigh_cm || item.arm_cm || item.neck_cm
+  ).length;
+
+  const xp = kcalDays * 12 + weighDays * 14 + movementDays * 8 + measurementDays * 20;
+  return {
+    xp,
+    level: Math.max(1, Math.floor(xp / 120) + 1),
+  };
+}
+
+function longestDailyStreak(dates: string[]) {
+  if (!dates.length) return 0;
+  const unique = [...new Set(dates)].sort();
+  let best = 1;
+  let current = 1;
+  for (let index = 1; index < unique.length; index += 1) {
+    const previous = unique[index - 1];
+    const expected = addDays(previous, 1);
+    if (unique[index] === expected) {
+      current += 1;
+      best = Math.max(best, current);
+    } else {
+      current = 1;
+    }
+  }
+  return best;
+}
+
+function currentDailyStreak(dates: string[], todayIsoDate: string) {
+  const unique = new Set(dates);
+  let streak = 0;
+  let cursor = todayIsoDate;
+  while (unique.has(cursor)) {
+    streak += 1;
+    cursor = addDays(cursor, -1);
+  }
+  return streak;
+}
+
+function buildAchievements(
+  payload: BootstrapPayload | null,
+  activeChallenge: CutCoachChallengeRow | null,
+  challengeStats: ReturnType<typeof buildChallengeStats>
+) {
+  if (!payload) return [];
+
+  const kcalDates = payload.checkins.filter((item) => item.kcal_actual != null).map((item) => item.date);
+  const weightDates = payload.weights.map((item) => item.date);
+  const measurementDates = payload.weights
+    .filter((item) => item.waist_cm || item.hips_cm || item.chest_cm || item.thigh_cm || item.arm_cm || item.neck_cm)
+    .map((item) => item.date);
+  const movementDates = payload.checkins
+    .filter((item) => (item.activity_kcal_burned ?? 0) >= 150 || Boolean(item.activity_summary))
+    .map((item) => item.date);
+
+  const kcalDays = kcalDates.length;
+  const weighDays = weightDates.length;
+  const measurementCount = measurementDates.length;
+  const movementCount = movementDates.length;
+  const weekGreen = payload.week.filter(
+    (item) => item.target && item.caloriesSource !== 'none' && item.consumed.calories <= item.target.kcal_target + 50
+  ).length;
+  const weekLogs = payload.week.filter((item) => item.caloriesSource !== 'none').length;
+  const kcalStreak = currentDailyStreak(kcalDates, payload.todayIsoDate);
+  const longestKcalStreak = longestDailyStreak(kcalDates);
+  const weighStreak = currentDailyStreak(weightDates, payload.todayIsoDate);
+  const longestWeighStreak = longestDailyStreak(weightDates);
+  const challengeGoalHit =
+    activeChallenge?.target_weight_kg != null &&
+    payload.trends.latest?.weight_kg != null &&
+    payload.trends.latest.weight_kg <= activeChallenge.target_weight_kg;
+  const hitSub2000 =
+    payload.week.filter((item) => item.caloriesSource !== 'none' && item.consumed.calories <= 2000).length > 0;
+
+  return [
+    {
+      title: 'First log',
+      unlocked: kcalDays >= 1,
+      body: kcalDays >= 1 ? 'Ai pornit tracking-ul de kcal.' : 'Loghează primul total de kcal.',
+    },
+    {
+      title: 'Three logs',
+      unlocked: kcalDays >= 3,
+      body: kcalDays >= 3 ? `${kcalDays} zile cu kcal logate.` : 'Ține 3 zile cu kcal logate.',
+    },
+    {
+      title: 'Week recorder',
+      unlocked: kcalDays >= 7,
+      body: kcalDays >= 7 ? 'Ai trecut de prima săptămână de tracking.' : 'Ajungi la 7 zile cu kcal logate.',
+    },
+    {
+      title: 'Two-week lock',
+      unlocked: kcalDays >= 14,
+      body: kcalDays >= 14 ? 'Ai prins deja ritmul de 2 săptămâni.' : 'Țintește 14 zile cu check-in complet.',
+    },
+    {
+      title: 'Thirty day ledger',
+      unlocked: kcalDays >= 30,
+      body: kcalDays >= 30 ? 'Ai o lună de date utile.' : 'Strânge 30 de zile de kcal logate.',
+    },
+    {
+      title: 'Hot streak',
+      unlocked: kcalStreak >= 3,
+      body: kcalStreak >= 3 ? `Ai ${kcalStreak} zile consecutive de log.` : 'Leagă 3 zile consecutive de kcal log.',
+    },
+    {
+      title: 'Seven-day streak',
+      unlocked: kcalStreak >= 7,
+      body: kcalStreak >= 7 ? 'O săptămână întreagă fără pauză.' : 'Leagă 7 zile consecutive de kcal log.',
+    },
+    {
+      title: 'Streak architect',
+      unlocked: longestKcalStreak >= 14,
+      body: longestKcalStreak >= 14 ? `Cel mai bun streak: ${longestKcalStreak} zile.` : 'Construiește un streak maxim de 14 zile.',
+    },
+    {
+      title: 'Scale online',
+      unlocked: weighDays >= 1,
+      body: weighDays >= 1 ? 'Ai prima cântărire în istoric.' : 'Pune prima greutate ca baseline.',
+    },
+    {
+      title: 'Scale routine',
+      unlocked: weighDays >= 3,
+      body: weighDays >= 3 ? `${weighDays} cântăriri salvate.` : 'Ajungi la 3 cântăriri salvate.',
+    },
+    {
+      title: 'Morning gravity',
+      unlocked: weighStreak >= 3,
+      body: weighStreak >= 3 ? `${weighStreak} zile consecutive de cântărire.` : 'Cântărește-te 3 dimineți la rând.',
+    },
+    {
+      title: 'Trend visible',
+      unlocked: longestWeighStreak >= 7,
+      body: longestWeighStreak >= 7 ? 'Acum trendul începe să aibă sens.' : 'Leagă 7 zile de cântărire pentru trend clar.',
+    },
+    {
+      title: 'Weekend tape',
+      unlocked: measurementCount >= 1,
+      body: measurementCount >= 1 ? `Ai ${measurementCount} sesiuni de măsurători.` : 'Salvează măsurătorile standard în weekend.',
+    },
+    {
+      title: 'Tape habit',
+      unlocked: measurementCount >= 2,
+      body: measurementCount >= 2 ? 'Ai deja două weekenduri măsurate.' : 'Pune măsurători în 2 weekenduri diferite.',
+    },
+    {
+      title: 'Body map',
+      unlocked: measurementCount >= 4,
+      body: measurementCount >= 4 ? 'Ai destule măsurători ca să vezi formă, nu doar kg.' : 'Strânge 4 sesiuni de measurements.',
+    },
+    {
+      title: 'Movement day',
+      unlocked: movementCount >= 1,
+      body: movementCount >= 1 ? `${movementCount} zile au și mișcare.` : 'Adaugă o zi cu pași, mers sau bicicletă.',
+    },
+    {
+      title: 'Walk engine',
+      unlocked: movementCount >= 3,
+      body: movementCount >= 3 ? 'Mișcarea începe să devină obicei.' : 'Ajungi la 3 zile cu mișcare utilă.',
+    },
+    {
+      title: 'Green week',
+      unlocked: weekGreen >= 3,
+      body: weekGreen >= 3 ? `${weekGreen} zile din flow sunt în verde.` : 'Țintește 3 zile verzi în săptămâna curentă.',
+    },
+    {
+      title: 'Five clean days',
+      unlocked: weekGreen >= 5,
+      body: weekGreen >= 5 ? 'Săptămână foarte solidă.' : 'Țintește 5 zile la target în aceeași săptămână.',
+    },
+    {
+      title: 'Full week visible',
+      unlocked: weekLogs >= 7,
+      body: weekLogs >= 7 ? 'Ai toată săptămâna completă în sistem.' : 'Completează toate cele 7 zile din week flow.',
+    },
+    {
+      title: 'Sub-2000 day',
+      unlocked: hitSub2000,
+      body: hitSub2000 ? 'Ai atins deja o zi sub 2000 kcal.' : 'Prinde o zi curată sub 2000 kcal.',
+    },
+    {
+      title: 'Challenge armed',
+      unlocked: Boolean(activeChallenge),
+      body: activeChallenge ? `${activeChallenge.title} este activ.` : 'Salvează o perioadă activă de challenge.',
+    },
+    {
+      title: 'Quarter mark',
+      unlocked: challengeStats.progress >= 0.25,
+      body: challengeStats.progress >= 0.25 ? 'Ai trecut de primul sfert din challenge.' : 'Ajungi la 25% din perioada activă.',
+    },
+    {
+      title: 'Halfway',
+      unlocked: challengeStats.progress >= 0.5,
+      body: challengeStats.progress >= 0.5 ? 'Ai trecut de jumătatea challenge-ului.' : 'Ajungi la 50% din challenge.',
+    },
+    {
+      title: 'Closing phase',
+      unlocked: challengeStats.progress >= 0.75,
+      body: challengeStats.progress >= 0.75 ? 'Ești în ultimele 25% din challenge.' : 'Ajungi în partea finală a challenge-ului.',
+    },
+    {
+      title: 'Weight moved',
+      unlocked: challengeStats.deltaWeight != null && challengeStats.deltaWeight < -1,
+      body:
+        challengeStats.deltaWeight != null && challengeStats.deltaWeight < -1
+          ? `${Math.abs(challengeStats.deltaWeight).toFixed(1)} kg jos față de start.`
+          : 'Scade cel puțin 1 kg față de startul challenge-ului.',
+    },
+    {
+      title: 'Three kilos down',
+      unlocked: challengeStats.deltaWeight != null && challengeStats.deltaWeight <= -3,
+      body:
+        challengeStats.deltaWeight != null && challengeStats.deltaWeight <= -3
+          ? `Ai coborât ${Math.abs(challengeStats.deltaWeight).toFixed(1)} kg.`
+          : 'Țintește -3 kg față de startul challenge-ului.',
+    },
+    {
+      title: 'Goal touch',
+      unlocked: Boolean(challengeGoalHit),
+      body: challengeGoalHit ? 'Ai atins target weight-ul setat.' : 'Atinge greutatea target din challenge.',
+    },
+    {
+      title: 'Recovery artist',
+      unlocked: payload.week.some(
+        (item) => item.target && item.caloriesSource !== 'none' && item.consumed.calories > item.target.kcal_target + 150
+      ) && weekGreen >= 2,
+      body:
+        payload.week.some(
+          (item) => item.target && item.caloriesSource !== 'none' && item.consumed.calories > item.target.kcal_target + 150
+        ) && weekGreen >= 2
+          ? 'Ai demonstrat că poți reveni după o depășire.'
+          : 'După o zi grea, revino cu 2 zile bune în aceeași săptămână.',
+    },
+  ].sort((left, right) => {
+    if (left.unlocked === right.unlocked) {
+      return left.title.localeCompare(right.title);
+    }
+    return left.unlocked ? -1 : 1;
+  });
+}
+
+function toneForDay(day: DailySummary, todayIsoDate: string) {
+  if (!day.target) return styles.dayToneNeutral;
+  if (day.date > todayIsoDate) return styles.dayToneFuture;
+  if (day.caloriesSource === 'none') return styles.dayToneMissing;
+  const diff = day.consumed.calories - day.target.kcal_target;
+  if (diff <= 50) return styles.dayToneGood;
+  if (diff <= 180) return styles.dayToneWarn;
+  return styles.dayToneBad;
+}
+
+function fillSetup(profile: CutCoachProfileRow, latestWeight: number | null): SetupState {
+  return {
+    age: String(profile.age),
+    sex: profile.sex,
+    height_cm: String(profile.height_cm),
+    activity_level: profile.activity_level,
+    preferred_deficit_pct: String(profile.preferred_deficit_pct),
+    protein_target_per_kg: String(profile.protein_target_per_kg),
+    fat_min_per_kg: String(profile.fat_min_per_kg),
+    meals_per_day: String(profile.meals_per_day),
+    initial_weight_kg: latestWeight != null ? String(latestWeight) : '',
+    training_day_kcal_delta: String(profile.training_day_kcal_delta),
+    training_days: profile.training_days,
+  };
+}
+
+function fillCheckin(date: string, payload: BootstrapPayload | null): CheckinState {
+  if (!payload) return emptyCheckin(date);
+  const checkin = findCheckinForDate(payload.checkins, date);
+  if (!checkin) return emptyCheckin(date);
+  return {
+    date,
+    kcal_actual: checkin.kcal_actual != null ? String(checkin.kcal_actual) : '',
+    activity_kcal_burned: checkin.activity_kcal_burned != null ? String(checkin.activity_kcal_burned) : '',
+    activity_summary: checkin.activity_summary ?? '',
+    notes: checkin.notes ?? '',
+    source_app: checkin.source_app ?? 'LifeSum',
+  };
+}
+
+function fillWeight(date: string, payload: BootstrapPayload | null): WeightState {
+  if (!payload) return emptyWeight(date);
+  const weight = findWeightForDate(payload.weights, date);
+  if (!weight) return emptyWeight(date);
+  return {
+    date,
+    weight_kg: String(weight.weight_kg),
+    waist_cm: weight.waist_cm != null ? String(weight.waist_cm) : '',
+    hips_cm: weight.hips_cm != null ? String(weight.hips_cm) : '',
+    chest_cm: weight.chest_cm != null ? String(weight.chest_cm) : '',
+    thigh_cm: weight.thigh_cm != null ? String(weight.thigh_cm) : '',
+    arm_cm: weight.arm_cm != null ? String(weight.arm_cm) : '',
+    neck_cm: weight.neck_cm != null ? String(weight.neck_cm) : '',
+    notes: weight.notes ?? '',
+  };
+}
+
+function weekdaySummary(days: number[]) {
+  return days.map((day) => WEEKDAY_LABELS[day] ?? '?').join(' • ');
+}
+
+function phaseLabel(progress: number) {
+  if (progress < 0.2) return 'Ignition';
+  if (progress < 0.55) return 'Rhythm';
+  if (progress < 0.85) return 'Lock-in';
+  return 'Finish';
+}
+
+function toNumber(value: string, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function buildSetupPreview(setup: SetupState) {
+  const weightKg = toNumber(setup.initial_weight_kg);
+  const heightCm = toNumber(setup.height_cm);
+  const age = toNumber(setup.age);
+  if (weightKg <= 0 || heightCm <= 0 || age <= 0) return null;
+
+  const profile: CutCoachProfileRow = {
+    user_id: 'preview',
+    age,
+    sex: setup.sex,
+    height_cm: heightCm,
+    goal_type: 'cut',
+    activity_level: setup.activity_level as CutCoachProfileRow['activity_level'],
+    preferred_deficit_pct: toNumber(setup.preferred_deficit_pct, 18),
+    protein_target_per_kg: toNumber(setup.protein_target_per_kg, 2),
+    fat_min_per_kg: toNumber(setup.fat_min_per_kg, 0.7),
+    macro_strategy: 'balanced',
+    meals_per_day: toNumber(setup.meals_per_day, 3),
+    training_day_kcal_delta: toNumber(setup.training_day_kcal_delta, 150),
+    maintenance_adjustment_kcal: 0,
+    training_days: setup.training_days,
+    created_at: '',
+    updated_at: '',
+  };
+
+  const maintenance = computeMaintenanceCalories(profile, weightKg);
+  const safeMinimum = computeSafeMinimumCalories(profile, weightKg);
+  const base = Math.max(safeMinimum, computeBaseTargetCalories(profile, weightKg));
+  const trainingCount = profile.training_days.length;
+  const restCount = 7 - trainingCount;
+  const restDelta = trainingCount > 0 && restCount > 0 ? (trainingCount * profile.training_day_kcal_delta) / restCount : 0;
+  const trainingTarget = Math.max(safeMinimum, base + profile.training_day_kcal_delta);
+  const restTarget = Math.max(safeMinimum, base - restDelta);
+
+  return {
+    maintenance: Math.round(maintenance),
+    baseTarget: Math.round(base),
+    trainingTarget: Math.round(trainingTarget),
+    restTarget: Math.round(restTarget),
+  };
+}
+
+function paceChipText(maintenance: number | null, percentValue: string) {
+  if (!maintenance) return null;
+  const percent = toNumber(percentValue);
+  const deficit = Math.round((maintenance * percent) / 100);
+  const target = Math.round(maintenance - deficit);
+  return {
+    deficit,
+    target,
+  };
+}
+
+function buildReward(url: string): RewardToast {
+  const id = Date.now();
+  if (url.includes('/checkins')) {
+    return { id, title: 'Daily log saved', body: 'XP +12 pentru consistență și claritate pe kcal.', xp: 12 };
+  }
+  if (url.includes('/weights')) {
+    return { id, title: 'Scale sync', body: 'XP +14 pentru greutate și measurements.', xp: 14 };
+  }
+  if (url.includes('/profile')) {
+    return { id, title: 'Metabolism tuned', body: 'XP +20. Flow-ul de kcal are acum o bază mai solidă.', xp: 20 };
+  }
+  if (url.includes('/challenges')) {
+    return { id, title: 'Challenge locked', body: 'XP +16. Perioada ta are acum structură clară.', xp: 16 };
+  }
+  return { id, title: 'Settings saved', body: 'XP +8. Sistemul tău e mai bine calibrat.', xp: 8 };
+}
+
+function applyNoGymPreset() {
+  return {
+    activity_level: 'sedentary',
+    preferred_deficit_pct: '12',
+    training_day_kcal_delta: '0',
+    training_days: [] as number[],
+  };
+}
 
 export default function CutCoachPage() {
   const [data, setData] = useState<BootstrapPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const [isBootstrapping, setIsBootstrapping] = useState(true);
-  const [isComposerOpen, setIsComposerOpen] = useState(false);
-  const [showSetupPanel, setShowSetupPanel] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const [setup, setSetup] = useState<SetupState>(defaultSetup);
-  const [logState, setLogState] = useState<LogState>(defaultLog);
-  const [weightState, setWeightState] = useState<WeightState>({
-    date: new Date().toISOString().slice(0, 10),
-    weight_kg: '',
+  const [checkin, setCheckin] = useState<CheckinState>(emptyCheckin(new Date().toISOString().slice(0, 10)));
+  const [weight, setWeight] = useState<WeightState>(emptyWeight(new Date().toISOString().slice(0, 10)));
+  const [challenge, setChallenge] = useState<ChallengeState>(challengeDraft(new Date().toISOString().slice(0, 10)));
+  const [reminders, setReminders] = useState<ReminderDraft[]>(defaultReminderDrafts([]));
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [rewardToast, setRewardToast] = useState<RewardToast | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Record<SectionKey, boolean>>({
+    today: false,
+    flow: false,
+    calendar: true,
+    progress: true,
+    settings: false,
   });
-  const [foodState, setFoodState] = useState<FoodState>({
-    name: '',
-    brand: '',
-    barcode: '',
-    calories: '',
-    protein: '',
-    carbs: '',
-    fat: '',
-    default_serving_grams: '100',
-    package_size_grams: '',
-    serving_label: '',
-    is_favorite: true,
-  });
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<CutCoachFoodRow[]>([]);
-  const [selectedFood, setSelectedFood] = useState<CutCoachFoodRow | null>(null);
-  const [scannerOpen, setScannerOpen] = useState(false);
-  const [searchBusy, setSearchBusy] = useState(false);
-  const [scanReview, setScanReview] = useState<ScanReviewState | null>(null);
+  const pushEnvironment = useSyncExternalStore(
+    subscribeNoop,
+    getPushEnvironmentSnapshot,
+    () => DEFAULT_PUSH_ENVIRONMENT
+  );
+  const pushSupported = pushEnvironment.supported;
+  const setupPreview = buildSetupPreview(setup);
+
+  function applyBootstrap(payload: BootstrapPayload) {
+    setData(payload);
+    if (payload.profile) {
+      setSetup(fillSetup(payload.profile, payload.trends.latest?.weight_kg ?? null));
+    }
+    const active = selectActiveChallenge(payload.challenges, payload.todayIsoDate);
+    setChallenge(
+      active
+        ? {
+            id: active.id,
+            title: active.title,
+            start_date: active.start_date,
+            end_date: active.end_date,
+            target_weight_kg: active.target_weight_kg != null ? String(active.target_weight_kg) : '',
+            notes: active.notes ?? '',
+            status: active.status,
+          }
+        : challengeDraft(payload.todayIsoDate)
+    );
+    setCheckin(fillCheckin(payload.todayIsoDate, payload));
+    setWeight(fillWeight(payload.todayIsoDate, payload));
+    setReminders(defaultReminderDrafts(payload.reminders));
+  }
 
   async function loadBootstrap(options?: { silent?: boolean }) {
+    if (!options?.silent) setBusy('loading');
     setError(null);
-    if (!options?.silent) {
-      setIsBootstrapping(true);
-    }
     const res = await fetch('/api/cut-coach/bootstrap', { cache: 'no-store' });
     if (!res.ok) {
       const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(payload.error ?? 'Failed to load cut coach.');
-      setIsBootstrapping(false);
+      setError(payload.error ?? 'Nu am putut încărca cut coach.');
+      setBusy(null);
       return;
     }
+
     const payload = (await res.json()) as BootstrapPayload;
-    setData(payload);
-    setShowSetupPanel(!payload.profile);
-    if (payload.profile) {
-      setSetup({
-        age: String(payload.profile.age),
-        sex: payload.profile.sex,
-        height_cm: String(payload.profile.height_cm),
-        activity_level: payload.profile.activity_level,
-        preferred_deficit_pct: String(payload.profile.preferred_deficit_pct),
-        protein_target_per_kg: String(payload.profile.protein_target_per_kg),
-        fat_min_per_kg: String(payload.profile.fat_min_per_kg),
-        meals_per_day: String(payload.profile.meals_per_day),
-        initial_weight_kg: String(payload.trends.latest?.weight_kg ?? ''),
-        training_day_kcal_delta: String(payload.profile.training_day_kcal_delta),
-        training_days: payload.profile.training_days,
-      });
-      setWeightState((current) => ({
-        ...current,
-        weight_kg: payload.trends.latest ? String(payload.trends.latest.weight_kg) : current.weight_kg,
-      }));
-    }
-    setSearchResults([]);
-    setSelectedFood((current) => {
-      if (!current) return null;
-      return payload.foods.find((food) => food.id === current.id) ?? current;
-    });
-    if (!options?.silent) {
-      setIsBootstrapping(false);
-    }
+    applyBootstrap(payload);
+    setBusy(null);
   }
 
   useEffect(() => {
+    let cancelled = false;
     void (async () => {
-      await loadBootstrap();
+      setBusy('loading');
+      setError(null);
+      const res = await fetch('/api/cut-coach/bootstrap', { cache: 'no-store' });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!cancelled) {
+          setError(payload.error ?? 'Nu am putut încărca cut coach.');
+          setBusy(null);
+        }
+        return;
+      }
+      const payload = (await res.json()) as BootstrapPayload;
+      if (!cancelled) {
+        applyBootstrap(payload);
+        setBusy(null);
+      }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    if (!data?.foods) return;
-    const trimmed = searchQuery.trim().toLowerCase();
-    if (!trimmed) {
-      setSearchResults([]);
+    if (!pushSupported) {
       return;
     }
 
-    setSearchBusy(true);
-    const timer = window.setTimeout(async () => {
-      try {
-        const local = data.foods
-          .filter((food) => {
-            const hay = `${food.name} ${food.brand ?? ''} ${food.barcode ?? ''}`.toLowerCase();
-            return hay.includes(trimmed);
-          })
-          .slice(0, 12);
+    navigator.serviceWorker.ready
+      .then((registration) => registration.pushManager.getSubscription())
+      .then((subscription) => setPushEnabled(Boolean(subscription)))
+      .catch(() => setPushEnabled(false));
+  }, [pushSupported]);
 
-        if (local.length >= 8 || /^\d{6,14}$/.test(trimmed) === false) {
-          setSearchResults(local);
-          setSearchBusy(false);
-          return;
-        }
+  useEffect(() => {
+    if (!rewardToast) return;
+    const timer = window.setTimeout(() => setRewardToast(null), 2600);
+    return () => window.clearTimeout(timer);
+  }, [rewardToast]);
 
-        const res = await fetch(`/api/cut-coach/foods/search?q=${encodeURIComponent(trimmed)}`, {
-          cache: 'no-store',
-        });
-        if (!res.ok) {
-          setSearchResults(local);
-          setSearchBusy(false);
-          return;
-        }
-        const payload = (await res.json()) as { foods: CutCoachFoodRow[] };
-        setSearchResults(payload.foods);
-      } finally {
-        setSearchBusy(false);
-      }
-    }, 180);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [data?.foods, searchQuery]);
-
-  async function postJson(url: string, method: string, body?: unknown) {
+  async function postJson(url: string, body: unknown, successMessage: string) {
+    setBusy(url);
+    setError(null);
+    setNotice(null);
     const res = await fetch(url, {
-      method,
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
+      body: JSON.stringify(body),
     });
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
     if (!res.ok) {
-      const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      throw new Error(payload.error ?? `Request failed: ${res.status}`);
+      setError(payload.error ?? 'Request failed.');
+      setBusy(null);
+      return false;
     }
-    return res.json();
+    setNotice(successMessage);
+    setRewardToast(buildReward(url));
+    await loadBootstrap({ silent: true });
+    setBusy(null);
+    return true;
   }
 
-  function mutate(action: () => Promise<void>) {
-    startTransition(() => {
-      action().catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Unexpected error');
-      });
-    });
-  }
-
-  function submitSetup() {
-    mutate(async () => {
-      await postJson('/api/cut-coach/profile', 'POST', {
+  async function saveSetup() {
+    await postJson(
+      '/api/cut-coach/profile',
+      {
         ...setup,
         goal_type: 'cut',
-      });
-      await loadBootstrap();
-      setShowSetupPanel(false);
-    });
+        macro_strategy: 'balanced',
+        initial_weight_date: checkin.date,
+      },
+      'Profilul a fost salvat.'
+    );
   }
 
-  function submitLog() {
-    if (!logState.food_id) {
-      setError('Pick a food or product first.');
+  async function saveCheckin(copiedFromPrevious = false) {
+    await postJson(
+      '/api/cut-coach/checkins',
+      {
+        ...checkin,
+        copied_from_previous: copiedFromPrevious,
+      },
+      'Check-in-ul de azi a fost salvat.'
+    );
+  }
+
+  async function saveWeight() {
+    await postJson('/api/cut-coach/weights', weight, 'Greutatea și măsurătorile au fost salvate.');
+  }
+
+  async function saveChallenge() {
+    await postJson('/api/cut-coach/challenges', challenge, 'Programul a fost salvat.');
+  }
+
+  async function saveReminders() {
+    await postJson('/api/cut-coach/reminders', { reminders }, 'Reminder-ele au fost salvate.');
+  }
+
+  function applyTargetToCheckin() {
+    const summary = findWeekDay(data, checkin.date);
+    if (!summary?.target) return;
+    setCheckin((current) => ({
+      ...current,
+      kcal_actual: String(Math.round(summary.target!.kcal_target)),
+    }));
+  }
+
+  function copyYesterday() {
+    if (!data) return;
+    const yesterday = findCheckinForDate(data.checkins, addDays(checkin.date, -1));
+    if (!yesterday) {
+      setNotice('Nu există încă un check-in ieri.');
       return;
     }
-    mutate(async () => {
-      const payload = (await postJson('/api/cut-coach/logs', 'POST', {
-        ...logState,
-        quantity: Number(logState.quantity),
-        grams_total: Number(logState.grams_total),
-      })) as { summary?: DaySnapshot };
-      const summary = payload.summary;
-      if (summary) {
-        setData((current) => {
-          if (!current) return current;
-          return { ...current, today: summary };
+    setCheckin({
+      date: checkin.date,
+      kcal_actual: yesterday.kcal_actual != null ? String(yesterday.kcal_actual) : '',
+      activity_kcal_burned: yesterday.activity_kcal_burned != null ? String(yesterday.activity_kcal_burned) : '',
+      activity_summary: yesterday.activity_summary ?? '',
+      notes: yesterday.notes ?? '',
+      source_app: yesterday.source_app ?? 'LifeSum',
+    });
+    setNotice('Am copiat check-in-ul de ieri.');
+  }
+
+  function copyLastMeasurements() {
+    if (!data) return;
+    const latestWithTape = data.weights.find(
+      (item) => item.waist_cm || item.hips_cm || item.chest_cm || item.thigh_cm || item.arm_cm || item.neck_cm
+    );
+    if (!latestWithTape) {
+      setNotice('Nu există încă măsurători anterioare.');
+      return;
+    }
+    setWeight((current) => ({
+      ...current,
+      waist_cm: latestWithTape.waist_cm != null ? String(latestWithTape.waist_cm) : '',
+      hips_cm: latestWithTape.hips_cm != null ? String(latestWithTape.hips_cm) : '',
+      chest_cm: latestWithTape.chest_cm != null ? String(latestWithTape.chest_cm) : '',
+      thigh_cm: latestWithTape.thigh_cm != null ? String(latestWithTape.thigh_cm) : '',
+      arm_cm: latestWithTape.arm_cm != null ? String(latestWithTape.arm_cm) : '',
+      neck_cm: latestWithTape.neck_cm != null ? String(latestWithTape.neck_cm) : '',
+    }));
+    setNotice('Am copiat ultima sesiune de măsurători.');
+  }
+
+  function toggleSection(section: SectionKey) {
+    setCollapsedSections((current) => ({
+      ...current,
+      [section]: !current[section],
+    }));
+  }
+
+  async function enableNotifications() {
+    if (!pushSupported) return;
+    setPushBusy(true);
+    setPushError(null);
+    try {
+      if (Notification.permission === 'denied') {
+        setPushError('Notificările sunt blocate în browser.');
+        setPushBusy(false);
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setPushError('Permisiunea pentru notificări nu a fost acordată.');
+        setPushBusy(false);
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      let subscription = await registration.pushManager.getSubscription();
+
+      if (!subscription) {
+        if (!VAPID_PUBLIC_KEY) {
+          setPushError('Lipsește cheia publică VAPID.');
+          setPushBusy(false);
+          return;
+        }
+
+        const padding = '='.repeat((4 - (VAPID_PUBLIC_KEY.length % 4)) % 4);
+        const base64 = (VAPID_PUBLIC_KEY + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const applicationServerKey = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; i += 1) applicationServerKey[i] = rawData.charCodeAt(i);
+
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey,
         });
       }
-      setLogState(defaultLog);
-      setScanReview(null);
-      setSelectedFood(null);
-      setSearchQuery('');
-      setSearchResults([]);
-      setIsComposerOpen(false);
-      await loadBootstrap({ silent: true });
-    });
-  }
 
-  function openComposer(food?: CutCoachFoodRow | null, mealType?: LogState['meal_type']) {
-    setIsComposerOpen(true);
-    if (mealType) {
-      setLogState((state) => ({ ...state, meal_type: mealType }));
-    }
-    if (food) {
-      selectFood(food);
-      setSearchQuery(food.name);
-    }
-  }
+      const res = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscription,
+          appSlug: APP_SLUG,
+          userAgent: navigator.userAgent,
+        }),
+      });
 
-  function selectFood(food: CutCoachFoodRow) {
-    setSelectedFood(food);
-    setScanReview(null);
-    setLogState((state) => ({
-      ...state,
-      food_id: food.id,
-      grams_total: String(Math.round(food.default_serving_grams ?? food.package_size_grams ?? 100)),
-      quantity: '1',
-    }));
-  }
-
-  function applyQuantityPreset(mode: '30g' | '50g' | '100g' | '150g' | '200g' | 'serving' | 'half-pack' | 'pack') {
-    if (!selectedFood) return;
-    const serving = selectedFood.default_serving_grams ?? 100;
-    const pack = selectedFood.package_size_grams ?? selectedFood.default_serving_grams ?? 100;
-    const grams =
-      mode === '30g'
-        ? 30
-        : mode === '50g'
-          ? 50
-          : mode === '100g'
-            ? 100
-            : mode === '150g'
-              ? 150
-              : mode === '200g'
-                ? 200
-                : mode === 'serving'
-                  ? serving
-                  : mode === 'half-pack'
-                    ? Math.round(pack / 2)
-                    : pack;
-    setLogState((state) => ({
-      ...state,
-      food_id: selectedFood.id,
-      grams_total: String(grams),
-      quantity: mode === 'half-pack' ? '0.5' : '1',
-    }));
-  }
-
-  function deleteLog(id: string) {
-    mutate(async () => {
-      const payload = (await postJson(`/api/cut-coach/logs/${id}`, 'DELETE')) as { summary?: DaySnapshot };
-      const summary = payload.summary;
-      if (summary) {
-        setData((current) => {
-          if (!current) return current;
-          return { ...current, today: summary };
-        });
+      if (!res.ok) {
+        setPushError('Nu am putut salva abonarea.');
+        setPushBusy(false);
+        return;
       }
-      await loadBootstrap({ silent: true });
-    });
+
+      setPushEnabled(true);
+      setNotice('Push-ul pentru cut coach este activ.');
+      setPushBusy(false);
+    } catch {
+      setPushError('Nu am putut activa notificările.');
+      setPushBusy(false);
+    }
   }
 
-  function submitWeight() {
-    mutate(async () => {
-      await postJson('/api/cut-coach/weights', 'POST', {
-        ...weightState,
-        weight_kg: Number(weightState.weight_kg),
-      });
-      await loadBootstrap({ silent: true });
-    });
-  }
-
-  function submitFood() {
-    mutate(async () => {
-      await postJson('/api/cut-coach/foods', 'POST', {
-        ...foodState,
-        brand: foodState.brand || null,
-        barcode: foodState.barcode || null,
-        calories: Number(foodState.calories),
-        protein: Number(foodState.protein),
-        carbs: Number(foodState.carbs),
-        fat: Number(foodState.fat),
-        default_serving_grams: foodState.default_serving_grams ? Number(foodState.default_serving_grams) : null,
-        package_size_grams: foodState.package_size_grams ? Number(foodState.package_size_grams) : null,
-        serving_label: foodState.serving_label || null,
-        source_kind: foodState.barcode ? 'product' : 'generic',
-        unit_type: foodState.barcode ? 'serving' : '100g',
-      });
-      setFoodState({
-        name: '',
-        brand: '',
-        barcode: '',
-        calories: '',
-        protein: '',
-        carbs: '',
-        fat: '',
-        default_serving_grams: '100',
-        package_size_grams: '',
-        serving_label: '',
-        is_favorite: true,
-      });
-      await loadBootstrap({ silent: true });
-    });
-  }
-
-  function recomputePlan() {
-    mutate(async () => {
-      await postJson('/api/cut-coach/plans/recompute', 'POST');
-      await loadBootstrap({ silent: true });
-    });
-  }
-
-  async function handleBarcodeDetected(barcode: string) {
-    const payload = (await postJson('/api/cut-coach/foods/scan', 'POST', { barcode })) as {
-      food: CutCoachFoodRow;
-      imported?: boolean;
-    };
-    setSelectedFood(payload.food);
-    setLogState((state) => ({
-      ...state,
-      food_id: payload.food.id,
-      grams_total: String(Math.round(payload.food.default_serving_grams ?? payload.food.package_size_grams ?? 100)),
-      quantity: '1',
-    }));
-    setSearchQuery(payload.food.name);
-    setScanReview({
-      food: payload.food,
-      barcode,
-      imported: Boolean(payload.imported),
-    });
-    setIsComposerOpen(true);
-  }
-
-  const today = data?.today;
-  const tomorrow = data?.tomorrow;
-  const loggedWithRunningTotals =
-    today?.logs.reduce<Array<CutCoachFoodLogRow & { runningCalories: number }>>((acc, log) => {
-      const previous = acc.at(-1)?.runningCalories ?? 0;
-      acc.push({ ...log, runningCalories: previous + log.calories_total });
-      return acc;
-    }, []) ?? [];
-  const quickAddFoods = (data?.favorites.length ? data.favorites : data?.recentFoods ?? []).slice(0, 8);
-  const mealGroups = mealSections.map((section) => {
-    const items = loggedWithRunningTotals.filter((log) => log.meal_type === section.value);
-    const calories = items.reduce((sum, item) => sum + item.calories_total, 0);
-    return { ...section, items, calories };
-  });
-  const remainingCalories = Math.round(today?.remaining?.calories ?? 0);
-  const consumedCalories = Math.round(today?.consumed.calories ?? 0);
-  const targetCalories = Math.round(today?.target?.kcal_target ?? 0);
-  const calorieRatio =
-    targetCalories > 0 ? Math.max(0, Math.min(100, Math.round((consumedCalories / targetCalories) * 100))) : 0;
+  const todayIsoDate = data?.todayIsoDate ?? new Date().toISOString().slice(0, 10);
+  const activeChallenge = selectActiveChallenge(data?.challenges ?? [], todayIsoDate);
+  const challengeStats = buildChallengeStats(activeChallenge, data);
+  const xp = buildXp(data);
+  const achievements = buildAchievements(data, activeChallenge, challengeStats);
+  const today = data?.today ?? null;
+  const tomorrow = data?.tomorrow ?? null;
+  const selectedDay = findWeekDay(data, checkin.date);
+  const monthCells = buildMonthCells(todayIsoDate, data);
+  const burnedKcal = toNumber(checkin.activity_kcal_burned);
+  const netKcal = Math.max(0, toNumber(checkin.kcal_actual) - burnedKcal);
+  const overToday =
+    today?.target && today.caloriesSource !== 'none' ? Math.round(today.consumed.calories - today.target.kcal_target) : null;
 
   return (
-    <main className="cut-coach-shell min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#f6f8fb_0%,#eef3f8_45%,#e6edf5_100%)] p-4 text-slate-900 sm:p-6">
-      <div className="cut-coach-viewport mx-auto max-w-7xl space-y-4">
-        <section className="grid min-w-0 gap-6 xl:grid-cols-[0.88fr_1.12fr]">
-          <div className="min-w-0 space-y-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-600">Today</div>
-                <div className="mt-1 text-xs text-slate-500">
-                  {consumedCalories} eaten / {targetCalories} target
-                  {today?.target?.day_type ? ` • ${today.target.day_type}` : ''}
-                </div>
-              </div>
-              <div className="shrink-0 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-500">
-                {calorieRatio}% used
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-[auto_1fr] sm:items-center">
-              <div className="flex justify-center sm:justify-start">
-                <div
-                  className="relative flex h-32 w-32 shrink-0 items-center justify-center rounded-full border border-white/70 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.96),rgba(241,245,249,0.92)_58%,rgba(226,232,240,0.86)_100%)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.8),0_16px_48px_rgba(15,23,42,0.10)] sm:h-40 sm:w-40"
-                  style={{
-                    backgroundImage: `conic-gradient(from 270deg, #0ea5e9 0% ${calorieRatio}%, rgba(148,163,184,0.18) ${calorieRatio}% 100%)`,
-                  }}
-                >
-                  <div className="absolute inset-[9px] rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.98),rgba(248,250,252,0.95)_62%,rgba(241,245,249,0.9)_100%)]" />
-                  <div className="relative z-10 text-center">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Remaining</div>
-                    <div className="mt-1 text-[1.7rem] font-semibold tracking-tight text-slate-950 sm:text-4xl">{remainingCalories}</div>
-                    <div className="mt-0.5 text-xs text-slate-500">kcal</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <CompactMetric
-                  label="Protein"
-                  value={`${Math.round(today?.consumed.protein ?? 0)}`}
-                  target={`${Math.round(today?.target?.protein_target ?? 0)}`}
-                />
-                <CompactMetric
-                  label="Carbs"
-                  value={`${Math.round(today?.consumed.carbs ?? 0)}`}
-                  target={`${Math.round(today?.target?.carbs_target ?? 0)}`}
-                />
-                <CompactMetric
-                  label="Fat"
-                  value={`${Math.round(today?.consumed.fat ?? 0)}`}
-                  target={`${Math.round(today?.target?.fat_target ?? 0)}`}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                className="min-w-0 overflow-hidden rounded-2xl border border-sky-300 bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-sky-600"
-                onClick={() => openComposer()}
-                type="button"
-              >
-                Add food
-              </button>
-              <button
-                className="min-w-0 overflow-hidden rounded-2xl border border-violet-200 bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700"
-                onClick={() => setScannerOpen(true)}
-                type="button"
-              >
-                <span className="sm:hidden">Scan</span>
-                <span className="hidden sm:inline">Scan barcode</span>
-              </button>
-            </div>
-
-            <div className="border-t border-slate-200/80 pt-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-sm font-semibold text-slate-900">Quick add</div>
-                <button
-                  className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
-                  onClick={() => openComposer()}
-                  type="button"
-                >
-                  Search all
-                </button>
-              </div>
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
-                {quickAddFoods.map((food) => (
-                  <button
-                    key={food.id}
-                    className="max-w-[72vw] shrink-0 truncate rounded-2xl border border-slate-200 bg-white/85 px-3 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 sm:max-w-full sm:shrink"
-                    onClick={() => openComposer(food)}
-                    type="button"
-                    title={food.name}
-                  >
-                    {food.name}
-                  </button>
-                ))}
-                {quickAddSuggestions
-                  .filter(
-                    (label) =>
-                      !quickAddFoods.some((food) => food.name.toLowerCase().includes(label.toLowerCase()))
-                  )
-                  .slice(0, 4)
-                  .map((label) => (
-                    <button
-                      key={label}
-                      className="max-w-[72vw] shrink-0 truncate rounded-2xl border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-500 transition hover:border-slate-400 hover:bg-white/70 hover:text-slate-800 sm:max-w-full sm:shrink"
-                      onClick={() => {
-                        setSearchQuery(label);
-                        setSelectedFood(null);
-                        setScanReview(null);
-                        setIsComposerOpen(true);
-                      }}
-                      type="button"
-                      title={label}
-                    >
-                      {label}
-                    </button>
-                  ))}
-              </div>
-            </div>
-
-            {error ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
-          </div>
-
-          <div className="min-w-0 border-t border-slate-200/80 pt-4 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-slate-950">Meals</div>
-                <div className="text-xs text-slate-500">Breakfast, lunch, dinner, snack.</div>
-              </div>
-              <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-                {loggedWithRunningTotals.length} items
-              </div>
-            </div>
-            <div className="space-y-3">
-              {mealGroups.map((group) => (
-                <div key={group.value} className="cc-subcard rounded-[22px] border border-slate-200 bg-white/75 p-3 sm:p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-base font-semibold text-slate-950">{group.label}</div>
-                      <div className="text-xs text-slate-500">
-                        {Math.round(group.calories)} kcal {group.items.length ? `• ${group.items.length} items` : ''}
-                      </div>
-                    </div>
-                    <button
-                      className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-xl font-medium text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
-                      onClick={() => openComposer(null, group.value)}
-                      type="button"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <div className="mt-3 space-y-2">
-                    {group.items.length ? (
-                      group.items.map((log) => (
-                        <div key={log.id} className="rounded-2xl border border-slate-200/90 bg-white/80 px-3 py-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="truncate font-medium text-slate-900">
-                                {log.custom_food_name ?? data?.foods.find((food) => food.id === log.food_id)?.name ?? 'Food'}
-                              </div>
-                              <div className="mt-0.5 text-xs text-slate-500">
-                                {Math.round(log.grams_total)} g • {Math.round(log.calories_total)} kcal
-                              </div>
-                            </div>
-                            <button
-                              className="rounded-lg border border-red-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
-                              onClick={() => deleteLog(log.id)}
-                              type="button"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <button
-                        className="flex w-full items-center justify-between rounded-2xl border border-dashed border-slate-300 px-3 py-3 text-left text-sm text-slate-500 hover:border-sky-300 hover:bg-sky-50 hover:text-slate-700"
-                        onClick={() => openComposer(null, group.value)}
-                        type="button"
-                      >
-                        <span>Nothing here yet</span>
-                        <span className="font-medium text-sky-600">Add</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+    <PageShell width="7xl" className={styles.shell}>
+      <div className={styles.page}>
+        <section className={styles.topbar}>
+          <BackLink href="/">← Înapoi la dashboard</BackLink>
+          <ThemeToggle />
         </section>
 
-        {isBootstrapping ? (
-          <section className="cc-card rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
-            <div className="animate-pulse space-y-3">
-              <div className="h-5 w-48 rounded bg-slate-200" />
-              <div className="h-4 w-80 rounded bg-slate-200" />
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {Array.from({ length: 8 }, (_, index) => (
-                  <div key={index} className="h-20 rounded-2xl bg-slate-200" />
-                ))}
-              </div>
+        <section className={`hero-card ${styles.hero}`}>
+          <div className={styles.heroIntro}>
+            <div className="eyebrow">Cut Coach</div>
+            <div className={styles.heroMeta}>
+              <span>{activeChallenge ? activeChallenge.title : 'Program nou'}</span>
+              <span>{activeChallenge ? `${formatDate(activeChallenge.start_date)} → ${formatDate(activeChallenge.end_date)}` : 'Poți porni de mâine'}</span>
             </div>
-          </section>
+          </div>
+
+          <div className={styles.heroHeader}>
+            <div>
+              <h1 className={styles.heroTitle}>Deficit flow, fără fricțiune.</h1>
+              <p className={styles.heroText}>
+                Focus pe `kg`, `kcal`, trend, reminders și week flow. Food-by-food rămâne opțional. Pentru start, ziua 1 poate fi{' '}
+                <strong>6 mai 2026</strong>.
+              </p>
+            </div>
+            <div className={styles.heroActions}>
+              <a className="btn-base btn-primary" href="#today">
+                Log azi
+              </a>
+              <a className="btn-base btn-secondary" href="#flow">
+                Vezi flow
+              </a>
+              <a className="btn-base btn-ghost" href="#settings">
+                Setup
+              </a>
+            </div>
+          </div>
+
+          <div className={styles.heroStats}>
+            <MetricBox label="Challenge day" value={challengeStats.currentDay > 0 ? `${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Pregătire'} helper={activeChallenge ? phaseLabel(challengeStats.progress) : 'Creează primul interval'} />
+            <MetricBox label="Target azi" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : 'Setup'} helper={today?.target ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today') : 'Pornește profilul'} />
+            <MetricBox label="Greutate" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} helper={challengeStats.deltaWeight != null ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${challengeStats.deltaWeight} kg vs start` : 'Așteaptă baseline'} />
+            <MetricBox label="XP / level" value={`${xp.xp} XP`} helper={`Level ${xp.level}`} />
+          </div>
+
+          {overToday != null ? (
+            <div className={`${styles.alert} ${overToday > 150 ? styles.alertBad : overToday > 0 ? styles.alertWarn : styles.alertGood}`}>
+              {overToday > 150
+                ? `Ai depășit azi cu ${overToday} kcal. Mâine ține-te de target și taie lejer următoarele 2-3 zile, nu agresiv dintr-o bucată.`
+                : overToday > 0
+                  ? `Ești puțin peste target azi (+${overToday} kcal). Păstrează controlul mâine și revii rapid pe trend.`
+                  : `Azi ești pe bine. ${today?.remaining ? `${Math.max(0, Math.round(today.remaining.calories))} kcal rămase.` : ''}`}
+            </div>
+          ) : null}
+        </section>
+
+        {error ? <section className={`surface-card ${styles.banner} ${styles.bannerError}`}>{error}</section> : null}
+        {notice ? <section className={`surface-card ${styles.banner} ${styles.bannerOk}`}>{notice}</section> : null}
+        {rewardToast ? (
+          <div className={styles.rewardToast} key={rewardToast.id}>
+            <div className={styles.rewardGlow} />
+            <div className={styles.rewardKicker}>XP +{rewardToast.xp}</div>
+            <strong>{rewardToast.title}</strong>
+            <p>{rewardToast.body}</p>
+          </div>
         ) : null}
 
-        {!isBootstrapping && (!data?.profile || showSetupPanel) ? (
-          <section className="cc-card rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold">{data?.profile ? 'Profile setup' : 'Initial setup'}</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {data?.profile
-                    ? 'Change profile only when needed.'
-                    : 'Start with profile, weight and training day pattern.'}
-                </p>
+        <section id="today" className={styles.appSection}>
+          <div className={styles.sectionHead}>
+            <div>
+              <div className={styles.sectionEyebrow}>1 click zone</div>
+              <h2 className={styles.sectionTitle}>Today cockpit</h2>
+            </div>
+            <div className={styles.sectionHeadActions}>
+              <div className={styles.sectionMeta}>{formatFullDate(checkin.date)}</div>
+              <button className={styles.sectionToggle} onClick={() => toggleSection('today')} type="button">
+                {collapsedSections.today ? 'Expand' : 'Collapse'}
+              </button>
+            </div>
+          </div>
+
+          {!collapsedSections.today ? <div className={styles.todayGrid}>
+            <section className={`surface-card ${styles.panel}`}>
+              <div className={styles.panelHead}>
+                <div>
+                  <h3 className={styles.panelTitle}>Kcal check-in</h3>
+                  <p className={styles.panelText}>Bagi totalul din LifeSum și, dacă ai avut activitate, pui direct kcal arse din app.</p>
+                </div>
+                <div className={styles.pillRow}>
+                  <button className="btn-base btn-ghost" type="button" onClick={copyYesterday}>
+                    Same as yesterday
+                  </button>
+                  <button className="btn-base btn-secondary" type="button" onClick={applyTargetToCheckin}>
+                    Use target
+                  </button>
+                </div>
               </div>
-              {data?.profile ? (
+
+              <div className={styles.formGrid}>
+                <label className={styles.field}>
+                  <span>Zi</span>
+                  <input type="date" value={checkin.date} onChange={(event) => {
+                    const nextDate = event.target.value;
+                    setCheckin(fillCheckin(nextDate, data));
+                    setWeight(fillWeight(nextDate, data));
+                  }} />
+                </label>
+                <label className={styles.field}>
+                  <span>Kcal totale</span>
+                  <input className={styles.featureInput} type="number" inputMode="numeric" value={checkin.kcal_actual} onChange={(event) => setCheckin((current) => ({ ...current, kcal_actual: event.target.value }))} placeholder="ex. 2140" />
+                </label>
+                <label className={styles.field}>
+                  <span>Activitate făcută</span>
+                  <input value={checkin.activity_summary} onChange={(event) => setCheckin((current) => ({ ...current, activity_summary: event.target.value }))} placeholder="ex. walk 45m / bike / sală / nimic" />
+                </label>
+                <label className={styles.field}>
+                  <span>Kcal arse din app</span>
+                  <input className={styles.featureInput} type="number" inputMode="numeric" value={checkin.activity_kcal_burned} onChange={(event) => setCheckin((current) => ({ ...current, activity_kcal_burned: event.target.value }))} placeholder="ex. 320" />
+                </label>
+                <label className={styles.field}>
+                  <span>Sursă</span>
+                  <input value={checkin.source_app} onChange={(event) => setCheckin((current) => ({ ...current, source_app: event.target.value }))} placeholder="LifeSum" />
+                </label>
+              </div>
+
+              <div className={styles.quickActionsRow}>
+                <button className={styles.quickChip} onClick={() => setCheckin((current) => ({ ...current, kcal_actual: String(Math.max(0, toNumber(current.kcal_actual) - 150)) }))} type="button">
+                  -150
+                </button>
+                <button className={styles.quickChip} onClick={() => setCheckin((current) => ({ ...current, kcal_actual: String(toNumber(current.kcal_actual) + 150) }))} type="button">
+                  +150
+                </button>
+                <button className={styles.quickChip} onClick={() => setCheckin((current) => ({ ...current, activity_summary: 'Walk', activity_kcal_burned: '200' }))} type="button">
+                  walk +200
+                </button>
+                <button className={styles.quickChip} onClick={() => setCheckin((current) => ({ ...current, activity_summary: 'Bike', activity_kcal_burned: '350' }))} type="button">
+                  bike +350
+                </button>
+              </div>
+
+              <label className={`${styles.field} ${styles.fieldFull}`}>
+                <span>Notițe</span>
+                <textarea rows={3} value={checkin.notes} onChange={(event) => setCheckin((current) => ({ ...current, notes: event.target.value }))} placeholder="orice context util" />
+              </label>
+
+              <div className={styles.quickSummary}>
+                <SummaryTile label="Target" value={selectedDay?.target ? `${Math.round(selectedDay.target.kcal_target)} kcal` : '—'} tone="neutral" />
+                <SummaryTile label="Logged" value={selectedDay && selectedDay.caloriesSource !== 'none' ? `${Math.round(selectedDay.consumed.calories)} kcal` : 'Necompletat'} tone={selectedDay?.target && selectedDay.caloriesSource !== 'none' && selectedDay.consumed.calories <= selectedDay.target.kcal_target + 50 ? 'good' : 'warn'} />
+                <SummaryTile label="Activity burn" value={burnedKcal > 0 ? `${Math.round(burnedKcal)} kcal` : '0 kcal'} tone="future" />
+                <SummaryTile label="Net today" value={toNumber(checkin.kcal_actual) > 0 ? `${Math.round(netKcal)} kcal` : '—'} tone="good" />
+                <SummaryTile label="Remaining" value={selectedDay?.remaining ? `${Math.round(selectedDay.remaining.calories)} kcal` : '—'} tone={selectedDay?.remaining && selectedDay.remaining.calories >= 0 ? 'good' : 'bad'} />
+                <SummaryTile label="Tomorrow" value={tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal` : '—'} tone="future" />
+              </div>
+
+              <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveCheckin()} type="button">
+                {busy === '/api/cut-coach/checkins' ? 'Se salvează…' : 'Save kcal check-in'}
+              </button>
+            </section>
+
+            <section className={`surface-card ${styles.panel}`}>
+              <div className={styles.panelHead}>
+                <div>
+                  <h3 className={styles.panelTitle}>Weight + tape</h3>
+                  <p className={styles.panelText}>Greutate zilnic, dimensiuni mai ales în weekend.</p>
+                </div>
+                <button className="btn-base btn-ghost" type="button" onClick={copyLastMeasurements}>
+                  Copy last measurements
+                </button>
+              </div>
+
+              <div className={styles.formGrid}>
+                <label className={styles.field}>
+                  <span>Zi</span>
+                  <input type="date" value={weight.date} onChange={(event) => {
+                    const nextDate = event.target.value;
+                    setWeight(fillWeight(nextDate, data));
+                    setCheckin(fillCheckin(nextDate, data));
+                  }} />
+                </label>
+                <label className={styles.field}>
+                  <span>Greutate kg</span>
+                  <input type="number" step="0.1" inputMode="decimal" value={weight.weight_kg} onChange={(event) => setWeight((current) => ({ ...current, weight_kg: event.target.value }))} placeholder="ex. 89.6" />
+                </label>
+                <label className={styles.field}>
+                  <span>Talie</span>
+                  <input type="number" step="0.1" inputMode="decimal" value={weight.waist_cm} onChange={(event) => setWeight((current) => ({ ...current, waist_cm: event.target.value }))} placeholder="cm" />
+                </label>
+                <label className={styles.field}>
+                  <span>Șold</span>
+                  <input type="number" step="0.1" inputMode="decimal" value={weight.hips_cm} onChange={(event) => setWeight((current) => ({ ...current, hips_cm: event.target.value }))} placeholder="cm" />
+                </label>
+                <label className={styles.field}>
+                  <span>Piept</span>
+                  <input type="number" step="0.1" inputMode="decimal" value={weight.chest_cm} onChange={(event) => setWeight((current) => ({ ...current, chest_cm: event.target.value }))} placeholder="cm" />
+                </label>
+                <label className={styles.field}>
+                  <span>Coapsă</span>
+                  <input type="number" step="0.1" inputMode="decimal" value={weight.thigh_cm} onChange={(event) => setWeight((current) => ({ ...current, thigh_cm: event.target.value }))} placeholder="cm" />
+                </label>
+                <label className={styles.field}>
+                  <span>Braț</span>
+                  <input type="number" step="0.1" inputMode="decimal" value={weight.arm_cm} onChange={(event) => setWeight((current) => ({ ...current, arm_cm: event.target.value }))} placeholder="cm" />
+                </label>
+                <label className={styles.field}>
+                  <span>Gât</span>
+                  <input type="number" step="0.1" inputMode="decimal" value={weight.neck_cm} onChange={(event) => setWeight((current) => ({ ...current, neck_cm: event.target.value }))} placeholder="cm" />
+                </label>
+              </div>
+
+              <label className={`${styles.field} ${styles.fieldFull}`}>
+                <span>Notițe</span>
+                <textarea rows={3} value={weight.notes} onChange={(event) => setWeight((current) => ({ ...current, notes: event.target.value }))} placeholder="ex. retenție, masă târzie, weekend" />
+              </label>
+
+              <div className={styles.quickSummary}>
+                <SummaryTile label="Latest" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} tone="neutral" />
+                <SummaryTile label="Avg 7" value={data?.trends.avg7 ? `${data.trends.avg7} kg` : '—'} tone="neutral" />
+                <SummaryTile label="Delta 7" value={data?.trends.delta7 != null ? `${data.trends.delta7 > 0 ? '-' : '+'}${Math.abs(data.trends.delta7)} kg` : '—'} tone={data?.trends.delta7 != null && data.trends.delta7 > 0 ? 'good' : 'future'} />
+                <SummaryTile label="Measurements" value={weight.waist_cm || weight.hips_cm || weight.chest_cm ? 'Weekend set' : 'Optional'} tone="future" />
+              </div>
+
+              <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveWeight()} type="button">
+                {busy === '/api/cut-coach/weights' ? 'Se salvează…' : 'Save weight / measurements'}
+              </button>
+            </section>
+          </div> : null}
+        </section>
+
+        <section id="flow" className={styles.appSection}>
+          <div className={styles.sectionHead}>
+            <div>
+              <div className={styles.sectionEyebrow}>program</div>
+              <h2 className={styles.sectionTitle}>Week flow</h2>
+            </div>
+            <div className={styles.sectionHeadActions}>
+              <div className={styles.sectionMeta}>{activeChallenge ? `${phaseLabel(challengeStats.progress)} phase` : 'Pregătește intervalul'}</div>
+              <button className={styles.sectionToggle} onClick={() => toggleSection('flow')} type="button">
+                {collapsedSections.flow ? 'Expand' : 'Collapse'}
+              </button>
+            </div>
+          </div>
+
+          {!collapsedSections.flow ? <>
+          <div className={styles.flowRail}>
+            {(data?.week ?? []).map((day) => (
+              <button className={`${styles.dayCard} ${toneForDay(day, todayIsoDate)}`} key={day.date} onClick={() => {
+                setCheckin(fillCheckin(day.date, data));
+                setWeight(fillWeight(day.date, data));
+              }} type="button">
+                <div className={styles.dayTop}>
+                  <span>{shortDay(day.date)}</span>
+                  <span>{formatDate(day.date)}</span>
+                </div>
+                <div className={styles.dayKcal}>{day.target ? Math.round(day.target.kcal_target) : '—'} kcal</div>
+                <div className={styles.dayBottom}>
+                  <span>{day.caloriesSource === 'none' ? 'No log' : `${Math.round(day.consumed.calories)} logged`}</span>
+                  <span>{day.target?.day_type === 'training' ? 'training' : 'rest'}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className={styles.flowMetaGrid}>
+            <section className={`surface-card ${styles.panel}`}>
+              <h3 className={styles.panelTitle}>Current run</h3>
+              <p className={styles.panelText}>
+                {today?.target ? `Azi ai ${Math.round(today.target.kcal_target)} kcal target.` : 'Mai întâi fă setup.'}{' '}
+                {tomorrow?.target ? `Mâine te duci spre ${Math.round(tomorrow.target.kcal_target)} kcal.` : ''}
+              </p>
+              <div className={styles.phaseTrack}>
+                <div className={styles.phaseBar}>
+                  <span style={{ width: `${Math.round(challengeStats.progress * 100)}%` }} />
+                </div>
+                <div className={styles.phaseLabels}>
+                  <span>Ignition</span>
+                  <span>Rhythm</span>
+                  <span>Lock-in</span>
+                  <span>Finish</span>
+                </div>
+              </div>
+            </section>
+
+            <section className={`surface-card ${styles.panel}`}>
+              <h3 className={styles.panelTitle}>Adaptive note</h3>
+              <p className={styles.panelText}>
+                {today?.target
+                  ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today')
+                  : 'Plannerul începe după ce ai profil + greutate.'}
+              </p>
+            </section>
+          </div>
+          </> : null}
+        </section>
+
+        <section id="calendar" className={styles.appSection}>
+          <div className={styles.sectionHead}>
+            <div>
+              <div className={styles.sectionEyebrow}>history</div>
+              <h2 className={styles.sectionTitle}>Calendar + momentum</h2>
+            </div>
+            <div className={styles.sectionHeadActions}>
+              <div className={styles.sectionMeta}>verde bine / roșu rău</div>
+              <button className={styles.sectionToggle} onClick={() => toggleSection('calendar')} type="button">
+                {collapsedSections.calendar ? 'Expand' : 'Collapse'}
+              </button>
+            </div>
+          </div>
+
+          {!collapsedSections.calendar ? <div className={styles.calendarGrid}>
+            <section className={`surface-card ${styles.panel}`}>
+              <div className={styles.calendarHeader}>
+                <h3 className={styles.panelTitle}>Luna curentă</h3>
+                <span className={styles.panelText}>{new Intl.DateTimeFormat('ro-RO', { month: 'long', year: 'numeric' }).format(new Date(`${todayIsoDate}T12:00:00`))}</span>
+              </div>
+              <div className={styles.weekdays}>
+                {WEEKDAY_LABELS.map((label) => (
+                  <span key={label}>{label}</span>
+                ))}
+              </div>
+              <div className={styles.monthGrid}>
+                {monthCells.map((cell) => {
+                  const diff = cell.summary?.target ? cell.summary.consumed.calories - cell.summary.target.kcal_target : null;
+                  const tone =
+                    cell.summary && diff != null
+                      ? diff <= 50
+                        ? styles.monthCellGood
+                        : diff <= 180
+                          ? styles.monthCellWarn
+                          : styles.monthCellBad
+                      : cell.weight
+                        ? styles.monthCellWeight
+                        : styles.monthCellNeutral;
+                  return (
+                    <div className={`${styles.monthCell} ${tone} ${cell.isToday ? styles.monthCellToday : ''} ${!cell.inMonth ? styles.monthCellMuted : ''}`} key={cell.isoDate}>
+                      <span>{cell.label}</span>
+                      <small>
+                        {cell.summary?.target
+                          ? `${Math.round(cell.summary.target.kcal_target)}`
+                          : cell.weight
+                            ? `${cell.weight.weight_kg}`
+                            : ''}
+                      </small>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className={`surface-card ${styles.panel}`}>
+              <h3 className={styles.panelTitle}>Achievements</h3>
+              <div className={styles.achievementList}>
+                {achievements.map((item) => (
+                  <div className={`${styles.achievement} ${item.unlocked ? styles.achievementOn : styles.achievementOff}`} key={item.title}>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <p>{item.body}</p>
+                    </div>
+                    <span>{item.unlocked ? 'Unlocked' : 'Locked'}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div> : null}
+        </section>
+
+        <section id="progress" className={styles.appSection}>
+          <div className={styles.sectionHead}>
+            <div>
+              <div className={styles.sectionEyebrow}>progress</div>
+              <h2 className={styles.sectionTitle}>Challenge status</h2>
+            </div>
+            <div className={styles.sectionHeadActions}>
+              <div className={styles.sectionMeta}>{activeChallenge ? `${Math.round(challengeStats.progress * 100)}% complete` : 'No active challenge'}</div>
+              <button className={styles.sectionToggle} onClick={() => toggleSection('progress')} type="button">
+                {collapsedSections.progress ? 'Expand' : 'Collapse'}
+              </button>
+            </div>
+          </div>
+
+          {!collapsedSections.progress ? <div className={styles.progressGrid}>
+            <section className={`surface-card ${styles.panel}`}>
+              <h3 className={styles.panelTitle}>Scoreboard</h3>
+              <div className={styles.scoreGrid}>
+                <SummaryTile label="Check-in days" value={String(challengeStats.checkinDays)} tone="neutral" />
+                <SummaryTile label="Green days" value={String(challengeStats.underTargetDays)} tone="good" />
+                <SummaryTile label="Start kg" value={challengeStats.startWeight != null ? `${challengeStats.startWeight}` : '—'} tone="future" />
+                <SummaryTile label="Current kg" value={challengeStats.currentWeight != null ? `${challengeStats.currentWeight}` : '—'} tone="neutral" />
+              </div>
+            </section>
+
+            <section className={`surface-card ${styles.panel}`}>
+              <h3 className={styles.panelTitle}>What matters now</h3>
+              <ul className={styles.cleanList}>
+                <li>Ziua principală = `kcal total` la final de zi.</li>
+                <li>Greutate zilnică dimineața, același context.</li>
+                <li>Talie + restul dimensiunilor în weekend.</li>
+                <li>Mișcarea rămâne opțională, dar te ajută la context.</li>
+              </ul>
+            </section>
+          </div> : null}
+        </section>
+
+        <section id="settings" className={styles.appSection}>
+          <div className={styles.sectionHead}>
+            <div>
+              <div className={styles.sectionEyebrow}>setup</div>
+              <h2 className={styles.sectionTitle}>Profile, reminders, challenge</h2>
+            </div>
+            <div className={styles.sectionHeadActions}>
+              <div className={styles.sectionMeta}>flexibil, nu hardcodat pentru 100</div>
+              <button className={styles.sectionToggle} onClick={() => toggleSection('settings')} type="button">
+                {collapsedSections.settings ? 'Expand' : 'Collapse'}
+              </button>
+            </div>
+          </div>
+
+          {!collapsedSections.settings ? <div className={styles.settingsGrid}>
+            <section className={`surface-card ${styles.panel}`}>
+              <h3 className={styles.panelTitle}>Profile</h3>
+              <p className={styles.panelText}>Basic first. Restul doar pentru fine tuning.</p>
+              <div className={styles.formGrid}>
+                <label className={styles.field}>
+                  <span>Initial kg</span>
+                  <input className={styles.featureInput} inputMode="decimal" value={setup.initial_weight_kg} onChange={(event) => setSetup((current) => ({ ...current, initial_weight_kg: event.target.value }))} placeholder="ex. 89.8" />
+                </label>
+                <label className={styles.field}>
+                  <span>Age</span>
+                  <input value={setup.age} onChange={(event) => setSetup((current) => ({ ...current, age: event.target.value }))} inputMode="numeric" />
+                </label>
+                <label className={styles.field}>
+                  <span>Sex</span>
+                  <select value={setup.sex} onChange={(event) => setSetup((current) => ({ ...current, sex: event.target.value as 'male' | 'female' }))}>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </label>
+                <label className={styles.field}>
+                  <span>Height cm</span>
+                  <input value={setup.height_cm} onChange={(event) => setSetup((current) => ({ ...current, height_cm: event.target.value }))} inputMode="decimal" />
+                </label>
+                <label className={styles.field}>
+                  <span>Activity</span>
+                  <select value={setup.activity_level} onChange={(event) => setSetup((current) => ({ ...current, activity_level: event.target.value }))}>
+                    <option value="sedentary">Sedentary</option>
+                    <option value="light">Light</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="active">Active</option>
+                    <option value="athlete">Athlete</option>
+                  </select>
+                </label>
+                <label className={styles.field}>
+                  <span>Deficit %</span>
+                  <input value={setup.preferred_deficit_pct} onChange={(event) => setSetup((current) => ({ ...current, preferred_deficit_pct: event.target.value }))} inputMode="numeric" />
+                </label>
+              </div>
+
+              <div className={styles.paceRow}>
                 <button
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-                  onClick={() => setShowSetupPanel(false)}
+                  className={styles.quickChip}
+                  onClick={() =>
+                    setSetup((current) => ({
+                      ...current,
+                      ...applyNoGymPreset(),
+                    }))
+                  }
                   type="button"
                 >
-                  Close
+                  No gym for now
                 </button>
+                {PACE_PRESETS.map((preset) => (
+                  <button
+                    className={`${styles.paceCard} ${setup.preferred_deficit_pct === preset.value ? styles.paceCardActive : ''}`}
+                    key={preset.value}
+                    onClick={() => setSetup((current) => ({ ...current, preferred_deficit_pct: preset.value }))}
+                    type="button"
+                  >
+                    <strong>{preset.label}</strong>
+                    <span>{preset.description}</span>
+                    <small>
+                      {paceChipText(setupPreview?.maintenance ?? null, preset.value)
+                        ? `aprox ${paceChipText(setupPreview?.maintenance ?? null, preset.value)!.target} kcal/zi`
+                        : `${preset.value}% deficit`}
+                    </small>
+                    <small>
+                      {paceChipText(setupPreview?.maintenance ?? null, preset.value)
+                        ? `~ -${paceChipText(setupPreview?.maintenance ?? null, preset.value)!.deficit} kcal din maintenance`
+                        : ''}
+                    </small>
+                  </button>
+                ))}
+              </div>
+              <p className={styles.previewNote}>
+                Alege cât de mare să fie tăierea din `maintenance`. Nu e viteză abstractă, e pur și simplu cât de jos cobori kcal zilnic.
+              </p>
+
+              {setupPreview ? (
+                <>
+                  <div className={styles.quickSummary}>
+                    <SummaryTile label="Maintenance" value={`${setupPreview.maintenance} kcal`} tone="neutral" />
+                    <SummaryTile label="Target daily" value={`${setupPreview.baseTarget} kcal`} tone="good" />
+                    <SummaryTile label="Training day" value={`${setupPreview.trainingTarget} kcal`} tone="future" />
+                    <SummaryTile label="Rest day" value={`${setupPreview.restTarget} kcal`} tone="warn" />
+                  </div>
+                  <p className={styles.previewNote}>
+                    Dacă acum ești sedentar și fără sală, mă uit în primul rând la `Target daily` și `Rest day`. Acolo ar trebui să fii aproape de zona ta reală de slăbit.
+                  </p>
+                </>
               ) : null}
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <Field label="Age" value={setup.age} onChange={(value) => setSetup((s) => ({ ...s, age: value }))} />
-              <SelectField
-                label="Sex"
-                value={setup.sex}
-                options={[
-                  { value: 'male', label: 'Male' },
-                  { value: 'female', label: 'Female' },
-                ]}
-                onChange={(value) => setSetup((s) => ({ ...s, sex: value as 'male' | 'female' }))}
-              />
-              <Field
-                label="Height cm"
-                value={setup.height_cm}
-                onChange={(value) => setSetup((s) => ({ ...s, height_cm: value }))}
-              />
-              <Field
-                label="Initial weight kg"
-                value={setup.initial_weight_kg}
-                onChange={(value) => setSetup((s) => ({ ...s, initial_weight_kg: value }))}
-              />
-              <SelectField
-                label="Activity"
-                value={setup.activity_level}
-                options={[
-                  { value: 'sedentary', label: 'Sedentary' },
-                  { value: 'light', label: 'Light' },
-                  { value: 'moderate', label: 'Moderate' },
-                  { value: 'active', label: 'Active' },
-                  { value: 'athlete', label: 'Athlete' },
-                ]}
-                onChange={(value) => setSetup((s) => ({ ...s, activity_level: value }))}
-              />
-              <Field
-                label="Deficit %"
-                value={setup.preferred_deficit_pct}
-                onChange={(value) => setSetup((s) => ({ ...s, preferred_deficit_pct: value }))}
-              />
-              <Field
-                label="Protein g/kg"
-                value={setup.protein_target_per_kg}
-                onChange={(value) => setSetup((s) => ({ ...s, protein_target_per_kg: value }))}
-              />
-              <Field
-                label="Fat min g/kg"
-                value={setup.fat_min_per_kg}
-                onChange={(value) => setSetup((s) => ({ ...s, fat_min_per_kg: value }))}
-              />
-              <Field
-                label="Meals / day"
-                value={setup.meals_per_day}
-                onChange={(value) => setSetup((s) => ({ ...s, meals_per_day: value }))}
-              />
-              <Field
-                label="Training delta kcal"
-                value={setup.training_day_kcal_delta}
-                onChange={(value) => setSetup((s) => ({ ...s, training_day_kcal_delta: value }))}
-              />
-            </div>
-            <div className="mt-4">
-              <div className="text-sm font-medium">Training days</div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {weekdayLabels.map((day) => {
-                  const active = setup.training_days.includes(day.value);
+
+              <details className={styles.advancedSettings}>
+                <summary>Advanced settings</summary>
+                <div className={styles.formGrid}>
+                  <label className={styles.field}>
+                    <span>Protein / kg</span>
+                    <input value={setup.protein_target_per_kg} onChange={(event) => setSetup((current) => ({ ...current, protein_target_per_kg: event.target.value }))} inputMode="decimal" />
+                  </label>
+                  <label className={styles.field}>
+                    <span>Fat min / kg</span>
+                    <input value={setup.fat_min_per_kg} onChange={(event) => setSetup((current) => ({ ...current, fat_min_per_kg: event.target.value }))} inputMode="decimal" />
+                  </label>
+                  <label className={styles.field}>
+                    <span>Meals / day</span>
+                    <input value={setup.meals_per_day} onChange={(event) => setSetup((current) => ({ ...current, meals_per_day: event.target.value }))} inputMode="numeric" />
+                  </label>
+                  <label className={styles.field}>
+                    <span>Training delta kcal</span>
+                    <input value={setup.training_day_kcal_delta} onChange={(event) => setSetup((current) => ({ ...current, training_day_kcal_delta: event.target.value }))} inputMode="numeric" />
+                  </label>
+                </div>
+              </details>
+
+              <div className={styles.dayPicker}>
+                <div className={styles.dayPickerLabel}>Zile de sală</div>
+                {[1, 2, 3, 4, 5, 6, 0].map((day) => {
+                  const active = setup.training_days.includes(day);
                   return (
-                    <button
-                      key={day.value}
-                      className={`rounded-full border px-3 py-1 text-sm ${
-                        active
-                          ? 'border-sky-400 bg-sky-500 text-white'
-                          : 'border-slate-200 bg-slate-50 text-slate-500'
-                      }`}
-                      onClick={() =>
-                        setSetup((state) => ({
-                          ...state,
-                          training_days: active
-                            ? state.training_days.filter((entry) => entry !== day.value)
-                            : [...state.training_days, day.value].sort(),
-                        }))
-                      }
-                      type="button"
-                    >
-                      {day.label}
+                    <button className={`${styles.dayPickerButton} ${active ? styles.dayPickerButtonActive : ''}`} key={day} onClick={() => setSetup((current) => ({
+                      ...current,
+                      training_days: active ? current.training_days.filter((item) => item !== day) : [...current.training_days, day].sort(),
+                    }))} type="button">
+                      {WEEKDAY_LABELS[day]}
                     </button>
                   );
                 })}
               </div>
-            </div>
-            <button
-              className="mt-5 rounded-xl border border-sky-300 bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-600"
-              onClick={submitSetup}
-              type="button"
-            >
-              {isPending ? 'Saving...' : 'Create plan'}
-            </button>
-          </section>
-        ) : null}
 
-        {!isBootstrapping && data?.profile ? (
-          <>
-            {scanReview ? (
-              <section className="cc-card rounded-[28px] border border-emerald-200 bg-[linear-gradient(135deg,#ecfdf5_0%,#f0fdf4_35%,#ffffff_100%)] p-5 shadow-[0_18px_40px_rgba(16,185,129,0.12)]">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex items-start gap-4">
-                    {scanReview.food.image_url ? (
-                      <Image
-                        alt={scanReview.food.name}
-                        className="h-20 w-20 rounded-2xl border border-emerald-100 object-cover"
-                        height={80}
-                        src={scanReview.food.image_url}
-                        width={80}
-                      />
-                    ) : (
-                      <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-emerald-100 text-2xl text-emerald-700">▣</div>
-                    )}
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-700">Scanned product ready</div>
-                      <div className="mt-1 text-2xl font-semibold text-slate-950">{scanReview.food.name}</div>
-                      <div className="mt-1 text-sm text-slate-600">
-                        {scanReview.food.brand ? `${scanReview.food.brand} • ` : ''}
-                        barcode {scanReview.barcode}
-                        {scanReview.imported ? ' • imported now' : ' • found in your foods'}
-                      </div>
-                      <div className="mt-2 text-sm text-slate-700">
-                        {Math.round(scanReview.food.calories)} kcal • P {Math.round(scanReview.food.protein)} / C {Math.round(scanReview.food.carbs)} / F {Math.round(scanReview.food.fat)}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                      onClick={() => setScanReview(null)}
-                      type="button"
-                    >
-                      Dismiss
-                    </button>
-                    <button
-                      className="rounded-xl border border-emerald-300 bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
-                      onClick={() => {
-                        document.getElementById('cut-coach-log-composer')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }}
-                      type="button"
-                    >
-                      Continue to quantity
-                    </button>
-                  </div>
-                </div>
-              </section>
-            ) : null}
-
-            <section className="grid gap-4">
-              <AccordionSection defaultOpen title="Tomorrow">
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <Metric label="Target" value={`${Math.round(tomorrow?.target?.kcal_target ?? 0)} kcal`} />
-                  <Metric label="Protein" value={`${Math.round(tomorrow?.target?.protein_target ?? 0)} g`} />
-                  <Metric label="Day type" value={tomorrow?.target?.day_type ?? '—'} />
-                </div>
-                <div className="cc-subcard mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-sm font-semibold">Adjustment explanation</div>
-                  <div className="mt-2 text-sm text-slate-600">
-                    {humanizeAdjustmentReason(
-                      tomorrow?.target?.adjustment_reason ??
-                        tomorrow?.adjustments[0]?.reason ??
-                        null,
-                      'tomorrow'
-                    )}
-                  </div>
-                </div>
-                <div className="mt-4 space-y-3">
-                  {tomorrow?.planItems.length ? (
-                    tomorrow.planItems.map((item) => (
-                      <div key={item.id} className="cc-subcard rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <div className="text-sm font-semibold capitalize">{item.meal_slot}</div>
-                            <div className="mt-1 text-sm text-slate-500">{item.suggested_food_text}</div>
-                          </div>
-                          <div className="text-right text-sm">
-                            <div className="font-semibold">{Math.round(item.suggested_calories)} kcal</div>
-                            <div className="text-xs text-slate-500">
-                              P {Math.round(item.suggested_protein)} / C {Math.round(item.suggested_carbs)} / F {Math.round(item.suggested_fat)}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-slate-300 px-3 py-5 text-sm text-slate-500">
-                      Tomorrow meal suggestions appear after setup and recompute.
-                    </div>
-                  )}
-                </div>
-              </AccordionSection>
+              <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveSetup()} type="button">
+                {busy === '/api/cut-coach/profile' ? 'Se salvează…' : 'Save profile'}
+              </button>
             </section>
 
-            <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr_1fr]">
-              <AccordionSection title="Weight & trend">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                  <Metric label="Latest" value={data.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} />
-                  <Metric label="7d avg" value={data.trends.avg7 ? `${data.trends.avg7} kg` : '—'} />
-                  <Metric label="14d avg" value={data.trends.avg14 ? `${data.trends.avg14} kg` : '—'} />
-                  <Metric label="30d avg" value={data.trends.avg30 ? `${data.trends.avg30} kg` : '—'} />
-                </div>
-                <div className="cc-subcard mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-                  {data.trends.delta7 == null
-                    ? 'Trend note appears after more weight entries.'
-                    : data.trends.delta7 > 0.15
-                      ? `Average weight is down ${data.trends.delta7.toFixed(1)} kg vs the previous week.`
-                      : data.trends.delta7 < -0.15
-                        ? `Average weight is up ${Math.abs(data.trends.delta7).toFixed(1)} kg vs the previous week.`
-                        : 'Trend is mostly flat this week.'}
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Field
-                    label="Date"
-                    type="date"
-                    value={weightState.date}
-                    onChange={(value) => setWeightState((state) => ({ ...state, date: value }))}
-                  />
-                  <Field
-                    label="Weight kg"
-                    value={weightState.weight_kg}
-                    onChange={(value) => setWeightState((state) => ({ ...state, weight_kg: value }))}
-                  />
-                </div>
-                <button
-                  className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold hover:bg-amber-500/25"
-                  onClick={submitWeight}
-                  type="button"
-                >
-                    Log weight
-                  </button>
-              </AccordionSection>
-
-              <AccordionSection title="Week compliance">
-                <div className="space-y-3">
-                  {data.week.length ? (
-                    data.week.map((day) => (
-                      <div key={day.date} className="cc-subcard rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <div className="font-medium">{day.date}</div>
-                            <div className="text-xs text-slate-500 capitalize">
-                              {day.target?.day_type ?? 'rest'} • {day.target?.plan_status ?? 'planned'}
-                            </div>
-                          </div>
-                          <div className="text-right text-sm">
-                            <div>{Math.round(day.consumed.calories)} / {Math.round(day.target?.kcal_target ?? 0)} kcal</div>
-                            <div className="text-xs text-slate-500">remaining {Math.round(day.remaining?.calories ?? 0)} kcal</div>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-slate-300 px-3 py-5 text-sm text-slate-500">
-                      Week summary appears after setup.
-                    </div>
-                  )}
-                </div>
-              </AccordionSection>
-
-              <AccordionSection title="My foods">
-                <div className="cc-subcard rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-sm font-semibold">Add or edit food</div>
-                  <div className="mt-1 text-xs text-slate-500">Generic foods and barcode products.</div>
-                </div>
-                <div className="mt-4 grid gap-3">
-                  <Field
-                    label="Food name"
-                    type="text"
-                    value={foodState.name}
-                    onChange={(value) => setFoodState((state) => ({ ...state, name: value }))}
-                  />
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field
-                      label="Brand"
-                      type="text"
-                      value={foodState.brand}
-                      onChange={(value) => setFoodState((state) => ({ ...state, brand: value }))}
-                    />
-                    <Field
-                      label="Barcode"
-                      type="text"
-                      value={foodState.barcode}
-                      onChange={(value) => setFoodState((state) => ({ ...state, barcode: value }))}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Calories / 100g" value={foodState.calories} onChange={(value) => setFoodState((state) => ({ ...state, calories: value }))} />
-                    <Field label="Protein" value={foodState.protein} onChange={(value) => setFoodState((state) => ({ ...state, protein: value }))} />
-                    <Field label="Carbs" value={foodState.carbs} onChange={(value) => setFoodState((state) => ({ ...state, carbs: value }))} />
-                    <Field label="Fat" value={foodState.fat} onChange={(value) => setFoodState((state) => ({ ...state, fat: value }))} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field
-                      label="Default serving grams"
-                      value={foodState.default_serving_grams}
-                      onChange={(value) => setFoodState((state) => ({ ...state, default_serving_grams: value }))}
-                    />
-                    <Field
-                      label="Package size grams"
-                      value={foodState.package_size_grams}
-                      onChange={(value) => setFoodState((state) => ({ ...state, package_size_grams: value }))}
-                    />
-                  </div>
-                  <Field
-                    label="Serving label"
-                    type="text"
-                    value={foodState.serving_label}
-                    onChange={(value) => setFoodState((state) => ({ ...state, serving_label: value }))}
-                  />
-                  <label className="flex items-center gap-2 text-sm text-slate-500">
-                    <input
-                      checked={foodState.is_favorite}
-                      onChange={(event) => setFoodState((state) => ({ ...state, is_favorite: event.target.checked }))}
-                      type="checkbox"
-                    />
-                    Pin as favorite
-                  </label>
-                  <button
-                    className="rounded-xl border border-violet-300 bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
-                    onClick={submitFood}
-                    type="button"
-                  >
-                    Save food
-                  </button>
-                </div>
-                <div className="mt-4 max-h-80 space-y-2 overflow-auto pr-1">
-                  {data.foods.map((food) => (
-                    <div key={food.id} className="rounded-xl border border-slate-200 px-3 py-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="font-medium">{food.name}</div>
-                          <div className="text-xs text-slate-500">
-                            {Math.round(food.calories)} kcal • P {Math.round(food.protein)} / C {Math.round(food.carbs)} / F {Math.round(food.fat)}
-                          </div>
-                          <div className="mt-1 text-[11px] text-slate-500">
-                            {food.source_kind === 'generic' ? 'generic food' : 'barcode product'}
-                            {food.barcode ? ` • ${food.barcode}` : ''}
-                          </div>
-                        </div>
-                        {food.is_favorite ? <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-xs">favorite</span> : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </AccordionSection>
-            </section>
-
-            <AccordionSection title="Controls">
-              <div className="grid gap-2 sm:grid-cols-3">
-                {data?.profile ? (
-                  <button
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                    onClick={() => setShowSetupPanel((value) => !value)}
-                    type="button"
-                  >
-                    {showSetupPanel ? 'Hide settings' : 'Settings'}
-                  </button>
-                ) : null}
-                <button
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                  onClick={recomputePlan}
-                  type="button"
-                >
-                  {isPending ? 'Working...' : 'Refresh plan'}
+            <section className={`surface-card ${styles.panel}`}>
+              <h3 className={styles.panelTitle}>Challenge</h3>
+              <div className={styles.formGrid}>
+                <label className={styles.field}>
+                  <span>Titlu</span>
+                  <input value={challenge.title} onChange={(event) => setChallenge((current) => ({ ...current, title: event.target.value }))} />
+                </label>
+                <label className={styles.field}>
+                  <span>Start</span>
+                  <input type="date" value={challenge.start_date} onChange={(event) => setChallenge((current) => ({ ...current, start_date: event.target.value }))} />
+                </label>
+                <label className={styles.field}>
+                  <span>End</span>
+                  <input type="date" value={challenge.end_date} onChange={(event) => setChallenge((current) => ({ ...current, end_date: event.target.value }))} />
+                </label>
+                <label className={styles.field}>
+                  <span>Goal kg</span>
+                  <input value={challenge.target_weight_kg} onChange={(event) => setChallenge((current) => ({ ...current, target_weight_kg: event.target.value }))} placeholder="opțional" />
+                </label>
+              </div>
+              <label className={`${styles.field} ${styles.fieldFull}`}>
+                <span>Notițe</span>
+                <textarea rows={3} value={challenge.notes} onChange={(event) => setChallenge((current) => ({ ...current, notes: event.target.value }))} />
+              </label>
+              <div className={styles.pillRow}>
+                <button className="btn-base btn-secondary" type="button" onClick={() => setChallenge(challengeDraft(todayIsoDate))}>
+                  Quick 100 days
                 </button>
-                <Link
-                  className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                  href="/"
-                >
-                  Back to dashboard
-                </Link>
+                <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveChallenge()} type="button">
+                  {busy === '/api/cut-coach/challenges' ? 'Se salvează…' : 'Save challenge'}
+                </button>
               </div>
-            </AccordionSection>
-          </>
-        ) : null}
-      </div>
-      {isComposerOpen ? (
-        <AddFoodDrawer
-          isPending={isPending}
-          logState={logState}
-          onClose={() => {
-            setIsComposerOpen(false);
-            setScanReview(null);
-          }}
-          onMealChange={(value) => setLogState((state) => ({ ...state, meal_type: value }))}
-          onQuantityChange={(value) => setLogState((state) => ({ ...state, quantity: value }))}
-          onSave={submitLog}
-          onScan={() => setScannerOpen(true)}
-          onSearchChange={setSearchQuery}
-          onSelectFood={selectFood}
-          onGramsChange={(value) => setLogState((state) => ({ ...state, grams_total: value }))}
-          onUsePreset={applyQuantityPreset}
-          scanReview={scanReview}
-          searchBusy={searchBusy}
-          searchQuery={searchQuery}
-          searchResults={searchResults}
-          selectedFood={selectedFood}
-        />
-      ) : null}
-      {scannerOpen ? (
-        <BarcodeScanner onClose={() => setScannerOpen(false)} onDetected={handleBarcodeDetected} />
-      ) : null}
-      <style jsx global>{`
-        .cut-coach-shell,
-        .cc-drawer {
-          --cc-bg: #eef3f8;
-          --cc-surface: #ffffff;
-          --cc-surface-2: #f8fafc;
-          --cc-border: #dbe4ee;
-          --cc-text: #0f172a;
-          --cc-muted: #64748b;
-          --cc-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
-        }
+            </section>
 
-        @media (prefers-color-scheme: dark) {
-          .cut-coach-shell,
-          .cc-drawer {
-            --cc-bg: #12161d;
-            --cc-surface: #181d26;
-            --cc-surface-2: #202634;
-            --cc-border: #31384a;
-            --cc-text: #eef2f7;
-            --cc-muted: #a2aec2;
-            --cc-shadow: 0 24px 64px rgba(2, 6, 23, 0.38);
-          }
-        }
-
-        .cut-coach-shell {
-          background: linear-gradient(180deg, var(--cc-bg) 0%, color-mix(in srgb, var(--cc-bg) 88%, #ffffff 12%) 100%) !important;
-          color: var(--cc-text) !important;
-          -webkit-text-size-adjust: 100%;
-          text-size-adjust: 100%;
-        }
-
-        .cut-coach-viewport {
-          width: 100%;
-          max-width: 100%;
-          min-width: 0;
-          overflow-x: clip;
-        }
-
-        .cut-coach-viewport > * {
-          min-width: 0;
-          max-width: 100%;
-        }
-
-        .cut-coach-viewport * {
-          box-sizing: border-box;
-        }
-
-        .cut-coach-shell .cc-card,
-        .cc-drawer .cc-card {
-          background: linear-gradient(180deg, color-mix(in srgb, var(--cc-surface) 96%, white 4%) 0%, var(--cc-surface) 100%) !important;
-          border-color: var(--cc-border) !important;
-          box-shadow: var(--cc-shadow) !important;
-          color: var(--cc-text) !important;
-        }
-
-        .cut-coach-shell .cc-subcard,
-        .cc-drawer .cc-subcard,
-        .cut-coach-shell .cc-stat {
-          background: var(--cc-surface-2) !important;
-          border-color: var(--cc-border) !important;
-          color: var(--cc-text) !important;
-        }
-
-        .cut-coach-shell .cc-input,
-        .cc-drawer .cc-input {
-          background: var(--cc-surface) !important;
-          border-color: var(--cc-border) !important;
-          color: var(--cc-text) !important;
-        }
-
-        .cut-coach-shell .cc-input::placeholder,
-        .cc-drawer .cc-input::placeholder {
-          color: var(--cc-muted) !important;
-        }
-
-        .cut-coach-shell .cc-meter,
-        .cc-drawer .cc-meter {
-          background: color-mix(in srgb, var(--cc-border) 65%, transparent) !important;
-        }
-
-        .cut-coach-shell .text-slate-950,
-        .cut-coach-shell .text-slate-900,
-        .cc-drawer .text-slate-950,
-        .cc-drawer .text-slate-900 {
-          color: var(--cc-text) !important;
-        }
-
-        .cut-coach-shell .text-slate-700,
-        .cut-coach-shell .text-slate-600,
-        .cut-coach-shell .text-slate-500,
-        .cut-coach-shell .text-slate-400,
-        .cc-drawer .text-slate-700,
-        .cc-drawer .text-slate-600,
-        .cc-drawer .text-slate-500,
-        .cc-drawer .text-slate-400 {
-          color: var(--cc-muted) !important;
-        }
-
-        .cut-coach-shell .border-slate-200,
-        .cut-coach-shell .border-slate-300,
-        .cc-drawer .border-slate-200,
-        .cc-drawer .border-slate-300 {
-          border-color: var(--cc-border) !important;
-        }
-
-        .cut-coach-shell .bg-white,
-        .cc-drawer .bg-white {
-          background: var(--cc-surface) !important;
-        }
-
-        .cut-coach-shell .bg-slate-50,
-        .cut-coach-shell .bg-slate-50\/90,
-        .cc-drawer .bg-slate-50,
-        .cc-drawer .bg-slate-50\/90 {
-          background: var(--cc-surface-2) !important;
-        }
-
-        .cut-coach-shell .hover\:bg-slate-50:hover,
-        .cc-drawer .hover\:bg-slate-50:hover {
-          background: color-mix(in srgb, var(--cc-surface-2) 88%, white 12%) !important;
-        }
-
-        .cut-coach-shell .bg-red-50,
-        .cc-drawer .bg-red-50 {
-          background: color-mix(in srgb, #ef4444 10%, var(--cc-surface) 90%) !important;
-        }
-
-        .cut-coach-shell .bg-emerald-50,
-        .cc-drawer .bg-emerald-50 {
-          background: color-mix(in srgb, #10b981 12%, var(--cc-surface) 88%) !important;
-        }
-      `}</style>
-    </main>
-  );
-}
-
-function AccordionSection({
-  title,
-  children,
-  defaultOpen = false,
-}: {
-  title: string;
-  children: ReactNode;
-  defaultOpen?: boolean;
-}) {
-  return (
-    <details
-      className="cc-card group overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.06)]"
-      open={defaultOpen}
-    >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-left marker:hidden">
-        <span className="text-base font-semibold text-slate-950">{title}</span>
-        <span className="rounded-full border border-slate-200 px-2 py-0.5 text-xs text-slate-500 transition group-open:rotate-180">⌄</span>
-      </summary>
-      <div className="border-t border-slate-200 px-4 py-4">{children}</div>
-    </details>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="cc-stat rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-2.5">
-      <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{label}</div>
-      <div className="mt-0.5 text-base font-semibold text-slate-950 sm:text-lg">{value}</div>
-    </div>
-  );
-}
-
-function CompactMetric({ label, value, target }: { label: string; value: string; target: string }) {
-  return (
-    <div className="cc-stat min-w-0 rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-3 py-2.5">
-      <div className="truncate text-[10px] uppercase tracking-[0.18em] text-slate-400">{label}</div>
-      <div className="mt-1 truncate text-lg font-semibold text-slate-950">{value}</div>
-      <div className="truncate text-xs text-slate-500">/ {target}</div>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  type = 'number',
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-}) {
-  return (
-    <label className="block">
-      <div className="mb-1 text-sm font-medium text-slate-700">{label}</div>
-      <input
-        className="cc-input w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none ring-0 placeholder:text-slate-400"
-        onChange={(event) => onChange(event.target.value)}
-        type={type}
-        value={value}
-      />
-    </label>
-  );
-}
-
-function SelectField({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: Array<{ value: string; label: string }>;
-}) {
-  return (
-    <label className="block">
-      <div className="mb-1 text-sm font-medium text-slate-700">{label}</div>
-      <select
-        className="cc-input w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none ring-0"
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function AddFoodDrawer({
-  isPending,
-  logState,
-  onClose,
-  onMealChange,
-  onQuantityChange,
-  onSave,
-  onScan,
-  onSearchChange,
-  onSelectFood,
-  onGramsChange,
-  onUsePreset,
-  scanReview,
-  searchBusy,
-  searchQuery,
-  searchResults,
-  selectedFood,
-}: {
-  isPending: boolean;
-  logState: LogState;
-  onClose: () => void;
-  onMealChange: (value: LogState['meal_type']) => void;
-  onQuantityChange: (value: string) => void;
-  onSave: () => void;
-  onScan: () => void;
-  onSearchChange: (value: string) => void;
-  onSelectFood: (food: CutCoachFoodRow) => void;
-  onGramsChange: (value: string) => void;
-  onUsePreset: (mode: '30g' | '50g' | '100g' | '150g' | '200g' | 'serving' | 'half-pack' | 'pack') => void;
-  scanReview: ScanReviewState | null;
-  searchBusy: boolean;
-  searchQuery: string;
-  searchResults: CutCoachFoodRow[];
-  selectedFood: CutCoachFoodRow | null;
-}) {
-  return (
-    <div className="cc-drawer fixed inset-0 z-40 bg-slate-950/45 p-0 backdrop-blur-sm">
-      <div className="cc-card absolute inset-x-0 bottom-0 top-12 overflow-auto rounded-t-[32px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f6f9fc_100%)] p-5 shadow-[0_-24px_60px_rgba(15,23,42,0.18)] sm:left-auto sm:right-4 sm:top-4 sm:w-[32rem] sm:rounded-[32px]">
-        <div className="mx-auto h-1.5 w-14 rounded-full bg-slate-200 sm:hidden" />
-        <div className="mt-4 flex items-start justify-between gap-3">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.28em] text-violet-600">Add To Today</div>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Choose product, quantity, save.</h2>
-            <p className="mt-2 text-sm text-slate-500">Search, scan, pick quantity, save.</p>
-          </div>
-          <button
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            onClick={onClose}
-            type="button"
-          >
-            Close
-          </button>
-        </div>
-
-        {scanReview ? (
-          <div className="cc-subcard mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Scanned just now</div>
-            <div className="mt-2 text-lg font-semibold text-slate-950">{scanReview.food.name}</div>
-            <div className="mt-1 text-sm text-slate-600">
-              {scanReview.food.brand ? `${scanReview.food.brand} • ` : ''}
-              barcode {scanReview.barcode}
-              {scanReview.imported ? ' • imported now' : ' • found locally'}
-            </div>
-          </div>
-        ) : null}
-
-        <div className="mt-4 flex gap-2">
-          <button
-            className="flex-1 rounded-xl border border-violet-200 bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700"
-            onClick={onScan}
-            type="button"
-          >
-            Scan barcode
-          </button>
-          <button
-            className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            onClick={() => onSearchChange('')}
-            type="button"
-          >
-            Clear search
-          </button>
-        </div>
-
-        <div className="mt-4 grid gap-3">
-          <Field label="Search food or product" type="text" value={searchQuery} onChange={onSearchChange} />
-          <SelectField
-            label="Meal"
-            value={logState.meal_type}
-            options={[
-              { value: 'breakfast', label: 'Breakfast' },
-              { value: 'lunch', label: 'Lunch' },
-              { value: 'dinner', label: 'Dinner' },
-              { value: 'snack', label: 'Snack' },
-            ]}
-            onChange={(value) => onMealChange(value as LogState['meal_type'])}
-          />
-
-          {selectedFood ? (
-            <div className="cc-subcard rounded-2xl border border-sky-200 bg-white p-4 shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">Selected</div>
-              <div className="mt-2 text-lg font-semibold text-slate-950">{selectedFood.name}</div>
-              <div className="mt-1 text-sm text-slate-500">
-                {selectedFood.brand ? `${selectedFood.brand} • ` : ''}
-                {Math.round(selectedFood.calories)} kcal • P {Math.round(selectedFood.protein)} / C {Math.round(selectedFood.carbs)} / F {Math.round(selectedFood.fat)}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {(['30g', '50g', '100g', '150g', '200g', 'serving'] as const).map((preset) => (
-                  <button
-                    key={preset}
-                    className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-100"
-                    onClick={() => onUsePreset(preset)}
-                    type="button"
-                  >
-                    {preset === 'serving'
-                      ? selectedFood.serving_label ?? `${Math.round(selectedFood.default_serving_grams ?? 100)}g serving`
-                      : preset}
-                  </button>
+            <section className={`surface-card ${styles.panel}`}>
+              <h3 className={styles.panelTitle}>Reminders + push</h3>
+              <div className={styles.reminderList}>
+                {reminders.map((item) => (
+                  <div className={styles.reminderRow} key={item.kind}>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <p>{weekdaySummary(item.weekdays)}</p>
+                    </div>
+                    <div className={styles.reminderControls}>
+                      <input type="time" value={item.local_time} onChange={(event) => setReminders((current) => current.map((entry) => entry.kind === item.kind ? { ...entry, local_time: event.target.value } : entry))} />
+                      <label className={styles.toggle}>
+                        <input checked={item.enabled} type="checkbox" onChange={(event) => setReminders((current) => current.map((entry) => entry.kind === item.kind ? { ...entry, enabled: event.target.checked } : entry))} />
+                        <span>{item.enabled ? 'On' : 'Off'}</span>
+                      </label>
+                    </div>
+                  </div>
                 ))}
-                {selectedFood.package_size_grams ? (
-                  <>
-                    <button
-                      className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-100"
-                      onClick={() => onUsePreset('half-pack')}
-                      type="button"
-                    >
-                      half pack
-                    </button>
-                    <button
-                      className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-100"
-                      onClick={() => onUsePreset('pack')}
-                      type="button"
-                    >
-                      full pack
-                    </button>
-                  </>
+              </div>
+
+              <div className={styles.pushBox}>
+                <div>
+                  <strong>Push pe mobil</strong>
+                  <p>
+                    {pushSupported
+                      ? pushEnabled
+                        ? 'Notificările sunt active.'
+                        : pushEnvironment.permission === 'denied'
+                          ? 'Permisiunea e blocată în browser.'
+                          : 'Activează push și le poți primi ca la termo-alert.'
+                      : 'Browserul curent nu suportă push web.'}
+                  </p>
+                </div>
+                {pushSupported ? (
+                  <button className="btn-base btn-secondary" disabled={pushBusy || pushEnabled} onClick={() => void enableNotifications()} type="button">
+                    {pushEnabled ? 'Activat' : pushBusy ? 'Se activează…' : 'Activează push'}
+                  </button>
                 ) : null}
               </div>
-            </div>
-          ) : null}
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Grams eaten" value={logState.grams_total} onChange={onGramsChange} />
-            <Field label="Quantity" value={logState.quantity} onChange={onQuantityChange} />
-          </div>
+              {pushError ? <div className={styles.pushError}>{pushError}</div> : null}
 
-          {searchBusy ? <div className="text-xs text-slate-500">Searching...</div> : null}
-          {searchQuery.trim() ? (
-            <div className="max-h-64 space-y-2 overflow-auto pr-1">
-              {searchResults.length ? (
-                searchResults.map((food) => (
-                  <button
-                    key={food.id}
-                    className={`w-full rounded-xl border px-3 py-3 text-left ${
-                      selectedFood?.id === food.id
-                        ? 'border-sky-300 bg-sky-50'
-                        : 'border-slate-200 bg-white hover:bg-slate-50'
-                    }`}
-                    onClick={() => onSelectFood(food)}
-                    type="button"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="font-medium text-slate-900">
-                          {food.name}
-                          {food.brand ? <span className="text-slate-500"> • {food.brand}</span> : null}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {Math.round(food.calories)} kcal • P {Math.round(food.protein)} / C {Math.round(food.carbs)} / F {Math.round(food.fat)}
-                        </div>
-                      </div>
-                      <div className="text-right text-[11px] uppercase tracking-[0.18em] text-slate-400">
-                        {food.source_kind === 'generic' ? 'generic' : 'product'}
-                      </div>
-                    </div>
-                  </button>
-                ))
-              ) : (
-                <div className="rounded-xl border border-dashed border-slate-300 px-3 py-4 text-sm text-slate-500">
-                  No matches yet. Add it manually in My foods if needed.
-                </div>
-              )}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="sticky bottom-0 mt-6 bg-[linear-gradient(180deg,rgba(246,249,252,0)_0%,#f6f9fc_25%,#f6f9fc_100%)] pt-4">
-          <button
-            className="w-full rounded-2xl border border-emerald-300 bg-emerald-500 px-4 py-4 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600"
-            onClick={onSave}
-            type="button"
-          >
-            {isPending ? 'Saving...' : 'Save to today'}
-          </button>
-        </div>
+              <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveReminders()} type="button">
+                {busy === '/api/cut-coach/reminders' ? 'Se salvează…' : 'Save reminders'}
+              </button>
+            </section>
+          </div> : null}
+        </section>
       </div>
+    </PageShell>
+  );
+}
+
+function MetricBox({ label, value, helper }: { label: string; value: string; helper: string }) {
+  return (
+    <div className={styles.metricBox}>
+      <div className={styles.metricLabel}>{label}</div>
+      <div className={styles.metricValue}>{value}</div>
+      <div className={styles.metricHelper}>{helper}</div>
     </div>
   );
 }
 
-/* cut coach theme: slate neutrals + cool accents, system light/dark */
+function SummaryTile({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'good' | 'bad' | 'warn' | 'future' | 'neutral';
+}) {
+  return (
+    <div className={`${styles.summaryTile} ${styles[`summaryTile${tone[0].toUpperCase()}${tone.slice(1)}`]}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}

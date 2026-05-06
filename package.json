@@ -10,6 +10,7 @@
     "build": "npm --workspace apps/dashboard run build",
     "lint": "npm --workspace apps/dashboard run lint",
     "termo:check": "node --env-file .env scripts/termo_alert.mjs",
+    "cut:reminders": "node --env-file .env scripts/cut_coach_reminders.mjs",
     "device:ping": "node --env-file .env scripts/device_heartbeat.mjs"
   },
   "dependencies": {
