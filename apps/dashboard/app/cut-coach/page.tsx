@@ -1,6 +1,15 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { BackLink, PageShell } from '@/components/PageShell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import {
@@ -366,6 +375,63 @@ function buildChallengeStats(challenge: CutCoachChallengeRow | null, payload: Bo
     deltaWeight,
     underTargetDays,
     checkinDays: challengeCheckins.filter((item) => item.kcal_actual != null).length,
+  };
+}
+
+function buildWeightChartData(payload: BootstrapPayload | null) {
+  if (!payload) return [];
+  return [...payload.weights]
+    .sort((left, right) => left.date.localeCompare(right.date))
+    .slice(-14)
+    .map((item) => ({
+      date: formatDate(item.date, { day: 'numeric', month: 'short' }),
+      weight: item.weight_kg,
+      waist: item.waist_cm,
+    }));
+}
+
+function buildTopFocus(today: DailySummary | null, challengeStats: ReturnType<typeof buildChallengeStats>) {
+  const target = today?.target ? Math.round(today.target.kcal_target) : null;
+  const logged = today && today.caloriesSource !== 'none' ? Math.round(today.consumed.calories) : null;
+  const gap = target != null && logged != null ? logged - target : null;
+  if (target == null) {
+    return {
+      now: 'Setup profile',
+      next: 'Adaugă kg + profil și pornești flow-ul',
+    };
+  }
+
+  if (logged == null) {
+    return {
+      now: `${target} kcal target azi`,
+      next: 'La final de zi pui kcal totale și gata',
+    };
+  }
+
+  if (gap == null) {
+    return {
+      now: `${logged} kcal logate`,
+      next: 'Mai completezi restul și clarifici ziua',
+    };
+  }
+
+  if (gap <= 50) {
+    return {
+      now: `${logged} / ${target} kcal`,
+      next: challengeStats.currentDay > 0 ? `Day ${challengeStats.currentDay}: ești pe bine` : 'Ești pe bine azi',
+    };
+  }
+
+  if (gap <= 180) {
+    return {
+      now: `+${gap} kcal peste azi`,
+      next: 'Mâine revii simplu la target, fără panic mode',
+    };
+  }
+
+  return {
+    now: `+${gap} kcal peste target`,
+    next: 'Taie lejer din următoarele 1-2 zile și rămâi în flow',
   };
 }
 
@@ -936,6 +1002,17 @@ export default function CutCoachPage() {
     await postJson('/api/cut-coach/challenges', challenge, 'Programul a fost salvat.');
   }
 
+  async function startQuick100Challenge() {
+    const nextChallenge = {
+      ...challengeDraft(todayIsoDate),
+      start_date: todayIsoDate,
+      title: '100 day cut',
+      status: 'active' as const,
+    };
+    setChallenge(nextChallenge);
+    await postJson('/api/cut-coach/challenges', nextChallenge, 'Challenge-ul de 100 de zile a pornit.');
+  }
+
   async function saveReminders() {
     await postJson('/api/cut-coach/reminders', { reminders }, 'Reminder-ele au fost salvate.');
   }
@@ -1069,6 +1146,8 @@ export default function CutCoachPage() {
   const tomorrow = data?.tomorrow ?? null;
   const selectedDay = findWeekDay(data, checkin.date);
   const monthCells = buildMonthCells(todayIsoDate, data);
+  const weightChartData = buildWeightChartData(data);
+  const topFocus = buildTopFocus(today, challengeStats);
   const burnedKcal = toNumber(checkin.activity_kcal_burned);
   const netKcal = Math.max(0, toNumber(checkin.kcal_actual) - burnedKcal);
   const overToday =
@@ -1130,7 +1209,70 @@ export default function CutCoachPage() {
           ) : null}
         </section>
 
+        <section className={styles.topFocusGrid}>
+          <section className={`surface-card ${styles.panel}`}>
+            <div className={styles.focusKicker}>Daily focus</div>
+            <div className={styles.focusNow}>{topFocus.now}</div>
+            <div className={styles.focusNext}>{topFocus.next}</div>
+            <div className={styles.quickSummary}>
+              <SummaryTile label="Kg curent" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} tone="neutral" />
+              <SummaryTile label="Ținta azi" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : '—'} tone="good" />
+              <SummaryTile label="Mâine" value={tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal` : '—'} tone="future" />
+              <SummaryTile label="Day" value={challengeStats.currentDay > 0 ? `${challengeStats.currentDay}/${challengeStats.totalDays}` : '—'} tone="warn" />
+            </div>
+          </section>
+
+          <section className={`surface-card ${styles.panel}`}>
+            <div className={styles.chartHead}>
+              <div>
+                <div className={styles.focusKicker}>Weight trend</div>
+                <div className={styles.chartTitle}>Istoric kg</div>
+              </div>
+              <div className={styles.chartMeta}>
+                {data?.trends.delta7 != null ? `${data.trends.delta7 > 0 ? '-' : '+'}${Math.abs(data.trends.delta7)} kg / 7 zile` : 'Așteaptă mai multe date'}
+              </div>
+            </div>
+            <div className={styles.chartBox}>
+              {weightChartData.length > 1 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={weightChartData} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
+                    <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={42} domain={['dataMin - 0.5', 'dataMax + 0.5']} />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'var(--panel-strong)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 14,
+                        color: 'var(--text)',
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="weight"
+                      stroke="var(--accent)"
+                      strokeWidth={3}
+                      dot={{ r: 3, fill: 'var(--accent)' }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className={styles.chartEmpty}>Pune cel puțin 2 cântăriri și apare graficul.</div>
+              )}
+            </div>
+          </section>
+        </section>
+
         {error ? <section className={`surface-card ${styles.banner} ${styles.bannerError}`}>{error}</section> : null}
+        {error ? (
+          <section className={`surface-card ${styles.banner} ${styles.bannerHint}`}>
+            <strong>Debug tip</strong>
+            <p>
+              Dacă vezi `unexpected error` sau `500`, cel mai probabil ori lipsește ultimul SQL din `cut_coach.sql`, ori serverul a pornit cu un timezone prost din env și trebuie refresh după fix.
+            </p>
+          </section>
+        ) : null}
         {notice ? <section className={`surface-card ${styles.banner} ${styles.bannerOk}`}>{notice}</section> : null}
         {rewardToast ? (
           <div className={styles.rewardToast} key={rewardToast.id}>
@@ -1627,6 +1769,9 @@ export default function CutCoachPage() {
 
             <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Challenge</h3>
+              <p className={styles.panelText}>
+                `Start 100-day cut` pornește direct perioada de azi. `Save challenge` salvează doar datele care sunt acum în formular.
+              </p>
               <div className={styles.formGrid}>
                 <label className={styles.field}>
                   <span>Titlu</span>
@@ -1650,12 +1795,18 @@ export default function CutCoachPage() {
                 <textarea rows={3} value={challenge.notes} onChange={(event) => setChallenge((current) => ({ ...current, notes: event.target.value }))} />
               </label>
               <div className={styles.pillRow}>
-                <button className="btn-base btn-secondary" type="button" onClick={() => setChallenge(challengeDraft(todayIsoDate))}>
-                  Quick 100 days
+                <button className="btn-base btn-secondary" type="button" onClick={() => void startQuick100Challenge()}>
+                  Start 100-day cut
+                </button>
+                <button className="btn-base btn-ghost" type="button" onClick={() => setChallenge(challengeDraft(todayIsoDate))}>
+                  Fill 100-day dates
                 </button>
                 <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveChallenge()} type="button">
                   {busy === '/api/cut-coach/challenges' ? 'Se salvează…' : 'Save challenge'}
                 </button>
+              </div>
+              <div className={styles.challengeStatus}>
+                {challenge.start_date ? `Start: ${formatFullDate(challenge.start_date)}` : 'Alege data de start'}
               </div>
             </section>
 

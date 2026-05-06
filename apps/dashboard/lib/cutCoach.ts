@@ -246,7 +246,17 @@ const ACTIVITY_MULTIPLIER: Record<ActivityLevel, number> = {
 
 const DEFAULT_MEALS: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 const PLANNER_ALGO_VERSION = 'v1';
-const CUT_COACH_TIME_ZONE = process.env.CUT_COACH_TIMEZONE ?? process.env.TZ ?? 'Europe/Bucharest';
+function resolveCutCoachTimeZone() {
+  const candidate = (process.env.CUT_COACH_TIMEZONE ?? process.env.TZ ?? 'Europe/Bucharest').replace(/^:/, '').trim();
+  try {
+    new Intl.DateTimeFormat('en-CA', { timeZone: candidate }).format(new Date());
+    return candidate;
+  } catch {
+    return 'Europe/Bucharest';
+  }
+}
+
+const CUT_COACH_TIME_ZONE = resolveCutCoachTimeZone();
 
 export function todayIsoDate() {
   return new Intl.DateTimeFormat('en-CA', {

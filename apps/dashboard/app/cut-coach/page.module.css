@@ -190,10 +190,86 @@
   border-color: color-mix(in srgb, var(--danger) 40%, transparent);
 }
 
+.bannerHint {
+  border-color: color-mix(in srgb, var(--warning) 40%, transparent);
+}
+
+.bannerHint p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .appSection {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+}
+
+.topFocusGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+.focusKicker {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.focusNow {
+  margin-top: 0.55rem;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+}
+
+.focusNext {
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.chartHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.chartTitle {
+  margin-top: 0.45rem;
+  font-size: 1.18rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.chartMeta {
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+.chartBox {
+  height: 220px;
+  margin-top: 0.8rem;
+}
+
+.chartEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  border-radius: 1rem;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-align: center;
+  padding: 1rem;
 }
 
 .sectionHead {
@@ -507,6 +583,12 @@
   line-height: 1.45;
 }
 
+.challengeStatus {
+  margin-top: 0.8rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
 .flowRail {
   display: grid;
   grid-auto-flow: column;
@@ -817,6 +899,10 @@
     margin-inline: 0;
   }
 
+  .topFocusGrid {
+    grid-template-columns: 0.95fr 1.05fr;
+  }
+
   .topbar,
   .sectionHead,
   .banner {
@@ -960,6 +1046,15 @@
 
   .monthCell {
     min-height: 3.55rem;
+  }
+
+  .chartHead {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .chartBox {
+    height: 190px;
   }
 }
 
