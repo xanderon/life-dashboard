@@ -970,17 +970,21 @@ export default function CutCoachPage() {
     return true;
   }
 
-  async function saveSetup() {
-    await postJson(
+  async function persistProfile(nextSetup: SetupState, successMessage = 'Profilul a fost salvat.') {
+    return await postJson(
       '/api/cut-coach/profile',
       {
-        ...setup,
+        ...nextSetup,
         goal_type: 'cut',
         macro_strategy: 'balanced',
         initial_weight_date: checkin.date,
       },
-      'Profilul a fost salvat.'
+      successMessage
     );
+  }
+
+  async function saveSetup() {
+    await persistProfile(setup);
   }
 
   async function saveCheckin(copiedFromPrevious = false) {
@@ -1011,6 +1015,15 @@ export default function CutCoachPage() {
     };
     setChallenge(nextChallenge);
     await postJson('/api/cut-coach/challenges', nextChallenge, 'Challenge-ul de 100 de zile a pornit.');
+  }
+
+  async function applyProfilePreset(patch: Partial<SetupState>, successMessage: string) {
+    const nextSetup = {
+      ...setup,
+      ...patch,
+    };
+    setSetup(nextSetup);
+    await persistProfile(nextSetup, successMessage);
   }
 
   async function saveReminders() {
@@ -1193,7 +1206,7 @@ export default function CutCoachPage() {
 
           <div className={styles.heroStats}>
             <MetricBox label="Challenge day" value={challengeStats.currentDay > 0 ? `${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Pregătire'} helper={activeChallenge ? phaseLabel(challengeStats.progress) : 'Creează primul interval'} />
-            <MetricBox label="Target azi" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : 'Setup'} helper={today?.target ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today') : 'Pornește profilul'} />
+            <MetricBox label="Plan activ azi" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : 'Setup'} helper={today?.target ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today') : 'Pornește profilul'} />
             <MetricBox label="Greutate" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} helper={challengeStats.deltaWeight != null ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${challengeStats.deltaWeight} kg vs start` : 'Așteaptă baseline'} />
             <MetricBox label="XP / level" value={`${xp.xp} XP`} helper={`Level ${xp.level}`} />
           </div>
@@ -1636,6 +1649,9 @@ export default function CutCoachPage() {
             <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Profile</h3>
               <p className={styles.panelText}>Basic first. Restul doar pentru fine tuning.</p>
+              <p className={styles.previewNote}>
+                Preseturile `No gym for now` și `Lejer / Standard / Strict` se aplică direct în planul activ. Când modifici manual restul câmpurilor, apeși `Save profile`.
+              </p>
               <div className={styles.formGrid}>
                 <label className={styles.field}>
                   <span>Initial kg</span>
@@ -1675,12 +1691,7 @@ export default function CutCoachPage() {
               <div className={styles.paceRow}>
                 <button
                   className={styles.quickChip}
-                  onClick={() =>
-                    setSetup((current) => ({
-                      ...current,
-                      ...applyNoGymPreset(),
-                    }))
-                  }
+                  onClick={() => void applyProfilePreset(applyNoGymPreset(), 'Presetul fără sală a fost aplicat în plan.')}
                   type="button"
                 >
                   No gym for now
@@ -1689,7 +1700,7 @@ export default function CutCoachPage() {
                   <button
                     className={`${styles.paceCard} ${setup.preferred_deficit_pct === preset.value ? styles.paceCardActive : ''}`}
                     key={preset.value}
-                    onClick={() => setSetup((current) => ({ ...current, preferred_deficit_pct: preset.value }))}
+                    onClick={() => void applyProfilePreset({ preferred_deficit_pct: preset.value }, `Ritmul ${preset.label.toLowerCase()} a fost aplicat în plan.`)}
                     type="button"
                   >
                     <strong>{preset.label}</strong>
