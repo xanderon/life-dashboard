@@ -632,8 +632,16 @@
 
 .challengeStatus {
   margin-top: 0.8rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 22%, var(--panel-2));
   color: var(--muted);
   font-size: 0.84rem;
+}
+
+.challengeStatus strong {
+  color: var(--text);
 }
 
 .flowRail {

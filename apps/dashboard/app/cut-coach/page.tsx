@@ -29,11 +29,11 @@ import styles from './page.module.css';
 
 const APP_SLUG = 'cut-coach';
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
-const WEEKDAY_LABELS = ['D', 'L', 'Ma', 'Mi', 'J', 'V', 'S'];
+const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const PACE_PRESETS = [
-  { label: 'Lejer', value: '12', description: 'Mai ușor de ținut' },
-  { label: 'Standard', value: '18', description: 'Ritm bun pentru cut' },
-  { label: 'Strict', value: '24', description: 'Mai greu de ținut' },
+  { label: 'Easy', value: '12', description: 'Easier to sustain' },
+  { label: 'Standard', value: '18', description: 'Solid cut pace' },
+  { label: 'Strict', value: '24', description: 'Harder to sustain' },
 ];
 
 type PushEnvironmentSnapshot = {
@@ -224,21 +224,21 @@ function defaultReminderDrafts(existing: CutCoachReminderRow[]): ReminderDraft[]
   }
 
   return [
-    { kind: 'weigh_in', title: 'Cântărire', local_time: '08:15', weekdays: [1, 2, 3, 4, 5, 6, 0], enabled: true },
-    { kind: 'kcal_log', title: 'Ai pus kcal?', local_time: '20:45', weekdays: [1, 2, 3, 4, 5, 6, 0], enabled: true },
-    { kind: 'weekend_measure', title: 'Nu uita să te măsori', local_time: '11:00', weekdays: [6, 0], enabled: true },
-    { kind: 'over_target_recovery', title: 'Recuperează după depășire', local_time: '09:30', weekdays: [1, 2, 3, 4, 5, 6, 0], enabled: true },
+    { kind: 'weigh_in', title: 'Weigh-in', local_time: '08:15', weekdays: [1, 2, 3, 4, 5, 6, 0], enabled: true },
+    { kind: 'kcal_log', title: 'Log kcal', local_time: '20:45', weekdays: [1, 2, 3, 4, 5, 6, 0], enabled: true },
+    { kind: 'weekend_measure', title: 'Weekend measurements', local_time: '11:00', weekdays: [6, 0], enabled: true },
+    { kind: 'over_target_recovery', title: 'Recovery check', local_time: '09:30', weekdays: [1, 2, 3, 4, 5, 6, 0], enabled: true },
   ];
 }
 
 function reminderTitle(kind: CutCoachReminderRow['kind']) {
   switch (kind) {
     case 'weigh_in':
-      return 'Cântărire';
+      return 'Weigh-in';
     case 'kcal_log':
       return 'Log kcal';
     case 'weekend_measure':
-      return 'Măsurători weekend';
+      return 'Weekend measurements';
     case 'over_target_recovery':
       return 'Recovery prompt';
     case 'milestone':
@@ -249,7 +249,7 @@ function reminderTitle(kind: CutCoachReminderRow['kind']) {
 }
 
 function formatDate(isoDate: string, options?: Intl.DateTimeFormatOptions) {
-  return new Intl.DateTimeFormat('ro-RO', {
+  return new Intl.DateTimeFormat('en-GB', {
     day: 'numeric',
     month: 'short',
     ...options,
@@ -257,7 +257,7 @@ function formatDate(isoDate: string, options?: Intl.DateTimeFormatOptions) {
 }
 
 function formatFullDate(isoDate: string) {
-  return new Intl.DateTimeFormat('ro-RO', {
+  return new Intl.DateTimeFormat('en-GB', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -396,42 +396,42 @@ function buildTopFocus(today: DailySummary | null, challengeStats: ReturnType<ty
   const gap = target != null && logged != null ? logged - target : null;
   if (target == null) {
     return {
-      now: 'Setup profile',
-      next: 'Adaugă kg + profil și pornești flow-ul',
+      now: 'Set up your profile',
+      next: 'Add your weight and start your plan',
     };
   }
 
   if (logged == null) {
     return {
-      now: `${target} kcal target azi`,
-      next: 'La final de zi pui kcal totale și gata',
+      now: `${target} kcal today`,
+      next: 'Log total kcal at the end of the day',
     };
   }
 
   if (gap == null) {
     return {
-      now: `${logged} kcal logate`,
-      next: 'Mai completezi restul și clarifici ziua',
+      now: `${logged} kcal logged`,
+      next: 'Add the rest and close the day cleanly',
     };
   }
 
   if (gap <= 50) {
     return {
       now: `${logged} / ${target} kcal`,
-      next: challengeStats.currentDay > 0 ? `Day ${challengeStats.currentDay}: ești pe bine` : 'Ești pe bine azi',
+      next: challengeStats.currentDay > 0 ? `Day ${challengeStats.currentDay}: on track` : 'You are on track today',
     };
   }
 
   if (gap <= 180) {
     return {
-      now: `+${gap} kcal peste azi`,
-      next: 'Mâine revii simplu la target, fără panic mode',
+      now: `+${gap} kcal over today`,
+      next: 'Return to target tomorrow, no panic mode',
     };
   }
 
   return {
-    now: `+${gap} kcal peste target`,
-    next: 'Taie lejer din următoarele 1-2 zile și rămâi în flow',
+    now: `+${gap} kcal over target`,
+    next: 'Trim a bit over the next 1-2 days and stay in flow',
   };
 }
 
@@ -521,148 +521,148 @@ function buildAchievements(
     {
       title: 'First log',
       unlocked: kcalDays >= 1,
-      body: kcalDays >= 1 ? 'Ai pornit tracking-ul de kcal.' : 'Loghează primul total de kcal.',
+      body: kcalDays >= 1 ? 'You started kcal tracking.' : 'Log your first total kcal entry.',
     },
     {
       title: 'Three logs',
       unlocked: kcalDays >= 3,
-      body: kcalDays >= 3 ? `${kcalDays} zile cu kcal logate.` : 'Ține 3 zile cu kcal logate.',
+      body: kcalDays >= 3 ? `${kcalDays} days with logged kcal.` : 'Hold 3 days with logged kcal.',
     },
     {
       title: 'Week recorder',
       unlocked: kcalDays >= 7,
-      body: kcalDays >= 7 ? 'Ai trecut de prima săptămână de tracking.' : 'Ajungi la 7 zile cu kcal logate.',
+      body: kcalDays >= 7 ? 'You made it through the first week of tracking.' : 'Reach 7 days with logged kcal.',
     },
     {
       title: 'Two-week lock',
       unlocked: kcalDays >= 14,
-      body: kcalDays >= 14 ? 'Ai prins deja ritmul de 2 săptămâni.' : 'Țintește 14 zile cu check-in complet.',
+      body: kcalDays >= 14 ? 'You are already in a 2-week rhythm.' : 'Aim for 14 days with full check-ins.',
     },
     {
       title: 'Thirty day ledger',
       unlocked: kcalDays >= 30,
-      body: kcalDays >= 30 ? 'Ai o lună de date utile.' : 'Strânge 30 de zile de kcal logate.',
+      body: kcalDays >= 30 ? 'You have a full month of useful data.' : 'Collect 30 days of logged kcal.',
     },
     {
       title: 'Hot streak',
       unlocked: kcalStreak >= 3,
-      body: kcalStreak >= 3 ? `Ai ${kcalStreak} zile consecutive de log.` : 'Leagă 3 zile consecutive de kcal log.',
+      body: kcalStreak >= 3 ? `You have a ${kcalStreak}-day logging streak.` : 'Build a 3-day kcal logging streak.',
     },
     {
       title: 'Seven-day streak',
       unlocked: kcalStreak >= 7,
-      body: kcalStreak >= 7 ? 'O săptămână întreagă fără pauză.' : 'Leagă 7 zile consecutive de kcal log.',
+      body: kcalStreak >= 7 ? 'A full week without a break.' : 'Build a 7-day kcal logging streak.',
     },
     {
       title: 'Streak architect',
       unlocked: longestKcalStreak >= 14,
-      body: longestKcalStreak >= 14 ? `Cel mai bun streak: ${longestKcalStreak} zile.` : 'Construiește un streak maxim de 14 zile.',
+      body: longestKcalStreak >= 14 ? `Best streak: ${longestKcalStreak} days.` : 'Build a best streak of 14 days.',
     },
     {
       title: 'Scale online',
       unlocked: weighDays >= 1,
-      body: weighDays >= 1 ? 'Ai prima cântărire în istoric.' : 'Pune prima greutate ca baseline.',
+      body: weighDays >= 1 ? 'Your first weigh-in is on the board.' : 'Add your first weight as baseline.',
     },
     {
       title: 'Scale routine',
       unlocked: weighDays >= 3,
-      body: weighDays >= 3 ? `${weighDays} cântăriri salvate.` : 'Ajungi la 3 cântăriri salvate.',
+      body: weighDays >= 3 ? `${weighDays} weigh-ins saved.` : 'Reach 3 saved weigh-ins.',
     },
     {
       title: 'Morning gravity',
       unlocked: weighStreak >= 3,
-      body: weighStreak >= 3 ? `${weighStreak} zile consecutive de cântărire.` : 'Cântărește-te 3 dimineți la rând.',
+      body: weighStreak >= 3 ? `${weighStreak} days weighed in a row.` : 'Weigh in 3 mornings in a row.',
     },
     {
       title: 'Trend visible',
       unlocked: longestWeighStreak >= 7,
-      body: longestWeighStreak >= 7 ? 'Acum trendul începe să aibă sens.' : 'Leagă 7 zile de cântărire pentru trend clar.',
+      body: longestWeighStreak >= 7 ? 'Now the trend starts to mean something.' : 'Log 7 days of weigh-ins for a clear trend.',
     },
     {
       title: 'Weekend tape',
       unlocked: measurementCount >= 1,
-      body: measurementCount >= 1 ? `Ai ${measurementCount} sesiuni de măsurători.` : 'Salvează măsurătorile standard în weekend.',
+      body: measurementCount >= 1 ? `You have ${measurementCount} measurement sessions.` : 'Save the standard measurements on the weekend.',
     },
     {
       title: 'Tape habit',
       unlocked: measurementCount >= 2,
-      body: measurementCount >= 2 ? 'Ai deja două weekenduri măsurate.' : 'Pune măsurători în 2 weekenduri diferite.',
+      body: measurementCount >= 2 ? 'You already measured two weekends.' : 'Log measurements on 2 different weekends.',
     },
     {
       title: 'Body map',
       unlocked: measurementCount >= 4,
-      body: measurementCount >= 4 ? 'Ai destule măsurători ca să vezi formă, nu doar kg.' : 'Strânge 4 sesiuni de measurements.',
+      body: measurementCount >= 4 ? 'You have enough measurements to track shape, not just kg.' : 'Collect 4 measurement sessions.',
     },
     {
       title: 'Movement day',
       unlocked: movementCount >= 1,
-      body: movementCount >= 1 ? `${movementCount} zile au și mișcare.` : 'Adaugă o zi cu pași, mers sau bicicletă.',
+      body: movementCount >= 1 ? `${movementCount} days include movement too.` : 'Add one day with steps, walking or biking.',
     },
     {
       title: 'Walk engine',
       unlocked: movementCount >= 3,
-      body: movementCount >= 3 ? 'Mișcarea începe să devină obicei.' : 'Ajungi la 3 zile cu mișcare utilă.',
+      body: movementCount >= 3 ? 'Movement is starting to become a habit.' : 'Reach 3 days with useful movement.',
     },
     {
       title: 'Green week',
       unlocked: weekGreen >= 3,
-      body: weekGreen >= 3 ? `${weekGreen} zile din flow sunt în verde.` : 'Țintește 3 zile verzi în săptămâna curentă.',
+      body: weekGreen >= 3 ? `${weekGreen} days in the flow are green.` : 'Aim for 3 green days this week.',
     },
     {
       title: 'Five clean days',
       unlocked: weekGreen >= 5,
-      body: weekGreen >= 5 ? 'Săptămână foarte solidă.' : 'Țintește 5 zile la target în aceeași săptămână.',
+      body: weekGreen >= 5 ? 'Very solid week.' : 'Aim for 5 on-target days in the same week.',
     },
     {
       title: 'Full week visible',
       unlocked: weekLogs >= 7,
-      body: weekLogs >= 7 ? 'Ai toată săptămâna completă în sistem.' : 'Completează toate cele 7 zile din week flow.',
+      body: weekLogs >= 7 ? 'You have the full week filled in.' : 'Complete all 7 days in the week flow.',
     },
     {
       title: 'Sub-2000 day',
       unlocked: hitSub2000,
-      body: hitSub2000 ? 'Ai atins deja o zi sub 2000 kcal.' : 'Prinde o zi curată sub 2000 kcal.',
+      body: hitSub2000 ? 'You already hit a day under 2000 kcal.' : 'Hit one clean day under 2000 kcal.',
     },
     {
       title: 'Challenge armed',
       unlocked: Boolean(activeChallenge),
-      body: activeChallenge ? `${activeChallenge.title} este activ.` : 'Salvează o perioadă activă de challenge.',
+      body: activeChallenge ? `${activeChallenge.title} is active.` : 'Save an active challenge period.',
     },
     {
       title: 'Quarter mark',
       unlocked: challengeStats.progress >= 0.25,
-      body: challengeStats.progress >= 0.25 ? 'Ai trecut de primul sfert din challenge.' : 'Ajungi la 25% din perioada activă.',
+      body: challengeStats.progress >= 0.25 ? 'You passed the first quarter of the challenge.' : 'Reach 25% of the active period.',
     },
     {
       title: 'Halfway',
       unlocked: challengeStats.progress >= 0.5,
-      body: challengeStats.progress >= 0.5 ? 'Ai trecut de jumătatea challenge-ului.' : 'Ajungi la 50% din challenge.',
+      body: challengeStats.progress >= 0.5 ? 'You passed the halfway mark.' : 'Reach 50% of the challenge.',
     },
     {
       title: 'Closing phase',
       unlocked: challengeStats.progress >= 0.75,
-      body: challengeStats.progress >= 0.75 ? 'Ești în ultimele 25% din challenge.' : 'Ajungi în partea finală a challenge-ului.',
+      body: challengeStats.progress >= 0.75 ? 'You are in the final 25% of the challenge.' : 'Reach the closing part of the challenge.',
     },
     {
       title: 'Weight moved',
       unlocked: challengeStats.deltaWeight != null && challengeStats.deltaWeight < -1,
       body:
         challengeStats.deltaWeight != null && challengeStats.deltaWeight < -1
-          ? `${Math.abs(challengeStats.deltaWeight).toFixed(1)} kg jos față de start.`
-          : 'Scade cel puțin 1 kg față de startul challenge-ului.',
+          ? `${Math.abs(challengeStats.deltaWeight).toFixed(1)} kg down from the start.`
+          : 'Drop at least 1 kg from challenge start.',
     },
     {
       title: 'Three kilos down',
       unlocked: challengeStats.deltaWeight != null && challengeStats.deltaWeight <= -3,
       body:
         challengeStats.deltaWeight != null && challengeStats.deltaWeight <= -3
-          ? `Ai coborât ${Math.abs(challengeStats.deltaWeight).toFixed(1)} kg.`
-          : 'Țintește -3 kg față de startul challenge-ului.',
+          ? `You are down ${Math.abs(challengeStats.deltaWeight).toFixed(1)} kg.`
+          : 'Aim for -3 kg vs challenge start.',
     },
     {
       title: 'Goal touch',
       unlocked: Boolean(challengeGoalHit),
-      body: challengeGoalHit ? 'Ai atins target weight-ul setat.' : 'Atinge greutatea target din challenge.',
+      body: challengeGoalHit ? 'You hit the target weight.' : 'Reach the target weight from the challenge.',
     },
     {
       title: 'Recovery artist',
@@ -673,8 +673,8 @@ function buildAchievements(
         payload.week.some(
           (item) => item.target && item.caloriesSource !== 'none' && item.consumed.calories > item.target.kcal_target + 150
         ) && weekGreen >= 2
-          ? 'Ai demonstrat că poți reveni după o depășire.'
-          : 'După o zi grea, revino cu 2 zile bune în aceeași săptămână.',
+          ? 'You proved you can recover after an overage.'
+          : 'After a heavy day, come back with 2 good days in the same week.',
     },
   ].sort((left, right) => {
     if (left.unlocked === right.unlocked) {
@@ -829,18 +829,18 @@ function buildPacePreview(setup: SetupState, percentValue: string) {
 function buildReward(url: string): RewardToast {
   const id = Date.now();
   if (url.includes('/checkins')) {
-    return { id, title: 'Daily log saved', body: 'XP +12 pentru consistență și claritate pe kcal.', xp: 12 };
+    return { id, title: 'Daily log saved', body: 'XP +12 for consistency and clear kcal tracking.', xp: 12 };
   }
   if (url.includes('/weights')) {
-    return { id, title: 'Scale sync', body: 'XP +14 pentru greutate și measurements.', xp: 14 };
+    return { id, title: 'Scale sync', body: 'XP +14 for weight and measurements.', xp: 14 };
   }
   if (url.includes('/profile')) {
-    return { id, title: 'Metabolism tuned', body: 'XP +20. Flow-ul de kcal are acum o bază mai solidă.', xp: 20 };
+    return { id, title: 'Metabolism tuned', body: 'XP +20. Your kcal plan now has a stronger base.', xp: 20 };
   }
   if (url.includes('/challenges')) {
-    return { id, title: 'Challenge locked', body: 'XP +16. Perioada ta are acum structură clară.', xp: 16 };
+    return { id, title: 'Challenge locked', body: 'XP +16. Your cut now has a clear timeline.', xp: 16 };
   }
-  return { id, title: 'Settings saved', body: 'XP +8. Sistemul tău e mai bine calibrat.', xp: 8 };
+  return { id, title: 'Settings saved', body: 'XP +8. Your system is better calibrated now.', xp: 8 };
 }
 
 function applyNoGymPreset() {
@@ -850,6 +850,20 @@ function applyNoGymPreset() {
     training_day_kcal_delta: '0',
     training_days: [] as number[],
   };
+}
+
+function validateSetup(setup: SetupState) {
+  if (toNumber(setup.initial_weight_kg) <= 0) return 'Add a valid current weight first.';
+  if (toNumber(setup.height_cm) <= 0) return 'Add a valid height.';
+  if (toNumber(setup.age) <= 0) return 'Add a valid age.';
+  return null;
+}
+
+function validateChallenge(challenge: ChallengeState) {
+  if (!challenge.title.trim()) return 'Add a challenge title.';
+  if (!challenge.start_date || !challenge.end_date) return 'Pick both start and end dates.';
+  if (challenge.end_date < challenge.start_date) return 'End date must be after start date.';
+  return null;
 }
 
 export default function CutCoachPage() {
@@ -915,7 +929,7 @@ export default function CutCoachPage() {
     const res = await fetch('/api/cut-coach/bootstrap', { cache: 'no-store' });
     if (!res.ok) {
       const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(payload.error ?? 'Nu am putut încărca cut coach.');
+      setError(payload.error ?? 'Could not load Cut Coach.');
       setBusy(null);
       return;
     }
@@ -934,7 +948,7 @@ export default function CutCoachPage() {
       if (!res.ok) {
         const payload = (await res.json().catch(() => ({}))) as { error?: string };
         if (!cancelled) {
-          setError(payload.error ?? 'Nu am putut încărca cut coach.');
+          setError(payload.error ?? 'Could not load Cut Coach.');
           setBusy(null);
         }
         return;
@@ -990,7 +1004,7 @@ export default function CutCoachPage() {
     return true;
   }
 
-  async function persistProfile(nextSetup: SetupState, successMessage = 'Profilul a fost salvat.') {
+  async function persistProfile(nextSetup: SetupState, successMessage = 'Profile saved.') {
     return await postJson(
       '/api/cut-coach/profile',
       {
@@ -1004,6 +1018,11 @@ export default function CutCoachPage() {
   }
 
   async function saveSetup() {
+    const validationError = validateSetup(setup);
+    if (validationError) {
+      setNotice(validationError);
+      return;
+    }
     await persistProfile(setup);
   }
 
@@ -1014,19 +1033,36 @@ export default function CutCoachPage() {
         ...checkin,
         copied_from_previous: copiedFromPrevious,
       },
-      'Check-in-ul de azi a fost salvat.'
+      'Today check-in saved.'
     );
   }
 
   async function saveWeight() {
-    await postJson('/api/cut-coach/weights', weight, 'Greutatea și măsurătorile au fost salvate.');
+    if (toNumber(weight.weight_kg) <= 0) {
+      setNotice('Add a valid weight first.');
+      return;
+    }
+    await postJson('/api/cut-coach/weights', weight, 'Weight and measurements saved.');
   }
 
   async function saveChallenge() {
-    await postJson('/api/cut-coach/challenges', challenge, 'Programul a fost salvat.');
+    const validationError = validateChallenge(challenge);
+    if (validationError) {
+      setNotice(validationError);
+      return;
+    }
+    if (activeChallenge && activeChallenge.id !== challenge.id && activeChallenge.status === 'active') {
+      setNotice('A challenge is already active. Edit it or stop it first.');
+      return;
+    }
+    await postJson('/api/cut-coach/challenges', challenge, 'Challenge saved.');
   }
 
   async function startQuick100Challenge() {
+    if (activeChallenge?.status === 'active') {
+      setNotice('A challenge is already running. Stop it first or edit the current one.');
+      return;
+    }
     const nextChallenge = {
       ...challengeDraft(todayIsoDate),
       start_date: todayIsoDate,
@@ -1034,7 +1070,19 @@ export default function CutCoachPage() {
       status: 'active' as const,
     };
     setChallenge(nextChallenge);
-    await postJson('/api/cut-coach/challenges', nextChallenge, 'Challenge-ul de 100 de zile a pornit.');
+    await postJson('/api/cut-coach/challenges', nextChallenge, '100-day challenge started.');
+  }
+
+  async function stopActiveChallenge() {
+    if (!activeChallenge) return;
+    await postJson(
+      '/api/cut-coach/challenges',
+      {
+        ...activeChallenge,
+        status: 'archived',
+      },
+      'Active challenge stopped.'
+    );
   }
 
   async function applyProfilePreset(patch: Partial<SetupState>, successMessage: string) {
@@ -1047,7 +1095,7 @@ export default function CutCoachPage() {
   }
 
   async function saveReminders() {
-    await postJson('/api/cut-coach/reminders', { reminders }, 'Reminder-ele au fost salvate.');
+    await postJson('/api/cut-coach/reminders', { reminders }, 'Reminders saved.');
   }
 
   function applyTargetToCheckin() {
@@ -1063,7 +1111,7 @@ export default function CutCoachPage() {
     if (!data) return;
     const yesterday = findCheckinForDate(data.checkins, addDays(checkin.date, -1));
     if (!yesterday) {
-      setNotice('Nu există încă un check-in ieri.');
+      setNotice('No check-in found for yesterday.');
       return;
     }
     setCheckin({
@@ -1074,7 +1122,7 @@ export default function CutCoachPage() {
       notes: yesterday.notes ?? '',
       source_app: yesterday.source_app ?? 'LifeSum',
     });
-    setNotice('Am copiat check-in-ul de ieri.');
+    setNotice('Yesterday copied into today.');
   }
 
   function copyLastMeasurements() {
@@ -1083,7 +1131,7 @@ export default function CutCoachPage() {
       (item) => item.waist_cm || item.hips_cm || item.chest_cm || item.thigh_cm || item.arm_cm || item.neck_cm
     );
     if (!latestWithTape) {
-      setNotice('Nu există încă măsurători anterioare.');
+      setNotice('No previous measurements found.');
       return;
     }
     setWeight((current) => ({
@@ -1095,7 +1143,7 @@ export default function CutCoachPage() {
       arm_cm: latestWithTape.arm_cm != null ? String(latestWithTape.arm_cm) : '',
       neck_cm: latestWithTape.neck_cm != null ? String(latestWithTape.neck_cm) : '',
     }));
-    setNotice('Am copiat ultima sesiune de măsurători.');
+    setNotice('Last measurement session copied.');
   }
 
   function toggleSection(section: SectionKey) {
@@ -1111,14 +1159,14 @@ export default function CutCoachPage() {
     setPushError(null);
     try {
       if (Notification.permission === 'denied') {
-        setPushError('Notificările sunt blocate în browser.');
+        setPushError('Notifications are blocked in this browser.');
         setPushBusy(false);
         return;
       }
 
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        setPushError('Permisiunea pentru notificări nu a fost acordată.');
+        setPushError('Notification permission was not granted.');
         setPushBusy(false);
         return;
       }
@@ -1128,7 +1176,7 @@ export default function CutCoachPage() {
 
       if (!subscription) {
         if (!VAPID_PUBLIC_KEY) {
-          setPushError('Lipsește cheia publică VAPID.');
+          setPushError('Missing VAPID public key.');
           setPushBusy(false);
           return;
         }
@@ -1156,16 +1204,16 @@ export default function CutCoachPage() {
       });
 
       if (!res.ok) {
-        setPushError('Nu am putut salva abonarea.');
+        setPushError('Could not save the subscription.');
         setPushBusy(false);
         return;
       }
 
       setPushEnabled(true);
-      setNotice('Push-ul pentru cut coach este activ.');
+      setNotice('Cut Coach push is now active.');
       setPushBusy(false);
     } catch {
-      setPushError('Nu am putut activa notificările.');
+      setPushError('Could not enable notifications.');
       setPushBusy(false);
     }
   }
@@ -1190,7 +1238,7 @@ export default function CutCoachPage() {
     <PageShell width="7xl" className={styles.shell}>
       <div className={styles.page}>
         <section className={styles.topbar}>
-          <BackLink href="/">← Înapoi la dashboard</BackLink>
+          <BackLink href="/">← Back to dashboard</BackLink>
           <ThemeToggle />
         </section>
 
@@ -1198,25 +1246,22 @@ export default function CutCoachPage() {
           <div className={styles.heroIntro}>
             <div className="eyebrow">Cut Coach</div>
             <div className={styles.heroMeta}>
-              <span>{activeChallenge ? activeChallenge.title : 'Program nou'}</span>
-              <span>{activeChallenge ? `${formatDate(activeChallenge.start_date)} → ${formatDate(activeChallenge.end_date)}` : 'Poți porni de mâine'}</span>
+              <span>{activeChallenge ? activeChallenge.title : 'No active challenge'}</span>
+              <span>{activeChallenge ? `${formatDate(activeChallenge.start_date)} → ${formatDate(activeChallenge.end_date)}` : 'Start whenever you are ready'}</span>
             </div>
           </div>
 
           <div className={styles.heroHeader}>
             <div>
-              <h1 className={styles.heroTitle}>Deficit flow, fără fricțiune.</h1>
-              <p className={styles.heroText}>
-                Focus pe `kg`, `kcal`, trend, reminders și week flow. Food-by-food rămâne opțional. Pentru start, ziua 1 poate fi{' '}
-                <strong>6 mai 2026</strong>.
-              </p>
+              <h1 className={styles.heroTitle}>Cut, on rails.</h1>
+              <p className={styles.heroText}>Track weight, kcal, trend and the next move.</p>
             </div>
             <div className={styles.heroActions}>
               <a className="btn-base btn-primary" href="#today">
-                Log azi
+                Log today
               </a>
               <a className="btn-base btn-secondary" href="#flow">
-                Vezi flow
+                Week flow
               </a>
               <a className="btn-base btn-ghost" href="#settings">
                 Setup
@@ -1225,19 +1270,19 @@ export default function CutCoachPage() {
           </div>
 
           <div className={styles.heroStats}>
-            <MetricBox label="Challenge day" value={challengeStats.currentDay > 0 ? `${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Pregătire'} helper={activeChallenge ? phaseLabel(challengeStats.progress) : 'Creează primul interval'} />
-            <MetricBox label="Plan activ azi" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : 'Setup'} helper={today?.target ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today') : 'Pornește profilul'} />
-            <MetricBox label="Greutate" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} helper={challengeStats.deltaWeight != null ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${challengeStats.deltaWeight} kg vs start` : 'Așteaptă baseline'} />
+            <MetricBox label="Challenge day" value={challengeStats.currentDay > 0 ? `${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready'} helper={activeChallenge ? phaseLabel(challengeStats.progress) : 'Create your first run'} />
+            <MetricBox label="Active plan today" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : 'Setup'} helper={today?.target ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today') : 'Save your profile'} />
+            <MetricBox label="Weight" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} helper={challengeStats.deltaWeight != null ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${challengeStats.deltaWeight} kg vs start` : 'Waiting for baseline'} />
             <MetricBox label="XP / level" value={`${xp.xp} XP`} helper={`Level ${xp.level}`} />
           </div>
 
           {overToday != null ? (
             <div className={`${styles.alert} ${overToday > 150 ? styles.alertBad : overToday > 0 ? styles.alertWarn : styles.alertGood}`}>
               {overToday > 150
-                ? `Ai depășit azi cu ${overToday} kcal. Mâine ține-te de target și taie lejer următoarele 2-3 zile, nu agresiv dintr-o bucată.`
+                ? `You are ${overToday} kcal over today. Return to target tomorrow and trim lightly over the next 2-3 days.`
                 : overToday > 0
-                  ? `Ești puțin peste target azi (+${overToday} kcal). Păstrează controlul mâine și revii rapid pe trend.`
-                  : `Azi ești pe bine. ${today?.remaining ? `${Math.max(0, Math.round(today.remaining.calories))} kcal rămase.` : ''}`}
+                  ? `You are slightly over target today (+${overToday} kcal). Stay controlled tomorrow and you are back on trend.`
+                  : `You are on track today. ${today?.remaining ? `${Math.max(0, Math.round(today.remaining.calories))} kcal left.` : ''}`}
             </div>
           ) : null}
         </section>
@@ -1248,9 +1293,9 @@ export default function CutCoachPage() {
             <div className={styles.focusNow}>{topFocus.now}</div>
             <div className={styles.focusNext}>{topFocus.next}</div>
             <div className={styles.quickSummary}>
-              <SummaryTile label="Kg curent" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} tone="neutral" />
-              <SummaryTile label="Ținta azi" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : '—'} tone="good" />
-              <SummaryTile label="Mâine" value={tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal` : '—'} tone="future" />
+              <SummaryTile label="Current kg" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} tone="neutral" />
+              <SummaryTile label="Today target" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : '—'} tone="good" />
+              <SummaryTile label="Tomorrow" value={tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal` : '—'} tone="future" />
               <SummaryTile label="Day" value={challengeStats.currentDay > 0 ? `${challengeStats.currentDay}/${challengeStats.totalDays}` : '—'} tone="warn" />
             </div>
           </section>
@@ -1259,10 +1304,10 @@ export default function CutCoachPage() {
             <div className={styles.chartHead}>
               <div>
                 <div className={styles.focusKicker}>Weight trend</div>
-                <div className={styles.chartTitle}>Istoric kg</div>
+                <div className={styles.chartTitle}>Weight history</div>
               </div>
               <div className={styles.chartMeta}>
-                {data?.trends.delta7 != null ? `${data.trends.delta7 > 0 ? '-' : '+'}${Math.abs(data.trends.delta7)} kg / 7 zile` : 'Așteaptă mai multe date'}
+                {data?.trends.delta7 != null ? `${data.trends.delta7 > 0 ? '-' : '+'}${Math.abs(data.trends.delta7)} kg / 7 days` : 'Waiting for more data'}
               </div>
             </div>
             <div className={styles.chartBox}>
@@ -1291,7 +1336,7 @@ export default function CutCoachPage() {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className={styles.chartEmpty}>Pune cel puțin 2 cântăriri și apare graficul.</div>
+                <div className={styles.chartEmpty}>Add at least 2 weigh-ins to unlock the chart.</div>
               )}
             </div>
           </section>
@@ -1302,7 +1347,7 @@ export default function CutCoachPage() {
           <section className={`surface-card ${styles.banner} ${styles.bannerHint}`}>
             <strong>Debug tip</strong>
             <p>
-              Dacă vezi `unexpected error` sau `500`, cel mai probabil ori lipsește ultimul SQL din `cut_coach.sql`, ori serverul a pornit cu un timezone prost din env și trebuie refresh după fix.
+              If you see `unexpected error` or `500`, the usual causes are missing SQL from `cut_coach.sql` or a bad timezone from env before the last refresh.
             </p>
           </section>
         ) : null}
@@ -1335,7 +1380,7 @@ export default function CutCoachPage() {
               <div className={styles.panelHead}>
                 <div>
                   <h3 className={styles.panelTitle}>Kcal check-in</h3>
-                  <p className={styles.panelText}>Bagi totalul din LifeSum și, dacă ai avut activitate, pui direct kcal arse din app.</p>
+                  <p className={styles.panelText}>Log total kcal from LifeSum. If you had activity, add burned kcal from the app.</p>
                 </div>
                 <div className={styles.pillRow}>
                   <button className="btn-base btn-ghost" type="button" onClick={copyYesterday}>
@@ -1349,7 +1394,7 @@ export default function CutCoachPage() {
 
               <div className={styles.formGrid}>
                 <label className={styles.field}>
-                  <span>Zi</span>
+                  <span>Date</span>
                   <input type="date" value={checkin.date} onChange={(event) => {
                     const nextDate = event.target.value;
                     setCheckin(fillCheckin(nextDate, data));
@@ -1357,19 +1402,19 @@ export default function CutCoachPage() {
                   }} />
                 </label>
                 <label className={styles.field}>
-                  <span>Kcal totale</span>
-                  <input className={styles.featureInput} type="number" inputMode="numeric" value={checkin.kcal_actual} onChange={(event) => setCheckin((current) => ({ ...current, kcal_actual: event.target.value }))} placeholder="ex. 2140" />
+                  <span>Total kcal</span>
+                  <input className={styles.featureInput} type="number" inputMode="numeric" value={checkin.kcal_actual} onChange={(event) => setCheckin((current) => ({ ...current, kcal_actual: event.target.value }))} placeholder="e.g. 2140" />
                 </label>
                 <label className={styles.field}>
-                  <span>Activitate făcută</span>
-                  <input value={checkin.activity_summary} onChange={(event) => setCheckin((current) => ({ ...current, activity_summary: event.target.value }))} placeholder="ex. walk 45m / bike / sală / nimic" />
+                  <span>Activity</span>
+                  <input value={checkin.activity_summary} onChange={(event) => setCheckin((current) => ({ ...current, activity_summary: event.target.value }))} placeholder="e.g. walk 45m / bike / gym / none" />
                 </label>
                 <label className={styles.field}>
-                  <span>Kcal arse din app</span>
-                  <input className={styles.featureInput} type="number" inputMode="numeric" value={checkin.activity_kcal_burned} onChange={(event) => setCheckin((current) => ({ ...current, activity_kcal_burned: event.target.value }))} placeholder="ex. 320" />
+                  <span>Burned kcal from app</span>
+                  <input className={styles.featureInput} type="number" inputMode="numeric" value={checkin.activity_kcal_burned} onChange={(event) => setCheckin((current) => ({ ...current, activity_kcal_burned: event.target.value }))} placeholder="e.g. 320" />
                 </label>
                 <label className={styles.field}>
-                  <span>Sursă</span>
+                  <span>Source</span>
                   <input value={checkin.source_app} onChange={(event) => setCheckin((current) => ({ ...current, source_app: event.target.value }))} placeholder="LifeSum" />
                 </label>
               </div>
@@ -1390,13 +1435,13 @@ export default function CutCoachPage() {
               </div>
 
               <label className={`${styles.field} ${styles.fieldFull}`}>
-                <span>Notițe</span>
-                <textarea rows={3} value={checkin.notes} onChange={(event) => setCheckin((current) => ({ ...current, notes: event.target.value }))} placeholder="orice context util" />
+                <span>Notes</span>
+                <textarea rows={3} value={checkin.notes} onChange={(event) => setCheckin((current) => ({ ...current, notes: event.target.value }))} placeholder="any useful context" />
               </label>
 
               <div className={styles.quickSummary}>
                 <SummaryTile label="Target" value={selectedDay?.target ? `${Math.round(selectedDay.target.kcal_target)} kcal` : '—'} tone="neutral" />
-                <SummaryTile label="Logged" value={selectedDay && selectedDay.caloriesSource !== 'none' ? `${Math.round(selectedDay.consumed.calories)} kcal` : 'Necompletat'} tone={selectedDay?.target && selectedDay.caloriesSource !== 'none' && selectedDay.consumed.calories <= selectedDay.target.kcal_target + 50 ? 'good' : 'warn'} />
+                <SummaryTile label="Logged" value={selectedDay && selectedDay.caloriesSource !== 'none' ? `${Math.round(selectedDay.consumed.calories)} kcal` : 'Not logged'} tone={selectedDay?.target && selectedDay.caloriesSource !== 'none' && selectedDay.consumed.calories <= selectedDay.target.kcal_target + 50 ? 'good' : 'warn'} />
                 <SummaryTile label="Activity burn" value={burnedKcal > 0 ? `${Math.round(burnedKcal)} kcal` : '0 kcal'} tone="future" />
                 <SummaryTile label="Net today" value={toNumber(checkin.kcal_actual) > 0 ? `${Math.round(netKcal)} kcal` : '—'} tone="good" />
                 <SummaryTile label="Remaining" value={selectedDay?.remaining ? `${Math.round(selectedDay.remaining.calories)} kcal` : '—'} tone={selectedDay?.remaining && selectedDay.remaining.calories >= 0 ? 'good' : 'bad'} />
@@ -1404,7 +1449,7 @@ export default function CutCoachPage() {
               </div>
 
               <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveCheckin()} type="button">
-                {busy === '/api/cut-coach/checkins' ? 'Se salvează…' : 'Save kcal check-in'}
+                {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Save kcal check-in'}
               </button>
             </section>
 
@@ -1412,7 +1457,7 @@ export default function CutCoachPage() {
               <div className={styles.panelHead}>
                 <div>
                   <h3 className={styles.panelTitle}>Weight + tape</h3>
-                  <p className={styles.panelText}>Greutate zilnic, dimensiuni mai ales în weekend.</p>
+                  <p className={styles.panelText}>Daily weight. Tape measurements mostly on weekends.</p>
                 </div>
                 <button className="btn-base btn-ghost" type="button" onClick={copyLastMeasurements}>
                   Copy last measurements
@@ -1421,7 +1466,7 @@ export default function CutCoachPage() {
 
               <div className={styles.formGrid}>
                 <label className={styles.field}>
-                  <span>Zi</span>
+                  <span>Date</span>
                   <input type="date" value={weight.date} onChange={(event) => {
                     const nextDate = event.target.value;
                     setWeight(fillWeight(nextDate, data));
@@ -1429,38 +1474,38 @@ export default function CutCoachPage() {
                   }} />
                 </label>
                 <label className={styles.field}>
-                  <span>Greutate kg</span>
-                  <input type="number" step="0.1" inputMode="decimal" value={weight.weight_kg} onChange={(event) => setWeight((current) => ({ ...current, weight_kg: event.target.value }))} placeholder="ex. 89.6" />
+                  <span>Weight kg</span>
+                  <input type="number" step="0.1" inputMode="decimal" value={weight.weight_kg} onChange={(event) => setWeight((current) => ({ ...current, weight_kg: event.target.value }))} placeholder="e.g. 89.6" />
                 </label>
                 <label className={styles.field}>
-                  <span>Talie</span>
+                  <span>Waist</span>
                   <input type="number" step="0.1" inputMode="decimal" value={weight.waist_cm} onChange={(event) => setWeight((current) => ({ ...current, waist_cm: event.target.value }))} placeholder="cm" />
                 </label>
                 <label className={styles.field}>
-                  <span>Șold</span>
+                  <span>Hips</span>
                   <input type="number" step="0.1" inputMode="decimal" value={weight.hips_cm} onChange={(event) => setWeight((current) => ({ ...current, hips_cm: event.target.value }))} placeholder="cm" />
                 </label>
                 <label className={styles.field}>
-                  <span>Piept</span>
+                  <span>Chest</span>
                   <input type="number" step="0.1" inputMode="decimal" value={weight.chest_cm} onChange={(event) => setWeight((current) => ({ ...current, chest_cm: event.target.value }))} placeholder="cm" />
                 </label>
                 <label className={styles.field}>
-                  <span>Coapsă</span>
+                  <span>Thigh</span>
                   <input type="number" step="0.1" inputMode="decimal" value={weight.thigh_cm} onChange={(event) => setWeight((current) => ({ ...current, thigh_cm: event.target.value }))} placeholder="cm" />
                 </label>
                 <label className={styles.field}>
-                  <span>Braț</span>
+                  <span>Arm</span>
                   <input type="number" step="0.1" inputMode="decimal" value={weight.arm_cm} onChange={(event) => setWeight((current) => ({ ...current, arm_cm: event.target.value }))} placeholder="cm" />
                 </label>
                 <label className={styles.field}>
-                  <span>Gât</span>
+                  <span>Neck</span>
                   <input type="number" step="0.1" inputMode="decimal" value={weight.neck_cm} onChange={(event) => setWeight((current) => ({ ...current, neck_cm: event.target.value }))} placeholder="cm" />
                 </label>
               </div>
 
               <label className={`${styles.field} ${styles.fieldFull}`}>
-                <span>Notițe</span>
-                <textarea rows={3} value={weight.notes} onChange={(event) => setWeight((current) => ({ ...current, notes: event.target.value }))} placeholder="ex. retenție, masă târzie, weekend" />
+                <span>Notes</span>
+                <textarea rows={3} value={weight.notes} onChange={(event) => setWeight((current) => ({ ...current, notes: event.target.value }))} placeholder="e.g. water retention, late meal, weekend" />
               </label>
 
               <div className={styles.quickSummary}>
@@ -1471,7 +1516,7 @@ export default function CutCoachPage() {
               </div>
 
               <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveWeight()} type="button">
-                {busy === '/api/cut-coach/weights' ? 'Se salvează…' : 'Save weight / measurements'}
+                {busy === '/api/cut-coach/weights' ? 'Saving…' : 'Save weight / measurements'}
               </button>
             </section>
           </div> : null}
@@ -1480,11 +1525,11 @@ export default function CutCoachPage() {
         <section id="flow" className={styles.appSection}>
           <div className={styles.sectionHead}>
             <div>
-              <div className={styles.sectionEyebrow}>program</div>
+              <div className={styles.sectionEyebrow}>flow</div>
               <h2 className={styles.sectionTitle}>Week flow</h2>
             </div>
             <div className={styles.sectionHeadActions}>
-              <div className={styles.sectionMeta}>{activeChallenge ? `${phaseLabel(challengeStats.progress)} phase` : 'Pregătește intervalul'}</div>
+              <div className={styles.sectionMeta}>{activeChallenge ? `${phaseLabel(challengeStats.progress)} phase` : 'Set up a challenge'}</div>
               <button className={styles.sectionToggle} onClick={() => toggleSection('flow')} type="button">
                 {collapsedSections.flow ? 'Expand' : 'Collapse'}
               </button>
@@ -1515,8 +1560,8 @@ export default function CutCoachPage() {
             <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Current run</h3>
               <p className={styles.panelText}>
-                {today?.target ? `Azi ai ${Math.round(today.target.kcal_target)} kcal target.` : 'Mai întâi fă setup.'}{' '}
-                {tomorrow?.target ? `Mâine te duci spre ${Math.round(tomorrow.target.kcal_target)} kcal.` : ''}
+                {today?.target ? `Today you have a ${Math.round(today.target.kcal_target)} kcal target.` : 'Save setup first.'}{' '}
+                {tomorrow?.target ? `Tomorrow points to ${Math.round(tomorrow.target.kcal_target)} kcal.` : ''}
               </p>
               <div className={styles.phaseTrack}>
                 <div className={styles.phaseBar}>
@@ -1536,7 +1581,7 @@ export default function CutCoachPage() {
               <p className={styles.panelText}>
                 {today?.target
                   ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today')
-                  : 'Plannerul începe după ce ai profil + greutate.'}
+                  : 'The planner starts after profile + weight are saved.'}
               </p>
             </section>
           </div>
@@ -1550,7 +1595,7 @@ export default function CutCoachPage() {
               <h2 className={styles.sectionTitle}>Calendar + momentum</h2>
             </div>
             <div className={styles.sectionHeadActions}>
-              <div className={styles.sectionMeta}>verde bine / roșu rău</div>
+              <div className={styles.sectionMeta}>green good / red bad</div>
               <button className={styles.sectionToggle} onClick={() => toggleSection('calendar')} type="button">
                 {collapsedSections.calendar ? 'Expand' : 'Collapse'}
               </button>
@@ -1560,8 +1605,8 @@ export default function CutCoachPage() {
           {!collapsedSections.calendar ? <div className={styles.calendarGrid}>
             <section className={`surface-card ${styles.panel}`}>
               <div className={styles.calendarHeader}>
-                <h3 className={styles.panelTitle}>Luna curentă</h3>
-                <span className={styles.panelText}>{new Intl.DateTimeFormat('ro-RO', { month: 'long', year: 'numeric' }).format(new Date(`${todayIsoDate}T12:00:00`))}</span>
+                <h3 className={styles.panelTitle}>Current month</h3>
+                <span className={styles.panelText}>{new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' }).format(new Date(`${todayIsoDate}T12:00:00`))}</span>
               </div>
               <div className={styles.weekdays}>
                 {WEEKDAY_LABELS.map((label) => (
@@ -1642,10 +1687,10 @@ export default function CutCoachPage() {
             <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>What matters now</h3>
               <ul className={styles.cleanList}>
-                <li>Ziua principală = `kcal total` la final de zi.</li>
-                <li>Greutate zilnică dimineața, același context.</li>
-                <li>Talie + restul dimensiunilor în weekend.</li>
-                <li>Mișcarea rămâne opțională, dar te ajută la context.</li>
+                <li>Main daily input: total kcal at the end of the day.</li>
+                <li>Daily weigh-in in the morning, same context.</li>
+                <li>Waist and the rest of the measurements on weekends.</li>
+                <li>Movement stays optional, but helps with context.</li>
               </ul>
             </section>
           </div> : null}
@@ -1658,7 +1703,7 @@ export default function CutCoachPage() {
               <h2 className={styles.sectionTitle}>Profile, reminders, challenge</h2>
             </div>
             <div className={styles.sectionHeadActions}>
-              <div className={styles.sectionMeta}>flexibil, nu hardcodat pentru 100</div>
+              <div className={styles.sectionMeta}>flexible, not hardcoded to 100 days</div>
               <button className={styles.sectionToggle} onClick={() => toggleSection('settings')} type="button">
                 {collapsedSections.settings ? 'Expand' : 'Collapse'}
               </button>
@@ -1668,14 +1713,14 @@ export default function CutCoachPage() {
           {!collapsedSections.settings ? <div className={styles.settingsGrid}>
             <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Profile</h3>
-              <p className={styles.panelText}>Basic first. Restul doar pentru fine tuning.</p>
+              <p className={styles.panelText}>Basic first. The rest is fine tuning.</p>
               <p className={styles.previewNote}>
-                Preseturile `No gym for now` și `Lejer / Standard / Strict` se aplică direct în planul activ. Când modifici manual restul câmpurilor, apeși `Save profile`.
+                `No gym for now` and `Easy / Standard / Strict` apply directly to the active plan. Manual edits need `Save profile`.
               </p>
               <div className={styles.formGrid}>
                 <label className={styles.field}>
-                  <span>Initial kg</span>
-                  <input className={styles.featureInput} inputMode="decimal" value={setup.initial_weight_kg} onChange={(event) => setSetup((current) => ({ ...current, initial_weight_kg: event.target.value }))} placeholder="ex. 89.8" />
+                  <span>Current kg</span>
+                  <input className={styles.featureInput} inputMode="decimal" value={setup.initial_weight_kg} onChange={(event) => setSetup((current) => ({ ...current, initial_weight_kg: event.target.value }))} placeholder="e.g. 89.8" />
                 </label>
                 <label className={styles.field}>
                   <span>Age</span>
@@ -1705,11 +1750,11 @@ export default function CutCoachPage() {
                 <label className={`${styles.field} ${styles.sliderField}`}>
                   <span>Deficit daily</span>
                   <div className={styles.sliderMeta}>
-                    <strong>{selectedPacePreview ? `${selectedPacePreview.target} kcal/zi` : `${setup.preferred_deficit_pct}%`}</strong>
+                    <strong>{selectedPacePreview ? `${selectedPacePreview.target} kcal/day` : `${setup.preferred_deficit_pct}%`}</strong>
                     <small>
                       {selectedPacePreview
-                        ? `~ -${selectedPacePreview.deficit} kcal sub maintenance`
-                        : 'Miști sliderul și vezi direct targetul.'}
+                        ? `~ -${selectedPacePreview.deficit} kcal below maintenance`
+                        : 'Move the slider to see the target.'}
                     </small>
                   </div>
                   <input
@@ -1720,13 +1765,13 @@ export default function CutCoachPage() {
                     onMouseUp={(event) =>
                       void applyProfilePreset(
                         { preferred_deficit_pct: event.currentTarget.value },
-                        'Deficitul zilnic a fost aplicat în plan.'
+                        'Daily deficit applied to the plan.'
                       )
                     }
                     onTouchEnd={(event) =>
                       void applyProfilePreset(
                         { preferred_deficit_pct: event.currentTarget.value },
-                        'Deficitul zilnic a fost aplicat în plan.'
+                        'Daily deficit applied to the plan.'
                       )
                     }
                     step="1"
@@ -1734,7 +1779,7 @@ export default function CutCoachPage() {
                     value={setup.preferred_deficit_pct}
                   />
                   <div className={styles.sliderScale}>
-                    <small>Lejer</small>
+                    <small>Easy</small>
                     <small>Standard</small>
                     <small>Strict</small>
                   </div>
@@ -1744,7 +1789,7 @@ export default function CutCoachPage() {
               <div className={styles.paceRow}>
                 <button
                   className={styles.quickChip}
-                  onClick={() => void applyProfilePreset(applyNoGymPreset(), 'Presetul fără sală a fost aplicat în plan.')}
+                  onClick={() => void applyProfilePreset(applyNoGymPreset(), 'No-gym preset applied to the plan.')}
                   type="button"
                 >
                   No gym for now
@@ -1753,26 +1798,26 @@ export default function CutCoachPage() {
                   <button
                     className={`${styles.paceCard} ${setup.preferred_deficit_pct === preset.value ? styles.paceCardActive : ''}`}
                     key={preset.value}
-                    onClick={() => void applyProfilePreset({ preferred_deficit_pct: preset.value }, `Ritmul ${preset.label.toLowerCase()} a fost aplicat în plan.`)}
+                    onClick={() => void applyProfilePreset({ preferred_deficit_pct: preset.value }, `${preset.label} pace applied to the plan.`)}
                     type="button"
                   >
                     <strong>{preset.label}</strong>
                     <span>{preset.description}</span>
                     <small>
                       {pacePreviews[preset.value]
-                        ? `aprox ${pacePreviews[preset.value]!.target} kcal/zi`
+                        ? `about ${pacePreviews[preset.value]!.target} kcal/day`
                         : `${preset.value}% deficit`}
                     </small>
                     <small>
                       {pacePreviews[preset.value]
-                        ? `~ -${pacePreviews[preset.value]!.deficit} kcal din maintenance`
+                        ? `~ -${pacePreviews[preset.value]!.deficit} kcal from maintenance`
                         : ''}
                     </small>
                   </button>
                 ))}
               </div>
               <p className={styles.previewNote}>
-                Sliderul și cardurile folosesc aceeași formulă ca planul activ. Când dai drumul sliderului sau apeși un preset, planul se resalvează imediat.
+                The slider and cards use the same formula as the active plan. Releasing the slider or tapping a preset resaves the plan instantly.
               </p>
 
               {setupPreview ? (
@@ -1784,7 +1829,7 @@ export default function CutCoachPage() {
                     <SummaryTile label="Rest day" value={`${setupPreview.restTarget} kcal`} tone="warn" />
                   </div>
                   <p className={styles.previewNote}>
-                    Dacă acum ești sedentar și fără sală, mă uit în primul rând la `Target daily` și `Rest day`. Acolo ar trebui să fii aproape de zona ta reală de slăbit.
+                    If you are sedentary and not training right now, focus mostly on `Target daily` and `Rest day`.
                   </p>
                 </>
               ) : null}
@@ -1812,7 +1857,7 @@ export default function CutCoachPage() {
               </details>
 
               <div className={styles.dayPicker}>
-                <div className={styles.dayPickerLabel}>Zile de sală</div>
+                <div className={styles.dayPickerLabel}>Training days</div>
                 {[1, 2, 3, 4, 5, 6, 0].map((day) => {
                   const active = setup.training_days.includes(day);
                   return (
@@ -1827,18 +1872,23 @@ export default function CutCoachPage() {
               </div>
 
               <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveSetup()} type="button">
-                {busy === '/api/cut-coach/profile' ? 'Se salvează…' : 'Save profile'}
+                {busy === '/api/cut-coach/profile' ? 'Saving…' : 'Save profile'}
               </button>
             </section>
 
             <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Challenge</h3>
-              <p className={styles.panelText}>
-                `Start 100-day cut` pornește direct perioada de azi. `Save challenge` salvează doar datele care sunt acum în formular.
-              </p>
+              <p className={styles.panelText}>Start launches a new run from today. Save only updates the draft in this form.</p>
+              {activeChallenge ? (
+                <div className={styles.challengeStatus}>
+                  <strong>Active now:</strong> {activeChallenge.title} · {formatDate(activeChallenge.start_date)} → {formatDate(activeChallenge.end_date)}
+                </div>
+              ) : (
+                <div className={styles.challengeStatus}>No active challenge right now.</div>
+              )}
               <div className={styles.formGrid}>
                 <label className={styles.field}>
-                  <span>Titlu</span>
+                  <span>Title</span>
                   <input value={challenge.title} onChange={(event) => setChallenge((current) => ({ ...current, title: event.target.value }))} />
                 </label>
                 <label className={styles.field}>
@@ -1851,26 +1901,31 @@ export default function CutCoachPage() {
                 </label>
                 <label className={styles.field}>
                   <span>Goal kg</span>
-                  <input value={challenge.target_weight_kg} onChange={(event) => setChallenge((current) => ({ ...current, target_weight_kg: event.target.value }))} placeholder="opțional" />
+                  <input value={challenge.target_weight_kg} onChange={(event) => setChallenge((current) => ({ ...current, target_weight_kg: event.target.value }))} placeholder="optional" />
                 </label>
               </div>
               <label className={`${styles.field} ${styles.fieldFull}`}>
-                <span>Notițe</span>
+                <span>Notes</span>
                 <textarea rows={3} value={challenge.notes} onChange={(event) => setChallenge((current) => ({ ...current, notes: event.target.value }))} />
               </label>
               <div className={styles.pillRow}>
-                <button className="btn-base btn-secondary" type="button" onClick={() => void startQuick100Challenge()}>
-                  Start 100-day cut
+                <button className="btn-base btn-secondary" disabled={Boolean(activeChallenge)} type="button" onClick={() => void startQuick100Challenge()}>
+                  {activeChallenge ? '100-day cut active' : 'Start 100-day cut'}
                 </button>
                 <button className="btn-base btn-ghost" type="button" onClick={() => setChallenge(challengeDraft(todayIsoDate))}>
-                  Fill 100-day dates
+                  Fill 100-day draft
                 </button>
                 <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveChallenge()} type="button">
-                  {busy === '/api/cut-coach/challenges' ? 'Se salvează…' : 'Save challenge'}
+                  {busy === '/api/cut-coach/challenges' ? 'Saving…' : 'Save challenge'}
                 </button>
+                {activeChallenge ? (
+                  <button className="btn-base btn-ghost" disabled={busy !== null} type="button" onClick={() => void stopActiveChallenge()}>
+                    Stop active challenge
+                  </button>
+                ) : null}
               </div>
               <div className={styles.challengeStatus}>
-                {challenge.start_date ? `Start: ${formatFullDate(challenge.start_date)}` : 'Alege data de start'}
+                {challenge.start_date ? `Draft starts: ${formatFullDate(challenge.start_date)}` : 'Pick a start date'}
               </div>
             </section>
 
@@ -1896,20 +1951,20 @@ export default function CutCoachPage() {
 
               <div className={styles.pushBox}>
                 <div>
-                  <strong>Push pe mobil</strong>
+                  <strong>Mobile push</strong>
                   <p>
                     {pushSupported
                       ? pushEnabled
-                        ? 'Notificările sunt active.'
+                        ? 'Notifications are active.'
                         : pushEnvironment.permission === 'denied'
-                          ? 'Permisiunea e blocată în browser.'
-                          : 'Activează push și le poți primi ca la termo-alert.'
-                      : 'Browserul curent nu suportă push web.'}
+                          ? 'Permission is blocked in the browser.'
+                          : 'Enable push to get reminders on mobile.'
+                      : 'This browser does not support web push.'}
                   </p>
                 </div>
                 {pushSupported ? (
                   <button className="btn-base btn-secondary" disabled={pushBusy || pushEnabled} onClick={() => void enableNotifications()} type="button">
-                    {pushEnabled ? 'Activat' : pushBusy ? 'Se activează…' : 'Activează push'}
+                    {pushEnabled ? 'Enabled' : pushBusy ? 'Enabling…' : 'Enable push'}
                   </button>
                 ) : null}
               </div>
@@ -1917,7 +1972,7 @@ export default function CutCoachPage() {
               {pushError ? <div className={styles.pushError}>{pushError}</div> : null}
 
               <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveReminders()} type="button">
-                {busy === '/api/cut-coach/reminders' ? 'Se salvează…' : 'Save reminders'}
+                {busy === '/api/cut-coach/reminders' ? 'Saving…' : 'Save reminders'}
               </button>
             </section>
           </div> : null}
