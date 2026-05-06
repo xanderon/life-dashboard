@@ -125,6 +125,31 @@ type ReminderDraft = {
 type SectionKey = 'today' | 'flow' | 'calendar' | 'progress' | 'settings';
 type TodayComposer = 'checkin' | 'weight' | null;
 type SetupComposer = 'profile' | 'challenge' | 'reminders' | null;
+type ProgressComposer = 'character' | 'stash' | null;
+type ItemRarity = 'common' | 'magic' | 'rare' | 'set' | 'legendary';
+
+type CharacterItem = {
+  slot: string;
+  name: string;
+  rarity: ItemRarity;
+  source: string;
+  statLine: string;
+  flavor: string;
+};
+
+type CharacterState = {
+  archetype: string;
+  title: string;
+  hp: number;
+  maxHp: number;
+  resolve: number;
+  armor: number;
+  magicFind: number;
+  latestDrop: CharacterItem;
+  equipped: CharacterItem[];
+  stash: CharacterItem[];
+  warnings: string[];
+};
 
 const DEFAULT_PUSH_ENVIRONMENT: PushEnvironmentSnapshot = {
   supported: false,
@@ -686,6 +711,126 @@ function buildAchievements(
   });
 }
 
+const SLOT_LIBRARY: Record<string, string[]> = {
+  helm: ['Morning Weigh Circlet', 'Cold Iron Hood', 'Discipline Visor', 'Skull of Routine'],
+  chest: ['Deficit Carapace', 'Ledger Plate', 'Fasting Harness', 'Quiet Bulkmail'],
+  weapon: ['Scalepiercer', 'Calorie Cutter', 'Trendsplitter', 'Hungry Pike'],
+  shield: ['Target Guard', 'Weekflow Bulwark', 'Green Day Ward', 'Momentum Aegis'],
+  gloves: ['Grip of Routine', 'Check-in Claws', 'Logkeeper Grips', 'Quicksave Wraps'],
+  belt: ['Belt of Recovery', 'Waistline Girdle', 'Clean Cut Sash', 'Ratio Strap'],
+  boots: ['Steps of Return', 'Low Friction Greaves', 'Weekflow Boots', 'Silent March'],
+  ring: ['Ring of the Green Week', 'Scale Loop', 'Disciplined Band', 'Ashen Halo'],
+  amulet: ['Amulet of Satiety', 'Charm of Momentum', 'Necklace of Restraint', 'Iron Appetite'],
+  charm: ['Stash Talisman', 'XP Fetish', 'Deficit Idol', 'Trend Relic'],
+};
+
+function pickSeeded<T>(seed: number, items: T[]) {
+  const index = Math.abs(seed) % items.length;
+  return items[index]!;
+}
+
+function rarityFromScore(score: number): ItemRarity {
+  if (score >= 92) return 'legendary';
+  if (score >= 78) return 'set';
+  if (score >= 58) return 'rare';
+  if (score >= 32) return 'magic';
+  return 'common';
+}
+
+function buildItem(slot: string, seed: number, power: number, source: string): CharacterItem {
+  const base = pickSeeded(seed, SLOT_LIBRARY[slot] ?? SLOT_LIBRARY.charm);
+  const rarity = rarityFromScore((seed % 100) + power);
+  const statTemplates = {
+    common: [`+${6 + (power % 5)} focus`, `+${4 + (power % 4)} control`, `+${8 + (power % 6)} grit`],
+    magic: [`+${10 + (power % 8)} discipline`, `+${12 + (power % 6)} momentum`, `+${10 + (power % 7)} recovery`],
+    rare: [`+${15 + (power % 10)} clean kcal`, `+${14 + (power % 9)} trend power`, `+${16 + (power % 8)} weigh-in luck`],
+    set: [`+${18 + (power % 12)} challenge armor`, `+${16 + (power % 10)} streak sustain`, `+${20 + (power % 8)} drop luck`],
+    legendary: [`+${24 + (power % 12)} boss discipline`, `+${22 + (power % 10)} late-night resistance`, `+${26 + (power % 8)} cut velocity`],
+  } satisfies Record<ItemRarity, string[]>;
+  const statLine = pickSeeded(seed + power, statTemplates[rarity]);
+  const flavor = pickSeeded(seed + power * 3, [
+    'Dropped in the long walk between cravings and control.',
+    'Warmed by streaks and sharpened by boring consistency.',
+    'A quiet item that gets stronger when you just keep logging.',
+    'Found somewhere between the scale, the target and the next clean day.',
+  ]);
+
+  return {
+    slot,
+    name: base,
+    rarity,
+    source,
+    statLine,
+    flavor,
+  };
+}
+
+function buildCharacterState(args: {
+  payload: BootstrapPayload | null;
+  activeChallenge: CutCoachChallengeRow | null;
+  challengeStats: ReturnType<typeof buildChallengeStats>;
+  xp: ReturnType<typeof buildXp>;
+  achievements: ReturnType<typeof buildAchievements>;
+  todayCheckinDone: boolean;
+  todayWeightDone: boolean;
+  overToday: number | null;
+}) {
+  const { payload, activeChallenge, challengeStats, xp, achievements, todayCheckinDone, todayWeightDone, overToday } = args;
+  const weekGreen = payload?.week.filter(
+    (item) => item.target && item.caloriesSource !== 'none' && item.consumed.calories <= item.target.kcal_target + 50
+  ).length ?? 0;
+  const movementDays =
+    payload?.checkins.filter((item) => (item.activity_kcal_burned ?? 0) >= 120 || Boolean(item.activity_summary)).length ?? 0;
+  const unlockedCount = achievements.filter((item) => item.unlocked).length;
+  const scoreSeed = xp.xp + challengeStats.currentDay * 19 + unlockedCount * 23 + weekGreen * 29 + movementDays * 11;
+  const archetype = pickSeeded(scoreSeed, ['Deficit Ranger', 'Scale Paladin', 'Trend Sorcerer', 'Streak Rogue']);
+  const title = activeChallenge ? `${phaseLabel(challengeStats.progress)} Walker` : 'Unbound Wanderer';
+  const hpLoss =
+    (todayCheckinDone ? 0 : 16) +
+    (todayWeightDone ? 0 : 10) +
+    (overToday != null && overToday > 180 ? 18 : overToday != null && overToday > 50 ? 8 : 0) +
+    (activeChallenge ? 0 : 12) +
+    (weekGreen < 2 ? 7 : 0);
+  const hp = clamp(100 - hpLoss + Math.min(10, unlockedCount), 28, 100);
+  const resolve = clamp(28 + weekGreen * 12 + Math.min(22, challengeStats.currentDay) + unlockedCount * 2 - (overToday != null && overToday > 150 ? 10 : 0), 0, 100);
+  const armor = 40 + unlockedCount * 3 + weekGreen * 2;
+  const magicFind = 6 + challengeStats.currentDay + unlockedCount * 2;
+  const warnings = [
+    !todayCheckinDone ? 'No kcal check-in today: HP penalty.' : null,
+    !todayWeightDone ? 'No weigh-in today: armor drops a bit.' : null,
+    overToday != null && overToday > 150 ? 'Heavy overage: health gets chipped.' : null,
+    weekGreen < 2 ? 'Too few green days this week: resolve stays low.' : null,
+  ].filter(Boolean) as string[];
+
+  const equippedSlots = ['helm', 'weapon', 'chest', 'shield', 'gloves', 'belt', 'boots', 'ring', 'amulet'];
+  const equipped = equippedSlots.map((slot, index) =>
+    buildItem(slot, scoreSeed + index * 41, unlockedCount * 6 + weekGreen * 4 + challengeStats.currentDay, 'equipped')
+  );
+  const stash = ['charm', 'ring', 'boots', 'belt', 'amulet', 'weapon'].map((slot, index) =>
+    buildItem(
+      slot,
+      scoreSeed + 300 + index * 53,
+      unlockedCount * 7 + weekGreen * 5 + movementDays * 3 + index * 4,
+      index < 2 ? 'achievement' : index < 4 ? 'daily drop' : 'challenge drop'
+    )
+  );
+  const latestDrop = stash.at(0) ?? equipped[0]!;
+
+  return {
+    archetype,
+    title,
+    hp,
+    maxHp: 100,
+    resolve,
+    armor,
+    magicFind,
+    latestDrop,
+    equipped,
+    stash,
+    warnings,
+  } satisfies CharacterState;
+}
+
 function toneForDay(day: DailySummary, todayIsoDate: string) {
   if (!day.target) return styles.dayToneNeutral;
   if (day.date > todayIsoDate) return styles.dayToneFuture;
@@ -891,6 +1036,7 @@ export default function CutCoachPage() {
   });
   const [todayComposer, setTodayComposer] = useState<TodayComposer>(null);
   const [setupComposer, setSetupComposer] = useState<SetupComposer>(null);
+  const [progressComposer, setProgressComposer] = useState<ProgressComposer>(null);
   const pushEnvironment = useSyncExternalStore(
     subscribeNoop,
     getPushEnvironmentSnapshot,
@@ -1252,6 +1398,16 @@ export default function CutCoachPage() {
     today?.target && today.caloriesSource !== 'none' ? Math.round(today.consumed.calories - today.target.kcal_target) : null;
   const todayCheckinDone = Boolean(data && findCheckinForDate(data.checkins, todayIsoDate)?.kcal_actual != null);
   const todayWeightDone = Boolean(data && findWeightForDate(data.weights, todayIsoDate)?.weight_kg != null);
+  const characterState = buildCharacterState({
+    payload: data,
+    activeChallenge,
+    challengeStats,
+    xp,
+    achievements,
+    todayCheckinDone,
+    todayWeightDone,
+    overToday,
+  });
 
   return (
     <PageShell width="7xl" className={styles.shell}>
@@ -1304,6 +1460,21 @@ export default function CutCoachPage() {
                   : `You are on track today. ${today?.remaining ? `${Math.max(0, Math.round(today.remaining.calories))} kcal left.` : ''}`}
             </div>
           ) : null}
+          <button
+            className={styles.characterPeek}
+            onClick={() => {
+              setCollapsedSections((current) => ({ ...current, progress: false }));
+              setProgressComposer('character');
+            }}
+            type="button"
+          >
+            <div>
+              <div className={styles.characterPeekKicker}>{characterState.archetype}</div>
+              <strong>{characterState.latestDrop.name}</strong>
+              <span>HP {characterState.hp}/{characterState.maxHp} • Latest drop • {characterState.latestDrop.rarity}</span>
+            </div>
+            <span className={styles.characterPeekAction}>Open character</span>
+          </button>
           <div className={styles.heroDeck}>
             <section className={styles.heroPanel}>
               <div className={styles.focusKicker}>Today</div>
@@ -1729,6 +1900,98 @@ export default function CutCoachPage() {
                 <li>Movement stays optional, but helps with context.</li>
               </ul>
             </section>
+
+            <section className={`surface-card ${styles.panel}`}>
+              <div className={styles.panelHead}>
+                <div>
+                  <h3 className={styles.panelTitle}>Character</h3>
+                  <p className={styles.panelText}>A Diablo-style layer that reacts to consistency, misses and milestone drops.</p>
+                </div>
+              </div>
+              <div className={styles.composerGrid}>
+                <button
+                  className={`${styles.composerButton} ${progressComposer === 'character' ? styles.composerButtonActive : ''}`}
+                  onClick={() => setProgressComposer((current) => (current === 'character' ? null : 'character'))}
+                  type="button"
+                >
+                  <strong>{characterState.archetype}</strong>
+                  <span>{characterState.title} • HP {characterState.hp}/{characterState.maxHp}</span>
+                </button>
+                <button
+                  className={`${styles.composerButton} ${progressComposer === 'stash' ? styles.composerButtonActive : ''}`}
+                  onClick={() => setProgressComposer((current) => (current === 'stash' ? null : 'stash'))}
+                  type="button"
+                >
+                  <strong>Stash</strong>
+                  <span>Latest drop: {characterState.latestDrop.name}</span>
+                </button>
+              </div>
+            </section>
+
+            {progressComposer === 'character' ? (
+              <section className={`surface-card ${styles.panel}`}>
+                <div className={styles.characterGrid}>
+                  <div className={styles.paperDoll}>
+                    {characterState.equipped.map((item) => (
+                      <div className={`${styles.itemSlot} ${styles[`rarity${capitalize(item.rarity)}`]}`} key={item.slot}>
+                        <span>{item.slot}</span>
+                        <strong>{item.name}</strong>
+                        <small>{item.statLine}</small>
+                      </div>
+                    ))}
+                  </div>
+                  <div className={styles.characterInfo}>
+                    <div className={styles.characterHeader}>
+                      <div>
+                        <div className={styles.focusKicker}>Character</div>
+                        <h3 className={styles.characterName}>{characterState.archetype}</h3>
+                        <p className={styles.panelText}>{characterState.title}</p>
+                      </div>
+                      <div className={styles.characterBadge}>{characterState.latestDrop.rarity}</div>
+                    </div>
+                    <StatBar label="HP" value={characterState.hp} max={characterState.maxHp} tone="danger" />
+                    <StatBar label="Resolve" value={characterState.resolve} max={100} tone="accent" />
+                    <div className={styles.quickSummary}>
+                      <SummaryTile label="Armor" value={String(characterState.armor)} tone="neutral" />
+                      <SummaryTile label="Magic find" value={`${characterState.magicFind}%`} tone="future" />
+                      <SummaryTile label="Latest drop" value={characterState.latestDrop.name} tone="good" />
+                      <SummaryTile label="Source" value={characterState.latestDrop.source} tone="warn" />
+                    </div>
+                    <div className={styles.warningList}>
+                      {characterState.warnings.length ? (
+                        characterState.warnings.map((warning) => <div className={styles.warningChip} key={warning}>{warning}</div>)
+                      ) : (
+                        <div className={styles.warningChip}>No current penalties. HP is stable.</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {progressComposer === 'stash' ? (
+              <section className={`surface-card ${styles.panel}`}>
+                <div className={styles.stashHead}>
+                  <div>
+                    <h3 className={styles.panelTitle}>Recent drops</h3>
+                    <p className={styles.panelText}>Light daily drops come from consistency. Better drops come from streaks, clean weeks and challenge progress.</p>
+                  </div>
+                </div>
+                <div className={styles.stashGrid}>
+                  {characterState.stash.map((item) => (
+                    <div className={`${styles.stashItem} ${styles[`rarity${capitalize(item.rarity)}`]}`} key={`${item.slot}-${item.name}`}>
+                      <div className={styles.stashTop}>
+                        <span>{item.slot}</span>
+                        <strong>{item.rarity}</strong>
+                      </div>
+                      <h4>{item.name}</h4>
+                      <p>{item.statLine}</p>
+                      <small>{item.flavor}</small>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
           </div> : null}
         </section>
 
@@ -2052,6 +2315,35 @@ function MetricBox({ label, value, helper }: { label: string; value: string; hel
       <div className={styles.metricHelper}>{helper}</div>
     </div>
   );
+}
+
+function StatBar({
+  label,
+  value,
+  max,
+  tone,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  tone: 'danger' | 'accent';
+}) {
+  const width = `${Math.round((value / Math.max(1, max)) * 100)}%`;
+  return (
+    <div className={styles.statBarWrap}>
+      <div className={styles.statBarTop}>
+        <span>{label}</span>
+        <strong>{value}/{max}</strong>
+      </div>
+      <div className={styles.statBar}>
+        <span className={tone === 'danger' ? styles.statBarDanger : styles.statBarAccent} style={{ width }} />
+      </div>
+    </div>
+  );
+}
+
+function capitalize(value: string) {
+  return `${value[0]?.toUpperCase() ?? ''}${value.slice(1)}`;
 }
 
 function SummaryTile({
