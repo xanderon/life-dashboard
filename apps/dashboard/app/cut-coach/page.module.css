@@ -6,7 +6,8 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  margin-inline: -1rem;
+  width: 100%;
+  overflow-x: clip;
 }
 
 .topbar {
@@ -870,6 +871,10 @@
 }
 
 @media (max-width: 767px) {
+  .shell:global(.page-shell) {
+    padding: 0.5rem;
+  }
+
   .topbar {
     position: sticky;
     top: 0;
@@ -880,10 +885,8 @@
     backdrop-filter: blur(16px);
   }
 
-  .hero,
-  .panel,
-  .banner {
-    border-inline: 0;
+  .page {
+    gap: 0.85rem;
   }
 
   .formGrid,
@@ -904,29 +907,32 @@
   }
 
   .sectionHead {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
+    padding-left: 0.15rem;
+    padding-right: 0.15rem;
   }
 
   .hero {
-    padding: 1rem 0.75rem 0.9rem;
+    padding: 1rem 0.85rem 0.9rem;
+    border-radius: 1.45rem;
   }
 
   .panel {
-    padding: 0.9rem 0.75rem;
+    padding: 0.9rem 0.85rem;
+    border-radius: 1.35rem;
   }
 
   .banner {
-    margin-left: 0;
-    margin-right: 0;
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
+    margin-left: 0.1rem;
+    margin-right: 0.1rem;
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+    border-radius: 1.2rem;
   }
 
   .flowRail {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-    grid-auto-columns: minmax(14.25rem, 1fr);
+    padding-left: 0.1rem;
+    padding-right: 0.1rem;
+    grid-auto-columns: minmax(13.4rem, 86vw);
   }
 
   .heroStats {
@@ -950,6 +956,10 @@
     right: 0.5rem;
     bottom: 0.6rem;
     width: calc(100vw - 1rem);
+  }
+
+  .monthCell {
+    min-height: 3.55rem;
   }
 }
 
