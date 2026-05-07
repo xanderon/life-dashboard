@@ -2013,7 +2013,7 @@ export default function CutCoachPage() {
           </div>
 
           <div className={styles.flowMetaGrid}>
-            <section className={`surface-card ${styles.panel}`}>
+            <section className={`surface-card ${styles.panel} ${styles.characterPanel}`}>
               <h3 className={styles.panelTitle}>Current run</h3>
               <p className={styles.panelText}>
                 {today?.target ? `Today you have a ${Math.round(today.target.kcal_target)} kcal target.` : 'Save setup first.'}{' '}
