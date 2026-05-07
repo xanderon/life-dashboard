@@ -2032,7 +2032,7 @@ export default function CutCoachPage() {
               </div>
             </section>
 
-            <section className={`surface-card ${styles.panel} ${styles.characterPanel}`}>
+            <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Adaptive note</h3>
               <p className={styles.panelText}>
                 {today?.target
