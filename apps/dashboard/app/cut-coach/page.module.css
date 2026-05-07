@@ -2,6 +2,11 @@
   padding: 0;
 }
 
+.shell > div {
+  width: 100%;
+  max-width: min(1800px, calc(100vw - 1.5rem));
+}
+
 .page {
   display: flex;
   flex-direction: column;
@@ -1074,6 +1079,7 @@
 .characterPanel {
   grid-column: 1 / -1;
   overflow: visible;
+  margin-top: 1rem;
 }
 
 .characterBoard {
@@ -1702,17 +1708,20 @@
   }
 
   .characterGrid {
-    grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 0.74fr);
+    grid-template-columns: 1fr;
+    gap: 1.4rem;
     align-items: start;
   }
 
   .characterBoard {
-    grid-template-columns: minmax(0, 1.9fr) minmax(28rem, 1fr);
-    align-items: start;
+    grid-template-columns: minmax(34rem, 1.45fr) minmax(30rem, 1fr);
+    gap: 1.5rem;
+    align-items: stretch;
   }
 
   .stashPanel .inventoryMatrix {
     grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 0.85rem;
   }
 
   .equipmentPanel .paperDoll {
@@ -1720,8 +1729,17 @@
   }
 
   .characterInfo {
-    position: sticky;
-    top: 5.6rem;
+    position: static;
+    top: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .characterInfo > :first-child,
+  .characterInfo > :nth-child(2),
+  .characterInfo > :last-child {
+    grid-column: 1 / -1;
   }
 
   .todayGrid,
