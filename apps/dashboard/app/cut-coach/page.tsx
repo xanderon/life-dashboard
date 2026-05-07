@@ -125,9 +125,9 @@ type ReminderDraft = {
 type SectionKey = 'today' | 'flow' | 'calendar' | 'progress' | 'settings';
 type TodayComposer = 'checkin' | 'weight' | null;
 type SetupComposer = 'profile' | 'challenge' | 'reminders' | null;
-type ProgressComposer = 'character' | 'stash' | null;
 type ItemRarity = 'common' | 'magic' | 'rare' | 'set' | 'legendary';
 type DragOrigin = { kind: 'equipped'; slot: string } | { kind: 'stash'; index: number } | null;
+type SelectedItem = DragOrigin;
 
 type CharacterItem = {
   slot: string;
@@ -1060,9 +1060,9 @@ export default function CutCoachPage() {
   });
   const [todayComposer, setTodayComposer] = useState<TodayComposer>(null);
   const [setupComposer, setSetupComposer] = useState<SetupComposer>(null);
-  const [progressComposer, setProgressComposer] = useState<ProgressComposer>(null);
   const [inventoryOverride, setInventoryOverride] = useState<CharacterInventory | null>(null);
   const [draggedItem, setDraggedItem] = useState<DragOrigin>(null);
+  const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [characterCollapsed, setCharacterCollapsed] = useState(false);
   const pushEnvironment = useSyncExternalStore(
     subscribeNoop,
@@ -1080,6 +1080,7 @@ export default function CutCoachPage() {
     setData(payload);
     setInventoryOverride(null);
     setDraggedItem(null);
+    setSelectedItem(null);
     if (payload.profile) {
       setSetup(fillSetup(payload.profile, payload.trends.latest?.weight_kg ?? null));
     }
@@ -1438,31 +1439,48 @@ export default function CutCoachPage() {
     overToday,
   });
   const inventory = inventoryOverride ?? characterState.inventory;
+  const selectedLoot = readSelectedItem(selectedItem);
+  const draggedLoot = readItemFromOrigin(draggedItem);
 
   function startDrag(origin: DragOrigin) {
     setDraggedItem(origin);
+    setSelectedItem(origin);
   }
 
-  function moveToSlot(targetSlot: string) {
-    if (!draggedItem) return;
+  function readItemFromOrigin(origin: DragOrigin) {
+    if (!origin) return null;
+    if (origin.kind === 'equipped') return inventory.equipped[origin.slot] ?? null;
+    return inventory.stash[origin.index] ?? null;
+  }
+
+  function moveItemToSlot(origin: DragOrigin, targetSlot: string) {
+    if (!origin) return;
+    const movingPreview = readItemFromOrigin(origin);
+    if (!movingPreview) return;
+    if (movingPreview.slot !== targetSlot) {
+      setNotice(`${movingPreview.name} fits only in ${paperDollLabel(movingPreview.slot)}.`);
+      setDraggedItem(null);
+      setSelectedItem(origin);
+      return;
+    }
     setInventoryOverride((currentValue) => {
       const current = currentValue ?? characterState.inventory;
       const nextEquipped = { ...current.equipped };
       const nextStash = [...current.stash];
       let movingItem: CharacterItem | null = null;
 
-      if (draggedItem.kind === 'equipped') {
-        movingItem = nextEquipped[draggedItem.slot] ?? null;
-        nextEquipped[draggedItem.slot] = null;
+      if (origin.kind === 'equipped') {
+        movingItem = nextEquipped[origin.slot] ?? null;
+        nextEquipped[origin.slot] = null;
       } else {
-        movingItem = nextStash[draggedItem.index] ?? null;
-        nextStash.splice(draggedItem.index, 1);
+        movingItem = nextStash[origin.index] ?? null;
+        nextStash.splice(origin.index, 1);
       }
 
       if (!movingItem) return current;
 
       const replaced = nextEquipped[targetSlot] ?? null;
-      nextEquipped[targetSlot] = { ...movingItem, slot: targetSlot };
+      nextEquipped[targetSlot] = { ...movingItem, slot: targetSlot, source: 'equipped' };
       if (replaced) nextStash.unshift({ ...replaced, source: 'swapped' });
 
       return {
@@ -1471,31 +1489,65 @@ export default function CutCoachPage() {
       };
     });
     setDraggedItem(null);
+    setSelectedItem({ kind: 'equipped', slot: targetSlot });
   }
 
-  function moveToStash() {
-    if (!draggedItem) return;
+  function moveToSlot(targetSlot: string) {
+    moveItemToSlot(draggedItem, targetSlot);
+  }
+
+  function moveItemToStash(origin: DragOrigin, insertIndex = 0) {
+    if (!origin) return;
     setInventoryOverride((currentValue) => {
       const current = currentValue ?? characterState.inventory;
       const nextEquipped = { ...current.equipped };
       const nextStash = [...current.stash];
       let movingItem: CharacterItem | null = null;
 
-      if (draggedItem.kind === 'equipped') {
-        movingItem = nextEquipped[draggedItem.slot] ?? null;
-        nextEquipped[draggedItem.slot] = null;
+      if (origin.kind === 'equipped') {
+        movingItem = nextEquipped[origin.slot] ?? null;
+        nextEquipped[origin.slot] = null;
       } else {
-        return current;
+        movingItem = nextStash[origin.index] ?? null;
+        nextStash.splice(origin.index, 1);
       }
 
       if (!movingItem) return current;
-      nextStash.unshift({ ...movingItem, source: 'stash' });
+      const safeIndex = Math.max(0, Math.min(insertIndex, nextStash.length));
+      nextStash.splice(safeIndex, 0, { ...movingItem, source: 'stash' });
       return {
         equipped: nextEquipped,
         stash: nextStash,
       };
     });
     setDraggedItem(null);
+    setSelectedItem({ kind: 'stash', index: insertIndex });
+  }
+
+  function moveToStash(insertIndex = 0) {
+    moveItemToStash(draggedItem, insertIndex);
+  }
+
+  function readSelectedItem(selection: SelectedItem) {
+    if (!selection) return null;
+    if (selection.kind === 'equipped') return inventory.equipped[selection.slot] ?? null;
+    return inventory.stash[selection.index] ?? null;
+  }
+
+  function itemStatus(item: CharacterItem, origin: Exclude<SelectedItem, null>) {
+    if (origin.kind === 'equipped') return 'equipped';
+    if (item.source === 'daily drop' || item.source === 'challenge drop' || item.source === 'achievement') return 'new';
+    if (item.source === 'swapped') return 'swapped';
+    return 'stash';
+  }
+
+  function handleSelectedPrimaryAction() {
+    if (!selectedItem || !selectedLoot) return;
+    if (selectedItem.kind === 'stash') {
+      moveItemToSlot(selectedItem, selectedLoot.slot);
+      return;
+    }
+    moveItemToStash(selectedItem, 0);
   }
 
   return (
@@ -1553,7 +1605,7 @@ export default function CutCoachPage() {
             className={styles.characterPeek}
             onClick={() => {
               setCollapsedSections((current) => ({ ...current, progress: false }));
-              setProgressComposer('character');
+              setCharacterCollapsed(false);
             }}
             type="button"
           >
@@ -2001,29 +2053,6 @@ export default function CutCoachPage() {
                 </button>
               </div>
               {!characterCollapsed ? (
-                <div className={styles.composerGrid}>
-                  <button
-                    className={`${styles.composerButton} ${progressComposer === 'character' ? styles.composerButtonActive : ''}`}
-                    onClick={() => setProgressComposer((current) => (current === 'character' ? null : 'character'))}
-                    type="button"
-                  >
-                    <strong>{characterState.archetype}</strong>
-                    <span>{characterState.title} • HP {characterState.hp}/{characterState.maxHp}</span>
-                  </button>
-                  <button
-                    className={`${styles.composerButton} ${progressComposer === 'stash' ? styles.composerButtonActive : ''}`}
-                    onClick={() => setProgressComposer((current) => (current === 'stash' ? null : 'stash'))}
-                    type="button"
-                  >
-                    <strong>Stash</strong>
-                    <span>Latest drop: {characterState.latestDrop.name}</span>
-                  </button>
-                </div>
-              ) : null}
-            </section>
-
-            {!characterCollapsed && progressComposer === 'character' ? (
-              <section className={`surface-card ${styles.panel}`}>
                 <div className={styles.characterGrid}>
                   <div className={styles.paperDoll}>
                     <div className={styles.dollSilhouette}>
@@ -2033,9 +2062,11 @@ export default function CutCoachPage() {
                     </div>
                     {PAPER_DOLL_SLOTS.map(({ slot, label, area }) => {
                       const item = inventory.equipped[slot] ?? null;
+                      const canDropHere = draggedLoot?.slot === slot;
+                      const showBlockedSlot = Boolean(draggedLoot) && !canDropHere;
                       return (
                         <div
-                          className={`${styles.itemSlot} ${item ? styles[`rarity${capitalize(item.rarity)}`] : styles.itemSlotEmpty}`}
+                          className={`${styles.itemSlot} ${item ? styles[`rarity${capitalize(item.rarity)}`] : styles.itemSlotEmpty} ${canDropHere ? styles.itemSlotReady : ''} ${showBlockedSlot ? styles.itemSlotMuted : ''}`}
                           key={slot}
                           onDragOver={(event) => event.preventDefault()}
                           onDrop={(event) => {
@@ -2047,17 +2078,19 @@ export default function CutCoachPage() {
                           <span>{label}</span>
                           {item ? (
                             <button
-                              className={styles.itemDragButton}
+                              className={`${styles.itemDragButton} ${selectedItem?.kind === 'equipped' && selectedItem.slot === slot ? styles.itemSelected : ''}`}
                               draggable
+                              onClick={() => setSelectedItem({ kind: 'equipped', slot })}
                               onDragEnd={() => setDraggedItem(null)}
                               onDragStart={() => startDrag({ kind: 'equipped', slot })}
                               type="button"
                             >
+                              <em className={styles.itemState}>equipped • {label}</em>
                               <strong>{item.name}</strong>
                               <small>{item.statLine}</small>
                             </button>
                           ) : (
-                            <button className={styles.itemEmptyButton} type="button">
+                            <button className={styles.itemEmptyButton} onClick={() => setSelectedItem(null)} type="button">
                               <strong>Empty</strong>
                               <small>Drop item here</small>
                             </button>
@@ -2083,16 +2116,31 @@ export default function CutCoachPage() {
                       <SummaryTile label="Latest drop" value={characterState.latestDrop.name} tone="good" />
                       <SummaryTile label="Source" value={characterState.latestDrop.source} tone="warn" />
                     </div>
-                    <div
-                      className={styles.stashDropZone}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        moveToStash();
-                      }}
-                    >
-                      Drop equipped items here to stash them.
-                    </div>
+                    {selectedLoot ? (
+                      <div className={`${styles.selectedCard} ${styles[`rarity${capitalize(selectedLoot.rarity)}`]}`}>
+                        <div className={styles.selectedTop}>
+                          <span>{selectedItem ? itemStatus(selectedLoot, selectedItem) : 'item'}</span>
+                          <strong>{selectedLoot.rarity}</strong>
+                        </div>
+                        <h4>{selectedLoot.name}</h4>
+                        <p>{selectedLoot.statLine}</p>
+                        <div className={styles.selectedMeta}>
+                          <span>slot: {paperDollLabel(selectedLoot.slot)}</span>
+                          <span>source: {selectedLoot.source}</span>
+                        </div>
+                        <small>{selectedLoot.flavor}</small>
+                        <div className={styles.selectedActions}>
+                          <button className="btn-base btn-secondary" onClick={handleSelectedPrimaryAction} type="button">
+                            {selectedItem?.kind === 'stash' ? `Equip to ${paperDollLabel(selectedLoot.slot)}` : 'Move to stash'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={styles.selectedCard}>
+                        <h4>Select an item</h4>
+                        <p>Click or drag an item to inspect it. Equipped pieces stay on the paper doll. Everything else lives in stash.</p>
+                      </div>
+                    )}
                     <div className={styles.warningList}>
                       {characterState.warnings.length ? (
                         characterState.warnings.map((warning) => <div className={styles.warningChip} key={warning}>{warning}</div>)
@@ -2100,41 +2148,49 @@ export default function CutCoachPage() {
                         <div className={styles.warningChip}>No current penalties. HP is stable.</div>
                       )}
                     </div>
-                  </div>
-                </div>
-              </section>
-            ) : null}
-
-            {!characterCollapsed && progressComposer === 'stash' ? (
-              <section className={`surface-card ${styles.panel}`}>
-                <div className={styles.stashHead}>
-                  <div>
-                    <h3 className={styles.panelTitle}>Recent drops</h3>
-                    <p className={styles.panelText}>Light daily drops come from consistency. Better drops come from streaks, clean weeks and challenge progress.</p>
-                  </div>
-                </div>
-                <div className={styles.stashGrid}>
-                  {inventory.stash.map((item, index) => (
-                    <button
-                      className={`${styles.stashItem} ${styles[`rarity${capitalize(item.rarity)}`]}`}
-                      draggable
-                      key={`${item.slot}-${item.name}-${index}`}
-                      onDragEnd={() => setDraggedItem(null)}
-                      onDragStart={() => startDrag({ kind: 'stash', index })}
-                      type="button"
-                    >
-                      <div className={styles.stashTop}>
-                        <span>{item.slot}</span>
-                        <strong>{item.rarity}</strong>
+                    <div className={styles.stashHead}>
+                      <div>
+                        <h3 className={styles.panelTitle}>Stash</h3>
+                        <p className={styles.panelText}>Drag items between stash and equipment. Fresh drops show first. Click any item for details and quick equip.</p>
                       </div>
-                      <h4>{item.name}</h4>
-                      <p>{item.statLine}</p>
-                      <small>{item.flavor}</small>
-                    </button>
-                  ))}
+                    </div>
+                    <div
+                      className={styles.stashGrid}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        moveToStash(0);
+                      }}
+                    >
+                      {inventory.stash.map((item, index) => (
+                        <button
+                          className={`${styles.stashItem} ${styles[`rarity${capitalize(item.rarity)}`]} ${selectedItem?.kind === 'stash' && selectedItem.index === index ? styles.itemSelected : ''}`}
+                          draggable
+                          key={`${item.slot}-${item.name}-${index}`}
+                          onClick={() => setSelectedItem({ kind: 'stash', index })}
+                          onDragEnd={() => setDraggedItem(null)}
+                          onDragStart={() => startDrag({ kind: 'stash', index })}
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={(event) => {
+                            event.preventDefault();
+                            moveToStash(index);
+                          }}
+                          type="button"
+                        >
+                          <div className={styles.stashTop}>
+                            <span>{itemStatus(item, { kind: 'stash', index })} • {paperDollLabel(item.slot)}</span>
+                            <strong>{item.rarity}</strong>
+                          </div>
+                          <h4>{item.name}</h4>
+                          <p>{item.statLine}</p>
+                          <small>{item.flavor}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </section>
-            ) : null}
+              ) : null}
+            </section>
           </div> : null}
         </section>
 
@@ -2487,6 +2543,10 @@ function StatBar({
 
 function capitalize(value: string) {
   return `${value[0]?.toUpperCase() ?? ''}${value.slice(1)}`;
+}
+
+function paperDollLabel(slot: string) {
+  return PAPER_DOLL_SLOTS.find((item) => item.slot === slot)?.label ?? capitalize(slot);
 }
 
 function SummaryTile({

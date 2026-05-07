@@ -1075,11 +1075,22 @@
   min-width: 0;
   position: relative;
   z-index: 1;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease, opacity 160ms ease;
 }
 
 .itemSlotEmpty {
   border-style: dashed;
   opacity: 0.75;
+}
+
+.itemSlotReady {
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 18%, var(--panel-2));
+  transform: translateY(-1px);
+}
+
+.itemSlotMuted {
+  opacity: 0.58;
 }
 
 .dollSilhouette {
@@ -1132,10 +1143,35 @@
   border: 0;
   background: transparent;
   text-align: left;
+  cursor: pointer;
 }
 
 .itemEmptyButton {
   opacity: 0.72;
+}
+
+.itemDragButton {
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.itemDragButton:hover,
+.stashItem:hover {
+  transform: translateY(-1px);
+}
+
+.itemSelected {
+  outline: 2px solid color-mix(in srgb, var(--accent) 62%, transparent);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-soft) 30%, transparent);
+}
+
+.itemState {
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .itemSlot span,
@@ -1263,6 +1299,8 @@
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--panel-2) 82%, transparent);
   text-align: left;
+  cursor: grab;
+  transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
 }
 
 .stashTop {
@@ -1278,13 +1316,51 @@
   text-transform: uppercase;
 }
 
-.stashDropZone {
-  padding: 0.7rem 0.85rem;
+.selectedCard {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.95rem;
   border-radius: 1rem;
-  border: 1px dashed color-mix(in srgb, var(--accent) 36%, var(--border));
-  background: color-mix(in srgb, var(--accent-soft) 12%, var(--panel-2));
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel-2) 80%, transparent);
+}
+
+.selectedCard h4,
+.selectedCard p,
+.selectedCard small {
+  margin: 0;
+}
+
+.selectedTop,
+.selectedMeta,
+.selectedActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.selectedTop span,
+.selectedMeta span {
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.selectedTop strong {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.selectedMeta {
+  padding-top: 0.05rem;
+}
+
+.selectedActions {
+  padding-top: 0.15rem;
 }
 
 .rarityCommon {
