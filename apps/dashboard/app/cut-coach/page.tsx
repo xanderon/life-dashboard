@@ -437,7 +437,7 @@ function buildWeightChartData(payload: BootstrapPayload | null) {
     }));
 }
 
-function buildTopFocus(today: DailySummary | null, challengeStats: ReturnType<typeof buildChallengeStats>) {
+function buildTopFocus(today: DailySummary | null) {
   const target = today?.target ? Math.round(today.target.kcal_target) : null;
   const logged = today && today.caloriesSource !== 'none' ? Math.round(today.consumed.calories) : null;
   const gap = target != null && logged != null ? logged - target : null;
@@ -465,7 +465,7 @@ function buildTopFocus(today: DailySummary | null, challengeStats: ReturnType<ty
   if (gap <= 50) {
     return {
       now: `${logged} / ${target} kcal`,
-      next: challengeStats.currentDay > 0 ? `Day ${challengeStats.currentDay}: on track` : 'You are on track today',
+      next: 'You are on track today',
     };
   }
 
@@ -1080,6 +1080,33 @@ export default function CutCoachPage() {
     PACE_PRESETS.map((preset) => [preset.value, buildPacePreview(setup, preset.value)])
   ) as Record<string, ReturnType<typeof buildPacePreview>>;
 
+  function scrollToId(id: string) {
+    if (typeof window === 'undefined') return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  function openTodayEntry(panel: keyof TodayPanels) {
+    setCollapsedSections((current) => ({ ...current, today: false }));
+    setTodayPanels((current) => ({
+      ...current,
+      [panel]: true,
+    }));
+    scrollToId('today');
+  }
+
+  function openSection(section: SectionKey) {
+    setCollapsedSections((current) => ({ ...current, [section]: false }));
+    scrollToId(section);
+  }
+
+  function openCharacterSheet() {
+    setCollapsedSections((current) => ({ ...current, progress: false }));
+    setCharacterCollapsed(false);
+    scrollToId('character-sheet');
+  }
+
   function applyBootstrap(payload: BootstrapPayload) {
     setData(payload);
     setInventoryOverride(null);
@@ -1286,6 +1313,10 @@ export default function CutCoachPage() {
 
   async function stopActiveChallenge() {
     if (!activeChallenge) return;
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm('Stop the active challenge? This archives the run, but keeps your logs and weight history.');
+      if (!confirmed) return;
+    }
     const ok = await postJson(
       '/api/cut-coach/challenges',
       {
@@ -1476,7 +1507,7 @@ export default function CutCoachPage() {
   const selectedDay = findWeekDay(data, checkin.date);
   const monthCells = buildMonthCells(todayIsoDate, data);
   const weightChartData = buildWeightChartData(data);
-  const topFocus = buildTopFocus(today, challengeStats);
+  const topFocus = buildTopFocus(today);
   const burnedKcal = toNumber(checkin.activity_kcal_burned);
   const netKcal = Math.max(0, toNumber(checkin.kcal_actual) - burnedKcal);
   const overToday =
@@ -1632,20 +1663,23 @@ export default function CutCoachPage() {
               <p className={styles.heroText}>Track weight, kcal, trend and the next move.</p>
             </div>
             <div className={styles.heroActions}>
-              <a className="btn-base btn-primary" href="#today">
-                Log today
-              </a>
-              <a className="btn-base btn-secondary" href="#flow">
-                Week flow
-              </a>
-              <a className="btn-base btn-ghost" href="#settings">
-                Setup
-              </a>
+              <button className="btn-base btn-primary" onClick={() => openTodayEntry('checkin')} type="button">
+                Open kcal entry
+              </button>
+              <button className="btn-base btn-secondary" onClick={() => openTodayEntry('weight')} type="button">
+                Open weight entry
+              </button>
+              <button className="btn-base btn-ghost" onClick={() => openSection('flow')} type="button">
+                Open week plan
+              </button>
+              <button className="btn-base btn-ghost" onClick={() => openSection('settings')} type="button">
+                Open setup
+              </button>
             </div>
           </div>
 
           <div className={styles.heroStats}>
-            <MetricBox label="Challenge day" value={challengeStats.currentDay > 0 ? `${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready'} helper={activeChallenge ? phaseLabel(challengeStats.progress) : 'Create your first run'} />
+            <MetricBox label="Current run" value={challengeStats.currentDay > 0 ? `Day ${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready'} helper={activeChallenge ? phaseLabel(challengeStats.progress) : 'Create your first run'} />
             <MetricBox label="Active plan today" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : 'Setup'} helper={today?.target ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today') : 'Save your profile'} />
             <MetricBox label="Weight" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} helper={challengeStats.deltaWeight != null ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${challengeStats.deltaWeight} kg vs start` : 'Waiting for baseline'} />
             <MetricBox label="XP / level" value={`${xp.xp} XP`} helper={`Level ${xp.level}`} />
@@ -1662,10 +1696,7 @@ export default function CutCoachPage() {
           ) : null}
           <button
             className={styles.characterPeek}
-            onClick={() => {
-              setCollapsedSections((current) => ({ ...current, progress: false }));
-              setCharacterCollapsed(false);
-            }}
+            onClick={openCharacterSheet}
             type="button"
           >
             <div>
@@ -1673,7 +1704,7 @@ export default function CutCoachPage() {
               <strong>{characterState.latestDrop.name}</strong>
               <span>HP {characterState.hp}/{characterState.maxHp} • Latest drop • {characterState.latestDrop.rarity}</span>
             </div>
-            <span className={styles.characterPeekAction}>Open character</span>
+            <span className={styles.characterPeekAction}>Open character sheet</span>
           </button>
           <div className={styles.heroDeck}>
             <section className={styles.heroPanel}>
@@ -1684,7 +1715,7 @@ export default function CutCoachPage() {
                 <SummaryTile label="Current kg" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} tone="neutral" />
                 <SummaryTile label="Today" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : '—'} tone="good" />
                 <SummaryTile label="Tomorrow" value={tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal` : '—'} tone="future" />
-                <SummaryTile label="Day" value={challengeStats.currentDay > 0 ? `${challengeStats.currentDay}/${challengeStats.totalDays}` : '—'} tone="warn" />
+                <SummaryTile label="Phase" value={activeChallenge ? phaseLabel(challengeStats.progress) : 'Ready'} tone="warn" />
               </div>
             </section>
 
@@ -1768,16 +1799,16 @@ export default function CutCoachPage() {
               onClick={() => toggleTodayPanel('checkin')}
               type="button"
             >
-              <strong>{todayCheckinDone ? 'Kcal panel ready' : 'Open kcal panel'}</strong>
-              <span>{todayCheckinDone ? 'Keep updating today as you go.' : 'Log kcal now and add more later.'}</span>
+              <strong>{todayCheckinDone ? 'Kcal entry open' : 'Open kcal entry'}</strong>
+              <span>{todayCheckinDone ? 'Safe to update again later today.' : 'Separate entry just for kcal totals.'}</span>
             </button>
             <button
               className={`${styles.composerButton} ${todayWeightDone ? styles.composerButtonDone : ''} ${todayPanels.weight ? styles.composerButtonActive : ''}`}
               onClick={() => toggleTodayPanel('weight')}
               type="button"
             >
-              <strong>{todayWeightDone ? 'Quick weight ready' : 'Open quick weight'}</strong>
-              <span>{todayWeightDone ? 'Adjust today fast if the scale was off.' : 'One-tap weight entry, then save.'}</span>
+              <strong>{todayWeightDone ? 'Weight entry open' : 'Open weight entry'}</strong>
+              <span>{todayWeightDone ? 'Safe to correct today if needed.' : 'Separate entry just for weigh-ins.'}</span>
             </button>
           </div>
 
@@ -1982,7 +2013,7 @@ export default function CutCoachPage() {
           <div className={styles.sectionHead}>
             <div>
               <div className={styles.sectionEyebrow}>flow</div>
-              <h2 className={styles.sectionTitle}>Week flow</h2>
+              <h2 className={styles.sectionTitle}>Week plan</h2>
             </div>
             <div className={styles.sectionHeadActions}>
               <div className={styles.sectionMeta}>{activeChallenge ? `${phaseLabel(challengeStats.progress)} phase` : 'Set up a challenge'}</div>
@@ -2016,7 +2047,7 @@ export default function CutCoachPage() {
             <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Current run</h3>
               <p className={styles.panelText}>
-                {today?.target ? `Today you have a ${Math.round(today.target.kcal_target)} kcal target.` : 'Save setup first.'}{' '}
+                {today?.target ? `Day ${Math.max(0, challengeStats.currentDay)} carries a ${Math.round(today.target.kcal_target)} kcal target.` : 'Save setup first.'}{' '}
                 {tomorrow?.target ? `Tomorrow points to ${Math.round(tomorrow.target.kcal_target)} kcal.` : ''}
               </p>
               <div className={styles.phaseTrack}>
@@ -2152,7 +2183,7 @@ export default function CutCoachPage() {
             </section>
           </div>
 
-            <section className={`surface-card ${styles.panel} ${styles.characterPanel}`}>
+            <section className={`surface-card ${styles.panel} ${styles.characterPanel}`} id="character-sheet">
               <div className={styles.panelHead}>
                 <div>
                   <h3 className={styles.panelTitle}>Character</h3>
@@ -2324,7 +2355,7 @@ export default function CutCoachPage() {
           <div className={styles.sectionHead}>
             <div>
               <div className={styles.sectionEyebrow}>setup</div>
-              <h2 className={styles.sectionTitle}>Setup</h2>
+              <h2 className={styles.sectionTitle}>Setup and controls</h2>
             </div>
             <div className={styles.sectionHeadActions}>
               <div className={styles.sectionMeta}>flexible, not hardcoded to 100 days</div>
@@ -2332,14 +2363,14 @@ export default function CutCoachPage() {
           </div>
 
           {!collapsedSections.settings ? <>
-          <div className={`${styles.composerGrid} ${styles.composerGridThree}`}>
+              <div className={`${styles.composerGrid} ${styles.composerGridThree}`}>
             <button
               className={`${styles.composerButton} ${setupComposer === 'profile' ? styles.composerButtonActive : ''}`}
               onClick={() => setSetupComposer((current) => (current === 'profile' ? null : 'profile'))}
               type="button"
             >
               <strong>Profile</strong>
-              <span>Weight, age, height, activity and kcal target tuning.</span>
+              <span>Profile values and kcal target tuning.</span>
             </button>
             <button
               className={`${styles.composerButton} ${activeChallenge ? styles.composerButtonDone : ''} ${setupComposer === 'challenge' ? styles.composerButtonActive : ''}`}
@@ -2347,7 +2378,7 @@ export default function CutCoachPage() {
               type="button"
             >
               <strong>{activeChallenge ? 'Challenge active' : 'Challenge setup'}</strong>
-              <span>{activeChallenge ? 'View or stop the current run.' : 'Create a new cut timeline.'}</span>
+              <span>{activeChallenge ? 'Review, edit, or archive the current run.' : 'Create a new cut timeline.'}</span>
             </button>
             <button
               className={`${styles.composerButton} ${setupComposer === 'reminders' ? styles.composerButtonActive : ''}`}
@@ -2355,7 +2386,7 @@ export default function CutCoachPage() {
               type="button"
             >
               <strong>Reminders</strong>
-              <span>Push reminders and time slots for check-ins.</span>
+              <span>Push reminders and check-in times.</span>
             </button>
           </div>
 
@@ -2527,7 +2558,7 @@ export default function CutCoachPage() {
 
             {setupComposer === 'challenge' ? <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Challenge</h3>
-              <p className={styles.panelText}>Start launches a new run from today. Save only updates the draft in this form.</p>
+              <p className={styles.panelText}>Start creates a new active run from today. Save updates the dates or notes shown in this form.</p>
               {activeChallenge ? (
                 <div className={styles.challengeStatus}>
                   <strong>Active now:</strong> {activeChallenge.title} · {formatDate(activeChallenge.start_date)} → {formatDate(activeChallenge.end_date)}
@@ -2562,7 +2593,7 @@ export default function CutCoachPage() {
                   {activeChallenge ? '100-day cut active' : 'Start 100-day cut'}
                 </button>
                 <button className="btn-base btn-ghost" type="button" onClick={() => setChallenge(challengeDraft(todayIsoDate))}>
-                  Fill 100-day draft
+                  Load 100-day draft
                 </button>
                 <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveChallenge()} type="button">
                   {busy === '/api/cut-coach/challenges' ? 'Saving…' : 'Save challenge'}
@@ -2575,6 +2606,9 @@ export default function CutCoachPage() {
               </div>
               <div className={styles.challengeStatus}>
                 {challenge.start_date ? `Draft starts: ${formatFullDate(challenge.start_date)}` : 'Pick a start date'}
+              </div>
+              <div className={styles.challengeStatus}>
+                <strong>Safe actions:</strong> weight and kcal entries stay in place. Stopping a challenge archives the run, not your logs.
               </div>
             </section> : null}
 
