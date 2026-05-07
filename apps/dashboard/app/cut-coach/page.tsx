@@ -2013,7 +2013,7 @@ export default function CutCoachPage() {
           </div>
 
           <div className={styles.flowMetaGrid}>
-            <section className={`surface-card ${styles.panel} ${styles.characterPanel}`}>
+            <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Current run</h3>
               <p className={styles.panelText}>
                 {today?.target ? `Today you have a ${Math.round(today.target.kcal_target)} kcal target.` : 'Save setup first.'}{' '}
@@ -2129,7 +2129,8 @@ export default function CutCoachPage() {
             </div>
           </div>
 
-          {!collapsedSections.progress ? <div className={styles.progressGrid}>
+          {!collapsedSections.progress ? <>
+          <div className={styles.progressGrid}>
             <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Scoreboard</h3>
               <div className={styles.scoreGrid}>
@@ -2149,8 +2150,9 @@ export default function CutCoachPage() {
                 <li>Movement stays optional, but helps with context.</li>
               </ul>
             </section>
+          </div>
 
-            <section className={`surface-card ${styles.panel}`}>
+            <section className={`surface-card ${styles.panel} ${styles.characterPanel}`}>
               <div className={styles.panelHead}>
                 <div>
                   <h3 className={styles.panelTitle}>Character</h3>
@@ -2315,7 +2317,7 @@ export default function CutCoachPage() {
                 </div>
               ) : null}
             </section>
-          </div> : null}
+          </> : null}
         </section>
 
         <section id="settings" className={styles.appSection}>
