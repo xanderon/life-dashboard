@@ -2,10 +2,7 @@ import {
   getDailySummary,
   getCheckins,
   getChallenges,
-  getFavoriteFoods,
-  getFoods,
   getProfile,
-  getRecentFoods,
   getReminderSettings,
   getWeights,
   getWeekSnapshot,
@@ -23,7 +20,7 @@ export async function GET() {
       await recomputePlan(supabase, userId, 'bootstrap-refresh');
     }
 
-    const [today, tomorrow, week, weights, checkins, challenges, reminders, favorites, recentFoods, foods] =
+    const [today, tomorrow, week, weights, checkins, challenges, reminders] =
       await Promise.all([
       getDailySummary(supabase, userId, todayIsoDate()),
       getDailySummary(supabase, userId, addDays(todayIsoDate(), 1)),
@@ -32,9 +29,6 @@ export async function GET() {
       getCheckins(supabase, userId, 60),
       getChallenges(supabase, userId, 12),
       getReminderSettings(supabase, userId),
-      getFavoriteFoods(supabase, userId, 8),
-      getRecentFoods(supabase, userId, 8),
-      getFoods(supabase, userId),
       ]);
 
     return {
@@ -48,9 +42,6 @@ export async function GET() {
       challenges,
       reminders,
       trends: buildTrendSummary(weights),
-      favorites,
-      recentFoods,
-      foods,
     };
   });
 }

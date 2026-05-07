@@ -1071,14 +1071,19 @@
   gap: 1rem;
 }
 
+.characterPanel {
+  grid-column: 1 / -1;
+}
+
 .characterBoard {
   display: grid;
-  gap: 1rem;
+  gap: 1.2rem;
 }
 
 .stashPanel,
 .equipmentPanel {
-  padding: 1rem;
+  min-width: 0;
+  padding: 1.1rem;
   border-radius: 1.4rem;
   border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
   background:
@@ -1115,13 +1120,13 @@
 
 .inventoryMatrix {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.55rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
 .inventoryCell {
   position: relative;
-  min-height: 4.35rem;
+  min-height: 5.15rem;
   border-radius: 0.8rem;
   overflow: visible;
 }
@@ -1331,7 +1336,7 @@
 .characterInfo {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 1rem;
   padding: 1rem;
   border-radius: 1.2rem;
   border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
@@ -1507,6 +1512,53 @@
   padding-top: 0.15rem;
 }
 
+.weightQuickCard {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.weightAdjuster {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.9rem;
+  padding: 1rem;
+  border-radius: 1.1rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel-2) 80%, transparent);
+}
+
+.weightAdjustTop {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.weightAdjustTop span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.weightAdjustTop strong {
+  font-size: 1.55rem;
+  letter-spacing: -0.05em;
+}
+
+.weightAdjustTop small {
+  color: var(--muted);
+}
+
+.weightStepperRow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.55rem;
+  align-items: end;
+}
+
+.weightField {
+  grid-column: span 1;
+}
+
 .itemTooltip {
   position: absolute;
   left: calc(100% + 0.55rem);
@@ -1645,13 +1697,17 @@
   }
 
   .characterGrid {
-    grid-template-columns: 1.28fr 0.92fr;
+    grid-template-columns: 1fr;
     align-items: start;
   }
 
   .characterBoard {
-    grid-template-columns: 0.94fr 1.06fr;
+    grid-template-columns: minmax(0, 1.35fr) minmax(24rem, 0.92fr);
     align-items: start;
+  }
+
+  .stashPanel .inventoryMatrix {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .todayGrid,
@@ -1716,6 +1772,14 @@
 
   .inventoryMatrix {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .weightStepperRow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .weightField {
+    grid-column: 1 / -1;
   }
 
   .reminderRow,

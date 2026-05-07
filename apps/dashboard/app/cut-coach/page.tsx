@@ -1360,6 +1360,33 @@ export default function CutCoachPage() {
     setNotice('Last measurement session copied.');
   }
 
+  function nudgeWeight(delta: number) {
+    setWeight((current) => {
+      const fallback =
+        toNumber(current.weight_kg) > 0
+          ? toNumber(current.weight_kg)
+          : data?.trends.latest?.weight_kg ?? toNumber(setup.initial_weight_kg);
+      const nextValue = Math.max(0, Math.round((fallback + delta) * 10) / 10);
+      return {
+        ...current,
+        weight_kg: nextValue > 0 ? nextValue.toFixed(1) : '',
+      };
+    });
+  }
+
+  function syncWeightToLatest() {
+    const latest = data?.trends.latest?.weight_kg ?? null;
+    if (latest == null) {
+      setNotice('No previous weight found yet.');
+      return;
+    }
+    setWeight((current) => ({
+      ...current,
+      weight_kg: latest.toFixed(1),
+    }));
+    setNotice('Loaded your latest saved weight.');
+  }
+
   function toggleSection(section: SectionKey) {
     setCollapsedSections((current) => ({
       ...current,
@@ -1456,6 +1483,8 @@ export default function CutCoachPage() {
     today?.target && today.caloriesSource !== 'none' ? Math.round(today.consumed.calories - today.target.kcal_target) : null;
   const todayCheckinDone = Boolean(data && findCheckinForDate(data.checkins, todayIsoDate)?.kcal_actual != null);
   const todayWeightDone = Boolean(data && findWeightForDate(data.weights, todayIsoDate)?.weight_kg != null);
+  const latestKnownWeight = data?.trends.latest?.weight_kg ?? null;
+  const weightInputValue = toNumber(weight.weight_kg) > 0 ? toNumber(weight.weight_kg) : latestKnownWeight;
   const characterState = buildCharacterState({
     payload: data,
     activeChallenge,
@@ -1747,8 +1776,8 @@ export default function CutCoachPage() {
               onClick={() => toggleTodayPanel('weight')}
               type="button"
             >
-              <strong>{todayWeightDone ? 'Weight panel ready' : 'Open weight panel'}</strong>
-              <span>{todayWeightDone ? 'Morning weigh-in is saved. Edit only if needed.' : 'Enter weight when you have the scale reading.'}</span>
+              <strong>{todayWeightDone ? 'Quick weight ready' : 'Open quick weight'}</strong>
+              <span>{todayWeightDone ? 'Adjust today fast if the scale was off.' : 'One-tap weight entry, then save.'}</span>
             </button>
           </div>
 
@@ -1853,15 +1882,15 @@ export default function CutCoachPage() {
             {todayPanels.weight ? <section className={`surface-card ${styles.panel}`}>
               <div className={styles.panelHead}>
                 <div>
-                  <h3 className={styles.panelTitle}>Weight + tape</h3>
-                  <p className={styles.panelText}>Daily weight. Tape measurements mostly on weekends.</p>
+                  <h3 className={styles.panelTitle}>Quick weight</h3>
+                  <p className={styles.panelText}>Fast daily weigh-in first. Tape stays available below only when you need it.</p>
                 </div>
-                <button className="btn-base btn-ghost" type="button" onClick={copyLastMeasurements}>
-                  Copy last measurements
+                <button className="btn-base btn-ghost" type="button" onClick={syncWeightToLatest}>
+                  Use latest
                 </button>
               </div>
 
-              <div className={styles.formGrid}>
+              <div className={styles.weightQuickCard}>
                 <label className={styles.field}>
                   <span>Date</span>
                   <input type="date" value={weight.date} onChange={(event) => {
@@ -1870,40 +1899,69 @@ export default function CutCoachPage() {
                     setCheckin(fillCheckin(nextDate, data));
                   }} />
                 </label>
-                <label className={styles.field}>
-                  <span>Weight kg</span>
-                  <input type="number" step="0.1" inputMode="decimal" value={weight.weight_kg} onChange={(event) => setWeight((current) => ({ ...current, weight_kg: event.target.value }))} placeholder="e.g. 89.6" />
-                </label>
-                <label className={styles.field}>
-                  <span>Waist</span>
-                  <input type="number" step="0.1" inputMode="decimal" value={weight.waist_cm} onChange={(event) => setWeight((current) => ({ ...current, waist_cm: event.target.value }))} placeholder="cm" />
-                </label>
-                <label className={styles.field}>
-                  <span>Hips</span>
-                  <input type="number" step="0.1" inputMode="decimal" value={weight.hips_cm} onChange={(event) => setWeight((current) => ({ ...current, hips_cm: event.target.value }))} placeholder="cm" />
-                </label>
-                <label className={styles.field}>
-                  <span>Chest</span>
-                  <input type="number" step="0.1" inputMode="decimal" value={weight.chest_cm} onChange={(event) => setWeight((current) => ({ ...current, chest_cm: event.target.value }))} placeholder="cm" />
-                </label>
-                <label className={styles.field}>
-                  <span>Thigh</span>
-                  <input type="number" step="0.1" inputMode="decimal" value={weight.thigh_cm} onChange={(event) => setWeight((current) => ({ ...current, thigh_cm: event.target.value }))} placeholder="cm" />
-                </label>
-                <label className={styles.field}>
-                  <span>Arm</span>
-                  <input type="number" step="0.1" inputMode="decimal" value={weight.arm_cm} onChange={(event) => setWeight((current) => ({ ...current, arm_cm: event.target.value }))} placeholder="cm" />
-                </label>
-                <label className={styles.field}>
-                  <span>Neck</span>
-                  <input type="number" step="0.1" inputMode="decimal" value={weight.neck_cm} onChange={(event) => setWeight((current) => ({ ...current, neck_cm: event.target.value }))} placeholder="cm" />
-                </label>
+              </div>
+              <div className={styles.weightAdjuster}>
+                <div className={styles.weightAdjustTop}>
+                  <span>Current input</span>
+                  <strong>{weightInputValue != null ? `${weightInputValue.toFixed(1)} kg` : 'No weight yet'}</strong>
+                  <small>{latestKnownWeight != null ? `Latest saved: ${latestKnownWeight.toFixed(1)} kg` : 'Your first weigh-in starts here.'}</small>
+                </div>
+                <div className={styles.weightStepperRow}>
+                  <button className={styles.quickChip} onClick={() => nudgeWeight(-1)} type="button">-1.0</button>
+                  <button className={styles.quickChip} onClick={() => nudgeWeight(-0.5)} type="button">-0.5</button>
+                  <button className={styles.quickChip} onClick={() => nudgeWeight(-0.1)} type="button">-0.1</button>
+                  <label className={`${styles.field} ${styles.weightField}`}>
+                    <span>Weight kg</span>
+                    <input type="number" step="0.1" inputMode="decimal" value={weight.weight_kg} onChange={(event) => setWeight((current) => ({ ...current, weight_kg: event.target.value }))} placeholder="e.g. 89.6" />
+                  </label>
+                  <button className={styles.quickChip} onClick={() => nudgeWeight(0.1)} type="button">+0.1</button>
+                  <button className={styles.quickChip} onClick={() => nudgeWeight(0.5)} type="button">+0.5</button>
+                  <button className={styles.quickChip} onClick={() => nudgeWeight(1)} type="button">+1.0</button>
+                </div>
               </div>
 
-              <label className={`${styles.field} ${styles.fieldFull}`}>
-                <span>Notes</span>
-                <textarea rows={3} value={weight.notes} onChange={(event) => setWeight((current) => ({ ...current, notes: event.target.value }))} placeholder="e.g. water retention, late meal, weekend" />
-              </label>
+              <details className={styles.advancedSettings}>
+                <summary>Measurements and notes</summary>
+                <div>
+                  <div className={styles.pillRow}>
+                    <button className="btn-base btn-ghost" type="button" onClick={copyLastMeasurements}>
+                      Copy last measurements
+                    </button>
+                  </div>
+
+                  <div className={styles.formGrid}>
+                    <label className={styles.field}>
+                      <span>Waist</span>
+                      <input type="number" step="0.1" inputMode="decimal" value={weight.waist_cm} onChange={(event) => setWeight((current) => ({ ...current, waist_cm: event.target.value }))} placeholder="cm" />
+                    </label>
+                    <label className={styles.field}>
+                      <span>Hips</span>
+                      <input type="number" step="0.1" inputMode="decimal" value={weight.hips_cm} onChange={(event) => setWeight((current) => ({ ...current, hips_cm: event.target.value }))} placeholder="cm" />
+                    </label>
+                    <label className={styles.field}>
+                      <span>Chest</span>
+                      <input type="number" step="0.1" inputMode="decimal" value={weight.chest_cm} onChange={(event) => setWeight((current) => ({ ...current, chest_cm: event.target.value }))} placeholder="cm" />
+                    </label>
+                    <label className={styles.field}>
+                      <span>Thigh</span>
+                      <input type="number" step="0.1" inputMode="decimal" value={weight.thigh_cm} onChange={(event) => setWeight((current) => ({ ...current, thigh_cm: event.target.value }))} placeholder="cm" />
+                    </label>
+                    <label className={styles.field}>
+                      <span>Arm</span>
+                      <input type="number" step="0.1" inputMode="decimal" value={weight.arm_cm} onChange={(event) => setWeight((current) => ({ ...current, arm_cm: event.target.value }))} placeholder="cm" />
+                    </label>
+                    <label className={styles.field}>
+                      <span>Neck</span>
+                      <input type="number" step="0.1" inputMode="decimal" value={weight.neck_cm} onChange={(event) => setWeight((current) => ({ ...current, neck_cm: event.target.value }))} placeholder="cm" />
+                    </label>
+                  </div>
+
+                  <label className={`${styles.field} ${styles.fieldFull}`}>
+                    <span>Notes</span>
+                    <textarea rows={3} value={weight.notes} onChange={(event) => setWeight((current) => ({ ...current, notes: event.target.value }))} placeholder="e.g. water retention, late meal, weekend" />
+                  </label>
+                </div>
+              </details>
 
               <div className={styles.quickSummary}>
                 <SummaryTile label="Latest" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} tone="neutral" />
@@ -1955,7 +2013,7 @@ export default function CutCoachPage() {
           </div>
 
           <div className={styles.flowMetaGrid}>
-            <section className={`surface-card ${styles.panel}`}>
+            <section className={`surface-card ${styles.panel} ${styles.characterPanel}`}>
               <h3 className={styles.panelTitle}>Current run</h3>
               <p className={styles.panelText}>
                 {today?.target ? `Today you have a ${Math.round(today.target.kcal_target)} kcal target.` : 'Save setup first.'}{' '}
