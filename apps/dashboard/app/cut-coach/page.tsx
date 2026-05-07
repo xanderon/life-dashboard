@@ -123,7 +123,10 @@ type ReminderDraft = {
 };
 
 type SectionKey = 'today' | 'flow' | 'calendar' | 'progress' | 'settings';
-type TodayComposer = 'checkin' | 'weight' | null;
+type TodayPanels = {
+  checkin: boolean;
+  weight: boolean;
+};
 type SetupComposer = 'profile' | 'challenge' | 'reminders' | null;
 type ItemRarity = 'common' | 'magic' | 'rare' | 'set' | 'legendary';
 type DragOrigin = { kind: 'equipped'; slot: string } | { kind: 'stash'; index: number } | null;
@@ -1058,8 +1061,9 @@ export default function CutCoachPage() {
     progress: true,
     settings: false,
   });
-  const [todayComposer, setTodayComposer] = useState<TodayComposer>(null);
+  const [todayPanels, setTodayPanels] = useState<TodayPanels>({ checkin: true, weight: false });
   const [setupComposer, setSetupComposer] = useState<SetupComposer>(null);
+  const [kcalQuickAdd, setKcalQuickAdd] = useState('');
   const [inventoryOverride, setInventoryOverride] = useState<CharacterInventory | null>(null);
   const [draggedItem, setDraggedItem] = useState<DragOrigin>(null);
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
@@ -1208,16 +1212,35 @@ export default function CutCoachPage() {
     return ok;
   }
 
-  async function saveCheckin(copiedFromPrevious = false) {
+  async function persistCheckin(nextCheckin: CheckinState, successMessage: string, copiedFromPrevious = false) {
     const ok = await postJson(
       '/api/cut-coach/checkins',
       {
-        ...checkin,
+        ...nextCheckin,
         copied_from_previous: copiedFromPrevious,
       },
-      'Today check-in saved.'
+      successMessage
     );
-    if (ok) setTodayComposer(null);
+    return ok;
+  }
+
+  async function saveCheckin(copiedFromPrevious = false) {
+    return await persistCheckin(checkin, 'Today kcal saved.', copiedFromPrevious);
+  }
+
+  async function addKcalToToday() {
+    const quickAdd = toNumber(kcalQuickAdd);
+    if (quickAdd <= 0) {
+      setNotice('Add a positive kcal amount first.');
+      return false;
+    }
+    const nextCheckin = {
+      ...checkin,
+      kcal_actual: String(toNumber(checkin.kcal_actual) + quickAdd),
+    };
+    setCheckin(nextCheckin);
+    const ok = await persistCheckin(nextCheckin, `${quickAdd} kcal added to today.`);
+    if (ok) setKcalQuickAdd('');
     return ok;
   }
 
@@ -1226,9 +1249,7 @@ export default function CutCoachPage() {
       setNotice('Add a valid weight first.');
       return false;
     }
-    const ok = await postJson('/api/cut-coach/weights', weight, 'Weight and measurements saved.');
-    if (ok) setTodayComposer(null);
-    return ok;
+    return await postJson('/api/cut-coach/weights', weight, 'Weight and measurements saved.');
   }
 
   async function saveChallenge() {
@@ -1343,6 +1364,13 @@ export default function CutCoachPage() {
     setCollapsedSections((current) => ({
       ...current,
       [section]: !current[section],
+    }));
+  }
+
+  function toggleTodayPanel(panel: keyof TodayPanels) {
+    setTodayPanels((current) => ({
+      ...current,
+      [panel]: !current[panel],
     }));
   }
 
@@ -1707,29 +1735,29 @@ export default function CutCoachPage() {
           {!collapsedSections.today ? <>
           <div className={styles.composerGrid}>
             <button
-              className={`${styles.composerButton} ${todayCheckinDone ? styles.composerButtonDone : ''} ${todayComposer === 'checkin' ? styles.composerButtonActive : ''}`}
-              onClick={() => setTodayComposer((current) => (current === 'checkin' ? null : 'checkin'))}
+              className={`${styles.composerButton} ${todayCheckinDone ? styles.composerButtonDone : ''} ${todayPanels.checkin ? styles.composerButtonActive : ''}`}
+              onClick={() => toggleTodayPanel('checkin')}
               type="button"
             >
-              <strong>{todayCheckinDone ? 'Kcal check-in done' : 'Open kcal check-in'}</strong>
-              <span>{todayCheckinDone ? 'Edit today if you need to adjust it.' : 'Enter kcal, burned kcal and save once.'}</span>
+              <strong>{todayCheckinDone ? 'Kcal panel ready' : 'Open kcal panel'}</strong>
+              <span>{todayCheckinDone ? 'Keep updating today as you go.' : 'Log kcal now and add more later.'}</span>
             </button>
             <button
-              className={`${styles.composerButton} ${todayWeightDone ? styles.composerButtonDone : ''} ${todayComposer === 'weight' ? styles.composerButtonActive : ''}`}
-              onClick={() => setTodayComposer((current) => (current === 'weight' ? null : 'weight'))}
+              className={`${styles.composerButton} ${todayWeightDone ? styles.composerButtonDone : ''} ${todayPanels.weight ? styles.composerButtonActive : ''}`}
+              onClick={() => toggleTodayPanel('weight')}
               type="button"
             >
-              <strong>{todayWeightDone ? 'Weight logged today' : 'Open weight log'}</strong>
-              <span>{todayWeightDone ? 'Edit today if the scale entry needs a correction.' : 'Enter weight and optional tape values.'}</span>
+              <strong>{todayWeightDone ? 'Weight panel ready' : 'Open weight panel'}</strong>
+              <span>{todayWeightDone ? 'Morning weigh-in is saved. Edit only if needed.' : 'Enter weight when you have the scale reading.'}</span>
             </button>
           </div>
 
           <div className={styles.todayGrid}>
-            {todayComposer === 'checkin' ? <section className={`surface-card ${styles.panel}`}>
+            {todayPanels.checkin ? <section className={`surface-card ${styles.panel}`}>
               <div className={styles.panelHead}>
                 <div>
                   <h3 className={styles.panelTitle}>Kcal check-in</h3>
-                  <p className={styles.panelText}>Log total kcal from LifeSum. If you had activity, add burned kcal from the app.</p>
+                  <p className={styles.panelText}>Keep one running total for the day. Save now, then come back later and update it again.</p>
                 </div>
                 <div className={styles.pillRow}>
                   <button className="btn-base btn-ghost" type="button" onClick={copyYesterday}>
@@ -1751,7 +1779,7 @@ export default function CutCoachPage() {
                   }} />
                 </label>
                 <label className={styles.field}>
-                  <span>Total kcal</span>
+                  <span>Current total kcal</span>
                   <input className={styles.featureInput} type="number" inputMode="numeric" value={checkin.kcal_actual} onChange={(event) => setCheckin((current) => ({ ...current, kcal_actual: event.target.value }))} placeholder="e.g. 2140" />
                 </label>
                 <label className={styles.field}>
@@ -1766,6 +1794,23 @@ export default function CutCoachPage() {
                   <span>Source</span>
                   <input value={checkin.source_app} onChange={(event) => setCheckin((current) => ({ ...current, source_app: event.target.value }))} placeholder="LifeSum" />
                 </label>
+              </div>
+
+              <div className={styles.kcalAddRow}>
+                <label className={styles.field}>
+                  <span>Quick add kcal</span>
+                  <input
+                    className={styles.featureInput}
+                    inputMode="numeric"
+                    onChange={(event) => setKcalQuickAdd(event.target.value)}
+                    placeholder="e.g. 650"
+                    type="number"
+                    value={kcalQuickAdd}
+                  />
+                </label>
+                <button className="btn-base btn-secondary" disabled={busy !== null} onClick={() => void addKcalToToday()} type="button">
+                  {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Add to today'}
+                </button>
               </div>
 
               <div className={styles.quickActionsRow}>
@@ -1790,19 +1835,22 @@ export default function CutCoachPage() {
 
               <div className={styles.quickSummary}>
                 <SummaryTile label="Target" value={selectedDay?.target ? `${Math.round(selectedDay.target.kcal_target)} kcal` : '—'} tone="neutral" />
-                <SummaryTile label="Logged" value={selectedDay && selectedDay.caloriesSource !== 'none' ? `${Math.round(selectedDay.consumed.calories)} kcal` : 'Not logged'} tone={selectedDay?.target && selectedDay.caloriesSource !== 'none' && selectedDay.consumed.calories <= selectedDay.target.kcal_target + 50 ? 'good' : 'warn'} />
+                <SummaryTile label="Logged so far" value={selectedDay && selectedDay.caloriesSource !== 'none' ? `${Math.round(selectedDay.consumed.calories)} kcal` : 'Not logged'} tone={selectedDay?.target && selectedDay.caloriesSource !== 'none' && selectedDay.consumed.calories <= selectedDay.target.kcal_target + 50 ? 'good' : 'warn'} />
                 <SummaryTile label="Activity burn" value={burnedKcal > 0 ? `${Math.round(burnedKcal)} kcal` : '0 kcal'} tone="future" />
                 <SummaryTile label="Net today" value={toNumber(checkin.kcal_actual) > 0 ? `${Math.round(netKcal)} kcal` : '—'} tone="good" />
                 <SummaryTile label="Remaining" value={selectedDay?.remaining ? `${Math.round(selectedDay.remaining.calories)} kcal` : '—'} tone={selectedDay?.remaining && selectedDay.remaining.calories >= 0 ? 'good' : 'bad'} />
                 <SummaryTile label="Tomorrow" value={tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal` : '—'} tone="future" />
               </div>
 
-              <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveCheckin()} type="button">
-                {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Save kcal check-in'}
-              </button>
+              <div className={styles.kcalSaveRow}>
+                <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveCheckin()} type="button">
+                  {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Save current total'}
+                </button>
+                <span className={styles.inlineHint}>You can save this panel multiple times in the same day.</span>
+              </div>
             </section> : null}
 
-            {todayComposer === 'weight' ? <section className={`surface-card ${styles.panel}`}>
+            {todayPanels.weight ? <section className={`surface-card ${styles.panel}`}>
               <div className={styles.panelHead}>
                 <div>
                   <h3 className={styles.panelTitle}>Weight + tape</h3>
