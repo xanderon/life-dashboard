@@ -1073,11 +1073,13 @@
 
 .characterPanel {
   grid-column: 1 / -1;
+  overflow: visible;
 }
 
 .characterBoard {
   display: grid;
   gap: 1.2rem;
+  align-items: start;
 }
 
 .stashPanel,
@@ -1705,12 +1707,12 @@
   }
 
   .characterBoard {
-    grid-template-columns: minmax(0, 1.58fr) minmax(25rem, 1fr);
+    grid-template-columns: minmax(0, 1.9fr) minmax(28rem, 1fr);
     align-items: start;
   }
 
   .stashPanel .inventoryMatrix {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(8, minmax(0, 1fr));
   }
 
   .equipmentPanel .paperDoll {
