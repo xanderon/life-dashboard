@@ -1441,6 +1441,8 @@ export default function CutCoachPage() {
   const inventory = inventoryOverride ?? characterState.inventory;
   const selectedLoot = readSelectedItem(selectedItem);
   const draggedLoot = readItemFromOrigin(draggedItem);
+  const stashCellCount = Math.max(20, inventory.stash.length + 4);
+  const stashCells = Array.from({ length: stashCellCount }, (_, index) => inventory.stash[index] ?? null);
 
   function startDrag(origin: DragOrigin) {
     setDraggedItem(origin);
@@ -2054,60 +2056,115 @@ export default function CutCoachPage() {
               </div>
               {!characterCollapsed ? (
                 <div className={styles.characterGrid}>
-                  <div className={styles.paperDoll}>
-                    <div className={styles.dollSilhouette}>
-                      <div className={styles.dollHead} />
-                      <div className={styles.dollTorso} />
-                      <div className={styles.dollLegs} />
-                    </div>
-                    {PAPER_DOLL_SLOTS.map(({ slot, label, area }) => {
-                      const item = inventory.equipped[slot] ?? null;
-                      const canDropHere = draggedLoot?.slot === slot;
-                      const showBlockedSlot = Boolean(draggedLoot) && !canDropHere;
-                      return (
-                        <div
-                          className={`${styles.itemSlot} ${item ? styles[`rarity${capitalize(item.rarity)}`] : styles.itemSlotEmpty} ${canDropHere ? styles.itemSlotReady : ''} ${showBlockedSlot ? styles.itemSlotMuted : ''}`}
-                          key={slot}
-                          onDragOver={(event) => event.preventDefault()}
-                          onDrop={(event) => {
-                            event.preventDefault();
-                            moveToSlot(slot);
-                          }}
-                          style={{ gridArea: area }}
-                        >
-                          <span>{label}</span>
-                          {item ? (
+                  <div className={styles.characterBoard}>
+                    <div className={styles.stashPanel}>
+                      <div className={styles.inventoryHeader}>
+                        <div>
+                          <div className={styles.focusKicker}>Stash</div>
+                          <h4 className={styles.inventoryTitle}>Drops and spare gear</h4>
+                        </div>
+                        <div className={styles.inventoryCounter}>{inventory.stash.length} / {stashCellCount}</div>
+                      </div>
+                      <div className={styles.inventoryMatrix}>
+                        {stashCells.map((item, index) =>
+                          item ? (
                             <button
-                              className={`${styles.itemDragButton} ${selectedItem?.kind === 'equipped' && selectedItem.slot === slot ? styles.itemSelected : ''}`}
+                              className={`${styles.inventoryCell} ${styles.stashItem} ${styles[`rarity${capitalize(item.rarity)}`]} ${selectedItem?.kind === 'stash' && selectedItem.index === index ? styles.itemSelected : ''}`}
                               draggable
-                              onClick={() => setSelectedItem({ kind: 'equipped', slot })}
+                              key={`${item.slot}-${item.name}-${index}`}
+                              onClick={() => setSelectedItem({ kind: 'stash', index })}
                               onDragEnd={() => setDraggedItem(null)}
-                              onDragStart={() => startDrag({ kind: 'equipped', slot })}
+                              onDragOver={(event) => event.preventDefault()}
+                              onDragStart={() => startDrag({ kind: 'stash', index })}
+                              onDrop={(event) => {
+                                event.preventDefault();
+                                moveToStash(index);
+                              }}
                               type="button"
                             >
-                              <em className={styles.itemState}>equipped • {label}</em>
-                              <strong>{item.name}</strong>
-                              <small>{item.statLine}</small>
+                              <div className={styles.stashTop}>
+                                <span>{itemStatus(item, { kind: 'stash', index })}</span>
+                                <strong>{paperDollLabel(item.slot)}</strong>
+                              </div>
+                              <div className={styles.itemGlyph}>{itemSigil(item.name)}</div>
+                              <div className={styles.itemMini}>{item.name}</div>
+                              <ItemTooltip item={item} status={itemStatus(item, { kind: 'stash', index })} />
                             </button>
                           ) : (
-                            <button className={styles.itemEmptyButton} onClick={() => setSelectedItem(null)} type="button">
-                              <strong>Empty</strong>
-                              <small>Drop item here</small>
-                            </button>
-                          )}
+                            <div
+                              className={`${styles.inventoryCell} ${styles.inventoryCellEmpty}`}
+                              key={`stash-empty-${index}`}
+                              onDragOver={(event) => event.preventDefault()}
+                              onDrop={(event) => {
+                                event.preventDefault();
+                                moveToStash(index);
+                              }}
+                            >
+                              <span>{index < inventory.stash.length ? 'reorder' : 'empty'}</span>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+
+                    <div className={styles.equipmentPanel}>
+                      <div className={styles.inventoryHeader}>
+                        <div>
+                          <div className={styles.focusKicker}>Character</div>
+                          <h4 className={styles.inventoryTitle}>{characterState.archetype}</h4>
+                          <p className={styles.panelText}>{characterState.title}</p>
                         </div>
-                      );
-                    })}
+                        <div className={styles.characterBadge}>{characterState.latestDrop.rarity}</div>
+                      </div>
+                      <div className={styles.paperDoll}>
+                        <div className={styles.dollSilhouette}>
+                          <div className={styles.dollHead} />
+                          <div className={styles.dollTorso} />
+                          <div className={styles.dollLegs} />
+                        </div>
+                        {PAPER_DOLL_SLOTS.map(({ slot, label, area }) => {
+                          const item = inventory.equipped[slot] ?? null;
+                          const canDropHere = draggedLoot?.slot === slot;
+                          const showBlockedSlot = Boolean(draggedLoot) && !canDropHere;
+                          return (
+                            <div
+                              className={`${styles.itemSlot} ${item ? styles[`rarity${capitalize(item.rarity)}`] : styles.itemSlotEmpty} ${canDropHere ? styles.itemSlotReady : ''} ${showBlockedSlot ? styles.itemSlotMuted : ''}`}
+                              key={slot}
+                              onDragOver={(event) => event.preventDefault()}
+                              onDrop={(event) => {
+                                event.preventDefault();
+                                moveToSlot(slot);
+                              }}
+                              style={{ gridArea: area }}
+                            >
+                              {item ? (
+                                <button
+                                  className={`${styles.itemDragButton} ${selectedItem?.kind === 'equipped' && selectedItem.slot === slot ? styles.itemSelected : ''}`}
+                                  draggable
+                                  onClick={() => setSelectedItem({ kind: 'equipped', slot })}
+                                  onDragEnd={() => setDraggedItem(null)}
+                                  onDragStart={() => startDrag({ kind: 'equipped', slot })}
+                                  type="button"
+                                >
+                                  <em className={styles.itemState}>{label}</em>
+                                  <div className={styles.itemGlyph}>{itemSigil(item.name)}</div>
+                                  <div className={styles.itemMini}>{item.name}</div>
+                                  <ItemTooltip item={item} status="equipped" />
+                                </button>
+                              ) : (
+                                <button className={styles.itemEmptyButton} onClick={() => setSelectedItem(null)} type="button">
+                                  <em className={styles.itemState}>{label}</em>
+                                  <div className={styles.itemGlyph}>+</div>
+                                  <div className={styles.itemMini}>Empty</div>
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                   <div className={styles.characterInfo}>
-                    <div className={styles.characterHeader}>
-                      <div>
-                        <div className={styles.focusKicker}>Character</div>
-                        <h3 className={styles.characterName}>{characterState.archetype}</h3>
-                        <p className={styles.panelText}>{characterState.title}</p>
-                      </div>
-                      <div className={styles.characterBadge}>{characterState.latestDrop.rarity}</div>
-                    </div>
                     <StatBar label="HP" value={characterState.hp} max={characterState.maxHp} tone="danger" />
                     <StatBar label="Resolve" value={characterState.resolve} max={100} tone="accent" />
                     <div className={styles.quickSummary}>
@@ -2147,45 +2204,6 @@ export default function CutCoachPage() {
                       ) : (
                         <div className={styles.warningChip}>No current penalties. HP is stable.</div>
                       )}
-                    </div>
-                    <div className={styles.stashHead}>
-                      <div>
-                        <h3 className={styles.panelTitle}>Stash</h3>
-                        <p className={styles.panelText}>Drag items between stash and equipment. Fresh drops show first. Click any item for details and quick equip.</p>
-                      </div>
-                    </div>
-                    <div
-                      className={styles.stashGrid}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        moveToStash(0);
-                      }}
-                    >
-                      {inventory.stash.map((item, index) => (
-                        <button
-                          className={`${styles.stashItem} ${styles[`rarity${capitalize(item.rarity)}`]} ${selectedItem?.kind === 'stash' && selectedItem.index === index ? styles.itemSelected : ''}`}
-                          draggable
-                          key={`${item.slot}-${item.name}-${index}`}
-                          onClick={() => setSelectedItem({ kind: 'stash', index })}
-                          onDragEnd={() => setDraggedItem(null)}
-                          onDragStart={() => startDrag({ kind: 'stash', index })}
-                          onDragOver={(event) => event.preventDefault()}
-                          onDrop={(event) => {
-                            event.preventDefault();
-                            moveToStash(index);
-                          }}
-                          type="button"
-                        >
-                          <div className={styles.stashTop}>
-                            <span>{itemStatus(item, { kind: 'stash', index })} • {paperDollLabel(item.slot)}</span>
-                            <strong>{item.rarity}</strong>
-                          </div>
-                          <h4>{item.name}</h4>
-                          <p>{item.statLine}</p>
-                          <small>{item.flavor}</small>
-                        </button>
-                      ))}
                     </div>
                   </div>
                 </div>
@@ -2547,6 +2565,33 @@ function capitalize(value: string) {
 
 function paperDollLabel(slot: string) {
   return PAPER_DOLL_SLOTS.find((item) => item.slot === slot)?.label ?? capitalize(slot);
+}
+
+function itemSigil(name: string) {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0] ?? '')
+    .join('')
+    .toUpperCase();
+}
+
+function ItemTooltip({ item, status }: { item: CharacterItem; status: string }) {
+  return (
+    <div className={`${styles.itemTooltip} ${styles[`rarity${capitalize(item.rarity)}`]}`}>
+      <div className={styles.itemTooltipTop}>
+        <span>{status}</span>
+        <strong>{item.rarity}</strong>
+      </div>
+      <h5>{item.name}</h5>
+      <div className={styles.itemTooltipMeta}>
+        <span>{paperDollLabel(item.slot)}</span>
+        <span>{item.source}</span>
+      </div>
+      <p>{item.statLine}</p>
+      <small>{item.flavor}</small>
+    </div>
+  );
 }
 
 function SummaryTile({
