@@ -1035,7 +1035,15 @@ export default function CutCoachPage() {
   const [characterCollapsed, setCharacterCollapsed] = useState(false);
   const [weightModalOpen, setWeightModalOpen] = useState(false);
   const [weightDraft, setWeightDraft] = useState<WeightState>(emptyWeight(new Date().toISOString().slice(0, 10)));
-  const weightDialDragRef = useRef<{ pointerId: number; startY: number; startValue: number; lastStep: number } | null>(null);
+  const [weightDialRotation, setWeightDialRotation] = useState(0);
+  const weightDialDragRef = useRef<{
+    pointerId: number;
+    startValue: number;
+    lastAngle: number;
+    lastStep: number;
+    accumulatedAngle: number;
+    startRotation: number;
+  } | null>(null);
   const pushEnvironment = useSyncExternalStore(
     subscribeNoop,
     getPushEnvironmentSnapshot,
@@ -1082,6 +1090,7 @@ export default function CutCoachPage() {
     setWeightModalOpen(false);
     setWeightDraft(baseWeightEntryState(todayIsoDate));
     weightDialDragRef.current = null;
+    setWeightDialRotation(0);
   }
 
   function applyBootstrap(payload: BootstrapPayload) {
@@ -1394,12 +1403,18 @@ export default function CutCoachPage() {
   }
 
   function handleWeightDialStart(event: ReactPointerEvent<HTMLButtonElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const angle = Math.atan2(event.clientY - centerY, event.clientX - centerX) * (180 / Math.PI);
     const startValue = currentWeightSeed(weightDraft);
     weightDialDragRef.current = {
       pointerId: event.pointerId,
-      startY: event.clientY,
       startValue,
+      lastAngle: angle,
       lastStep: 0,
+      accumulatedAngle: 0,
+      startRotation: weightDialRotation,
     };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
@@ -1407,7 +1422,17 @@ export default function CutCoachPage() {
   function handleWeightDialMove(event: ReactPointerEvent<HTMLButtonElement>) {
     const dragState = weightDialDragRef.current;
     if (!dragState || dragState.pointerId !== event.pointerId) return;
-    const nextStep = Math.trunc((dragState.startY - event.clientY) / 10);
+    const rect = event.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const nextAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX) * (180 / Math.PI);
+    let delta = nextAngle - dragState.lastAngle;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    dragState.lastAngle = nextAngle;
+    dragState.accumulatedAngle += delta;
+    setWeightDialRotation(dragState.startRotation + dragState.accumulatedAngle);
+    const nextStep = Math.trunc(dragState.accumulatedAngle / 8);
     if (nextStep === dragState.lastStep) return;
     dragState.lastStep = nextStep;
     setWeightFromNumber(dragState.startValue + nextStep * 0.01, 'draft');
@@ -1424,6 +1449,7 @@ export default function CutCoachPage() {
 
   function handleWeightDialWheel(event: ReactWheelEvent<HTMLButtonElement>) {
     event.preventDefault();
+    setWeightDialRotation((current) => current + (event.deltaY < 0 ? 10 : -10));
     applyWeightDelta(event.deltaY < 0 ? 0.01 : -0.01, 'draft', weightDraft);
   }
 
@@ -1531,6 +1557,9 @@ export default function CutCoachPage() {
   const draggedLoot = readItemFromOrigin(draggedItem);
   const stashCellCount = Math.max(32, inventory.stash.length + 6);
   const stashCells = Array.from({ length: stashCellCount }, (_, index) => inventory.stash[index] ?? null);
+  const weightDialStyle: CSSProperties & Record<'--dial-rotation', string> = {
+    '--dial-rotation': `${weightDialRotation}deg`,
+  };
 
   function startDrag(origin: DragOrigin) {
     setDraggedItem(origin);
@@ -1833,11 +1862,13 @@ export default function CutCoachPage() {
                       onPointerUp={handleWeightDialEnd}
                       onPointerCancel={handleWeightDialEnd}
                       onWheel={handleWeightDialWheel}
+                      style={weightDialStyle}
                       type="button"
                     >
+                      <span className={styles.weightDialNeedle} aria-hidden="true" />
                       <span>0.01</span>
                     </button>
-                    <small>Drag or wheel for 0.01 adjust</small>
+                    <small>Rotate for 0.01 adjust</small>
                   </div>
                   <div className={styles.weightSideChips}>
                     <button className={styles.quickChip} onClick={() => nudgeWeight(0.1, 'draft', weightDraft)} type="button">+0.10</button>
