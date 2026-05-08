@@ -408,6 +408,9 @@ function buildMonthCells(
       Boolean(activeChallenge) &&
       isoDate >= (activeChallenge?.start_date ?? '') &&
       isoDate <= (activeChallenge?.end_date ?? '');
+    const isChallengePast = isInChallenge && isoDate < todayIsoDate;
+    const isChallengeCurrent = isInChallenge && isoDate === todayIsoDate;
+    const isChallengeFuture = isInChallenge && isoDate > todayIsoDate;
     return {
       isoDate,
       label: date.getDate(),
@@ -421,6 +424,9 @@ function buildMonthCells(
       isChallengeStart,
       isChallengeEnd,
       isInChallenge,
+      isChallengePast,
+      isChallengeCurrent,
+      isChallengeFuture,
       isToday: isoDate === todayIsoDate,
     };
   });
@@ -2122,7 +2128,7 @@ export default function CutCoachPage() {
                                 : styles.monthCellNeutral;
                         return (
                           <div
-                            className={`${styles.monthCell} ${tone} ${cell.isInChallenge ? styles.monthCellInChallenge : ''} ${cell.isToday ? styles.monthCellToday : ''} ${!cell.inMonth ? styles.monthCellMuted : ''}`}
+                            className={`${styles.monthCell} ${tone} ${cell.isInChallenge ? styles.monthCellInChallenge : ''} ${cell.isChallengePast ? styles.monthCellPastChallenge : ''} ${cell.isChallengeCurrent ? styles.monthCellCurrentChallenge : ''} ${cell.isChallengeFuture ? styles.monthCellFutureChallenge : ''} ${cell.isToday ? styles.monthCellToday : ''} ${!cell.inMonth ? styles.monthCellMuted : ''}`}
                             key={cell.isoDate}
                           >
                             <div className={styles.monthCellTop}>
@@ -2134,7 +2140,7 @@ export default function CutCoachPage() {
                             </div>
                             <div className={styles.monthCellBody}>
                               {cell.targetKcal != null ? (
-                                <div className={styles.monthCellMetric}>
+                                <div className={`${styles.monthCellMetric} ${cell.isChallengeFuture ? styles.monthCellMetricPlanned : ''}`}>
                                   <span className={styles.monthCellMetricIcon} aria-hidden="true"><Goal size={11} strokeWidth={2.2} /></span>
                                   <small>{cell.targetKcal}</small>
                                 </div>

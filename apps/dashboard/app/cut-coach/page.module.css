@@ -1112,6 +1112,11 @@
   letter-spacing: -0.02em;
 }
 
+.monthCellMetricPlanned .monthCellMetricIcon,
+.monthCellMetricPlanned small {
+  color: color-mix(in srgb, var(--muted) 88%, var(--text));
+}
+
 .monthCellBadge {
   display: inline-flex;
   align-items: center;
@@ -1157,6 +1162,31 @@
     inset 0 0 0 999px color-mix(in srgb, var(--accent-soft) 7%, transparent),
     inset 0 0.18rem 0 color-mix(in srgb, var(--accent) 48%, transparent),
     inset 0 -0.18rem 0 color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.monthCellPastChallenge {
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--success) 8%, transparent), color-mix(in srgb, var(--success) 3%, transparent)),
+    color-mix(in srgb, var(--panel-2) 86%, transparent);
+}
+
+.monthCellCurrentChallenge {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent-soft) 6%, transparent)),
+    color-mix(in srgb, var(--panel-2) 88%, transparent);
+  animation: challenge-flow-pulse 2.3s ease-in-out infinite;
+}
+
+.monthCellFutureChallenge {
+  border-color: color-mix(in srgb, #8f9fb3 42%, var(--border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, #a7b5c8 8%, transparent), color-mix(in srgb, #a7b5c8 3%, transparent)),
+    color-mix(in srgb, var(--panel-2) 84%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, #a7b5c8 18%, transparent),
+    inset 0 0.14rem 0 color-mix(in srgb, #a7b5c8 24%, transparent);
 }
 
 .monthCellGood {
@@ -2956,6 +2986,24 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes challenge-flow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent),
+      inset 0 0 0 999px color-mix(in srgb, var(--accent-soft) 7%, transparent),
+      inset 0 0.18rem 0 color-mix(in srgb, var(--accent) 42%, transparent),
+      0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent),
+      inset 0 0 0 999px color-mix(in srgb, var(--accent-soft) 10%, transparent),
+      inset 0 0.18rem 0 color-mix(in srgb, var(--accent) 56%, transparent),
+      0 0 0 0.18rem color-mix(in srgb, var(--accent) 12%, transparent);
   }
 }
 
