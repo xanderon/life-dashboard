@@ -2,6 +2,19 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type WheelEvent as ReactWheelEvent } from 'react';
 import {
+  CalendarDays,
+  CalendarRange,
+  Flag,
+  Flame,
+  Gauge,
+  Goal,
+  Scale,
+  Settings2,
+  Sparkles,
+  UtensilsCrossed,
+  Weight,
+} from 'lucide-react';
+import {
   CartesianGrid,
   Line,
   LineChart,
@@ -35,16 +48,6 @@ const PACE_PRESETS = [
   { label: 'Standard', value: '18', description: 'Solid cut pace' },
   { label: 'Strict', value: '24', description: 'Harder to sustain' },
 ];
-const UI_ICONS = {
-  day: '◔',
-  kcal: '◉',
-  weight: '◎',
-  xp: '✦',
-  flow: '▦',
-  setup: '⚙',
-  trend: '∿',
-  run: '◫',
-} as const;
 
 type PushEnvironmentSnapshot = {
   supported: boolean;
@@ -365,11 +368,12 @@ function findNearestWeight(weights: CutCoachWeightRow[], isoDate: string) {
 }
 
 function buildMonthCells(
+  monthIsoDate: string,
   todayIsoDate: string,
   payload: BootstrapPayload | null,
   activeChallenge: CutCoachChallengeRow | null
 ) {
-  const current = new Date(`${todayIsoDate}T12:00:00`);
+  const current = new Date(`${monthIsoDate}T12:00:00`);
   const monthStart = new Date(current.getFullYear(), current.getMonth(), 1);
   const firstWeekday = monthStart.getDay();
   const gridStart = new Date(monthStart);
@@ -409,6 +413,26 @@ function buildMonthCells(
       isChallengeStart,
       isInChallenge,
       isToday: isoDate === todayIsoDate,
+    };
+  });
+}
+
+function buildYearMonths(
+  todayIsoDate: string,
+  payload: BootstrapPayload | null,
+  activeChallenge: CutCoachChallengeRow | null
+) {
+  const current = new Date(`${todayIsoDate}T12:00:00`);
+  const year = current.getFullYear();
+  return Array.from({ length: 12 }, (_, monthIndex) => {
+    const monthDate = new Date(year, monthIndex, 1, 12, 0, 0);
+    const monthIsoDate = monthDate.toISOString().slice(0, 10);
+    return {
+      key: monthIsoDate,
+      label: new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' }).format(monthDate),
+      shortLabel: new Intl.DateTimeFormat('en-GB', { month: 'short' }).format(monthDate),
+      monthIndex,
+      cells: buildMonthCells(monthIsoDate, todayIsoDate, payload, activeChallenge),
     };
   });
 }
@@ -1062,6 +1086,7 @@ export default function CutCoachPage() {
   const [draggedItem, setDraggedItem] = useState<DragOrigin>(null);
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [characterCollapsed, setCharacterCollapsed] = useState(false);
+  const [achievementsCollapsed, setAchievementsCollapsed] = useState(true);
   const [kcalModalOpen, setKcalModalOpen] = useState(false);
   const [weightModalOpen, setWeightModalOpen] = useState(false);
   const [weightDraft, setWeightDraft] = useState<WeightState>(emptyWeight(new Date().toISOString().slice(0, 10)));
@@ -1527,7 +1552,7 @@ export default function CutCoachPage() {
   const today = data?.today ?? null;
   const tomorrow = data?.tomorrow ?? null;
   const selectedDay = findWeekDay(data, checkin.date);
-  const monthCells = buildMonthCells(todayIsoDate, data, activeChallenge);
+  const yearMonths = buildYearMonths(todayIsoDate, data, activeChallenge);
   const weightChartData = buildWeightChartData(data);
   const weightTrendDelta =
     weightChartData.length > 1
@@ -1693,29 +1718,29 @@ export default function CutCoachPage() {
             </div>
             <div className={styles.heroActions}>
               <button className={`btn-base btn-primary ${styles.heroActionButton}`} onClick={() => openTodayEntry()} type="button">
-                <span className={styles.heroActionIcon} aria-hidden="true">{UI_ICONS.kcal}</span>
+                <span className={styles.heroActionIcon} aria-hidden="true"><UtensilsCrossed size={15} strokeWidth={2.2} /></span>
                 <span>Kcal</span>
               </button>
               <button className={`btn-base btn-secondary ${styles.heroActionButton}`} onClick={() => openWeightModal()} type="button">
-                <span className={styles.heroActionIcon} aria-hidden="true">{UI_ICONS.weight}</span>
+                <span className={styles.heroActionIcon} aria-hidden="true"><Scale size={15} strokeWidth={2.2} /></span>
                 <span>Weight</span>
               </button>
               <button className={`btn-base btn-ghost ${styles.heroActionButton}`} onClick={() => openSection('flow')} type="button">
-                <span className={styles.heroActionIcon} aria-hidden="true">{UI_ICONS.flow}</span>
+                <span className={styles.heroActionIcon} aria-hidden="true"><CalendarRange size={15} strokeWidth={2.2} /></span>
                 <span>Plan</span>
               </button>
               <button className={`btn-base btn-ghost ${styles.heroActionButton}`} onClick={() => openSection('settings')} type="button">
-                <span className={styles.heroActionIcon} aria-hidden="true">{UI_ICONS.setup}</span>
+                <span className={styles.heroActionIcon} aria-hidden="true"><Settings2 size={15} strokeWidth={2.2} /></span>
                 <span>Setup</span>
               </button>
             </div>
           </div>
 
           <div className={styles.heroStats}>
-            <MetricBox icon={UI_ICONS.day} label="Day" value={challengeStats.currentDay > 0 ? `${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready'} />
-            <MetricBox icon={UI_ICONS.kcal} label="Kcal today" value={today?.target ? `${Math.round(today.target.kcal_target)}` : '—'} helper={today?.remaining ? `${Math.round(today.remaining.calories)} left` : undefined} />
-            <MetricBox icon={UI_ICONS.weight} label="Weight" onClick={() => openWeightModal()} value={data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : '—'} helper={challengeStats.deltaWeight != null ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${formatWeightKg(challengeStats.deltaWeight)}` : undefined} />
-            <MetricBox icon={UI_ICONS.xp} label="XP / Lv" value={`${xp.xp}`} helper={`Lv ${xp.level}`} />
+            <MetricBox icon={<CalendarDays size={14} strokeWidth={2.2} />} label="Day" value={challengeStats.currentDay > 0 ? `${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready'} />
+            <MetricBox icon={<Flame size={14} strokeWidth={2.2} />} label="Kcal today" value={today?.target ? `${Math.round(today.target.kcal_target)}` : '—'} helper={today?.remaining ? `${Math.round(today.remaining.calories)} left` : undefined} />
+            <MetricBox icon={<Weight size={14} strokeWidth={2.2} />} label="Weight" onClick={() => openWeightModal()} value={data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : '—'} helper={challengeStats.deltaWeight != null ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${formatWeightKg(challengeStats.deltaWeight)}` : undefined} />
+            <MetricBox icon={<Sparkles size={14} strokeWidth={2.2} />} label="XP / Lv" value={`${xp.xp}`} helper={`Lv ${xp.level}`} />
           </div>
 
           {overToday != null ? (
@@ -1725,7 +1750,7 @@ export default function CutCoachPage() {
           ) : null}
           <div className={styles.heroDeck}>
             <section className={styles.heroPanel}>
-              <div className={styles.focusKicker}>{UI_ICONS.run} Current run</div>
+              <div className={styles.focusKicker}><Flag size={13} strokeWidth={2.2} /> Current run</div>
               <div className={styles.focusNow}>{challengeStats.currentDay > 0 ? `Day ${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready to start'}</div>
               <div className={styles.focusNext}>
                 {activeChallenge
@@ -1746,7 +1771,7 @@ export default function CutCoachPage() {
             <section className={styles.heroPanel}>
               <div className={styles.chartHead}>
                 <div>
-                  <div className={styles.focusKicker}>{UI_ICONS.trend} Weight trend</div>
+                  <div className={styles.focusKicker}><Gauge size={13} strokeWidth={2.2} /> Weight trend</div>
                   <div className={styles.chartTitle}>Weight history</div>
                 </div>
                 <div className={styles.chartMeta}>{weightTrendMeta}</div>
@@ -2037,10 +2062,10 @@ export default function CutCoachPage() {
           <div className={styles.sectionHead}>
             <div>
               <div className={styles.sectionEyebrow}>history</div>
-              <h2 className={styles.sectionTitle}>Calendar + momentum</h2>
+              <h2 className={styles.sectionTitle}>Year calendar</h2>
             </div>
             <div className={styles.sectionHeadActions}>
-              <div className={styles.sectionMeta}>green good / red bad</div>
+              <div className={styles.sectionMeta}>whole year + marked challenge span</div>
               <button className={styles.sectionToggle} onClick={() => toggleSection('calendar')} type="button">
                 {collapsedSections.calendar ? 'Expand' : 'Collapse'}
               </button>
@@ -2050,76 +2075,101 @@ export default function CutCoachPage() {
           {!collapsedSections.calendar ? <div className={styles.calendarGrid}>
             <section className={`surface-card ${styles.panel}`}>
               <div className={styles.calendarHeader}>
-                <h3 className={styles.panelTitle}>Current month</h3>
-                <span className={styles.panelText}>{new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' }).format(new Date(`${todayIsoDate}T12:00:00`))}</span>
+                <h3 className={styles.panelTitle}>Full year</h3>
+                <span className={styles.panelText}>{new Intl.DateTimeFormat('en-GB', { year: 'numeric' }).format(new Date(`${todayIsoDate}T12:00:00`))}</span>
               </div>
-              <div className={styles.weekdays}>
-                {WEEKDAY_LABELS.map((label) => (
-                  <span key={label}>{label}</span>
-                ))}
+              <div className={styles.calendarLegend}>
+                <span><Goal size={13} strokeWidth={2.2} /> target</span>
+                <span><UtensilsCrossed size={13} strokeWidth={2.2} /> actual</span>
+                <span><Weight size={13} strokeWidth={2.2} /> weight</span>
+                <span><Flag size={13} strokeWidth={2.2} /> start</span>
               </div>
-              <div className={styles.monthGrid}>
-                {monthCells.map((cell) => {
-                  const tone =
-                    cell.kcalDiff != null
-                      ? cell.kcalDiff <= 50
-                        ? styles.monthCellGood
-                        : cell.kcalDiff <= 180
-                          ? styles.monthCellWarn
-                          : styles.monthCellBad
-                      : cell.weight
-                        ? styles.monthCellWeight
-                        : cell.isInChallenge
-                          ? styles.monthCellChallenge
-                        : styles.monthCellNeutral;
-                  return (
-                    <div className={`${styles.monthCell} ${tone} ${cell.isToday ? styles.monthCellToday : ''} ${!cell.inMonth ? styles.monthCellMuted : ''}`} key={cell.isoDate}>
-                      <div className={styles.monthCellTop}>
-                        <span>{cell.label}</span>
-                        {cell.isChallengeStart ? <em className={styles.monthCellBadge}>S</em> : null}
-                      </div>
-                      <div className={styles.monthCellBody}>
-                        {cell.targetKcal != null ? (
-                          <div className={styles.monthCellMetric}>
-                            <span className={styles.monthCellMetricIcon} aria-hidden="true">◉</span>
-                            <small>{cell.targetKcal}</small>
-                          </div>
-                        ) : null}
-                        {cell.actualKcal != null ? (
-                          <div className={styles.monthCellMetric}>
-                            <span className={styles.monthCellMetricIcon} aria-hidden="true">•</span>
-                            <small>{cell.actualKcal}</small>
-                          </div>
-                        ) : null}
-                        {cell.weight ? (
-                          <div className={styles.monthCellMetric}>
-                            <span className={styles.monthCellMetricIcon} aria-hidden="true">◎</span>
-                            <small>{formatWeightKg(cell.weight.weight_kg)}</small>
-                          </div>
-                        ) : null}
-                        {cell.kcalDiff == null && !cell.weight && cell.isChallengeStart ? (
-                          <div className={styles.monthCellHint}>start</div>
-                        ) : null}
-                      </div>
+              <div className={styles.yearCalendar}>
+                {yearMonths.map((month) => (
+                  <section className={styles.yearMonthCard} key={month.key}>
+                    <div className={styles.yearMonthHeader}>
+                      <strong>{month.shortLabel}</strong>
                     </div>
-                  );
-                })}
+                    <div className={styles.weekdays}>
+                      {WEEKDAY_LABELS.map((label) => (
+                        <span key={`${month.key}-${label}`}>{label}</span>
+                      ))}
+                    </div>
+                    <div className={styles.monthGrid}>
+                      {month.cells.map((cell) => {
+                        const tone =
+                          cell.kcalDiff != null
+                            ? cell.kcalDiff <= 50
+                              ? styles.monthCellGood
+                              : cell.kcalDiff <= 180
+                                ? styles.monthCellWarn
+                                : styles.monthCellBad
+                            : cell.weight
+                              ? styles.monthCellWeight
+                              : cell.isInChallenge
+                                ? styles.monthCellChallenge
+                                : styles.monthCellNeutral;
+                        return (
+                          <div className={`${styles.monthCell} ${tone} ${cell.isToday ? styles.monthCellToday : ''} ${!cell.inMonth ? styles.monthCellMuted : ''}`} key={cell.isoDate}>
+                            <div className={styles.monthCellTop}>
+                              <span>{cell.label}</span>
+                              {cell.isChallengeStart ? <em className={styles.monthCellBadge}><Flag size={10} strokeWidth={2.5} /></em> : null}
+                            </div>
+                            <div className={styles.monthCellBody}>
+                              {cell.targetKcal != null ? (
+                                <div className={styles.monthCellMetric}>
+                                  <span className={styles.monthCellMetricIcon} aria-hidden="true"><Goal size={11} strokeWidth={2.2} /></span>
+                                  <small>{cell.targetKcal}</small>
+                                </div>
+                              ) : null}
+                              {cell.actualKcal != null ? (
+                                <div className={styles.monthCellMetric}>
+                                  <span className={styles.monthCellMetricIcon} aria-hidden="true"><UtensilsCrossed size={11} strokeWidth={2.2} /></span>
+                                  <small>{cell.actualKcal}</small>
+                                </div>
+                              ) : null}
+                              {cell.weight ? (
+                                <div className={styles.monthCellMetric}>
+                                  <span className={styles.monthCellMetricIcon} aria-hidden="true"><Weight size={11} strokeWidth={2.2} /></span>
+                                  <small>{formatWeightKg(cell.weight.weight_kg)}</small>
+                                </div>
+                              ) : null}
+                              {cell.kcalDiff == null && !cell.weight && cell.isChallengeStart ? (
+                                <div className={styles.monthCellHint}>start</div>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
               </div>
             </section>
 
             <section className={`surface-card ${styles.panel}`}>
-              <h3 className={styles.panelTitle}>Achievements</h3>
-              <div className={styles.achievementList}>
-                {achievements.map((item) => (
-                  <div className={`${styles.achievement} ${item.unlocked ? styles.achievementOn : styles.achievementOff}`} key={item.title}>
-                    <div>
-                      <strong>{item.title}</strong>
-                      <p>{item.body}</p>
-                    </div>
-                    <span>{item.unlocked ? 'Unlocked' : 'Locked'}</span>
-                  </div>
-                ))}
+              <div className={styles.panelHead}>
+                <div>
+                  <h3 className={styles.panelTitle}>Achievements</h3>
+                  <p className={styles.panelText}>Collapsed by default. Open only when you want the RPG layer.</p>
+                </div>
+                <button className={styles.sectionToggle} onClick={() => setAchievementsCollapsed((current) => !current)} type="button">
+                  {achievementsCollapsed ? 'Open' : 'Collapse'}
+                </button>
               </div>
+              {!achievementsCollapsed ? (
+                <div className={styles.achievementList}>
+                  {achievements.map((item) => (
+                    <div className={`${styles.achievement} ${item.unlocked ? styles.achievementOn : styles.achievementOff}`} key={item.title}>
+                      <div>
+                        <strong>{item.title}</strong>
+                        <p>{item.body}</p>
+                      </div>
+                      <span>{item.unlocked ? 'Unlocked' : 'Locked'}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </section>
           </div> : null}
         </section>
@@ -2645,7 +2695,7 @@ function MetricBox({
   helper,
   onClick,
 }: {
-  icon: string;
+  icon: ReactNode;
   label: string;
   value: string;
   helper?: string;
