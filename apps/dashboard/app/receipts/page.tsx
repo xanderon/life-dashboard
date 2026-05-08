@@ -171,6 +171,11 @@ function fromInputDateTime(value: string) {
   return d.toISOString();
 }
 
+function isMobileViewport() {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(max-width: 1023px)').matches;
+}
+
 function monthKey(ts: string | null) {
   if (!ts) return 'unknown';
   const d = new Date(ts);
@@ -611,16 +616,20 @@ export default function ReceiptsPage() {
     return groups;
   }, [receipts]);
 
-  useEffect(() => {
-    if (!selected || typeof window === 'undefined') return;
-    if (!window.matchMedia('(max-width: 1023px)').matches) return;
+  function queueEditorIntoView() {
+    if (!isMobileViewport()) return;
 
-    const id = window.requestAnimationFrame(() => {
-      editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     });
+  }
 
-    return () => window.cancelAnimationFrame(id);
-  }, [selected]);
+  useEffect(() => {
+    if (!selectedId || !isMobileViewport()) return;
+    queueEditorIntoView();
+  }, [selectedId]);
 
   useEffect(() => {
     if (deleteItemsAckSignature && deleteItemsAckSignature !== pendingDeletedItemsSignature) {
@@ -1031,6 +1040,8 @@ export default function ReceiptsPage() {
     setItems(nextItems);
     setMetaLocked(false);
     await populateFoodFromHistory(nextItems, { silent: true });
+    closeJsonImportPanel();
+    queueEditorIntoView();
   }
 
   async function loadReceipts(activeStore: string) {
@@ -1401,6 +1412,7 @@ export default function ReceiptsPage() {
     setDeleteItemsAckSignature('');
     setEditorBaseline(nextSelectedReceipt, nextItems, 'existing');
     await loadReceipts(storeFilter);
+    queueEditorIntoView();
   }
 
   function restorePendingDeletedItems() {
@@ -1868,7 +1880,7 @@ export default function ReceiptsPage() {
                     🗑️
                   </button>
                   <button
-                    className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50"
+                    className="hidden rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50 lg:inline-flex"
                     disabled={!selected || saving || !isDeleteItemsAckValid}
                     onClick={saveChanges}
                     title={
@@ -1879,11 +1891,11 @@ export default function ReceiptsPage() {
                 >
                   {saving ? 'Se salvează…' : 'Save'}
                 </button>
-                <span className="text-xs text-[var(--muted)]">
+                <span className="hidden text-xs text-[var(--muted)] lg:inline">
                   Ctrl/Cmd+S
                 </span>
                 <button
-                  className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50"
+                  className="hidden rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50 sm:inline-flex"
                   disabled={!selected}
                   onClick={() => {
                     if (!selected) return;
@@ -1911,7 +1923,7 @@ export default function ReceiptsPage() {
                   Export JSON
                 </button>
                   <button
-                    className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-sm text-[var(--text)]"
+                    className="hidden rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-sm text-[var(--text)] lg:inline-flex"
                     onClick={() => {
                       closeSelectedEditor();
                     }}
@@ -1920,6 +1932,83 @@ export default function ReceiptsPage() {
                 >
                   ✕
                 </button>
+              </div>
+            </div>
+
+            <div className="sticky top-3 z-20 mt-3 lg:hidden">
+              <div
+                className={`surface-card p-3 ${
+                  selectedTotals.hasMatch ? 'surface-card--success' : 'surface-card--danger'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                      Computed
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-[var(--text)]">
+                      {selectedTotals.hasMatch ? 'Total ok' : 'Verificare necesară'}
+                    </div>
+                    <div className="mt-1 text-xs text-[var(--muted)]">
+                      Bon {selected?.store || 'receipt'} · {items.length} item{items.length === 1 ? '' : 'e'}
+                    </div>
+                  </div>
+                  <div
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                      selectedTotals.hasMatch
+                        ? 'bg-emerald-500/15 text-emerald-200'
+                        : 'bg-amber-500/15 text-amber-100'
+                    }`}
+                  >
+                    {selectedTotals.hasMatch ? 'OK' : `Delta ${formatSignedMoney(selectedTotals.delta)}`}
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2">
+                    <div className="text-[var(--muted)]">Receipt total</div>
+                    <div className="mt-1 font-semibold text-[var(--text)]">
+                      {selectedTotals.receiptTotal.toFixed(2)} {selected?.currency ?? 'RON'}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2">
+                    <div className="text-[var(--muted)]">Computed</div>
+                    <div className="mt-1 font-semibold text-[var(--text)]">
+                      {selectedTotals.bestComputedTotal.toFixed(2)} {selected?.currency ?? 'RON'}
+                    </div>
+                  </div>
+                </div>
+                {!selectedTotals.hasMatch ? (
+                  <div className="mt-2 rounded-xl border border-[var(--warning)]/25 bg-[color-mix(in_srgb,var(--warning)_10%,transparent)] px-3 py-2 text-xs text-[var(--muted)]">
+                    {selectedTotals.likelySgrAdjustment != null
+                      ? `Posibil SGR: ${selectedTotals.likelySgrAdjustment.toFixed(2)} ${selected?.currency ?? 'RON'}`
+                      : 'Totalul din bon nu bate cu suma calculată din items.'}
+                  </div>
+                ) : null}
+                <div className="mt-3 flex flex-col gap-2">
+                  <button
+                    className="btn-base btn-primary min-h-12 w-full text-base disabled:opacity-50"
+                    disabled={!selected || saving || !isDeleteItemsAckValid}
+                    onClick={saveChanges}
+                    title={
+                      !isDeleteItemsAckValid
+                        ? 'Confirmă mai întâi itemele care vor fi șterse definitiv'
+                        : undefined
+                    }
+                    type="button"
+                  >
+                    {saving ? 'Se salvează…' : 'Save'}
+                  </button>
+                  <button
+                    className="btn-base btn-secondary min-h-11 w-full"
+                    disabled={!selected}
+                    onClick={() => {
+                      closeSelectedEditor();
+                    }}
+                    type="button"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -2380,7 +2469,7 @@ export default function ReceiptsPage() {
                     {!items.length ? (
                       <div className="text-sm text-[var(--muted)]">Nu există items pentru acest bon.</div>
                     ) : null}
-                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm">
+                    <div className="hidden flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm lg:flex">
                       <div className="text-[var(--muted)]">
                         Items: <span className="font-semibold text-[var(--text)]">{items.length}</span>
                       </div>
@@ -2419,7 +2508,7 @@ export default function ReceiptsPage() {
                       </div>
                     </div>
                     {!items.length || selectedTotals.hasMatch ? null : (
-                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-[var(--warning)]/25 bg-[color-mix(in_srgb,var(--warning)_10%,transparent)] px-3 py-2 text-xs text-[var(--muted)]">
+                      <div className="mt-2 hidden flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-[var(--warning)]/25 bg-[color-mix(in_srgb,var(--warning)_10%,transparent)] px-3 py-2 text-xs text-[var(--muted)] lg:flex">
                         <span>
                           Diferenta curenta este <span className="font-semibold text-[var(--text)]">{selectedTotals.absDelta.toFixed(2)} {selected?.currency ?? 'RON'}</span>.
                         </span>
