@@ -1171,11 +1171,11 @@
   left: 0.48rem;
   right: 0.48rem;
   bottom: 0.38rem;
-  height: 0.18rem;
-  opacity: 0.88;
+  height: 0.12rem;
+  opacity: 0.72;
   background-repeat: repeat-x;
   background-position: center;
-  background-size: 0.72rem 0.18rem;
+  background-size: 0.48rem 0.12rem;
 }
 
 .monthCellPastChallenge {
@@ -1187,8 +1187,8 @@
 }
 
 .monthCellPastChallenge::after {
-  background-image: radial-gradient(circle, #58e4c1 0 42%, transparent 48%);
-  filter: drop-shadow(0 0 0.16rem color-mix(in srgb, #58e4c1 14%, transparent));
+  background-image: radial-gradient(circle, #ffcf76 0 38%, transparent 44%);
+  filter: drop-shadow(0 0 0.1rem color-mix(in srgb, #ffcf76 12%, transparent));
 }
 
 .monthCellCurrentChallenge {
@@ -1201,10 +1201,10 @@
 }
 
 .monthCellCurrentChallenge::after {
-  height: 0.22rem;
-  background-image: radial-gradient(circle, #ffcf76 0 44%, transparent 50%);
-  background-size: 0.74rem 0.22rem;
-  filter: drop-shadow(0 0 0.22rem color-mix(in srgb, #ffcf76 24%, transparent));
+  height: 0.12rem;
+  background-image: radial-gradient(circle, #ffcf76 0 38%, transparent 44%);
+  background-size: 0.48rem 0.12rem;
+  filter: drop-shadow(0 0 0.12rem color-mix(in srgb, #ffcf76 18%, transparent));
 }
 
 .monthCellFutureChallenge {
@@ -1216,8 +1216,8 @@
 }
 
 .monthCellFutureChallenge::after {
-  background-image: radial-gradient(circle, color-mix(in srgb, #9fb2c9 92%, white 8%) 0 40%, transparent 48%);
-  filter: drop-shadow(0 0 0.14rem color-mix(in srgb, #9fb2c9 12%, transparent));
+  background-image: radial-gradient(circle, #ffcf76 0 38%, transparent 44%);
+  filter: drop-shadow(0 0 0.08rem color-mix(in srgb, #ffcf76 10%, transparent));
 }
 
 .monthCellGood {
