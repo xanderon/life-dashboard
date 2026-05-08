@@ -933,6 +933,15 @@ function toNumber(value: string, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function formatWeightKg(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return '—';
+  return value.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function formatWeightInputValue(value: number) {
+  return value.toFixed(2).replace(/\.?0+$/, '');
+}
+
 function buildPreviewContext(setup: SetupState) {
   const weightKg = toNumber(setup.initial_weight_kg);
   const heightCm = toNumber(setup.height_cm);
@@ -1399,10 +1408,10 @@ export default function CutCoachPage() {
         toNumber(current.weight_kg) > 0
           ? toNumber(current.weight_kg)
           : data?.trends.latest?.weight_kg ?? toNumber(setup.initial_weight_kg);
-      const nextValue = Math.max(0, Math.round((fallback + delta) * 10) / 10);
+      const nextValue = Math.max(0, Math.round((fallback + delta) * 100) / 100);
       return {
         ...current,
-        weight_kg: nextValue > 0 ? nextValue.toFixed(1) : '',
+        weight_kg: nextValue > 0 ? formatWeightInputValue(nextValue) : '',
       };
     });
   }
@@ -1415,7 +1424,7 @@ export default function CutCoachPage() {
     }
     setWeight((current) => ({
       ...current,
-      weight_kg: latest.toFixed(1),
+      weight_kg: formatWeightInputValue(latest),
     }));
     setNotice('Loaded your latest saved weight.');
   }
@@ -1683,7 +1692,7 @@ export default function CutCoachPage() {
           <div className={styles.heroStats}>
             <MetricBox label="Current run" value={challengeStats.currentDay > 0 ? `Day ${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready'} helper={activeChallenge ? phaseLabel(challengeStats.progress) : 'Create your first run'} />
             <MetricBox label="Active plan today" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : 'Setup'} helper={today?.target ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today') : 'Save your profile'} />
-            <MetricBox label="Weight" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} helper={challengeStats.deltaWeight != null ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${challengeStats.deltaWeight} kg vs start` : 'Waiting for baseline'} />
+            <MetricBox label="Weight" value={data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : '—'} helper={challengeStats.deltaWeight != null ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${challengeStats.deltaWeight} kg vs start` : 'Waiting for baseline'} />
             <MetricBox label="XP / level" value={`${xp.xp} XP`} helper={`Level ${xp.level}`} />
           </div>
 
@@ -1714,7 +1723,7 @@ export default function CutCoachPage() {
               <div className={styles.focusNow}>{topFocus.now}</div>
               <div className={styles.focusNext}>{topFocus.next}</div>
               <div className={styles.quickSummary}>
-                <SummaryTile label="Current kg" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} tone="neutral" />
+                <SummaryTile label="Current kg" value={data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : '—'} tone="neutral" />
                 <SummaryTile label="Today" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : '—'} tone="good" />
                 <SummaryTile label="Tomorrow" value={tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal` : '—'} tone="future" />
                 <SummaryTile label="Phase" value={activeChallenge ? phaseLabel(challengeStats.progress) : 'Ready'} tone="warn" />
@@ -1936,8 +1945,8 @@ export default function CutCoachPage() {
               <div className={styles.weightAdjuster}>
                 <div className={styles.weightAdjustTop}>
                   <span>Current input</span>
-                  <strong>{weightInputValue != null ? `${weightInputValue.toFixed(1)} kg` : 'No weight yet'}</strong>
-                  <small>{latestKnownWeight != null ? `Latest saved: ${latestKnownWeight.toFixed(1)} kg` : 'Your first weigh-in starts here.'}</small>
+                  <strong>{weightInputValue != null ? `${formatWeightKg(weightInputValue)} kg` : 'No weight yet'}</strong>
+                  <small>{latestKnownWeight != null ? `Latest saved: ${formatWeightKg(latestKnownWeight)} kg` : 'Your first weigh-in starts here.'}</small>
                 </div>
                 <div className={styles.weightStepperRow}>
                   <button className={styles.quickChip} onClick={() => nudgeWeight(-1)} type="button">-1.0</button>
@@ -1945,7 +1954,7 @@ export default function CutCoachPage() {
                   <button className={styles.quickChip} onClick={() => nudgeWeight(-0.1)} type="button">-0.1</button>
                   <label className={`${styles.field} ${styles.weightField}`}>
                     <span>Weight kg</span>
-                    <input type="number" step="0.1" inputMode="decimal" value={weight.weight_kg} onChange={(event) => setWeight((current) => ({ ...current, weight_kg: event.target.value }))} placeholder="e.g. 89.6" />
+                    <input type="number" step="0.01" inputMode="decimal" value={weight.weight_kg} onChange={(event) => setWeight((current) => ({ ...current, weight_kg: event.target.value }))} placeholder="e.g. 89.65" />
                   </label>
                   <button className={styles.quickChip} onClick={() => nudgeWeight(0.1)} type="button">+0.1</button>
                   <button className={styles.quickChip} onClick={() => nudgeWeight(0.5)} type="button">+0.5</button>
@@ -1997,7 +2006,7 @@ export default function CutCoachPage() {
               </details>
 
               <div className={styles.quickSummary}>
-                <SummaryTile label="Latest" value={data?.trends.latest ? `${data.trends.latest.weight_kg} kg` : '—'} tone="neutral" />
+                <SummaryTile label="Latest" value={data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : '—'} tone="neutral" />
                 <SummaryTile label="Avg 7" value={data?.trends.avg7 ? `${data.trends.avg7} kg` : '—'} tone="neutral" />
                 <SummaryTile label="Delta 7" value={data?.trends.delta7 != null ? `${data.trends.delta7 > 0 ? '-' : '+'}${Math.abs(data.trends.delta7)} kg` : '—'} tone={data?.trends.delta7 != null && data.trends.delta7 > 0 ? 'good' : 'future'} />
                 <SummaryTile label="Measurements" value={weight.waist_cm || weight.hips_cm || weight.chest_cm ? 'Weekend set' : 'Optional'} tone="future" />
@@ -2122,7 +2131,7 @@ export default function CutCoachPage() {
                         {cell.summary?.target
                           ? `${Math.round(cell.summary.target.kcal_target)}`
                           : cell.weight
-                            ? `${cell.weight.weight_kg}`
+                            ? `${formatWeightKg(cell.weight.weight_kg)}`
                             : ''}
                       </small>
                     </div>
@@ -2169,8 +2178,8 @@ export default function CutCoachPage() {
               <div className={styles.scoreGrid}>
                 <SummaryTile label="Check-in days" value={String(challengeStats.checkinDays)} tone="neutral" />
                 <SummaryTile label="Green days" value={String(challengeStats.underTargetDays)} tone="good" />
-                <SummaryTile label="Start kg" value={challengeStats.startWeight != null ? `${challengeStats.startWeight}` : '—'} tone="future" />
-                <SummaryTile label="Current kg" value={challengeStats.currentWeight != null ? `${challengeStats.currentWeight}` : '—'} tone="neutral" />
+                <SummaryTile label="Start kg" value={challengeStats.startWeight != null ? `${formatWeightKg(challengeStats.startWeight)}` : '—'} tone="future" />
+                <SummaryTile label="Current kg" value={challengeStats.currentWeight != null ? `${formatWeightKg(challengeStats.currentWeight)}` : '—'} tone="neutral" />
               </div>
             </section>
 
