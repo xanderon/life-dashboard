@@ -1168,12 +1168,12 @@
 .monthCellInChallenge::after {
   content: '';
   position: absolute;
-  left: 0.36rem;
-  right: 0.36rem;
-  bottom: 0.34rem;
-  height: 0.26rem;
+  left: 0.48rem;
+  right: 0.48rem;
+  bottom: 0.38rem;
+  height: 0.18rem;
   border-radius: 999px;
-  opacity: 0.95;
+  opacity: 0.8;
 }
 
 .monthCellPastChallenge {
@@ -1186,7 +1186,7 @@
 
 .monthCellPastChallenge::after {
   background: linear-gradient(90deg, #2cd0a8, #7df0cf);
-  box-shadow: 0 0 0.45rem color-mix(in srgb, #58e4c1 28%, transparent);
+  box-shadow: 0 0 0.24rem color-mix(in srgb, #58e4c1 18%, transparent);
 }
 
 .monthCellCurrentChallenge {
@@ -1199,9 +1199,9 @@
 }
 
 .monthCellCurrentChallenge::after {
-  height: 0.32rem;
+  height: 0.22rem;
   background: linear-gradient(90deg, #ffb84d, #ffe08a);
-  box-shadow: 0 0 0.7rem color-mix(in srgb, #ffcc6e 38%, transparent);
+  box-shadow: 0 0 0.32rem color-mix(in srgb, #ffcc6e 24%, transparent);
 }
 
 .monthCellFutureChallenge {
@@ -1214,7 +1214,7 @@
 
 .monthCellFutureChallenge::after {
   background: linear-gradient(90deg, #7e95b4, #bcc8da);
-  box-shadow: 0 0 0.45rem color-mix(in srgb, #9fb2c9 24%, transparent);
+  box-shadow: 0 0 0.22rem color-mix(in srgb, #9fb2c9 16%, transparent);
 }
 
 .monthCellGood {
