@@ -2135,8 +2135,67 @@
   align-items: end;
 }
 
+.weightControlBoard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.weightSideChips {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.weightDialWrap {
+  display: grid;
+  justify-items: center;
+  gap: 0.45rem;
+}
+
+.weightDialWrap small {
+  max-width: 6rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.weightDial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 5.6rem;
+  height: 5.6rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  background:
+    radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--surface-highlight) 16%, transparent), transparent 36%),
+    radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--accent-soft) 18%, transparent), transparent 62%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel-strong) 96%, transparent), color-mix(in srgb, var(--panel-2) 92%, transparent));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--surface-highlight) 12%, transparent),
+    inset 0 -0.5rem 1rem rgba(0, 0, 0, 0.24),
+    0 0.8rem 1.4rem -1rem color-mix(in srgb, var(--accent) 38%, transparent);
+  color: var(--text);
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.weightDial:hover {
+  transform: translateY(-1px);
+}
+
+.weightDial span {
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
 .weightField {
-  grid-column: span 1;
+  grid-column: 1 / -1;
 }
 
 .itemTooltip {
@@ -2402,6 +2461,18 @@
 
   .weightStepperRow {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .weightControlBoard {
+    grid-template-columns: 1fr;
+  }
+
+  .weightSideChips {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .weightDialWrap {
+    order: -1;
   }
 
   .weightField {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore, type CSSProperties, type DragEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type WheelEvent as ReactWheelEvent } from 'react';
 import {
   CartesianGrid,
   Line,
@@ -1079,6 +1079,7 @@ export default function CutCoachPage() {
   const [draggedItem, setDraggedItem] = useState<DragOrigin>(null);
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [characterCollapsed, setCharacterCollapsed] = useState(false);
+  const weightDialDragRef = useRef<{ pointerId: number; startY: number; startValue: number; lastStep: number } | null>(null);
   const pushEnvironment = useSyncExternalStore(
     subscribeNoop,
     getPushEnvironmentSnapshot,
@@ -1402,18 +1403,26 @@ export default function CutCoachPage() {
     setNotice('Last measurement session copied.');
   }
 
+  function currentWeightSeed() {
+    return toNumber(weight.weight_kg) > 0
+      ? toNumber(weight.weight_kg)
+      : data?.trends.latest?.weight_kg ?? toNumber(setup.initial_weight_kg);
+  }
+
+  function setWeightFromNumber(nextValue: number) {
+    const safeValue = Math.max(0, Math.round(nextValue * 100) / 100);
+    setWeight((current) => ({
+      ...current,
+      weight_kg: safeValue > 0 ? formatWeightInputValue(safeValue) : '',
+    }));
+  }
+
+  function applyWeightDelta(delta: number) {
+    setWeightFromNumber(currentWeightSeed() + delta);
+  }
+
   function nudgeWeight(delta: number) {
-    setWeight((current) => {
-      const fallback =
-        toNumber(current.weight_kg) > 0
-          ? toNumber(current.weight_kg)
-          : data?.trends.latest?.weight_kg ?? toNumber(setup.initial_weight_kg);
-      const nextValue = Math.max(0, Math.round((fallback + delta) * 100) / 100);
-      return {
-        ...current,
-        weight_kg: nextValue > 0 ? formatWeightInputValue(nextValue) : '',
-      };
-    });
+    applyWeightDelta(delta);
   }
 
   function syncWeightToLatest() {
@@ -1427,6 +1436,40 @@ export default function CutCoachPage() {
       weight_kg: formatWeightInputValue(latest),
     }));
     setNotice('Loaded your latest saved weight.');
+  }
+
+  function handleWeightDialStart(event: ReactPointerEvent<HTMLButtonElement>) {
+    const startValue = currentWeightSeed();
+    weightDialDragRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startValue,
+      lastStep: 0,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleWeightDialMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const dragState = weightDialDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+    const nextStep = Math.trunc((dragState.startY - event.clientY) / 16);
+    if (nextStep === dragState.lastStep) return;
+    dragState.lastStep = nextStep;
+    setWeightFromNumber(dragState.startValue + nextStep * 0.1);
+  }
+
+  function handleWeightDialEnd(event: ReactPointerEvent<HTMLButtonElement>) {
+    const dragState = weightDialDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+    weightDialDragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function handleWeightDialWheel(event: ReactWheelEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    applyWeightDelta(event.deltaY < 0 ? 0.1 : -0.1);
   }
 
   function toggleSection(section: SectionKey) {
@@ -1948,17 +1991,35 @@ export default function CutCoachPage() {
                   <strong>{weightInputValue != null ? `${formatWeightKg(weightInputValue)} kg` : 'No weight yet'}</strong>
                   <small>{latestKnownWeight != null ? `Latest saved: ${formatWeightKg(latestKnownWeight)} kg` : 'Your first weigh-in starts here.'}</small>
                 </div>
-                <div className={styles.weightStepperRow}>
-                  <button className={styles.quickChip} onClick={() => nudgeWeight(-1)} type="button">-1.0</button>
-                  <button className={styles.quickChip} onClick={() => nudgeWeight(-0.5)} type="button">-0.5</button>
-                  <button className={styles.quickChip} onClick={() => nudgeWeight(-0.1)} type="button">-0.1</button>
+                <div className={styles.weightControlBoard}>
+                  <div className={styles.weightSideChips}>
+                    <button className={styles.quickChip} onClick={() => nudgeWeight(-1)} type="button">-1.00</button>
+                    <button className={styles.quickChip} onClick={() => nudgeWeight(-0.5)} type="button">-0.50</button>
+                    <button className={styles.quickChip} onClick={() => nudgeWeight(-0.1)} type="button">-0.10</button>
+                  </div>
+                  <div className={styles.weightDialWrap}>
+                    <button
+                      className={styles.weightDial}
+                      onPointerDown={handleWeightDialStart}
+                      onPointerMove={handleWeightDialMove}
+                      onPointerUp={handleWeightDialEnd}
+                      onPointerCancel={handleWeightDialEnd}
+                      onWheel={handleWeightDialWheel}
+                      type="button"
+                    >
+                      <span>0.10</span>
+                    </button>
+                    <small>Drag or wheel for fine adjust</small>
+                  </div>
+                  <div className={styles.weightSideChips}>
+                    <button className={styles.quickChip} onClick={() => nudgeWeight(0.1)} type="button">+0.10</button>
+                    <button className={styles.quickChip} onClick={() => nudgeWeight(0.5)} type="button">+0.50</button>
+                    <button className={styles.quickChip} onClick={() => nudgeWeight(1)} type="button">+1.00</button>
+                  </div>
                   <label className={`${styles.field} ${styles.weightField}`}>
                     <span>Weight kg</span>
                     <input type="number" step="0.01" inputMode="decimal" value={weight.weight_kg} onChange={(event) => setWeight((current) => ({ ...current, weight_kg: event.target.value }))} placeholder="e.g. 89.65" />
                   </label>
-                  <button className={styles.quickChip} onClick={() => nudgeWeight(0.1)} type="button">+0.1</button>
-                  <button className={styles.quickChip} onClick={() => nudgeWeight(0.5)} type="button">+0.5</button>
-                  <button className={styles.quickChip} onClick={() => nudgeWeight(1)} type="button">+1.0</button>
                 </div>
               </div>
 
