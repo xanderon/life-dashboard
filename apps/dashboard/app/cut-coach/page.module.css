@@ -1078,6 +1078,12 @@
   gap: 0.35rem;
 }
 
+.monthCellBadges {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .monthCellBody {
   display: grid;
   gap: 0.22rem;
@@ -1121,6 +1127,13 @@
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.08em;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg) 45%, transparent);
+}
+
+.monthCellBadgeEnd {
+  border-color: color-mix(in srgb, var(--warning) 55%, transparent);
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
 }
 
 .monthCellHint {
@@ -1140,8 +1153,10 @@
 
 .monthCellInChallenge {
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent),
-    inset 0 0 0 999px color-mix(in srgb, var(--accent-soft) 4%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent),
+    inset 0 0 0 999px color-mix(in srgb, var(--accent-soft) 7%, transparent),
+    inset 0 0.18rem 0 color-mix(in srgb, var(--accent) 48%, transparent),
+    inset 0 -0.18rem 0 color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 .monthCellGood {
@@ -1161,8 +1176,10 @@
 }
 
 .monthCellChallenge {
-  border-color: color-mix(in srgb, var(--accent-soft) 24%, var(--border));
-  background: color-mix(in srgb, var(--accent-soft) 10%, var(--panel-2));
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 16%, transparent), color-mix(in srgb, var(--accent-soft) 6%, transparent)),
+    color-mix(in srgb, var(--panel-2) 86%, transparent);
 }
 
 .monthCellNeutral {

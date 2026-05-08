@@ -403,6 +403,7 @@ function buildMonthCells(
     const kcalDiff =
       targetKcal != null && actualKcal != null ? actualKcal - targetKcal : null;
     const isChallengeStart = activeChallenge?.start_date === isoDate;
+    const isChallengeEnd = activeChallenge?.end_date === isoDate;
     const isInChallenge =
       Boolean(activeChallenge) &&
       isoDate >= (activeChallenge?.start_date ?? '') &&
@@ -418,6 +419,7 @@ function buildMonthCells(
       actualKcal,
       kcalDiff,
       isChallengeStart,
+      isChallengeEnd,
       isInChallenge,
       isToday: isoDate === todayIsoDate,
     };
@@ -2125,7 +2127,10 @@ export default function CutCoachPage() {
                           >
                             <div className={styles.monthCellTop}>
                               <span>{cell.label}</span>
-                              {cell.isChallengeStart ? <em className={styles.monthCellBadge}><Flag size={10} strokeWidth={2.5} /></em> : null}
+                              <div className={styles.monthCellBadges}>
+                                {cell.isChallengeStart ? <em className={styles.monthCellBadge} title="Challenge start"><Flag size={10} strokeWidth={2.5} /></em> : null}
+                                {cell.isChallengeEnd ? <em className={`${styles.monthCellBadge} ${styles.monthCellBadgeEnd}`} title="Challenge end"><Goal size={10} strokeWidth={2.5} /></em> : null}
+                              </div>
                             </div>
                             <div className={styles.monthCellBody}>
                               {cell.targetKcal != null ? (
