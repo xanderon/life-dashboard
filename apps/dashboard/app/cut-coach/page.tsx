@@ -329,6 +329,13 @@ function shortDay(isoDate: string) {
   }).format(new Date(`${isoDate}T12:00:00`));
 }
 
+function formatLocalIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function isoDiff(start: string, end: string) {
   const left = new Date(`${start}T00:00:00`);
   const right = new Date(`${end}T00:00:00`);
@@ -382,7 +389,7 @@ function buildMonthCells(
   return Array.from({ length: 35 }, (_, index) => {
     const date = new Date(gridStart);
     date.setDate(gridStart.getDate() + index);
-    const isoDate = date.toISOString().slice(0, 10);
+    const isoDate = formatLocalIsoDate(date);
     const summary = findWeekDay(payload, isoDate);
     const checkin = payload ? findCheckinForDate(payload.checkins, isoDate) : null;
     const weight = payload ? findWeightForDate(payload.weights, isoDate) : null;
@@ -426,7 +433,7 @@ function buildYearMonths(
   const year = current.getFullYear();
   return Array.from({ length: 12 }, (_, monthIndex) => {
     const monthDate = new Date(year, monthIndex, 1, 12, 0, 0);
-    const monthIsoDate = monthDate.toISOString().slice(0, 10);
+    const monthIsoDate = formatLocalIsoDate(monthDate);
     return {
       key: monthIsoDate,
       label: new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' }).format(monthDate),
@@ -1060,14 +1067,15 @@ function validateChallenge(challenge: ChallengeState) {
 }
 
 export default function CutCoachPage() {
+  const initialIsoDate = formatLocalIsoDate(new Date());
   const [data, setData] = useState<BootstrapPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [setup, setSetup] = useState<SetupState>(defaultSetup);
-  const [checkin, setCheckin] = useState<CheckinState>(emptyCheckin(new Date().toISOString().slice(0, 10)));
-  const [weight, setWeight] = useState<WeightState>(emptyWeight(new Date().toISOString().slice(0, 10)));
-  const [challenge, setChallenge] = useState<ChallengeState>(challengeDraft(new Date().toISOString().slice(0, 10)));
+  const [checkin, setCheckin] = useState<CheckinState>(emptyCheckin(initialIsoDate));
+  const [weight, setWeight] = useState<WeightState>(emptyWeight(initialIsoDate));
+  const [challenge, setChallenge] = useState<ChallengeState>(challengeDraft(initialIsoDate));
   const [reminders, setReminders] = useState<ReminderDraft[]>(defaultReminderDrafts([]));
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
@@ -1089,7 +1097,7 @@ export default function CutCoachPage() {
   const [achievementsCollapsed, setAchievementsCollapsed] = useState(true);
   const [kcalModalOpen, setKcalModalOpen] = useState(false);
   const [weightModalOpen, setWeightModalOpen] = useState(false);
-  const [weightDraft, setWeightDraft] = useState<WeightState>(emptyWeight(new Date().toISOString().slice(0, 10)));
+  const [weightDraft, setWeightDraft] = useState<WeightState>(emptyWeight(initialIsoDate));
   const [weightDialRotation, setWeightDialRotation] = useState(0);
   const weightDialDragRef = useRef<{
     pointerId: number;
@@ -1545,7 +1553,7 @@ export default function CutCoachPage() {
     }
   }
 
-  const todayIsoDate = data?.todayIsoDate ?? new Date().toISOString().slice(0, 10);
+  const todayIsoDate = data?.todayIsoDate ?? initialIsoDate;
   const activeChallenge = selectActiveChallenge(data?.challenges ?? [], todayIsoDate);
   const challengeStats = buildChallengeStats(activeChallenge, data);
   const xp = buildXp(data);
