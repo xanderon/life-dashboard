@@ -1011,10 +1011,20 @@
 }
 
 .yearCalendar {
+  --challenge-dot-past: #58e4c1;
+  --challenge-dot-current: #ffcf76;
+  --challenge-dot-future: #ffcf76;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.85rem;
   margin-top: 0.9rem;
+}
+
+:global(:root[data-theme="light"]) .yearCalendar,
+:global(:root[data-theme="sunrise"]) .yearCalendar {
+  --challenge-dot-past: #168a70;
+  --challenge-dot-current: #c1602f;
+  --challenge-dot-future: #c1602f;
 }
 
 .yearMonthCard {
@@ -1187,8 +1197,8 @@
 }
 
 .monthCellPastChallenge::after {
-  background-image: radial-gradient(circle, #ffcf76 0 38%, transparent 44%);
-  filter: drop-shadow(0 0 0.1rem color-mix(in srgb, #ffcf76 12%, transparent));
+  background-image: radial-gradient(circle, var(--challenge-dot-past) 0 38%, transparent 44%);
+  filter: drop-shadow(0 0 0.1rem color-mix(in srgb, var(--challenge-dot-past) 12%, transparent));
 }
 
 .monthCellCurrentChallenge {
@@ -1202,9 +1212,9 @@
 
 .monthCellCurrentChallenge::after {
   height: 0.12rem;
-  background-image: radial-gradient(circle, #ffcf76 0 38%, transparent 44%);
+  background-image: radial-gradient(circle, var(--challenge-dot-current) 0 38%, transparent 44%);
   background-size: 0.48rem 0.12rem;
-  filter: drop-shadow(0 0 0.12rem color-mix(in srgb, #ffcf76 18%, transparent));
+  filter: drop-shadow(0 0 0.12rem color-mix(in srgb, var(--challenge-dot-current) 18%, transparent));
 }
 
 .monthCellFutureChallenge {
@@ -1216,8 +1226,8 @@
 }
 
 .monthCellFutureChallenge::after {
-  background-image: radial-gradient(circle, #ffcf76 0 38%, transparent 44%);
-  filter: drop-shadow(0 0 0.08rem color-mix(in srgb, #ffcf76 10%, transparent));
+  background-image: radial-gradient(circle, var(--challenge-dot-future) 0 38%, transparent 44%);
+  filter: drop-shadow(0 0 0.08rem color-mix(in srgb, var(--challenge-dot-future) 10%, transparent));
 }
 
 .monthCellGood {
