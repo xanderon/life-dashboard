@@ -285,6 +285,7 @@
   align-items: start;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .modalHeadActions,
@@ -293,6 +294,10 @@
   align-items: center;
   gap: 0.65rem;
   flex-wrap: wrap;
+}
+
+.modalHeadActions {
+  justify-content: flex-end;
 }
 
 .modalTitle {
@@ -2186,6 +2191,29 @@
   letter-spacing: -0.05em;
 }
 
+.weightValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.weightDeltaDown,
+.weightDeltaUp {
+  font-style: normal;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.weightDeltaDown {
+  color: var(--success);
+}
+
+.weightDeltaUp {
+  color: var(--danger);
+}
+
 .weightAdjustTop small {
   color: var(--muted);
 }
@@ -2509,6 +2537,12 @@
 
   .itemTooltip {
     display: none;
+  }
+
+  .modalHeadActions,
+  .modalActions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 

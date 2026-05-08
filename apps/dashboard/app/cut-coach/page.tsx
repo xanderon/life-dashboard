@@ -1560,6 +1560,10 @@ export default function CutCoachPage() {
   const weightDialStyle: CSSProperties & Record<'--dial-rotation', string> = {
     '--dial-rotation': `${weightDialRotation}deg`,
   };
+  const weightDraftDelta =
+    latestKnownWeight != null && toNumber(weightDraft.weight_kg) > 0
+      ? Math.round((toNumber(weightDraft.weight_kg) - latestKnownWeight) * 100) / 100
+      : null;
 
   function startDrag(origin: DragOrigin) {
     setDraggedItem(origin);
@@ -1833,7 +1837,15 @@ export default function CutCoachPage() {
               <div className={styles.weightAdjuster}>
                 <div className={styles.weightAdjustTop}>
                   <span>Current input</span>
-                  <strong>{toNumber(weightDraft.weight_kg) > 0 ? `${formatWeightKg(toNumber(weightDraft.weight_kg))} kg` : 'No weight yet'}</strong>
+                  <div className={styles.weightValueRow}>
+                    <strong>{toNumber(weightDraft.weight_kg) > 0 ? `${formatWeightKg(toNumber(weightDraft.weight_kg))} kg` : 'No weight yet'}</strong>
+                    {weightDraftDelta != null && weightDraftDelta !== 0 ? (
+                      <em className={weightDraftDelta < 0 ? styles.weightDeltaDown : styles.weightDeltaUp}>
+                        {weightDraftDelta > 0 ? '+' : ''}
+                        {formatWeightKg(weightDraftDelta)}
+                      </em>
+                    ) : null}
+                  </div>
                   <small>{latestKnownWeight != null ? `Latest saved: ${formatWeightKg(latestKnownWeight)} kg` : 'Your first weigh-in starts here.'}</small>
                 </div>
 
