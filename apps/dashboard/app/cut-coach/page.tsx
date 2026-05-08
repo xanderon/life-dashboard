@@ -35,6 +35,16 @@ const PACE_PRESETS = [
   { label: 'Standard', value: '18', description: 'Solid cut pace' },
   { label: 'Strict', value: '24', description: 'Harder to sustain' },
 ];
+const UI_ICONS = {
+  day: '◔',
+  kcal: '◉',
+  weight: '◎',
+  xp: '✦',
+  flow: '▦',
+  setup: '⚙',
+  trend: '∿',
+  run: '◫',
+} as const;
 
 type PushEnvironmentSnapshot = {
   supported: boolean;
@@ -123,9 +133,6 @@ type ReminderDraft = {
 };
 
 type SectionKey = 'today' | 'flow' | 'calendar' | 'progress' | 'settings';
-type TodayPanels = {
-  checkin: boolean;
-};
 type SetupComposer = 'profile' | 'challenge' | 'reminders' | null;
 type ItemRarity = 'common' | 'magic' | 'rare' | 'set' | 'legendary';
 type EquipmentSlotSize = 'small' | 'medium' | 'large' | 'tall';
@@ -1026,13 +1033,13 @@ export default function CutCoachPage() {
     progress: true,
     settings: false,
   });
-  const [todayPanels, setTodayPanels] = useState<TodayPanels>({ checkin: true });
   const [setupComposer, setSetupComposer] = useState<SetupComposer>(null);
   const [kcalQuickAdd, setKcalQuickAdd] = useState('');
   const [inventoryOverride, setInventoryOverride] = useState<CharacterInventory | null>(null);
   const [draggedItem, setDraggedItem] = useState<DragOrigin>(null);
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [characterCollapsed, setCharacterCollapsed] = useState(false);
+  const [kcalModalOpen, setKcalModalOpen] = useState(false);
   const [weightModalOpen, setWeightModalOpen] = useState(false);
   const [weightDraft, setWeightDraft] = useState<WeightState>(emptyWeight(new Date().toISOString().slice(0, 10)));
   const [weightDialRotation, setWeightDialRotation] = useState(0);
@@ -1064,12 +1071,8 @@ export default function CutCoachPage() {
   }
 
   function openTodayEntry() {
-    setCollapsedSections((current) => ({ ...current, today: false }));
-    setTodayPanels((current) => ({
-      ...current,
-      checkin: true,
-    }));
-    scrollToId('today');
+    setCheckin(fillCheckin(todayIsoDate, data));
+    setKcalModalOpen(true);
   }
 
   function openSection(section: SectionKey) {
@@ -1084,6 +1087,12 @@ export default function CutCoachPage() {
   function openWeightModal(date = todayIsoDate) {
     setWeightDraft(baseWeightEntryState(date));
     setWeightModalOpen(true);
+  }
+
+  function closeKcalModal() {
+    setKcalModalOpen(false);
+    setCheckin(fillCheckin(todayIsoDate, data));
+    setKcalQuickAdd('');
   }
 
   function closeWeightModal() {
@@ -1242,6 +1251,12 @@ export default function CutCoachPage() {
     return await persistCheckin(checkin, 'Today kcal saved.', copiedFromPrevious);
   }
 
+  async function saveCheckinAndClose() {
+    const ok = await saveCheckin();
+    if (ok) closeKcalModal();
+    return ok;
+  }
+
   async function addKcalToToday() {
     const quickAdd = toNumber(kcalQuickAdd);
     if (quickAdd <= 0) {
@@ -1339,33 +1354,6 @@ export default function CutCoachPage() {
     return ok;
   }
 
-  function applyTargetToCheckin() {
-    const summary = findWeekDay(data, checkin.date);
-    if (!summary?.target) return;
-    setCheckin((current) => ({
-      ...current,
-      kcal_actual: String(Math.round(summary.target!.kcal_target)),
-    }));
-  }
-
-  function copyYesterday() {
-    if (!data) return;
-    const yesterday = findCheckinForDate(data.checkins, addDays(checkin.date, -1));
-    if (!yesterday) {
-      setNotice('No check-in found for yesterday.');
-      return;
-    }
-    setCheckin({
-      date: checkin.date,
-      kcal_actual: yesterday.kcal_actual != null ? String(yesterday.kcal_actual) : '',
-      activity_kcal_burned: yesterday.activity_kcal_burned != null ? String(yesterday.activity_kcal_burned) : '',
-      activity_summary: yesterday.activity_summary ?? '',
-      notes: yesterday.notes ?? '',
-      source_app: yesterday.source_app ?? 'LifeSum',
-    });
-    setNotice('Yesterday copied into today.');
-  }
-
   function currentWeightSeed(source: WeightState = weight) {
     return toNumber(source.weight_kg) > 0
       ? toNumber(source.weight_kg)
@@ -1383,23 +1371,6 @@ export default function CutCoachPage() {
 
   function applyWeightDelta(delta: number, target: 'weight' | 'draft' = 'weight', source?: WeightState) {
     setWeightFromNumber(currentWeightSeed(source ?? (target === 'draft' ? weightDraft : weight)) + delta, target);
-  }
-
-  function nudgeWeight(delta: number, target: 'weight' | 'draft' = 'weight', source?: WeightState) {
-    applyWeightDelta(delta, target, source);
-  }
-
-  function syncWeightDraftToLatest() {
-    const latest = data?.trends.latest?.weight_kg ?? null;
-    if (latest == null) {
-      setNotice('No previous weight found yet.');
-      return;
-    }
-    setWeightDraft((current) => ({
-      ...current,
-      weight_kg: formatWeightInputValue(latest),
-    }));
-    setNotice('Loaded your latest saved weight.');
   }
 
   function handleWeightDialStart(event: ReactPointerEvent<HTMLButtonElement>) {
@@ -1535,6 +1506,16 @@ export default function CutCoachPage() {
   const selectedDay = findWeekDay(data, checkin.date);
   const monthCells = buildMonthCells(todayIsoDate, data);
   const weightChartData = buildWeightChartData(data);
+  const weightTrendDelta =
+    weightChartData.length > 1
+      ? Math.round((weightChartData[weightChartData.length - 1]!.weight - weightChartData[0]!.weight) * 100) / 100
+      : null;
+  const weightTrendMeta =
+    weightTrendDelta != null
+      ? `${weightTrendDelta > 0 ? '+' : ''}${formatWeightKg(weightTrendDelta)} kg`
+      : weightChartData.length > 0
+        ? `${weightChartData.length} log${weightChartData.length === 1 ? '' : 's'}`
+        : 'No logs yet';
   const burnedKcal = toNumber(checkin.activity_kcal_burned);
   const netKcal = Math.max(0, toNumber(checkin.kcal_actual) - burnedKcal);
   const overToday =
@@ -1683,54 +1664,46 @@ export default function CutCoachPage() {
 
         <section className={`hero-card ${styles.hero}`}>
           <div className={styles.heroIntro}>
-            <div className="eyebrow">Cut Coach</div>
             <div className={styles.heroMeta}>
               <span>{activeChallenge ? activeChallenge.title : 'No active challenge'}</span>
               <span>{activeChallenge ? `${formatDate(activeChallenge.start_date)} → ${formatDate(activeChallenge.end_date)}` : 'Start whenever you are ready'}</span>
             </div>
-          </div>
-
-          <div className={styles.heroHeader}>
-            <div>
-              <h1 className={styles.heroTitle}>Cut, on rails.</h1>
-              <p className={styles.heroText}>Track weight, kcal, trend and the next move.</p>
-            </div>
             <div className={styles.heroActions}>
-              <button className="btn-base btn-primary" onClick={() => openTodayEntry()} type="button">
-                Open kcal entry
+              <button className={`btn-base btn-primary ${styles.heroActionButton}`} onClick={() => openTodayEntry()} type="button">
+                <span className={styles.heroActionIcon} aria-hidden="true">{UI_ICONS.kcal}</span>
+                <span>Kcal</span>
               </button>
-              <button className="btn-base btn-secondary" onClick={() => openWeightModal()} type="button">
-                Open weight popup
+              <button className={`btn-base btn-secondary ${styles.heroActionButton}`} onClick={() => openWeightModal()} type="button">
+                <span className={styles.heroActionIcon} aria-hidden="true">{UI_ICONS.weight}</span>
+                <span>Weight</span>
               </button>
-              <button className="btn-base btn-ghost" onClick={() => openSection('flow')} type="button">
-                Open week plan
+              <button className={`btn-base btn-ghost ${styles.heroActionButton}`} onClick={() => openSection('flow')} type="button">
+                <span className={styles.heroActionIcon} aria-hidden="true">{UI_ICONS.flow}</span>
+                <span>Plan</span>
               </button>
-              <button className="btn-base btn-ghost" onClick={() => openSection('settings')} type="button">
-                Open setup
+              <button className={`btn-base btn-ghost ${styles.heroActionButton}`} onClick={() => openSection('settings')} type="button">
+                <span className={styles.heroActionIcon} aria-hidden="true">{UI_ICONS.setup}</span>
+                <span>Setup</span>
               </button>
             </div>
           </div>
 
           <div className={styles.heroStats}>
-            <MetricBox label="Current run" value={challengeStats.currentDay > 0 ? `Day ${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready'} helper={activeChallenge ? phaseLabel(challengeStats.progress) : 'Create your first run'} />
-            <MetricBox label="Active plan today" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : 'Setup'} helper={today?.target ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today') : 'Save your profile'} />
-            <MetricBox label="Weight" onClick={() => openWeightModal()} value={data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : '—'} helper={challengeStats.deltaWeight != null ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${challengeStats.deltaWeight} kg vs start` : 'Waiting for baseline'} />
-            <MetricBox label="XP / level" value={`${xp.xp} XP`} helper={`Level ${xp.level}`} />
+            <MetricBox icon={UI_ICONS.day} label="Day" value={challengeStats.currentDay > 0 ? `${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready'} />
+            <MetricBox icon={UI_ICONS.kcal} label="Kcal today" value={today?.target ? `${Math.round(today.target.kcal_target)}` : '—'} helper={today?.remaining ? `${Math.round(today.remaining.calories)} left` : undefined} />
+            <MetricBox icon={UI_ICONS.weight} label="Weight" onClick={() => openWeightModal()} value={data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : '—'} helper={challengeStats.deltaWeight != null ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${formatWeightKg(challengeStats.deltaWeight)}` : undefined} />
+            <MetricBox icon={UI_ICONS.xp} label="XP / Lv" value={`${xp.xp}`} helper={`Lv ${xp.level}`} />
           </div>
 
           {overToday != null ? (
             <div className={`${styles.alert} ${overToday > 150 ? styles.alertBad : overToday > 0 ? styles.alertWarn : styles.alertGood}`}>
-              {overToday > 150
-                ? `You are ${overToday} kcal over today. Return to target tomorrow and trim lightly over the next 2-3 days.`
-                : overToday > 0
-                  ? `You are slightly over target today (+${overToday} kcal). Stay controlled tomorrow and you are back on trend.`
-                  : `You are on track today. ${today?.remaining ? `${Math.max(0, Math.round(today.remaining.calories))} kcal left.` : ''}`}
+              {overToday > 150 ? `+${overToday} kcal` : overToday > 0 ? `+${overToday} kcal` : today?.remaining ? `${Math.max(0, Math.round(today.remaining.calories))} kcal left` : 'On target'}
             </div>
           ) : null}
           <div className={styles.heroDeck}>
             <section className={styles.heroPanel}>
-              <div className={styles.focusKicker}>Current run</div>
-              <div className={styles.focusNow}>{activeChallenge ? activeChallenge.title : 'No active challenge yet'}</div>
+              <div className={styles.focusKicker}>{UI_ICONS.run} Current run</div>
+              <div className={styles.focusNow}>{challengeStats.currentDay > 0 ? `Day ${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready to start'}</div>
               <div className={styles.focusNext}>
                 {activeChallenge
                   ? `${formatDate(activeChallenge.start_date)} → ${formatDate(activeChallenge.end_date)}`
@@ -1741,10 +1714,8 @@ export default function CutCoachPage() {
                   <span style={{ width: `${Math.round(challengeStats.progress * 100)}%` }} />
                 </div>
                 <div className={styles.phaseLabels}>
-                  <span>Ignition</span>
-                  <span>Rhythm</span>
-                  <span>Lock-in</span>
-                  <span>Finish</span>
+                  <span>{Math.round(challengeStats.progress * 100)}%</span>
+                  <span>{challengeStats.checkinDays} logs</span>
                 </div>
               </div>
             </section>
@@ -1752,12 +1723,10 @@ export default function CutCoachPage() {
             <section className={styles.heroPanel}>
               <div className={styles.chartHead}>
                 <div>
-                  <div className={styles.focusKicker}>Weight trend</div>
+                  <div className={styles.focusKicker}>{UI_ICONS.trend} Weight trend</div>
                   <div className={styles.chartTitle}>Weight history</div>
                 </div>
-                <div className={styles.chartMeta}>
-                  {data?.trends.delta7 != null ? `${data.trends.delta7 > 0 ? '-' : '+'}${Math.abs(data.trends.delta7)} kg / 7 days` : 'Waiting for more data'}
-                </div>
+                <div className={styles.chartMeta}>{weightTrendMeta}</div>
               </div>
               <div className={styles.chartBox}>
                 {weightChartData.length > 1 ? (
@@ -1810,6 +1779,98 @@ export default function CutCoachPage() {
             <p>{rewardToast.body}</p>
           </div>
         ) : null}
+        {kcalModalOpen ? (
+          <div className={styles.modalScrim} onClick={closeKcalModal} role="presentation">
+            <section
+              aria-modal="true"
+              className={styles.weightModal}
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+            >
+              <div className={styles.modalHead}>
+                <div>
+                  <div className={styles.sectionEyebrow}>kcal</div>
+                  <h3 className={styles.modalTitle}>Quick kcal entry</h3>
+                  <p className={styles.panelText}>Food total and sport burn, saved when you want.</p>
+                </div>
+              </div>
+
+              <div className={styles.kcalModalGrid}>
+                <label className={styles.field}>
+                  <span>Date</span>
+                  <input
+                    type="date"
+                    value={checkin.date}
+                    onChange={(event) => setCheckin(fillCheckin(event.target.value, data))}
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>Kcal today</span>
+                  <input
+                    className={styles.featureInput}
+                    type="number"
+                    inputMode="numeric"
+                    value={checkin.kcal_actual}
+                    onChange={(event) => setCheckin((current) => ({ ...current, kcal_actual: event.target.value }))}
+                    placeholder="e.g. 2140"
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>Sport burn</span>
+                  <input
+                    className={styles.featureInput}
+                    type="number"
+                    inputMode="numeric"
+                    value={checkin.activity_kcal_burned}
+                    onChange={(event) => setCheckin((current) => ({ ...current, activity_kcal_burned: event.target.value }))}
+                    placeholder="e.g. 320"
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>Sport</span>
+                  <input
+                    value={checkin.activity_summary}
+                    onChange={(event) => setCheckin((current) => ({ ...current, activity_summary: event.target.value }))}
+                    placeholder="walk / bike / gym / none"
+                  />
+                </label>
+              </div>
+
+              <div className={styles.quickSummary}>
+                <SummaryTile label="Target" value={selectedDay?.target ? `${Math.round(selectedDay.target.kcal_target)} kcal` : '—'} tone="neutral" />
+                <SummaryTile label="Logged" value={toNumber(checkin.kcal_actual) > 0 ? `${Math.round(toNumber(checkin.kcal_actual))} kcal` : '—'} tone="future" />
+                <SummaryTile label="Burn" value={burnedKcal > 0 ? `${Math.round(burnedKcal)} kcal` : '0 kcal'} tone="good" />
+                <SummaryTile label="Net" value={toNumber(checkin.kcal_actual) > 0 ? `${Math.round(netKcal)} kcal` : '—'} tone="warn" />
+              </div>
+
+              <div className={styles.kcalModalAddRow}>
+                <label className={styles.field}>
+                  <span>Quick add</span>
+                  <input
+                    className={styles.featureInput}
+                    inputMode="numeric"
+                    onChange={(event) => setKcalQuickAdd(event.target.value)}
+                    placeholder="e.g. 650"
+                    type="number"
+                    value={kcalQuickAdd}
+                  />
+                </label>
+                <button className="btn-base btn-secondary" disabled={busy !== null} onClick={() => void addKcalToToday()} type="button">
+                  {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Add kcal'}
+                </button>
+              </div>
+
+              <div className={styles.modalActions}>
+                <button className="btn-base btn-ghost" onClick={closeKcalModal} type="button">
+                  Cancel
+                </button>
+                <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveCheckinAndClose()} type="button">
+                  {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Save kcal'}
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
         {weightModalOpen ? (
           <div className={styles.modalScrim} onClick={closeWeightModal} role="presentation">
             <section
@@ -1823,14 +1884,6 @@ export default function CutCoachPage() {
                   <div className={styles.sectionEyebrow}>weight</div>
                   <h3 className={styles.modalTitle}>Quick weight entry</h3>
                   <p className={styles.panelText}>Change the value here. Nothing is saved until you press Save.</p>
-                </div>
-                <div className={styles.modalHeadActions}>
-                  <button className="btn-base btn-ghost" onClick={syncWeightDraftToLatest} type="button">
-                    Use latest
-                  </button>
-                  <button className="btn-base btn-ghost" onClick={closeWeightModal} type="button">
-                    Cancel
-                  </button>
                 </div>
               </div>
 
@@ -1861,11 +1914,6 @@ export default function CutCoachPage() {
                 </div>
 
                 <div className={styles.weightControlBoard}>
-                  <div className={styles.weightSideChips}>
-                    <button className={styles.quickChip} onClick={() => nudgeWeight(-1, 'draft', weightDraft)} type="button">-1.00</button>
-                    <button className={styles.quickChip} onClick={() => nudgeWeight(-0.5, 'draft', weightDraft)} type="button">-0.50</button>
-                    <button className={styles.quickChip} onClick={() => nudgeWeight(-0.1, 'draft', weightDraft)} type="button">-0.10</button>
-                  </div>
                   <div className={styles.weightDialWrap}>
                     <button
                       aria-label="Rotate weight dial"
@@ -1880,24 +1928,7 @@ export default function CutCoachPage() {
                     >
                       <span className={styles.weightDialNeedle} aria-hidden="true" />
                     </button>
-                    <small>Rotate for 0.01 adjust</small>
                   </div>
-                  <div className={styles.weightSideChips}>
-                    <button className={styles.quickChip} onClick={() => nudgeWeight(0.1, 'draft', weightDraft)} type="button">+0.10</button>
-                    <button className={styles.quickChip} onClick={() => nudgeWeight(0.5, 'draft', weightDraft)} type="button">+0.50</button>
-                    <button className={styles.quickChip} onClick={() => nudgeWeight(1, 'draft', weightDraft)} type="button">+1.00</button>
-                  </div>
-                  <label className={`${styles.field} ${styles.weightField}`}>
-                    <span>Weight kg</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      inputMode="decimal"
-                      value={weightDraft.weight_kg}
-                      onChange={(event) => setWeightDraft((current) => ({ ...current, weight_kg: event.target.value }))}
-                      placeholder="e.g. 98.15"
-                    />
-                  </label>
                 </div>
               </div>
 
@@ -1912,120 +1943,6 @@ export default function CutCoachPage() {
             </section>
           </div>
         ) : null}
-
-        <section id="today" className={styles.appSection}>
-          <div className={styles.sectionHead}>
-            <div>
-              <div className={styles.sectionEyebrow}>today</div>
-              <h2 className={styles.sectionTitle}>Today</h2>
-            </div>
-            <div className={styles.sectionHeadActions}>
-              <div className={styles.sectionMeta}>{formatFullDate(checkin.date)}</div>
-            </div>
-          </div>
-
-          {!collapsedSections.today ? <>
-          <div className={styles.todayGrid}>
-            {todayPanels.checkin ? <section className={`surface-card ${styles.panel}`}>
-              <div className={styles.panelHead}>
-                <div>
-                  <h3 className={styles.panelTitle}>Kcal check-in</h3>
-                  <p className={styles.panelText}>Keep one running total for the day. Save now, then come back later and update it again.</p>
-                </div>
-                <div className={styles.pillRow}>
-                  <button className="btn-base btn-ghost" type="button" onClick={copyYesterday}>
-                    Same as yesterday
-                  </button>
-                  <button className="btn-base btn-secondary" type="button" onClick={applyTargetToCheckin}>
-                    Use target
-                  </button>
-                </div>
-              </div>
-
-              <div className={styles.formGrid}>
-                <label className={styles.field}>
-                  <span>Date</span>
-                  <input type="date" value={checkin.date} onChange={(event) => {
-                    const nextDate = event.target.value;
-                    setCheckin(fillCheckin(nextDate, data));
-                    setWeight(fillWeight(nextDate, data));
-                  }} />
-                </label>
-                <label className={styles.field}>
-                  <span>Current total kcal</span>
-                  <input className={styles.featureInput} type="number" inputMode="numeric" value={checkin.kcal_actual} onChange={(event) => setCheckin((current) => ({ ...current, kcal_actual: event.target.value }))} placeholder="e.g. 2140" />
-                </label>
-                <label className={styles.field}>
-                  <span>Activity</span>
-                  <input value={checkin.activity_summary} onChange={(event) => setCheckin((current) => ({ ...current, activity_summary: event.target.value }))} placeholder="e.g. walk 45m / bike / gym / none" />
-                </label>
-                <label className={styles.field}>
-                  <span>Burned kcal from app</span>
-                  <input className={styles.featureInput} type="number" inputMode="numeric" value={checkin.activity_kcal_burned} onChange={(event) => setCheckin((current) => ({ ...current, activity_kcal_burned: event.target.value }))} placeholder="e.g. 320" />
-                </label>
-                <label className={styles.field}>
-                  <span>Source</span>
-                  <input value={checkin.source_app} onChange={(event) => setCheckin((current) => ({ ...current, source_app: event.target.value }))} placeholder="LifeSum" />
-                </label>
-              </div>
-
-              <div className={styles.kcalAddRow}>
-                <label className={styles.field}>
-                  <span>Quick add kcal</span>
-                  <input
-                    className={styles.featureInput}
-                    inputMode="numeric"
-                    onChange={(event) => setKcalQuickAdd(event.target.value)}
-                    placeholder="e.g. 650"
-                    type="number"
-                    value={kcalQuickAdd}
-                  />
-                </label>
-                <button className="btn-base btn-secondary" disabled={busy !== null} onClick={() => void addKcalToToday()} type="button">
-                  {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Add to today'}
-                </button>
-              </div>
-
-              <div className={styles.quickActionsRow}>
-                <button className={styles.quickChip} onClick={() => setCheckin((current) => ({ ...current, kcal_actual: String(Math.max(0, toNumber(current.kcal_actual) - 150)) }))} type="button">
-                  -150
-                </button>
-                <button className={styles.quickChip} onClick={() => setCheckin((current) => ({ ...current, kcal_actual: String(toNumber(current.kcal_actual) + 150) }))} type="button">
-                  +150
-                </button>
-                <button className={styles.quickChip} onClick={() => setCheckin((current) => ({ ...current, activity_summary: 'Walk', activity_kcal_burned: '200' }))} type="button">
-                  walk +200
-                </button>
-                <button className={styles.quickChip} onClick={() => setCheckin((current) => ({ ...current, activity_summary: 'Bike', activity_kcal_burned: '350' }))} type="button">
-                  bike +350
-                </button>
-              </div>
-
-              <label className={`${styles.field} ${styles.fieldFull}`}>
-                <span>Notes</span>
-                <textarea rows={3} value={checkin.notes} onChange={(event) => setCheckin((current) => ({ ...current, notes: event.target.value }))} placeholder="any useful context" />
-              </label>
-
-              <div className={styles.quickSummary}>
-                <SummaryTile label="Target" value={selectedDay?.target ? `${Math.round(selectedDay.target.kcal_target)} kcal` : '—'} tone="neutral" />
-                <SummaryTile label="Logged so far" value={selectedDay && selectedDay.caloriesSource !== 'none' ? `${Math.round(selectedDay.consumed.calories)} kcal` : 'Not logged'} tone={selectedDay?.target && selectedDay.caloriesSource !== 'none' && selectedDay.consumed.calories <= selectedDay.target.kcal_target + 50 ? 'good' : 'warn'} />
-                <SummaryTile label="Activity burn" value={burnedKcal > 0 ? `${Math.round(burnedKcal)} kcal` : '0 kcal'} tone="future" />
-                <SummaryTile label="Net today" value={toNumber(checkin.kcal_actual) > 0 ? `${Math.round(netKcal)} kcal` : '—'} tone="good" />
-                <SummaryTile label="Remaining" value={selectedDay?.remaining ? `${Math.round(selectedDay.remaining.calories)} kcal` : '—'} tone={selectedDay?.remaining && selectedDay.remaining.calories >= 0 ? 'good' : 'bad'} />
-                <SummaryTile label="Tomorrow" value={tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal` : '—'} tone="future" />
-              </div>
-
-              <div className={styles.kcalSaveRow}>
-                <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveCheckin()} type="button">
-                  {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Save current total'}
-                </button>
-                <span className={styles.inlineHint}>You can save this panel multiple times in the same day.</span>
-              </div>
-            </section> : null}
-
-          </div>
-          </> : null}
-        </section>
 
         <section id="flow" className={styles.appSection}>
           <div className={styles.sectionHead}>
@@ -2678,12 +2595,27 @@ export default function CutCoachPage() {
   );
 }
 
-function MetricBox({ label, value, helper, onClick }: { label: string; value: string; helper: string; onClick?: () => void }) {
+function MetricBox({
+  icon,
+  label,
+  value,
+  helper,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  helper?: string;
+  onClick?: () => void;
+}) {
   const content = (
     <>
-      <div className={styles.metricLabel}>{label}</div>
+      <div className={styles.metricLabelRow}>
+        <span className={styles.metricIcon} aria-hidden="true">{icon}</span>
+        <div className={styles.metricLabel}>{label}</div>
+      </div>
       <div className={styles.metricValue}>{value}</div>
-      <div className={styles.metricHelper}>{helper}</div>
+      {helper ? <div className={styles.metricHelper}>{helper}</div> : null}
     </>
   );
 

@@ -71,6 +71,27 @@
   gap: 0.65rem;
 }
 
+.heroActionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.9rem;
+  padding-inline: 0.95rem;
+}
+
+.heroActionIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--surface-highlight) 36%, transparent);
+  background: color-mix(in srgb, var(--panel-strong) 80%, transparent);
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
 .heroStats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -117,6 +138,22 @@
   letter-spacing: 0.12em;
 }
 
+.metricLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.metricIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--accent);
+  font-size: 0.82rem;
+}
+
 .metricValue {
   margin-top: 0.35rem;
   font-size: 1.2rem;
@@ -133,11 +170,12 @@
 
 .alert {
   margin-top: 0.85rem;
-  padding: 0.8rem 0.9rem;
+  padding: 0.65rem 0.85rem;
   border-radius: 1.2rem;
   border: 1px solid var(--border);
-  font-size: 0.86rem;
-  line-height: 1.45;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .alertGood {
@@ -269,6 +307,8 @@
 
 .weightModal {
   width: min(34rem, calc(100vw - 1.5rem));
+  max-height: calc(100dvh - 1rem);
+  overflow: auto;
   padding: 1rem;
   border-radius: 1.45rem;
   border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
@@ -499,6 +539,7 @@
 .field {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: 0.45rem;
   color: var(--muted);
   font-size: 0.78rem;
@@ -2161,6 +2202,7 @@
 
 .weightQuickCard {
   display: grid;
+  min-width: 0;
   gap: 0.85rem;
 }
 
@@ -2227,34 +2269,16 @@
 
 .weightControlBoard {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: 1fr;
   gap: 0.75rem;
+  justify-items: center;
   align-items: start;
-}
-
-.weightSideChips {
-  display: grid;
-  gap: 0.55rem;
-}
-
-.weightSideChips .quickChip {
-  min-height: 2.2rem;
-  padding: 0.4rem 0.7rem;
-  font-size: 0.76rem;
 }
 
 .weightDialWrap {
   display: grid;
   justify-items: center;
-  gap: 0.45rem;
-}
-
-.weightDialWrap small {
-  max-width: 6rem;
-  color: var(--muted);
-  font-size: 0.68rem;
-  line-height: 1.25;
-  text-align: center;
+  gap: 0;
 }
 
 .weightDial {
@@ -2310,6 +2334,24 @@
 
 .weightField {
   grid-column: 1 / -1;
+}
+
+.kcalModalGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.9rem;
+}
+
+.kcalModalAddRow {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.kcalModalAddRow > .field {
+  flex: 1 1 auto;
 }
 
 .itemTooltip {
@@ -2544,6 +2586,15 @@
     width: 100%;
     justify-content: flex-start;
   }
+
+  .kcalModalGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .kcalModalAddRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 @media (max-width: 767px) {
@@ -2570,6 +2621,15 @@
     align-items: flex-start;
   }
 
+  .heroActions {
+    width: 100%;
+  }
+
+  .heroActionButton {
+    flex: 1 1 calc(50% - 0.35rem);
+    justify-content: center;
+  }
+
   .formGrid,
   .quickSummary {
     grid-template-columns: 1fr;
@@ -2583,38 +2643,17 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .weightControlBoard {
-    grid-template-columns: 1fr;
-  }
-
-  .weightSideChips {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .weightSideChips .quickChip {
-    min-height: 2rem;
-    padding: 0.36rem 0.52rem;
-    font-size: 0.72rem;
-  }
-
-  .weightDialWrap {
-    order: -1;
-  }
-
   .weightDial {
     width: 7.3rem;
     height: 7.3rem;
-  }
-
-  .weightField {
-    grid-column: 1 / -1;
   }
 
   .reminderRow,
   .pushBox,
   .calendarHeader,
   .kcalAddRow,
-  .kcalSaveRow {
+  .kcalSaveRow,
+  .kcalModalAddRow {
     flex-direction: column;
     align-items: start;
   }
