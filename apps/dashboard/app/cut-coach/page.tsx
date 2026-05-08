@@ -1856,6 +1856,7 @@ export default function CutCoachPage() {
                   </div>
                   <div className={styles.weightDialWrap}>
                     <button
+                      aria-label="Rotate weight dial"
                       className={styles.weightDial}
                       onPointerDown={handleWeightDialStart}
                       onPointerMove={handleWeightDialMove}
@@ -1866,7 +1867,6 @@ export default function CutCoachPage() {
                       type="button"
                     >
                       <span className={styles.weightDialNeedle} aria-hidden="true" />
-                      <span>0.01</span>
                     </button>
                     <small>Rotate for 0.01 adjust</small>
                   </div>

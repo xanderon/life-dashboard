@@ -2209,6 +2209,12 @@
   gap: 0.55rem;
 }
 
+.weightSideChips .quickChip {
+  min-height: 2.2rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.76rem;
+}
+
 .weightDialWrap {
   display: grid;
   justify-items: center;
@@ -2228,8 +2234,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 5.6rem;
-  height: 5.6rem;
+  width: 6.2rem;
+  height: 6.2rem;
   padding: 0;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
@@ -2551,8 +2557,19 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .weightSideChips .quickChip {
+    min-height: 2rem;
+    padding: 0.36rem 0.52rem;
+    font-size: 0.72rem;
+  }
+
   .weightDialWrap {
     order: -1;
+  }
+
+  .weightDial {
+    width: 7.3rem;
+    height: 7.3rem;
   }
 
   .weightField {
