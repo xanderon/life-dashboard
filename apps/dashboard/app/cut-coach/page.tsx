@@ -364,7 +364,11 @@ function findNearestWeight(weights: CutCoachWeightRow[], isoDate: string) {
   return onOrBefore ?? sorted.find((item) => item.date >= isoDate) ?? null;
 }
 
-function buildMonthCells(todayIsoDate: string, payload: BootstrapPayload | null) {
+function buildMonthCells(
+  todayIsoDate: string,
+  payload: BootstrapPayload | null,
+  activeChallenge: CutCoachChallengeRow | null
+) {
   const current = new Date(`${todayIsoDate}T12:00:00`);
   const monthStart = new Date(current.getFullYear(), current.getMonth(), 1);
   const firstWeekday = monthStart.getDay();
@@ -378,6 +382,20 @@ function buildMonthCells(todayIsoDate: string, payload: BootstrapPayload | null)
     const summary = findWeekDay(payload, isoDate);
     const checkin = payload ? findCheckinForDate(payload.checkins, isoDate) : null;
     const weight = payload ? findWeightForDate(payload.weights, isoDate) : null;
+    const targetKcal = summary?.target ? Math.round(summary.target.kcal_target) : null;
+    const actualKcal =
+      checkin?.kcal_actual != null
+        ? Math.round(checkin.kcal_actual)
+        : summary && summary.caloriesSource !== 'none'
+          ? Math.round(summary.consumed.calories)
+          : null;
+    const kcalDiff =
+      targetKcal != null && actualKcal != null ? actualKcal - targetKcal : null;
+    const isChallengeStart = activeChallenge?.start_date === isoDate;
+    const isInChallenge =
+      Boolean(activeChallenge) &&
+      isoDate >= (activeChallenge?.start_date ?? '') &&
+      isoDate <= (activeChallenge?.end_date ?? '');
     return {
       isoDate,
       label: date.getDate(),
@@ -385,6 +403,11 @@ function buildMonthCells(todayIsoDate: string, payload: BootstrapPayload | null)
       summary,
       checkin,
       weight,
+      targetKcal,
+      actualKcal,
+      kcalDiff,
+      isChallengeStart,
+      isInChallenge,
       isToday: isoDate === todayIsoDate,
     };
   });
@@ -1504,7 +1527,7 @@ export default function CutCoachPage() {
   const today = data?.today ?? null;
   const tomorrow = data?.tomorrow ?? null;
   const selectedDay = findWeekDay(data, checkin.date);
-  const monthCells = buildMonthCells(todayIsoDate, data);
+  const monthCells = buildMonthCells(todayIsoDate, data, activeChallenge);
   const weightChartData = buildWeightChartData(data);
   const weightTrendDelta =
     weightChartData.length > 1
@@ -2037,27 +2060,47 @@ export default function CutCoachPage() {
               </div>
               <div className={styles.monthGrid}>
                 {monthCells.map((cell) => {
-                  const diff = cell.summary?.target ? cell.summary.consumed.calories - cell.summary.target.kcal_target : null;
                   const tone =
-                    cell.summary && diff != null
-                      ? diff <= 50
+                    cell.kcalDiff != null
+                      ? cell.kcalDiff <= 50
                         ? styles.monthCellGood
-                        : diff <= 180
+                        : cell.kcalDiff <= 180
                           ? styles.monthCellWarn
                           : styles.monthCellBad
                       : cell.weight
                         ? styles.monthCellWeight
+                        : cell.isInChallenge
+                          ? styles.monthCellChallenge
                         : styles.monthCellNeutral;
                   return (
                     <div className={`${styles.monthCell} ${tone} ${cell.isToday ? styles.monthCellToday : ''} ${!cell.inMonth ? styles.monthCellMuted : ''}`} key={cell.isoDate}>
-                      <span>{cell.label}</span>
-                      <small>
-                        {cell.summary?.target
-                          ? `${Math.round(cell.summary.target.kcal_target)}`
-                          : cell.weight
-                            ? `${formatWeightKg(cell.weight.weight_kg)}`
-                            : ''}
-                      </small>
+                      <div className={styles.monthCellTop}>
+                        <span>{cell.label}</span>
+                        {cell.isChallengeStart ? <em className={styles.monthCellBadge}>S</em> : null}
+                      </div>
+                      <div className={styles.monthCellBody}>
+                        {cell.targetKcal != null ? (
+                          <div className={styles.monthCellMetric}>
+                            <span className={styles.monthCellMetricIcon} aria-hidden="true">◉</span>
+                            <small>{cell.targetKcal}</small>
+                          </div>
+                        ) : null}
+                        {cell.actualKcal != null ? (
+                          <div className={styles.monthCellMetric}>
+                            <span className={styles.monthCellMetricIcon} aria-hidden="true">•</span>
+                            <small>{cell.actualKcal}</small>
+                          </div>
+                        ) : null}
+                        {cell.weight ? (
+                          <div className={styles.monthCellMetric}>
+                            <span className={styles.monthCellMetricIcon} aria-hidden="true">◎</span>
+                            <small>{formatWeightKg(cell.weight.weight_kg)}</small>
+                          </div>
+                        ) : null}
+                        {cell.kcalDiff == null && !cell.weight && cell.isChallengeStart ? (
+                          <div className={styles.monthCellHint}>start</div>
+                        ) : null}
+                      </div>
                     </div>
                   );
                 })}
