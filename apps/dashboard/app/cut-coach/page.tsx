@@ -125,7 +125,6 @@ type ReminderDraft = {
 type SectionKey = 'today' | 'flow' | 'calendar' | 'progress' | 'settings';
 type TodayPanels = {
   checkin: boolean;
-  weight: boolean;
 };
 type SetupComposer = 'profile' | 'challenge' | 'reminders' | null;
 type ItemRarity = 'common' | 'magic' | 'rare' | 'set' | 'legendary';
@@ -437,51 +436,6 @@ function buildWeightChartData(payload: BootstrapPayload | null) {
       weight: item.weight_kg,
       waist: item.waist_cm,
     }));
-}
-
-function buildTopFocus(today: DailySummary | null) {
-  const target = today?.target ? Math.round(today.target.kcal_target) : null;
-  const logged = today && today.caloriesSource !== 'none' ? Math.round(today.consumed.calories) : null;
-  const gap = target != null && logged != null ? logged - target : null;
-  if (target == null) {
-    return {
-      now: 'Set up your profile',
-      next: 'Add your weight and start your plan',
-    };
-  }
-
-  if (logged == null) {
-    return {
-      now: `${target} kcal today`,
-      next: 'Log total kcal at the end of the day',
-    };
-  }
-
-  if (gap == null) {
-    return {
-      now: `${logged} kcal logged`,
-      next: 'Add the rest and close the day cleanly',
-    };
-  }
-
-  if (gap <= 50) {
-    return {
-      now: `${logged} / ${target} kcal`,
-      next: 'You are on track today',
-    };
-  }
-
-  if (gap <= 180) {
-    return {
-      now: `+${gap} kcal over today`,
-      next: 'Return to target tomorrow, no panic mode',
-    };
-  }
-
-  return {
-    now: `+${gap} kcal over target`,
-    next: 'Trim a bit over the next 1-2 days and stay in flow',
-  };
 }
 
 function buildXp(payload: BootstrapPayload | null) {
@@ -1072,13 +1026,15 @@ export default function CutCoachPage() {
     progress: true,
     settings: false,
   });
-  const [todayPanels, setTodayPanels] = useState<TodayPanels>({ checkin: true, weight: false });
+  const [todayPanels, setTodayPanels] = useState<TodayPanels>({ checkin: true });
   const [setupComposer, setSetupComposer] = useState<SetupComposer>(null);
   const [kcalQuickAdd, setKcalQuickAdd] = useState('');
   const [inventoryOverride, setInventoryOverride] = useState<CharacterInventory | null>(null);
   const [draggedItem, setDraggedItem] = useState<DragOrigin>(null);
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [characterCollapsed, setCharacterCollapsed] = useState(false);
+  const [weightModalOpen, setWeightModalOpen] = useState(false);
+  const [weightDraft, setWeightDraft] = useState<WeightState>(emptyWeight(new Date().toISOString().slice(0, 10)));
   const weightDialDragRef = useRef<{ pointerId: number; startY: number; startValue: number; lastStep: number } | null>(null);
   const pushEnvironment = useSyncExternalStore(
     subscribeNoop,
@@ -1099,11 +1055,11 @@ export default function CutCoachPage() {
     });
   }
 
-  function openTodayEntry(panel: keyof TodayPanels) {
+  function openTodayEntry() {
     setCollapsedSections((current) => ({ ...current, today: false }));
     setTodayPanels((current) => ({
       ...current,
-      [panel]: true,
+      checkin: true,
     }));
     scrollToId('today');
   }
@@ -1113,10 +1069,19 @@ export default function CutCoachPage() {
     scrollToId(section);
   }
 
-  function openCharacterSheet() {
-    setCollapsedSections((current) => ({ ...current, progress: false }));
-    setCharacterCollapsed(false);
-    scrollToId('character-sheet');
+  function baseWeightEntryState(date: string) {
+    return fillWeight(date, data);
+  }
+
+  function openWeightModal(date = todayIsoDate) {
+    setWeightDraft(baseWeightEntryState(date));
+    setWeightModalOpen(true);
+  }
+
+  function closeWeightModal() {
+    setWeightModalOpen(false);
+    setWeightDraft(baseWeightEntryState(todayIsoDate));
+    weightDialDragRef.current = null;
   }
 
   function applyBootstrap(payload: BootstrapPayload) {
@@ -1143,6 +1108,7 @@ export default function CutCoachPage() {
     );
     setCheckin(fillCheckin(payload.todayIsoDate, payload));
     setWeight(fillWeight(payload.todayIsoDate, payload));
+    setWeightDraft(fillWeight(payload.todayIsoDate, payload));
     setReminders(defaultReminderDrafts(payload.reminders));
   }
 
@@ -1283,12 +1249,21 @@ export default function CutCoachPage() {
     return ok;
   }
 
-  async function saveWeight() {
-    if (toNumber(weight.weight_kg) <= 0) {
+  async function persistWeightEntry(nextWeight: WeightState, successMessage = 'Weight and measurements saved.') {
+    if (toNumber(nextWeight.weight_kg) <= 0) {
       setNotice('Add a valid weight first.');
       return false;
     }
-    return await postJson('/api/cut-coach/weights', weight, 'Weight and measurements saved.');
+    return await postJson('/api/cut-coach/weights', nextWeight, successMessage);
+  }
+
+  async function saveWeightDraft() {
+    const ok = await persistWeightEntry(weightDraft, 'Weight saved.');
+    if (ok) {
+      setWeight(weightDraft);
+      setWeightModalOpen(false);
+    }
+    return ok;
   }
 
   async function saveChallenge() {
@@ -1382,56 +1357,36 @@ export default function CutCoachPage() {
     setNotice('Yesterday copied into today.');
   }
 
-  function copyLastMeasurements() {
-    if (!data) return;
-    const latestWithTape = data.weights.find(
-      (item) => item.waist_cm || item.hips_cm || item.chest_cm || item.thigh_cm || item.arm_cm || item.neck_cm
-    );
-    if (!latestWithTape) {
-      setNotice('No previous measurements found.');
-      return;
-    }
-    setWeight((current) => ({
-      ...current,
-      waist_cm: latestWithTape.waist_cm != null ? String(latestWithTape.waist_cm) : '',
-      hips_cm: latestWithTape.hips_cm != null ? String(latestWithTape.hips_cm) : '',
-      chest_cm: latestWithTape.chest_cm != null ? String(latestWithTape.chest_cm) : '',
-      thigh_cm: latestWithTape.thigh_cm != null ? String(latestWithTape.thigh_cm) : '',
-      arm_cm: latestWithTape.arm_cm != null ? String(latestWithTape.arm_cm) : '',
-      neck_cm: latestWithTape.neck_cm != null ? String(latestWithTape.neck_cm) : '',
-    }));
-    setNotice('Last measurement session copied.');
-  }
-
-  function currentWeightSeed() {
-    return toNumber(weight.weight_kg) > 0
-      ? toNumber(weight.weight_kg)
+  function currentWeightSeed(source: WeightState = weight) {
+    return toNumber(source.weight_kg) > 0
+      ? toNumber(source.weight_kg)
       : data?.trends.latest?.weight_kg ?? toNumber(setup.initial_weight_kg);
   }
 
-  function setWeightFromNumber(nextValue: number) {
+  function setWeightFromNumber(nextValue: number, target: 'weight' | 'draft' = 'weight') {
     const safeValue = Math.max(0, Math.round(nextValue * 100) / 100);
-    setWeight((current) => ({
+    const setter = target === 'draft' ? setWeightDraft : setWeight;
+    setter((current) => ({
       ...current,
       weight_kg: safeValue > 0 ? formatWeightInputValue(safeValue) : '',
     }));
   }
 
-  function applyWeightDelta(delta: number) {
-    setWeightFromNumber(currentWeightSeed() + delta);
+  function applyWeightDelta(delta: number, target: 'weight' | 'draft' = 'weight', source?: WeightState) {
+    setWeightFromNumber(currentWeightSeed(source ?? (target === 'draft' ? weightDraft : weight)) + delta, target);
   }
 
-  function nudgeWeight(delta: number) {
-    applyWeightDelta(delta);
+  function nudgeWeight(delta: number, target: 'weight' | 'draft' = 'weight', source?: WeightState) {
+    applyWeightDelta(delta, target, source);
   }
 
-  function syncWeightToLatest() {
+  function syncWeightDraftToLatest() {
     const latest = data?.trends.latest?.weight_kg ?? null;
     if (latest == null) {
       setNotice('No previous weight found yet.');
       return;
     }
-    setWeight((current) => ({
+    setWeightDraft((current) => ({
       ...current,
       weight_kg: formatWeightInputValue(latest),
     }));
@@ -1439,7 +1394,7 @@ export default function CutCoachPage() {
   }
 
   function handleWeightDialStart(event: ReactPointerEvent<HTMLButtonElement>) {
-    const startValue = currentWeightSeed();
+    const startValue = currentWeightSeed(weightDraft);
     weightDialDragRef.current = {
       pointerId: event.pointerId,
       startY: event.clientY,
@@ -1452,10 +1407,10 @@ export default function CutCoachPage() {
   function handleWeightDialMove(event: ReactPointerEvent<HTMLButtonElement>) {
     const dragState = weightDialDragRef.current;
     if (!dragState || dragState.pointerId !== event.pointerId) return;
-    const nextStep = Math.trunc((dragState.startY - event.clientY) / 16);
+    const nextStep = Math.trunc((dragState.startY - event.clientY) / 10);
     if (nextStep === dragState.lastStep) return;
     dragState.lastStep = nextStep;
-    setWeightFromNumber(dragState.startValue + nextStep * 0.1);
+    setWeightFromNumber(dragState.startValue + nextStep * 0.01, 'draft');
   }
 
   function handleWeightDialEnd(event: ReactPointerEvent<HTMLButtonElement>) {
@@ -1469,20 +1424,13 @@ export default function CutCoachPage() {
 
   function handleWeightDialWheel(event: ReactWheelEvent<HTMLButtonElement>) {
     event.preventDefault();
-    applyWeightDelta(event.deltaY < 0 ? 0.1 : -0.1);
+    applyWeightDelta(event.deltaY < 0 ? 0.01 : -0.01, 'draft', weightDraft);
   }
 
   function toggleSection(section: SectionKey) {
     setCollapsedSections((current) => ({
       ...current,
       [section]: !current[section],
-    }));
-  }
-
-  function toggleTodayPanel(panel: keyof TodayPanels) {
-    setTodayPanels((current) => ({
-      ...current,
-      [panel]: !current[panel],
     }));
   }
 
@@ -1561,7 +1509,6 @@ export default function CutCoachPage() {
   const selectedDay = findWeekDay(data, checkin.date);
   const monthCells = buildMonthCells(todayIsoDate, data);
   const weightChartData = buildWeightChartData(data);
-  const topFocus = buildTopFocus(today);
   const burnedKcal = toNumber(checkin.activity_kcal_burned);
   const netKcal = Math.max(0, toNumber(checkin.kcal_actual) - burnedKcal);
   const overToday =
@@ -1569,7 +1516,6 @@ export default function CutCoachPage() {
   const todayCheckinDone = Boolean(data && findCheckinForDate(data.checkins, todayIsoDate)?.kcal_actual != null);
   const todayWeightDone = Boolean(data && findWeightForDate(data.weights, todayIsoDate)?.weight_kg != null);
   const latestKnownWeight = data?.trends.latest?.weight_kg ?? null;
-  const weightInputValue = toNumber(weight.weight_kg) > 0 ? toNumber(weight.weight_kg) : latestKnownWeight;
   const characterState = buildCharacterState({
     payload: data,
     activeChallenge,
@@ -1717,11 +1663,11 @@ export default function CutCoachPage() {
               <p className={styles.heroText}>Track weight, kcal, trend and the next move.</p>
             </div>
             <div className={styles.heroActions}>
-              <button className="btn-base btn-primary" onClick={() => openTodayEntry('checkin')} type="button">
+              <button className="btn-base btn-primary" onClick={() => openTodayEntry()} type="button">
                 Open kcal entry
               </button>
-              <button className="btn-base btn-secondary" onClick={() => openTodayEntry('weight')} type="button">
-                Open weight entry
+              <button className="btn-base btn-secondary" onClick={() => openWeightModal()} type="button">
+                Open weight popup
               </button>
               <button className="btn-base btn-ghost" onClick={() => openSection('flow')} type="button">
                 Open week plan
@@ -1735,7 +1681,7 @@ export default function CutCoachPage() {
           <div className={styles.heroStats}>
             <MetricBox label="Current run" value={challengeStats.currentDay > 0 ? `Day ${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready'} helper={activeChallenge ? phaseLabel(challengeStats.progress) : 'Create your first run'} />
             <MetricBox label="Active plan today" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : 'Setup'} helper={today?.target ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today') : 'Save your profile'} />
-            <MetricBox label="Weight" value={data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : '—'} helper={challengeStats.deltaWeight != null ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${challengeStats.deltaWeight} kg vs start` : 'Waiting for baseline'} />
+            <MetricBox label="Weight" onClick={() => openWeightModal()} value={data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : '—'} helper={challengeStats.deltaWeight != null ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${challengeStats.deltaWeight} kg vs start` : 'Waiting for baseline'} />
             <MetricBox label="XP / level" value={`${xp.xp} XP`} helper={`Level ${xp.level}`} />
           </div>
 
@@ -1748,28 +1694,25 @@ export default function CutCoachPage() {
                   : `You are on track today. ${today?.remaining ? `${Math.max(0, Math.round(today.remaining.calories))} kcal left.` : ''}`}
             </div>
           ) : null}
-          <button
-            className={styles.characterPeek}
-            onClick={openCharacterSheet}
-            type="button"
-          >
-            <div>
-              <div className={styles.characterPeekKicker}>{characterState.archetype}</div>
-              <strong>{characterState.latestDrop.name}</strong>
-              <span>HP {characterState.hp}/{characterState.maxHp} • Latest drop • {characterState.latestDrop.rarity}</span>
-            </div>
-            <span className={styles.characterPeekAction}>Open character sheet</span>
-          </button>
           <div className={styles.heroDeck}>
             <section className={styles.heroPanel}>
-              <div className={styles.focusKicker}>Today</div>
-              <div className={styles.focusNow}>{topFocus.now}</div>
-              <div className={styles.focusNext}>{topFocus.next}</div>
-              <div className={styles.quickSummary}>
-                <SummaryTile label="Current kg" value={data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : '—'} tone="neutral" />
-                <SummaryTile label="Today" value={today?.target ? `${Math.round(today.target.kcal_target)} kcal` : '—'} tone="good" />
-                <SummaryTile label="Tomorrow" value={tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal` : '—'} tone="future" />
-                <SummaryTile label="Phase" value={activeChallenge ? phaseLabel(challengeStats.progress) : 'Ready'} tone="warn" />
+              <div className={styles.focusKicker}>Current run</div>
+              <div className={styles.focusNow}>{activeChallenge ? activeChallenge.title : 'No active challenge yet'}</div>
+              <div className={styles.focusNext}>
+                {activeChallenge
+                  ? `${formatDate(activeChallenge.start_date)} → ${formatDate(activeChallenge.end_date)}`
+                  : 'Set a start date when you are ready'}
+              </div>
+              <div className={styles.phaseTrack}>
+                <div className={styles.phaseBar}>
+                  <span style={{ width: `${Math.round(challengeStats.progress * 100)}%` }} />
+                </div>
+                <div className={styles.phaseLabels}>
+                  <span>Ignition</span>
+                  <span>Rhythm</span>
+                  <span>Lock-in</span>
+                  <span>Finish</span>
+                </div>
               </div>
             </section>
 
@@ -1834,6 +1777,98 @@ export default function CutCoachPage() {
             <p>{rewardToast.body}</p>
           </div>
         ) : null}
+        {weightModalOpen ? (
+          <div className={styles.modalScrim} onClick={closeWeightModal} role="presentation">
+            <section
+              aria-modal="true"
+              className={styles.weightModal}
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+            >
+              <div className={styles.modalHead}>
+                <div>
+                  <div className={styles.sectionEyebrow}>weight</div>
+                  <h3 className={styles.modalTitle}>Quick weight entry</h3>
+                  <p className={styles.panelText}>Change the value here. Nothing is saved until you press Save.</p>
+                </div>
+                <div className={styles.modalHeadActions}>
+                  <button className="btn-base btn-ghost" onClick={syncWeightDraftToLatest} type="button">
+                    Use latest
+                  </button>
+                  <button className="btn-base btn-ghost" onClick={closeWeightModal} type="button">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.weightAdjuster}>
+                <div className={styles.weightAdjustTop}>
+                  <span>Current input</span>
+                  <strong>{toNumber(weightDraft.weight_kg) > 0 ? `${formatWeightKg(toNumber(weightDraft.weight_kg))} kg` : 'No weight yet'}</strong>
+                  <small>{latestKnownWeight != null ? `Latest saved: ${formatWeightKg(latestKnownWeight)} kg` : 'Your first weigh-in starts here.'}</small>
+                </div>
+
+                <div className={styles.weightQuickCard}>
+                  <label className={styles.field}>
+                    <span>Date</span>
+                    <input
+                      type="date"
+                      value={weightDraft.date}
+                      onChange={(event) => setWeightDraft(fillWeight(event.target.value, data))}
+                    />
+                  </label>
+                </div>
+
+                <div className={styles.weightControlBoard}>
+                  <div className={styles.weightSideChips}>
+                    <button className={styles.quickChip} onClick={() => nudgeWeight(-1, 'draft', weightDraft)} type="button">-1.00</button>
+                    <button className={styles.quickChip} onClick={() => nudgeWeight(-0.5, 'draft', weightDraft)} type="button">-0.50</button>
+                    <button className={styles.quickChip} onClick={() => nudgeWeight(-0.1, 'draft', weightDraft)} type="button">-0.10</button>
+                  </div>
+                  <div className={styles.weightDialWrap}>
+                    <button
+                      className={styles.weightDial}
+                      onPointerDown={handleWeightDialStart}
+                      onPointerMove={handleWeightDialMove}
+                      onPointerUp={handleWeightDialEnd}
+                      onPointerCancel={handleWeightDialEnd}
+                      onWheel={handleWeightDialWheel}
+                      type="button"
+                    >
+                      <span>0.01</span>
+                    </button>
+                    <small>Drag or wheel for 0.01 adjust</small>
+                  </div>
+                  <div className={styles.weightSideChips}>
+                    <button className={styles.quickChip} onClick={() => nudgeWeight(0.1, 'draft', weightDraft)} type="button">+0.10</button>
+                    <button className={styles.quickChip} onClick={() => nudgeWeight(0.5, 'draft', weightDraft)} type="button">+0.50</button>
+                    <button className={styles.quickChip} onClick={() => nudgeWeight(1, 'draft', weightDraft)} type="button">+1.00</button>
+                  </div>
+                  <label className={`${styles.field} ${styles.weightField}`}>
+                    <span>Weight kg</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={weightDraft.weight_kg}
+                      onChange={(event) => setWeightDraft((current) => ({ ...current, weight_kg: event.target.value }))}
+                      placeholder="e.g. 98.15"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className={styles.modalActions}>
+                <button className="btn-base btn-ghost" onClick={closeWeightModal} type="button">
+                  Cancel
+                </button>
+                <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveWeightDraft()} type="button">
+                  {busy === '/api/cut-coach/weights' ? 'Saving…' : 'Save weight'}
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
 
         <section id="today" className={styles.appSection}>
           <div className={styles.sectionHead}>
@@ -1847,25 +1882,6 @@ export default function CutCoachPage() {
           </div>
 
           {!collapsedSections.today ? <>
-          <div className={styles.composerGrid}>
-            <button
-              className={`${styles.composerButton} ${todayCheckinDone ? styles.composerButtonDone : ''} ${todayPanels.checkin ? styles.composerButtonActive : ''}`}
-              onClick={() => toggleTodayPanel('checkin')}
-              type="button"
-            >
-              <strong>{todayCheckinDone ? 'Kcal entry open' : 'Open kcal entry'}</strong>
-              <span>{todayCheckinDone ? 'Safe to update again later today.' : 'Separate entry just for kcal totals.'}</span>
-            </button>
-            <button
-              className={`${styles.composerButton} ${todayWeightDone ? styles.composerButtonDone : ''} ${todayPanels.weight ? styles.composerButtonActive : ''}`}
-              onClick={() => toggleTodayPanel('weight')}
-              type="button"
-            >
-              <strong>{todayWeightDone ? 'Weight entry open' : 'Open weight entry'}</strong>
-              <span>{todayWeightDone ? 'Safe to correct today if needed.' : 'Separate entry just for weigh-ins.'}</span>
-            </button>
-          </div>
-
           <div className={styles.todayGrid}>
             {todayPanels.checkin ? <section className={`surface-card ${styles.panel}`}>
               <div className={styles.panelHead}>
@@ -1964,119 +1980,6 @@ export default function CutCoachPage() {
               </div>
             </section> : null}
 
-            {todayPanels.weight ? <section className={`surface-card ${styles.panel}`}>
-              <div className={styles.panelHead}>
-                <div>
-                  <h3 className={styles.panelTitle}>Quick weight</h3>
-                  <p className={styles.panelText}>Fast daily weigh-in first. Tape stays available below only when you need it.</p>
-                </div>
-                <button className="btn-base btn-ghost" type="button" onClick={syncWeightToLatest}>
-                  Use latest
-                </button>
-              </div>
-
-              <div className={styles.weightQuickCard}>
-                <label className={styles.field}>
-                  <span>Date</span>
-                  <input type="date" value={weight.date} onChange={(event) => {
-                    const nextDate = event.target.value;
-                    setWeight(fillWeight(nextDate, data));
-                    setCheckin(fillCheckin(nextDate, data));
-                  }} />
-                </label>
-              </div>
-              <div className={styles.weightAdjuster}>
-                <div className={styles.weightAdjustTop}>
-                  <span>Current input</span>
-                  <strong>{weightInputValue != null ? `${formatWeightKg(weightInputValue)} kg` : 'No weight yet'}</strong>
-                  <small>{latestKnownWeight != null ? `Latest saved: ${formatWeightKg(latestKnownWeight)} kg` : 'Your first weigh-in starts here.'}</small>
-                </div>
-                <div className={styles.weightControlBoard}>
-                  <div className={styles.weightSideChips}>
-                    <button className={styles.quickChip} onClick={() => nudgeWeight(-1)} type="button">-1.00</button>
-                    <button className={styles.quickChip} onClick={() => nudgeWeight(-0.5)} type="button">-0.50</button>
-                    <button className={styles.quickChip} onClick={() => nudgeWeight(-0.1)} type="button">-0.10</button>
-                  </div>
-                  <div className={styles.weightDialWrap}>
-                    <button
-                      className={styles.weightDial}
-                      onPointerDown={handleWeightDialStart}
-                      onPointerMove={handleWeightDialMove}
-                      onPointerUp={handleWeightDialEnd}
-                      onPointerCancel={handleWeightDialEnd}
-                      onWheel={handleWeightDialWheel}
-                      type="button"
-                    >
-                      <span>0.10</span>
-                    </button>
-                    <small>Drag or wheel for fine adjust</small>
-                  </div>
-                  <div className={styles.weightSideChips}>
-                    <button className={styles.quickChip} onClick={() => nudgeWeight(0.1)} type="button">+0.10</button>
-                    <button className={styles.quickChip} onClick={() => nudgeWeight(0.5)} type="button">+0.50</button>
-                    <button className={styles.quickChip} onClick={() => nudgeWeight(1)} type="button">+1.00</button>
-                  </div>
-                  <label className={`${styles.field} ${styles.weightField}`}>
-                    <span>Weight kg</span>
-                    <input type="number" step="0.01" inputMode="decimal" value={weight.weight_kg} onChange={(event) => setWeight((current) => ({ ...current, weight_kg: event.target.value }))} placeholder="e.g. 89.65" />
-                  </label>
-                </div>
-              </div>
-
-              <details className={styles.advancedSettings}>
-                <summary>Measurements and notes</summary>
-                <div>
-                  <div className={styles.pillRow}>
-                    <button className="btn-base btn-ghost" type="button" onClick={copyLastMeasurements}>
-                      Copy last measurements
-                    </button>
-                  </div>
-
-                  <div className={styles.formGrid}>
-                    <label className={styles.field}>
-                      <span>Waist</span>
-                      <input type="number" step="0.1" inputMode="decimal" value={weight.waist_cm} onChange={(event) => setWeight((current) => ({ ...current, waist_cm: event.target.value }))} placeholder="cm" />
-                    </label>
-                    <label className={styles.field}>
-                      <span>Hips</span>
-                      <input type="number" step="0.1" inputMode="decimal" value={weight.hips_cm} onChange={(event) => setWeight((current) => ({ ...current, hips_cm: event.target.value }))} placeholder="cm" />
-                    </label>
-                    <label className={styles.field}>
-                      <span>Chest</span>
-                      <input type="number" step="0.1" inputMode="decimal" value={weight.chest_cm} onChange={(event) => setWeight((current) => ({ ...current, chest_cm: event.target.value }))} placeholder="cm" />
-                    </label>
-                    <label className={styles.field}>
-                      <span>Thigh</span>
-                      <input type="number" step="0.1" inputMode="decimal" value={weight.thigh_cm} onChange={(event) => setWeight((current) => ({ ...current, thigh_cm: event.target.value }))} placeholder="cm" />
-                    </label>
-                    <label className={styles.field}>
-                      <span>Arm</span>
-                      <input type="number" step="0.1" inputMode="decimal" value={weight.arm_cm} onChange={(event) => setWeight((current) => ({ ...current, arm_cm: event.target.value }))} placeholder="cm" />
-                    </label>
-                    <label className={styles.field}>
-                      <span>Neck</span>
-                      <input type="number" step="0.1" inputMode="decimal" value={weight.neck_cm} onChange={(event) => setWeight((current) => ({ ...current, neck_cm: event.target.value }))} placeholder="cm" />
-                    </label>
-                  </div>
-
-                  <label className={`${styles.field} ${styles.fieldFull}`}>
-                    <span>Notes</span>
-                    <textarea rows={3} value={weight.notes} onChange={(event) => setWeight((current) => ({ ...current, notes: event.target.value }))} placeholder="e.g. water retention, late meal, weekend" />
-                  </label>
-                </div>
-              </details>
-
-              <div className={styles.quickSummary}>
-                <SummaryTile label="Latest" value={data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : '—'} tone="neutral" />
-                <SummaryTile label="Avg 7" value={data?.trends.avg7 ? `${data.trends.avg7} kg` : '—'} tone="neutral" />
-                <SummaryTile label="Delta 7" value={data?.trends.delta7 != null ? `${data.trends.delta7 > 0 ? '-' : '+'}${Math.abs(data.trends.delta7)} kg` : '—'} tone={data?.trends.delta7 != null && data.trends.delta7 > 0 ? 'good' : 'future'} />
-                <SummaryTile label="Measurements" value={weight.waist_cm || weight.hips_cm || weight.chest_cm ? 'Weekend set' : 'Optional'} tone="future" />
-              </div>
-
-              <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveWeight()} type="button">
-                {busy === '/api/cut-coach/weights' ? 'Saving…' : 'Save weight / measurements'}
-              </button>
-            </section> : null}
           </div>
           </> : null}
         </section>
@@ -2732,14 +2635,24 @@ export default function CutCoachPage() {
   );
 }
 
-function MetricBox({ label, value, helper }: { label: string; value: string; helper: string }) {
-  return (
-    <div className={styles.metricBox}>
+function MetricBox({ label, value, helper, onClick }: { label: string; value: string; helper: string; onClick?: () => void }) {
+  const content = (
+    <>
       <div className={styles.metricLabel}>{label}</div>
       <div className={styles.metricValue}>{value}</div>
       <div className={styles.metricHelper}>{helper}</div>
-    </div>
+    </>
   );
+
+  if (onClick) {
+    return (
+      <button className={`${styles.metricBox} ${styles.metricBoxButton}`} onClick={onClick} type="button">
+        {content}
+      </button>
+    );
+  }
+
+  return <div className={styles.metricBox}>{content}</div>;
 }
 
 function InventoryPanel({

@@ -98,6 +98,18 @@
   background: color-mix(in srgb, var(--panel-2) 78%, transparent);
 }
 
+.metricBoxButton {
+  width: 100%;
+  text-align: left;
+  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.metricBoxButton:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 10%, var(--panel-2));
+}
+
 .metricLabel {
   color: var(--muted);
   font-size: 0.72rem;
@@ -242,6 +254,56 @@
   color: var(--muted);
   font-size: 0.88rem;
   line-height: 1.4;
+}
+
+.modalScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--bg) 72%, rgba(0, 0, 0, 0.58));
+  backdrop-filter: blur(14px);
+}
+
+.weightModal {
+  width: min(34rem, calc(100vw - 1.5rem));
+  padding: 1rem;
+  border-radius: 1.45rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-soft) 18%, transparent), transparent 36%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel-strong) 98%, transparent), color-mix(in srgb, var(--panel) 96%, transparent));
+  box-shadow:
+    0 2rem 5rem -2.5rem rgba(0, 0, 0, 0.72),
+    inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 82%, transparent);
+}
+
+.modalHead {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modalHeadActions,
+.modalActions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.modalTitle {
+  margin: 0.2rem 0 0;
+  font-size: 1.2rem;
+  letter-spacing: -0.04em;
+}
+
+.modalActions {
+  justify-content: flex-end;
+  margin-top: 1rem;
 }
 
 .bannerOk {
