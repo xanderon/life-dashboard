@@ -1361,6 +1361,7 @@ export default function CutCoachPage() {
     const nextChallenge = {
       ...challengeDraft(todayIsoDate),
       start_date: todayIsoDate,
+      end_date: addDays(todayIsoDate, 99),
       title: '100 day cut',
       status: 'active' as const,
     };
@@ -2110,7 +2111,10 @@ export default function CutCoachPage() {
                                 ? styles.monthCellChallenge
                                 : styles.monthCellNeutral;
                         return (
-                          <div className={`${styles.monthCell} ${tone} ${cell.isToday ? styles.monthCellToday : ''} ${!cell.inMonth ? styles.monthCellMuted : ''}`} key={cell.isoDate}>
+                          <div
+                            className={`${styles.monthCell} ${tone} ${cell.isInChallenge ? styles.monthCellInChallenge : ''} ${cell.isToday ? styles.monthCellToday : ''} ${!cell.inMonth ? styles.monthCellMuted : ''}`}
+                            key={cell.isoDate}
+                          >
                             <div className={styles.monthCellTop}>
                               <span>{cell.label}</span>
                               {cell.isChallengeStart ? <em className={styles.monthCellBadge}><Flag size={10} strokeWidth={2.5} /></em> : null}
