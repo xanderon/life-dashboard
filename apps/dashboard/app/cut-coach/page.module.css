@@ -1165,8 +1165,37 @@
 }
 
 .monthCellToday {
+  position: relative;
   z-index: 1;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--surface-highlight) 22%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--surface-highlight) 28%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--warning) 18%, transparent);
+}
+
+.monthCellToday .monthCellTop > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.8rem;
+  height: 1.8rem;
+  padding: 0 0.42rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--warning) 26%, var(--panel-strong)),
+    color-mix(in srgb, var(--warning) 14%, var(--panel-2))
+  );
+  color: color-mix(in srgb, var(--text) 90%, white);
+  font-weight: 900;
+  line-height: 1;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 22%, transparent),
+    0 0.4rem 0.8rem -0.55rem color-mix(in srgb, var(--warning) 42%, transparent);
+}
+
+.monthCellToday .monthCellMetricIcon,
+.monthCellToday .monthCellMetric small {
+  color: color-mix(in srgb, var(--text) 94%, white);
 }
 
 .monthCellInChallenge {
@@ -1204,9 +1233,13 @@
 .monthCellCurrentChallenge {
   border-color: color-mix(in srgb, #e0a84c 72%, var(--border));
   background:
-    radial-gradient(circle at 50% 18%, color-mix(in srgb, #ffe09d 44%, transparent), transparent 42%),
-    linear-gradient(180deg, color-mix(in srgb, #e0a84c 42%, transparent), color-mix(in srgb, #e0a84c 16%, transparent)),
+    radial-gradient(circle at 50% 20%, color-mix(in srgb, #ffe09d 50%, transparent), transparent 40%),
+    linear-gradient(180deg, color-mix(in srgb, #e0a84c 48%, transparent), color-mix(in srgb, #e0a84c 18%, transparent)),
     color-mix(in srgb, var(--panel-2) 78%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, #ffe09d 32%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff1c7 16%, transparent),
+    0 0.85rem 1.4rem -1.15rem color-mix(in srgb, #e0a84c 42%, transparent);
   animation: challenge-flow-pulse 2.3s ease-in-out infinite;
 }
 
