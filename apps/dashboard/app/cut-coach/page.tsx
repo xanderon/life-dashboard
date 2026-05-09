@@ -940,6 +940,17 @@ function fillWeight(date: string, payload: BootstrapPayload | null): WeightState
   };
 }
 
+function seedWeightEntry(date: string, payload: BootstrapPayload | null): WeightState {
+  const existing = fillWeight(date, payload);
+  if (toNumber(existing.weight_kg) > 0) return existing;
+
+  const latestWeight = payload?.trends.latest;
+  return {
+    ...existing,
+    weight_kg: latestWeight?.weight_kg != null ? formatWeightInputValue(latestWeight.weight_kg) : '',
+  };
+}
+
 function weekdaySummary(days: number[]) {
   return days.map((day) => WEEKDAY_LABELS[day] ?? '?').join(' • ');
 }
@@ -1097,7 +1108,6 @@ export default function CutCoachPage() {
     settings: false,
   });
   const [setupComposer, setSetupComposer] = useState<SetupComposer>(null);
-  const [kcalQuickAdd, setKcalQuickAdd] = useState('');
   const [inventoryOverride, setInventoryOverride] = useState<CharacterInventory | null>(null);
   const [draggedItem, setDraggedItem] = useState<DragOrigin>(null);
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
@@ -1145,7 +1155,7 @@ export default function CutCoachPage() {
   }
 
   function baseWeightEntryState(date: string) {
-    return fillWeight(date, data);
+    return seedWeightEntry(date, data);
   }
 
   function openWeightModal(date = todayIsoDate) {
@@ -1156,7 +1166,6 @@ export default function CutCoachPage() {
   function closeKcalModal() {
     setKcalModalOpen(false);
     setCheckin(fillCheckin(todayIsoDate, data));
-    setKcalQuickAdd('');
   }
 
   function closeWeightModal() {
@@ -1189,8 +1198,8 @@ export default function CutCoachPage() {
         : challengeDraft(payload.todayIsoDate)
     );
     setCheckin(fillCheckin(payload.todayIsoDate, payload));
-    setWeight(fillWeight(payload.todayIsoDate, payload));
-    setWeightDraft(fillWeight(payload.todayIsoDate, payload));
+    setWeight(seedWeightEntry(payload.todayIsoDate, payload));
+    setWeightDraft(seedWeightEntry(payload.todayIsoDate, payload));
     setReminders(defaultReminderDrafts(payload.reminders));
   }
 
@@ -1318,22 +1327,6 @@ export default function CutCoachPage() {
   async function saveCheckinAndClose() {
     const ok = await saveCheckin();
     if (ok) closeKcalModal();
-    return ok;
-  }
-
-  async function addKcalToToday() {
-    const quickAdd = toNumber(kcalQuickAdd);
-    if (quickAdd <= 0) {
-      setNotice('Add a positive kcal amount first.');
-      return false;
-    }
-    const nextCheckin = {
-      ...checkin,
-      kcal_actual: String(toNumber(checkin.kcal_actual) + quickAdd),
-    };
-    setCheckin(nextCheckin);
-    const ok = await persistCheckin(nextCheckin, `${quickAdd} kcal added to today.`);
-    if (ok) setKcalQuickAdd('');
     return ok;
   }
 
@@ -1892,11 +1885,11 @@ export default function CutCoachPage() {
                   />
                 </label>
                 <label className={styles.field}>
-                  <span>Sport</span>
+                  <span>Source</span>
                   <input
-                    value={checkin.activity_summary}
-                    onChange={(event) => setCheckin((current) => ({ ...current, activity_summary: event.target.value }))}
-                    placeholder="walk / bike / gym / none"
+                    value={checkin.source_app}
+                    onChange={(event) => setCheckin((current) => ({ ...current, source_app: event.target.value }))}
+                    placeholder="LifeSum"
                   />
                 </label>
               </div>
@@ -1906,23 +1899,6 @@ export default function CutCoachPage() {
                 <SummaryTile label="Logged" value={toNumber(checkin.kcal_actual) > 0 ? `${Math.round(toNumber(checkin.kcal_actual))} kcal` : '—'} tone="future" />
                 <SummaryTile label="Burn" value={burnedKcal > 0 ? `${Math.round(burnedKcal)} kcal` : '0 kcal'} tone="good" />
                 <SummaryTile label="Net" value={toNumber(checkin.kcal_actual) > 0 ? `${Math.round(netKcal)} kcal` : '—'} tone="warn" />
-              </div>
-
-              <div className={styles.kcalModalAddRow}>
-                <label className={styles.field}>
-                  <span>Quick add</span>
-                  <input
-                    className={styles.featureInput}
-                    inputMode="numeric"
-                    onChange={(event) => setKcalQuickAdd(event.target.value)}
-                    placeholder="e.g. 650"
-                    type="number"
-                    value={kcalQuickAdd}
-                  />
-                </label>
-                <button className="btn-base btn-secondary" disabled={busy !== null} onClick={() => void addKcalToToday()} type="button">
-                  {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Add kcal'}
-                </button>
               </div>
 
               <div className={styles.modalActions}>
@@ -1956,7 +1932,7 @@ export default function CutCoachPage() {
                 <div className={styles.weightAdjustTop}>
                   <span>Current input</span>
                   <div className={styles.weightValueRow}>
-                    <strong>{toNumber(weightDraft.weight_kg) > 0 ? `${formatWeightKg(toNumber(weightDraft.weight_kg))} kg` : 'No weight yet'}</strong>
+                    <strong>{toNumber(weightDraft.weight_kg) > 0 ? `${formatWeightKg(toNumber(weightDraft.weight_kg))} kg` : '—'}</strong>
                     {weightDraftDelta != null && weightDraftDelta !== 0 ? (
                       <em className={weightDraftDelta < 0 ? styles.weightDeltaDown : styles.weightDeltaUp}>
                         {weightDraftDelta > 0 ? '+' : ''}
@@ -1964,7 +1940,7 @@ export default function CutCoachPage() {
                       </em>
                     ) : null}
                   </div>
-                  <small>{latestKnownWeight != null ? `Latest saved: ${formatWeightKg(latestKnownWeight)} kg` : 'Your first weigh-in starts here.'}</small>
+                  <small>{latestKnownWeight != null ? `Latest saved: ${formatWeightKg(latestKnownWeight)} kg` : 'First weigh-in.'}</small>
                 </div>
 
                 <div className={styles.weightQuickCard}>
