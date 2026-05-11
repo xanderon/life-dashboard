@@ -1230,14 +1230,14 @@ export default function ReceiptsPage() {
       const nextItems = (data ?? []) as ReceiptItemRow[];
       setItems(nextItems);
       setPersistedItemsSnapshot(nextItems);
-      const baselineReceipt = receipts.find((receipt) => receipt.id === selectedId) ?? selectedRef.current;
+      const baselineReceipt = selectedRef.current;
       setEditorBaseline(baselineReceipt, nextItems, 'existing');
     })();
 
     return () => {
       alive = false;
     };
-  }, [receipts, selectedId]);
+  }, [selectedId]);
 
   async function saveChanges() {
     if (!selected) return;
