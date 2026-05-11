@@ -2922,6 +2922,97 @@
     justify-content: center;
   }
 
+  .calendarLegend {
+    gap: 0.55rem 0.75rem;
+    font-size: 0.66rem;
+  }
+
+  .yearCalendar {
+    gap: 0.65rem;
+  }
+
+  .yearMonthCard {
+    padding: 0.55rem;
+    border-radius: 0.9rem;
+  }
+
+  .yearMonthHeader {
+    margin-bottom: 0.35rem;
+  }
+
+  .yearMonthHeader strong {
+    font-size: 0.78rem;
+  }
+
+  .weekdays {
+    gap: 0.15rem;
+    margin-top: 0.22rem;
+    font-size: 0.52rem;
+    letter-spacing: 0.08em;
+  }
+
+  .monthGrid {
+    gap: 0.18rem;
+    margin-top: 0.3rem;
+  }
+
+  .monthCell {
+    min-height: 3.55rem;
+    padding: 0.28rem;
+    border-radius: 0.72rem;
+  }
+
+  .monthCellTop {
+    gap: 0.18rem;
+  }
+
+  .monthCellTop > span {
+    font-size: 0.82rem;
+    line-height: 1;
+  }
+
+  .monthCellBody {
+    gap: 0.12rem;
+    margin-top: 0.22rem;
+  }
+
+  .monthCellMetric {
+    gap: 0.18rem;
+  }
+
+  .monthCellMetricIcon {
+    transform: scale(0.82);
+    transform-origin: left center;
+  }
+
+  .monthCellMetric small {
+    font-size: 0.58rem;
+    letter-spacing: -0.01em;
+  }
+
+  .monthCellBadge {
+    min-width: 0.82rem;
+    height: 0.82rem;
+    padding: 0 0.18rem;
+  }
+
+  .monthCellHint {
+    font-size: 0.54rem;
+    letter-spacing: 0.08em;
+  }
+
+  .monthCellToday .monthCellTop > span {
+    min-width: 1.4rem;
+    height: 1.4rem;
+    padding: 0 0.28rem;
+  }
+
+  .monthCellInChallenge::after {
+    left: 0.3rem;
+    right: 0.3rem;
+    bottom: 0.24rem;
+  }
+
   .backToTopButton {
     width: 3rem;
     height: 3rem;

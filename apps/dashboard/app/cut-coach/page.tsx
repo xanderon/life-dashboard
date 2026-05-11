@@ -1116,6 +1116,7 @@ export default function CutCoachPage() {
   const [achievementsCollapsed, setAchievementsCollapsed] = useState(true);
   const [kcalModalOpen, setKcalModalOpen] = useState(false);
   const [weightModalOpen, setWeightModalOpen] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const [weightDraft, setWeightDraft] = useState<WeightState>(emptyWeight(initialIsoDate));
   const [weightDialRotation, setWeightDialRotation] = useState(0);
   const weightDialDragRef = useRef<{
@@ -1137,6 +1138,18 @@ export default function CutCoachPage() {
   const pacePreviews = Object.fromEntries(
     PACE_PRESETS.map((preset) => [preset.value, buildPacePreview(setup, preset.value)])
   ) as Record<string, ReturnType<typeof buildPacePreview>>;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    function handleScroll() {
+      setShowBackToTop(window.scrollY > 280);
+    }
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   function scrollToId(id: string) {
     if (typeof window === 'undefined') return;
@@ -2703,17 +2716,19 @@ export default function CutCoachPage() {
           </> : null}
         </section>
 
-        <button
-          aria-label="Back to top"
-          className={styles.backToTopButton}
-          onClick={() => {
-            if (typeof window === 'undefined') return;
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          type="button"
-        >
-          <ArrowUp size={18} strokeWidth={2.4} />
-        </button>
+        {showBackToTop ? (
+          <button
+            aria-label="Back to top"
+            className={styles.backToTopButton}
+            onClick={() => {
+              if (typeof window === 'undefined') return;
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            type="button"
+          >
+            <ArrowUp size={18} strokeWidth={2.4} />
+          </button>
+        ) : null}
       </div>
     </PageShell>
   );
