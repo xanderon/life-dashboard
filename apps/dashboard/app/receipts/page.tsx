@@ -427,24 +427,38 @@ function stableSerialize(value: unknown): string {
   return JSON.stringify(value ?? null);
 }
 
+function normalizeDirtyCheckText(value: string | null | undefined) {
+  return value?.trim() ?? '';
+}
+
+function normalizeDirtyCheckTimestamp(value: string | null | undefined) {
+  const raw = value?.trim();
+  if (!raw) return '';
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return raw;
+  }
+  return parsed.toISOString();
+}
+
 function normalizeReceiptForDirtyCheck(receipt: ReceiptRow | null) {
   if (!receipt) return '';
   return stableSerialize({
     id: receipt.id ?? '',
-    store: receipt.store ?? '',
-    receipt_date: receipt.receipt_date ?? '',
-    currency: receipt.currency ?? '',
+    store: normalizeDirtyCheckText(receipt.store),
+    receipt_date: normalizeDirtyCheckTimestamp(receipt.receipt_date),
+    currency: normalizeDirtyCheckText(receipt.currency),
     total_amount: Number(receipt.total_amount ?? 0),
     discount_total: Number(receipt.discount_total ?? 0),
     sgr_bottle_charge: Number(receipt.sgr_bottle_charge ?? 0),
     sgr_recovered_amount: Number(receipt.sgr_recovered_amount ?? 0),
-    merchant_name: receipt.merchant_name ?? '',
-    merchant_city: receipt.merchant_city ?? '',
-    merchant_cif: receipt.merchant_cif ?? '',
-    processing_status: receipt.processing_status ?? '',
-    source_file_name: receipt.source_file_name ?? '',
-    source_rel_path: receipt.source_rel_path ?? '',
-    source_hash: receipt.source_hash ?? '',
+    merchant_name: normalizeDirtyCheckText(receipt.merchant_name),
+    merchant_city: normalizeDirtyCheckText(receipt.merchant_city),
+    merchant_cif: normalizeDirtyCheckText(receipt.merchant_cif),
+    processing_status: normalizeDirtyCheckText(receipt.processing_status),
+    source_file_name: normalizeDirtyCheckText(receipt.source_file_name),
+    source_rel_path: normalizeDirtyCheckText(receipt.source_rel_path),
+    source_hash: normalizeDirtyCheckText(receipt.source_hash),
     schema_version: Number(receipt.schema_version ?? 3),
   });
 }
@@ -1194,6 +1208,9 @@ export default function ReceiptsPage() {
       }
       return;
     }
+    if (savingRef.current) {
+      return;
+    }
     let alive = true;
     (async () => {
       const { data, error } = await supabase
@@ -1205,6 +1222,7 @@ export default function ReceiptsPage() {
         .order('id', { ascending: true });
 
       if (!alive) return;
+      if (savingRef.current) return;
       if (error) {
         setErr(error.message);
         return;
@@ -1388,8 +1406,6 @@ export default function ReceiptsPage() {
       }
     }
 
-    setSaving(false);
-    setSuccess('Salvat.');
     const nextSelectedReceipt = {
       ...selected,
       id: receiptId,
@@ -1413,6 +1429,8 @@ export default function ReceiptsPage() {
     setEditorBaseline(nextSelectedReceipt, nextItems, 'existing');
     await loadReceipts(storeFilter);
     queueEditorIntoView();
+    setSaving(false);
+    setSuccess('Salvat.');
   }
 
   function restorePendingDeletedItems() {
@@ -1927,6 +1945,7 @@ export default function ReceiptsPage() {
                     onClick={() => {
                       closeSelectedEditor();
                     }}
+                    disabled={!selected || saving || deletingReceipt}
                     title="Închide editor"
                     type="button"
                 >
@@ -1999,8 +2018,8 @@ export default function ReceiptsPage() {
                     {saving ? 'Se salvează…' : 'Save'}
                   </button>
                   <button
-                    className="btn-base btn-secondary min-h-11 w-full"
-                    disabled={!selected}
+                    className="btn-base btn-secondary min-h-11 w-full disabled:opacity-50"
+                    disabled={!selected || saving || deletingReceipt}
                     onClick={() => {
                       closeSelectedEditor();
                     }}
