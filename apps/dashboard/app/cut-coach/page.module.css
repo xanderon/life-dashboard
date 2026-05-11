@@ -1242,6 +1242,16 @@
     inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 12%, transparent);
 }
 
+.monthCellInChallenge::before {
+  content: '';
+  position: absolute;
+  inset: 0.18rem;
+  border-radius: 0.72rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
 .monthCellInChallenge::after {
   content: '';
   position: absolute;
@@ -1264,6 +1274,13 @@
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, #85f1d4 20%, transparent),
     inset 0 1px 0 color-mix(in srgb, #d2fff2 12%, transparent);
+}
+
+.monthCellPastChallenge::before {
+  opacity: 1;
+  background:
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, #89f2d7 34%, transparent), transparent 44%),
+    linear-gradient(180deg, color-mix(in srgb, #33b397 24%, transparent), color-mix(in srgb, #1d7f69 10%, transparent));
 }
 
 .monthCellPastChallenge.monthCellGood,
@@ -1300,6 +1317,13 @@
   animation: challenge-flow-pulse 2.3s ease-in-out infinite;
 }
 
+.monthCellCurrentChallenge::before {
+  opacity: 1;
+  background:
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, #ffe6a7 48%, transparent), transparent 44%),
+    linear-gradient(180deg, color-mix(in srgb, #e0a84c 30%, transparent), color-mix(in srgb, #a56f20 12%, transparent));
+}
+
 .monthCellCurrentChallenge::after {
   height: 0.12rem;
   background-image: radial-gradient(circle, var(--challenge-dot-current) 0 38%, transparent 44%);
@@ -1318,6 +1342,13 @@
     inset 0 1px 0 color-mix(in srgb, #eef3fb 10%, transparent);
 }
 
+.monthCellFutureChallenge::before {
+  opacity: 1;
+  background:
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, #cfd8eb 18%, transparent), transparent 44%),
+    linear-gradient(180deg, color-mix(in srgb, #7f92b6 16%, transparent), color-mix(in srgb, #566b8f 8%, transparent));
+}
+
 .monthCellFutureChallenge::after {
   background-image: radial-gradient(circle, var(--challenge-dot-future) 0 38%, transparent 44%);
   filter: drop-shadow(0 0 0.08rem color-mix(in srgb, var(--challenge-dot-future) 10%, transparent));
@@ -1333,6 +1364,13 @@
   box-shadow:
     inset 0 0 0 1px rgba(82, 169, 150, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+:global(:root[data-theme="light"]) .monthCellPastChallenge::before,
+:global(:root[data-theme="sunrise"]) .monthCellPastChallenge::before {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(157, 234, 220, 0.86), transparent 45%),
+    linear-gradient(180deg, rgba(110, 204, 183, 0.34), rgba(66, 156, 137, 0.14));
 }
 
 :global(:root[data-theme="light"]) .monthCellPastChallenge.monthCellGood,
@@ -1366,6 +1404,13 @@
   box-shadow:
     inset 0 0 0 1px rgba(126, 119, 197, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+:global(:root[data-theme="light"]) .monthCellFutureChallenge::before,
+:global(:root[data-theme="sunrise"]) .monthCellFutureChallenge::before {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(213, 209, 248, 0.72), transparent 45%),
+    linear-gradient(180deg, rgba(173, 168, 232, 0.24), rgba(120, 114, 191, 0.1));
 }
 
 .monthCellGood {
