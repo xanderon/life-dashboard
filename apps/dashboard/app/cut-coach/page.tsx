@@ -924,6 +924,17 @@ function fillCheckin(date: string, payload: BootstrapPayload | null): CheckinSta
   };
 }
 
+function seedCheckinEntry(date: string, payload: BootstrapPayload | null): CheckinState {
+  const existing = fillCheckin(date, payload);
+  if (toNumber(existing.kcal_actual) > 0) return existing;
+
+  const summary = findWeekDay(payload, date);
+  return {
+    ...existing,
+    kcal_actual: summary?.target ? String(Math.round(summary.target.kcal_target)) : '',
+  };
+}
+
 function fillWeight(date: string, payload: BootstrapPayload | null): WeightState {
   if (!payload) return emptyWeight(date);
   const weight = findWeightForDate(payload.weights, date);
@@ -1118,7 +1129,16 @@ export default function CutCoachPage() {
   const [weightModalOpen, setWeightModalOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [weightDraft, setWeightDraft] = useState<WeightState>(emptyWeight(initialIsoDate));
+  const [kcalDialRotation, setKcalDialRotation] = useState(0);
   const [weightDialRotation, setWeightDialRotation] = useState(0);
+  const kcalDialDragRef = useRef<{
+    pointerId: number;
+    startValue: number;
+    lastAngle: number;
+    lastStep: number;
+    accumulatedAngle: number;
+    startRotation: number;
+  } | null>(null);
   const weightDialDragRef = useRef<{
     pointerId: number;
     startValue: number;
@@ -1173,7 +1193,8 @@ export default function CutCoachPage() {
   }
 
   function openTodayEntry() {
-    setCheckin(fillCheckin(todayIsoDate, data));
+    setCheckin(seedCheckinEntry(todayIsoDate, data));
+    setKcalDialRotation(0);
     setKcalModalOpen(true);
   }
 
@@ -1193,7 +1214,9 @@ export default function CutCoachPage() {
 
   function closeKcalModal() {
     setKcalModalOpen(false);
-    setCheckin(fillCheckin(todayIsoDate, data));
+    setCheckin(seedCheckinEntry(todayIsoDate, data));
+    kcalDialDragRef.current = null;
+    setKcalDialRotation(0);
   }
 
   function closeWeightModal() {
@@ -1225,7 +1248,7 @@ export default function CutCoachPage() {
           }
         : challengeDraft(payload.todayIsoDate)
     );
-    setCheckin(fillCheckin(payload.todayIsoDate, payload));
+    setCheckin(seedCheckinEntry(payload.todayIsoDate, payload));
     setWeight(seedWeightEntry(payload.todayIsoDate, payload));
     setWeightDraft(seedWeightEntry(payload.todayIsoDate, payload));
     setReminders(defaultReminderDrafts(payload.reminders));
@@ -1459,6 +1482,69 @@ export default function CutCoachPage() {
     setWeightFromNumber(currentWeightSeed(source ?? (target === 'draft' ? weightDraft : weight)) + delta, target);
   }
 
+  function currentKcalSeed(source: CheckinState = checkin) {
+    if (toNumber(source.kcal_actual) > 0) return toNumber(source.kcal_actual);
+    return findWeekDay(data, source.date)?.target ? Math.round(findWeekDay(data, source.date)!.target!.kcal_target) : 0;
+  }
+
+  function setKcalFromNumber(nextValue: number) {
+    const safeValue = Math.max(0, Math.round(nextValue));
+    setCheckin((current) => ({
+      ...current,
+      kcal_actual: safeValue > 0 ? String(safeValue) : '',
+    }));
+  }
+
+  function handleKcalDialStart(event: ReactPointerEvent<HTMLButtonElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const angle = Math.atan2(event.clientY - centerY, event.clientX - centerX) * (180 / Math.PI);
+    kcalDialDragRef.current = {
+      pointerId: event.pointerId,
+      startValue: currentKcalSeed(checkin),
+      lastAngle: angle,
+      lastStep: 0,
+      accumulatedAngle: 0,
+      startRotation: kcalDialRotation,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleKcalDialMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const dragState = kcalDialDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const nextAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX) * (180 / Math.PI);
+    let delta = nextAngle - dragState.lastAngle;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    dragState.lastAngle = nextAngle;
+    dragState.accumulatedAngle += delta;
+    setKcalDialRotation(dragState.startRotation + dragState.accumulatedAngle);
+    const nextStep = Math.trunc(dragState.accumulatedAngle / 8);
+    if (nextStep === dragState.lastStep) return;
+    dragState.lastStep = nextStep;
+    setKcalFromNumber(dragState.startValue + nextStep * 10);
+  }
+
+  function handleKcalDialEnd(event: ReactPointerEvent<HTMLButtonElement>) {
+    const dragState = kcalDialDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+    kcalDialDragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function handleKcalDialWheel(event: ReactWheelEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    setKcalDialRotation((current) => current + (event.deltaY < 0 ? 10 : -10));
+    setKcalFromNumber(currentKcalSeed(checkin) + (event.deltaY < 0 ? 10 : -10));
+  }
+
   function handleWeightDialStart(event: ReactPointerEvent<HTMLButtonElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
@@ -1625,6 +1711,14 @@ export default function CutCoachPage() {
   const weightDialStyle: CSSProperties & Record<'--dial-rotation', string> = {
     '--dial-rotation': `${weightDialRotation}deg`,
   };
+  const kcalDialStyle: CSSProperties & Record<'--dial-rotation', string> = {
+    '--dial-rotation': `${kcalDialRotation}deg`,
+  };
+  const selectedTargetKcal = selectedDay?.target ? Math.round(selectedDay.target.kcal_target) : null;
+  const kcalDraftDelta =
+    selectedTargetKcal != null && toNumber(checkin.kcal_actual) > 0
+      ? Math.round(toNumber(checkin.kcal_actual) - selectedTargetKcal)
+      : null;
   const weightDraftDelta =
     latestKnownWeight != null && toNumber(weightDraft.weight_kg) > 0
       ? Math.round((toNumber(weightDraft.weight_kg) - latestKnownWeight) * 100) / 100
@@ -1889,11 +1983,23 @@ export default function CutCoachPage() {
                   <input
                     type="date"
                     value={checkin.date}
-                    onChange={(event) => setCheckin(fillCheckin(event.target.value, data))}
+                    onChange={(event) => {
+                      setCheckin(seedCheckinEntry(event.target.value, data));
+                      setKcalDialRotation(0);
+                    }}
                   />
                 </label>
                 <label className={`${styles.field} ${styles.kcalPrimaryField}`}>
                   <span>Kcal today</span>
+                  <div className={styles.kcalTargetLine}>
+                    <strong>{selectedTargetKcal != null ? `${selectedTargetKcal} kcal target` : 'No target yet'}</strong>
+                    {kcalDraftDelta != null && kcalDraftDelta !== 0 ? (
+                      <em className={kcalDraftDelta < 0 ? styles.weightDeltaDown : styles.weightDeltaUp}>
+                        {kcalDraftDelta > 0 ? '+' : ''}
+                        {kcalDraftDelta} kcal
+                      </em>
+                    ) : null}
+                  </div>
                   <input
                     className={`${styles.featureInput} ${styles.kcalPrimaryInput}`}
                     type="number"
@@ -1903,6 +2009,22 @@ export default function CutCoachPage() {
                     placeholder="e.g. 2140"
                   />
                 </label>
+              </div>
+
+              <div className={styles.kcalDialArea}>
+                <button
+                  aria-label="Rotate kcal dial"
+                  className={styles.weightDial}
+                  onPointerDown={handleKcalDialStart}
+                  onPointerMove={handleKcalDialMove}
+                  onPointerUp={handleKcalDialEnd}
+                  onPointerCancel={handleKcalDialEnd}
+                  onWheel={handleKcalDialWheel}
+                  style={kcalDialStyle}
+                  type="button"
+                >
+                  <span className={styles.weightDialNeedle} aria-hidden="true" />
+                </button>
               </div>
 
               <div className={styles.kcalModalSummary}>
