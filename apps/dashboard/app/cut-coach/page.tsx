@@ -1602,8 +1602,6 @@ export default function CutCoachPage() {
       : weightChartData.length > 0
         ? `${weightChartData.length} log${weightChartData.length === 1 ? '' : 's'}`
         : 'No logs yet';
-  const burnedKcal = toNumber(checkin.activity_kcal_burned);
-  const netKcal = Math.max(0, toNumber(checkin.kcal_actual) - burnedKcal);
   const overToday =
     today?.target && today.caloriesSource !== 'none' ? Math.round(today.consumed.calories - today.target.kcal_target) : null;
   const todayCheckinDone = Boolean(data && findCheckinForDate(data.checkins, todayIsoDate)?.kcal_actual != null);
@@ -1881,7 +1879,7 @@ export default function CutCoachPage() {
                 <div>
                   <div className={styles.sectionEyebrow}>kcal</div>
                   <h3 className={styles.modalTitle}>Quick kcal entry</h3>
-                  <p className={styles.panelText}>Food total and sport burn, saved when you want.</p>
+                  <p className={styles.panelText}>Just put your total for the day and save.</p>
                 </div>
               </div>
 
@@ -1894,10 +1892,10 @@ export default function CutCoachPage() {
                     onChange={(event) => setCheckin(fillCheckin(event.target.value, data))}
                   />
                 </label>
-                <label className={styles.field}>
+                <label className={`${styles.field} ${styles.kcalPrimaryField}`}>
                   <span>Kcal today</span>
                   <input
-                    className={styles.featureInput}
+                    className={`${styles.featureInput} ${styles.kcalPrimaryInput}`}
                     type="number"
                     inputMode="numeric"
                     value={checkin.kcal_actual}
@@ -1905,32 +1903,11 @@ export default function CutCoachPage() {
                     placeholder="e.g. 2140"
                   />
                 </label>
-                <label className={styles.field}>
-                  <span>Sport burn</span>
-                  <input
-                    className={styles.featureInput}
-                    type="number"
-                    inputMode="numeric"
-                    value={checkin.activity_kcal_burned}
-                    onChange={(event) => setCheckin((current) => ({ ...current, activity_kcal_burned: event.target.value }))}
-                    placeholder="e.g. 320"
-                  />
-                </label>
-                <label className={styles.field}>
-                  <span>Source</span>
-                  <input
-                    value={checkin.source_app}
-                    onChange={(event) => setCheckin((current) => ({ ...current, source_app: event.target.value }))}
-                    placeholder="LifeSum"
-                  />
-                </label>
               </div>
 
-              <div className={styles.quickSummary}>
+              <div className={styles.kcalModalSummary}>
                 <SummaryTile label="Target" value={selectedDay?.target ? `${Math.round(selectedDay.target.kcal_target)} kcal` : '—'} tone="neutral" />
                 <SummaryTile label="Logged" value={toNumber(checkin.kcal_actual) > 0 ? `${Math.round(toNumber(checkin.kcal_actual))} kcal` : '—'} tone="future" />
-                <SummaryTile label="Burn" value={burnedKcal > 0 ? `${Math.round(burnedKcal)} kcal` : '0 kcal'} tone="good" />
-                <SummaryTile label="Net" value={toNumber(checkin.kcal_actual) > 0 ? `${Math.round(netKcal)} kcal` : '—'} tone="warn" />
               </div>
 
               <div className={styles.modalActions}>
