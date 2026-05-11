@@ -1160,6 +1160,7 @@ export default function CutCoachPage() {
   const pacePreviews = Object.fromEntries(
     PACE_PRESETS.map((preset) => [preset.value, buildPacePreview(setup, preset.value)])
   ) as Record<string, ReturnType<typeof buildPacePreview>>;
+  const todayIsoDate = data?.todayIsoDate ?? initialIsoDate;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1227,6 +1228,31 @@ export default function CutCoachPage() {
     weightDialDragRef.current = null;
     setWeightDialRotation(0);
   }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!kcalModalOpen && !weightModalOpen) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      if (kcalModalOpen) {
+        setKcalModalOpen(false);
+        setCheckin(seedCheckinEntry(todayIsoDate, data));
+        kcalDialDragRef.current = null;
+        setKcalDialRotation(0);
+        return;
+      }
+      if (weightModalOpen) {
+        setWeightModalOpen(false);
+        setWeightDraft(seedWeightEntry(todayIsoDate, data));
+        weightDialDragRef.current = null;
+        setWeightDialRotation(0);
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [data, kcalModalOpen, todayIsoDate, weightModalOpen]);
 
   function applyBootstrap(payload: BootstrapPayload) {
     setData(payload);
@@ -1670,7 +1696,6 @@ export default function CutCoachPage() {
     }
   }
 
-  const todayIsoDate = data?.todayIsoDate ?? initialIsoDate;
   const activeChallenge = selectActiveChallenge(data?.challenges ?? [], todayIsoDate);
   const challengeStats = buildChallengeStats(activeChallenge, data);
   const xp = buildXp(data);
