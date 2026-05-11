@@ -2123,17 +2123,23 @@ export default function CutCoachPage() {
                     <div className={styles.monthGrid}>
                       {month.cells.map((cell) => {
                         const tone =
-                          cell.kcalDiff != null
-                            ? cell.kcalDiff <= 50
-                              ? styles.monthCellGood
-                              : cell.kcalDiff <= 180
-                                ? styles.monthCellWarn
-                                : styles.monthCellBad
-                            : cell.weight
-                              ? styles.monthCellWeight
-                              : cell.isInChallenge
-                                ? styles.monthCellChallenge
-                                : styles.monthCellNeutral;
+                          cell.isChallengePast
+                            ? styles.monthCellPastPhase
+                            : cell.isChallengeCurrent
+                              ? styles.monthCellCurrentPhase
+                              : cell.isChallengeFuture
+                                ? styles.monthCellFuturePhase
+                                : cell.kcalDiff != null
+                                  ? cell.kcalDiff <= 50
+                                    ? styles.monthCellGood
+                                    : cell.kcalDiff <= 180
+                                      ? styles.monthCellWarn
+                                      : styles.monthCellBad
+                                  : cell.weight
+                                    ? styles.monthCellWeight
+                                    : cell.isInChallenge
+                                      ? styles.monthCellChallenge
+                                      : styles.monthCellNeutral;
                         return (
                           <div
                             className={`${styles.monthCell} ${tone} ${cell.isInChallenge ? styles.monthCellInChallenge : ''} ${cell.isChallengePast ? styles.monthCellPastChallenge : ''} ${cell.isChallengeCurrent ? styles.monthCellCurrentChallenge : ''} ${cell.isChallengeFuture ? styles.monthCellFutureChallenge : ''} ${cell.isToday ? styles.monthCellToday : ''} ${!cell.inMonth ? styles.monthCellMuted : ''}`}

@@ -1440,6 +1440,12 @@
   border-color: var(--border);
 }
 
+.monthCellPastPhase,
+.monthCellCurrentPhase,
+.monthCellFuturePhase {
+  border-color: var(--border);
+}
+
 .achievementList,
 .reminderList {
   display: grid;
