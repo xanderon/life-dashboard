@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type WheelEvent as ReactWheelEvent } from 'react';
 import {
+  ArrowUp,
   CalendarDays,
   CalendarRange,
   Flag,
@@ -1144,6 +1145,20 @@ export default function CutCoachPage() {
     });
   }
 
+  function scrollToCalendarToday() {
+    if (typeof window === 'undefined') return;
+    setCollapsedSections((current) => ({ ...current, calendar: false }));
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById('calendar-today')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'center',
+        });
+      });
+    });
+  }
+
   function openTodayEntry() {
     setCheckin(fillCheckin(todayIsoDate, data));
     setKcalModalOpen(true);
@@ -1743,6 +1758,10 @@ export default function CutCoachPage() {
                 <span className={styles.heroActionIcon} aria-hidden="true"><Settings2 size={15} strokeWidth={2.2} /></span>
                 <span>Setup</span>
               </button>
+              <button className={`btn-base btn-ghost ${styles.heroActionButton}`} onClick={scrollToCalendarToday} type="button">
+                <span className={styles.heroActionIcon} aria-hidden="true"><CalendarDays size={15} strokeWidth={2.2} /></span>
+                <span>Year</span>
+              </button>
             </div>
           </div>
 
@@ -2105,6 +2124,7 @@ export default function CutCoachPage() {
                         return (
                           <div
                             className={`${styles.monthCell} ${tone} ${cell.isInChallenge ? styles.monthCellInChallenge : ''} ${cell.isChallengePast ? styles.monthCellPastChallenge : ''} ${cell.isChallengeCurrent ? styles.monthCellCurrentChallenge : ''} ${cell.isChallengeFuture ? styles.monthCellFutureChallenge : ''} ${cell.isToday ? styles.monthCellToday : ''} ${!cell.inMonth ? styles.monthCellMuted : ''}`}
+                            id={cell.isToday ? 'calendar-today' : undefined}
                             key={cell.isoDate}
                           >
                             <div className={styles.monthCellTop}>
@@ -2682,6 +2702,18 @@ export default function CutCoachPage() {
           </div>
           </> : null}
         </section>
+
+        <button
+          aria-label="Back to top"
+          className={styles.backToTopButton}
+          onClick={() => {
+            if (typeof window === 'undefined') return;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          type="button"
+        >
+          <ArrowUp size={18} strokeWidth={2.4} />
+        </button>
       </div>
     </PageShell>
   );
