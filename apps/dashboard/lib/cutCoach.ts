@@ -309,6 +309,11 @@ export function humanizeAdjustmentReason(reason: string | null | undefined, cont
   if (reason.startsWith('Trend over 14 days is faster')) {
     return 'Weight trend is dropping faster than expected, so calories were eased slightly.';
   }
+  if (reason.startsWith('Weekly kcal cycling')) {
+    return context === 'tomorrow'
+      ? 'Tomorrow follows a light / hard wave so the week stays easier to sustain.'
+      : 'Today is part of a light / hard wave that keeps the weekly cut more sustainable.';
+  }
   if (reason.startsWith('Redistributed')) {
     return 'A small correction was spread across the next few days instead of cutting hard tomorrow.';
   }
@@ -822,12 +827,24 @@ function buildPlannerDays(context: PlannerContext): PlannerDay[] {
   const restDelta =
     trainingCount > 0 && restCount > 0 ? (trainingCount * trainingDelta) / restCount : 0;
   const trendAdjustment = computeWeightTrendAdjustment(profile, recentWeights);
+  const cyclingOffsets = buildMiniCyclingOffsets({
+    upcomingDates,
+    profile,
+    maintenance,
+    baseTarget,
+  });
 
   return upcomingDates.map((date) => {
     const dayType: DayType = isTrainingDay(profile, date) ? 'training' : 'rest';
-    const dayBase = baseTarget + (dayType === 'training' ? trainingDelta : -restDelta) + trendAdjustment.maintenanceDelta;
+    const cycleOffset = cyclingOffsets[date] ?? 0;
+    const dayBase =
+      baseTarget +
+      (dayType === 'training' ? trainingDelta : -restDelta) +
+      trendAdjustment.maintenanceDelta +
+      cycleOffset;
     const kcalTarget = Math.max(safeMinimum, dayBase);
     const macros = computeMacroTargets(profile, latestWeight, kcalTarget);
+    const adjustmentNotes = [trendAdjustment.reason, cycleOffset !== 0 ? `Weekly kcal cycling ${cycleOffset > 0 ? '+' : ''}${roundInt(cycleOffset)} kcal.` : null].filter(Boolean);
 
     return {
       date,
@@ -838,10 +855,49 @@ function buildPlannerDays(context: PlannerContext): PlannerDay[] {
       proteinTarget: macros.protein,
       carbsTarget: macros.carbs,
       fatTarget: macros.fat,
-      adjustmentReason: trendAdjustment.reason,
-      status: trendAdjustment.reason ? 'adjusted' : 'planned',
+      adjustmentReason: adjustmentNotes.join(' '),
+      status: adjustmentNotes.length ? 'adjusted' : 'planned',
     } satisfies PlannerDay;
   });
+}
+
+function buildMiniCyclingOffsets({
+  upcomingDates,
+  profile,
+  maintenance,
+  baseTarget,
+}: Pick<PlannerContext, 'profile' | 'upcomingDates'> & {
+  maintenance: number;
+  baseTarget: number;
+}) {
+  if (upcomingDates.length === 0 || profile.goal_type !== 'cut') {
+    return {} as Record<string, number>;
+  }
+
+  const deficit = Math.max(0, maintenance - baseTarget);
+  if (deficit < 140) {
+    return {} as Record<string, number>;
+  }
+
+  const amplitude = Math.min(95, Math.max(35, Math.round(deficit * 0.18)));
+  const rawPattern = [0, -1, 0.5, -0.5, 0.75, -0.75, 1].slice(0, upcomingDates.length);
+  const normalizedPattern = rawPattern.map((value) => value - average(rawPattern));
+  const offsets = normalizedPattern.map((value, index) => {
+    const date = upcomingDates[index]!;
+    const isTraining = isTrainingDay(profile, date);
+    const trainingBias = profile.training_days.length
+      ? isTraining
+        ? amplitude * 0.16
+        : -amplitude * 0.08
+      : 0;
+    return round1(value * amplitude + trainingBias);
+  });
+  const averageOffset = average(offsets);
+
+  return upcomingDates.reduce<Record<string, number>>((acc, date, index) => {
+    acc[date] = round1(offsets[index]! - averageOffset);
+    return acc;
+  }, {});
 }
 
 function groupLogsByDate(logs: CutCoachFoodLogRow[]) {
@@ -879,17 +935,21 @@ function applyDeviationAdjustments(
   const safeMinimum = computeSafeMinimumCalories(profile, latestWeight);
   const deviation = todaySummary.consumed.calories - todaySummary.target.kcal_target;
   const rollingGap = deviation;
+  const underGap = todaySummary.target.kcal_target - todaySummary.consumed.calories;
 
-  if (rollingGap <= 150) {
+  if (rollingGap <= 150 && underGap <= 180) {
     return { days: plannerDays, adjustments: [] as Omit<CutCoachAdjustmentRow, 'id' | 'created_at'>[] };
   }
 
-  const futureDays = plannerDays.slice(1, 4);
+  const futureDays = plannerDays.slice(1, 5);
   if (!futureDays.length) {
     return { days: plannerDays, adjustments: [] as Omit<CutCoachAdjustmentRow, 'id' | 'created_at'>[] };
   }
 
-  const totalCorrection = Math.min(rollingGap, futureDays.length * 150);
+  const isOverTarget = rollingGap > 150;
+  const totalCorrection = isOverTarget
+    ? Math.min(rollingGap, futureDays.length * 140)
+    : -Math.min(underGap * 0.4, futureDays.length * 80);
   const perDay = round1(totalCorrection / futureDays.length);
   const adjustments: Omit<CutCoachAdjustmentRow, 'id' | 'created_at'>[] = [];
 
@@ -904,7 +964,9 @@ function applyDeviationAdjustments(
       source_date: todaySummary.date,
       target_date: day.date,
       delta_kcal: delta,
-      reason: `Small redistribution after ${roundInt(rollingGap)} kcal over target on ${todaySummary.date}.`,
+      reason: isOverTarget
+        ? `Small redistribution after ${roundInt(rollingGap)} kcal over target on ${todaySummary.date}.`
+        : `Small rebound after ${roundInt(underGap)} kcal under target on ${todaySummary.date}.`,
       algorithm_version: PLANNER_ALGO_VERSION,
     });
 
@@ -915,7 +977,9 @@ function applyDeviationAdjustments(
       proteinTarget: adjustedMacros.protein,
       carbsTarget: adjustedMacros.carbs,
       fatTarget: adjustedMacros.fat,
-      adjustmentReason: `Redistributed ${roundInt(Math.abs(delta))} kcal from ${todaySummary.date}.`,
+      adjustmentReason: isOverTarget
+        ? `Redistributed ${roundInt(Math.abs(delta))} kcal from ${todaySummary.date}.`
+        : `Eased ${roundInt(Math.abs(delta))} kcal after a light day on ${todaySummary.date}.`,
       status: 'adjusted' as const,
     };
   });

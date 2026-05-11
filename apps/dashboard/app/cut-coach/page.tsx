@@ -107,6 +107,12 @@ type CheckinState = {
   source_app: string;
 };
 
+type ActivityState = {
+  date: string;
+  activity_kcal_burned: string;
+  activity_summary: string;
+};
+
 type WeightState = {
   date: string;
   weight_kg: string;
@@ -144,6 +150,9 @@ type ItemRarity = 'common' | 'magic' | 'rare' | 'set' | 'legendary';
 type EquipmentSlotSize = 'small' | 'medium' | 'large' | 'tall';
 type DragOrigin = { kind: 'equipped'; slot: string } | { kind: 'stash'; index: number } | null;
 type SelectedItem = DragOrigin;
+type BootstrapDetailPayload = {
+  week: DailySummary[];
+};
 
 type CharacterItem = {
   slot: string;
@@ -243,6 +252,14 @@ function emptyCheckin(date: string): CheckinState {
     activity_summary: '',
     notes: '',
     source_app: 'LifeSum',
+  };
+}
+
+function emptyActivity(date: string): ActivityState {
+  return {
+    date,
+    activity_kcal_burned: '',
+    activity_summary: '',
   };
 }
 
@@ -347,6 +364,11 @@ function isoDiff(start: string, end: string) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function average(values: number[]) {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function findWeekDay(payload: BootstrapPayload | null, date: string) {
@@ -896,6 +918,29 @@ function toneForDay(day: DailySummary, todayIsoDate: string) {
   return styles.dayToneBad;
 }
 
+function averageWeekTarget(payload: BootstrapPayload | null) {
+  const targets = (payload?.week ?? []).filter((day) => day.target).map((day) => day.target!.kcal_target);
+  if (!targets.length) return null;
+  return average(targets);
+}
+
+function describeDayPlan(day: DailySummary, payload: BootstrapPayload | null) {
+  if (!day.target) {
+    return {
+      emphasis: 'Pending',
+      note: 'Plan loading',
+    };
+  }
+
+  const weekAverage = averageWeekTarget(payload);
+  const target = day.target.kcal_target;
+  const delta = weekAverage != null ? target - weekAverage : 0;
+  const emphasis = delta >= 55 ? 'Harder' : delta <= -55 ? 'Lighter' : 'Steady';
+  const note = day.target.day_type === 'training' ? 'Train' : 'Rest';
+
+  return { emphasis, note };
+}
+
 function fillSetup(profile: CutCoachProfileRow, latestWeight: number | null): SetupState {
   return {
     age: String(profile.age),
@@ -934,6 +979,17 @@ function seedCheckinEntry(date: string, payload: BootstrapPayload | null): Check
   return {
     ...existing,
     kcal_actual: summary?.target ? String(Math.round(summary.target.kcal_target)) : '',
+  };
+}
+
+function seedActivityEntry(date: string, payload: BootstrapPayload | null): ActivityState {
+  if (!payload) return emptyActivity(date);
+  const checkin = findCheckinForDate(payload.checkins, date);
+  if (!checkin) return emptyActivity(date);
+  return {
+    date,
+    activity_kcal_burned: checkin.activity_kcal_burned != null ? String(checkin.activity_kcal_burned) : '',
+    activity_summary: checkin.activity_summary ?? '',
   };
 }
 
@@ -1102,11 +1158,14 @@ function validateChallenge(challenge: ChallengeState) {
 export default function CutCoachPage() {
   const initialIsoDate = formatLocalIsoDate(new Date());
   const [data, setData] = useState<BootstrapPayload | null>(null);
+  const [heroReady, setHeroReady] = useState(false);
+  const [detailReady, setDetailReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [setup, setSetup] = useState<SetupState>(defaultSetup);
   const [checkin, setCheckin] = useState<CheckinState>(emptyCheckin(initialIsoDate));
+  const [activityDraft, setActivityDraft] = useState<ActivityState>(emptyActivity(initialIsoDate));
   const [weight, setWeight] = useState<WeightState>(emptyWeight(initialIsoDate));
   const [challenge, setChallenge] = useState<ChallengeState>(challengeDraft(initialIsoDate));
   const [reminders, setReminders] = useState<ReminderDraft[]>(defaultReminderDrafts([]));
@@ -1128,6 +1187,7 @@ export default function CutCoachPage() {
   const [characterCollapsed, setCharacterCollapsed] = useState(false);
   const [achievementsCollapsed, setAchievementsCollapsed] = useState(true);
   const [kcalModalOpen, setKcalModalOpen] = useState(false);
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [weightModalOpen, setWeightModalOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [weightDraft, setWeightDraft] = useState<WeightState>(emptyWeight(initialIsoDate));
@@ -1195,10 +1255,21 @@ export default function CutCoachPage() {
     });
   }
 
+  function openCalendarDay(date: string) {
+    setCheckin(seedCheckinEntry(date, data));
+    setKcalDialRotation(0);
+    setKcalModalOpen(true);
+  }
+
   function openTodayEntry() {
     setCheckin(seedCheckinEntry(todayIsoDate, data));
     setKcalDialRotation(0);
     setKcalModalOpen(true);
+  }
+
+  function openActivityModal(date = todayIsoDate) {
+    setActivityDraft(seedActivityEntry(date, data));
+    setActivityModalOpen(true);
   }
 
   function openSection(section: SectionKey) {
@@ -1222,6 +1293,11 @@ export default function CutCoachPage() {
     setKcalDialRotation(0);
   }
 
+  function closeActivityModal() {
+    setActivityModalOpen(false);
+    setActivityDraft(seedActivityEntry(todayIsoDate, data));
+  }
+
   function closeWeightModal() {
     setWeightModalOpen(false);
     setWeightDraft(baseWeightEntryState(todayIsoDate));
@@ -1231,7 +1307,7 @@ export default function CutCoachPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (!kcalModalOpen && !weightModalOpen) return;
+    if (!kcalModalOpen && !weightModalOpen && !activityModalOpen) return;
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key !== 'Escape') return;
@@ -1240,6 +1316,11 @@ export default function CutCoachPage() {
         setCheckin(seedCheckinEntry(todayIsoDate, data));
         kcalDialDragRef.current = null;
         setKcalDialRotation(0);
+        return;
+      }
+      if (activityModalOpen) {
+        setActivityModalOpen(false);
+        setActivityDraft(seedActivityEntry(todayIsoDate, data));
         return;
       }
       if (weightModalOpen) {
@@ -1252,7 +1333,7 @@ export default function CutCoachPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [data, kcalModalOpen, todayIsoDate, weightModalOpen]);
+  }, [activityModalOpen, data, kcalModalOpen, todayIsoDate, weightModalOpen]);
 
   function applyBootstrap(payload: BootstrapPayload) {
     setData(payload);
@@ -1277,9 +1358,20 @@ export default function CutCoachPage() {
         : challengeDraft(payload.todayIsoDate)
     );
     setCheckin(seedCheckinEntry(payload.todayIsoDate, payload));
+    setActivityDraft(seedActivityEntry(payload.todayIsoDate, payload));
     setWeight(seedWeightEntry(payload.todayIsoDate, payload));
     setWeightDraft(seedWeightEntry(payload.todayIsoDate, payload));
     setReminders(defaultReminderDrafts(payload.reminders));
+  }
+
+  function mergeWeekDetail(payload: BootstrapDetailPayload) {
+    setData((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        week: payload.week,
+      };
+    });
   }
 
   async function loadBootstrap(options?: { silent?: boolean }) {
@@ -1295,6 +1387,8 @@ export default function CutCoachPage() {
 
     const payload = (await res.json()) as BootstrapPayload;
     applyBootstrap(payload);
+    setHeroReady(true);
+    setDetailReady(true);
     setBusy(null);
   }
 
@@ -1303,11 +1397,15 @@ export default function CutCoachPage() {
     void (async () => {
       setBusy('loading');
       setError(null);
-      const res = await fetch('/api/cut-coach/bootstrap', { cache: 'no-store' });
+      setHeroReady(false);
+      setDetailReady(false);
+      const res = await fetch('/api/cut-coach/bootstrap-hero', { cache: 'no-store' });
       if (!res.ok) {
         const payload = (await res.json().catch(() => ({}))) as { error?: string };
         if (!cancelled) {
           setError(payload.error ?? 'Could not load Cut Coach.');
+          setHeroReady(true);
+          setDetailReady(true);
           setBusy(null);
         }
         return;
@@ -1315,7 +1413,25 @@ export default function CutCoachPage() {
       const payload = (await res.json()) as BootstrapPayload;
       if (!cancelled) {
         applyBootstrap(payload);
+        setHeroReady(true);
         setBusy(null);
+        void (async () => {
+          const detailRes = await fetch('/api/cut-coach/bootstrap-detail', { cache: 'no-store' });
+          if (!detailRes.ok) {
+            const detailPayload = (await detailRes.json().catch(() => ({}))) as { error?: string };
+            if (!cancelled) {
+              setError((current) => current ?? detailPayload.error ?? 'Could not load the week plan.');
+              setDetailReady(true);
+            }
+            return;
+          }
+
+          const detailPayload = (await detailRes.json()) as BootstrapDetailPayload;
+          if (!cancelled) {
+            mergeWeekDetail(detailPayload);
+            setDetailReady(true);
+          }
+        })();
       }
     })();
 
@@ -1406,6 +1522,22 @@ export default function CutCoachPage() {
   async function saveCheckinAndClose() {
     const ok = await saveCheckin();
     if (ok) closeKcalModal();
+    return ok;
+  }
+
+  async function saveActivityDraft() {
+    const existing = fillCheckin(activityDraft.date, data);
+    const ok = await postJson(
+      '/api/cut-coach/checkins',
+      {
+        ...existing,
+        ...activityDraft,
+      },
+      'Activity saved.'
+    );
+    if (ok) {
+      setActivityModalOpen(false);
+    }
     return ok;
   }
 
@@ -1551,10 +1683,10 @@ export default function CutCoachPage() {
     if (delta < -180) delta += 360;
     dragState.lastAngle = nextAngle;
     dragState.accumulatedAngle += delta;
-    setKcalDialRotation(dragState.startRotation + dragState.accumulatedAngle);
     const nextStep = Math.trunc(dragState.accumulatedAngle / 8);
     if (nextStep === dragState.lastStep) return;
     dragState.lastStep = nextStep;
+    setKcalDialRotation(dragState.startRotation + nextStep * 8);
     setKcalFromNumber(dragState.startValue + nextStep * 10);
   }
 
@@ -1602,10 +1734,10 @@ export default function CutCoachPage() {
     if (delta < -180) delta += 360;
     dragState.lastAngle = nextAngle;
     dragState.accumulatedAngle += delta;
-    setWeightDialRotation(dragState.startRotation + dragState.accumulatedAngle);
     const nextStep = Math.trunc(dragState.accumulatedAngle / 8);
     if (nextStep === dragState.lastStep) return;
     dragState.lastStep = nextStep;
+    setWeightDialRotation(dragState.startRotation + nextStep * 8);
     setWeightFromNumber(dragState.startValue + nextStep * 0.01, 'draft');
   }
 
@@ -1746,7 +1878,8 @@ export default function CutCoachPage() {
     selectedTargetKcal != null && toNumber(checkin.kcal_actual) > 0
       ? Math.round(toNumber(checkin.kcal_actual) - selectedTargetKcal)
       : null;
-  const initialLoading = !data && busy === 'loading';
+  const initialLoading = !heroReady && !data;
+  const weekLoading = heroReady && !detailReady;
   const weightDraftDelta =
     latestKnownWeight != null && toNumber(weightDraft.weight_kg) > 0
       ? Math.round((toNumber(weightDraft.weight_kg) - latestKnownWeight) * 100) / 100
@@ -1924,6 +2057,10 @@ export default function CutCoachPage() {
                 <span className={styles.heroActionIcon} aria-hidden="true"><UtensilsCrossed size={15} strokeWidth={2.2} /></span>
                 <span>Kcal</span>
               </button>
+              <button className={`btn-base btn-secondary ${styles.heroActionButton}`} onClick={() => openActivityModal()} type="button">
+                <span className={styles.heroActionIcon} aria-hidden="true"><Dumbbell size={15} strokeWidth={2.2} /></span>
+                <span>Activity</span>
+              </button>
               <button className={`btn-base btn-secondary ${styles.heroActionButton}`} onClick={() => openWeightModal()} type="button">
                 <span className={styles.heroActionIcon} aria-hidden="true"><Scale size={15} strokeWidth={2.2} /></span>
                 <span>Weight</span>
@@ -2063,15 +2200,7 @@ export default function CutCoachPage() {
                   />
                 </label>
                 <label className={`${styles.field} ${styles.kcalPrimaryField}`}>
-                  <span>Kcal today</span>
-                  <div className={styles.kcalTargetLine}>
-                    <strong>{selectedTargetKcal != null ? `${selectedTargetKcal} kcal target` : 'No target yet'}</strong>
-                    <em
-                      className={`${kcalDraftDelta != null && kcalDraftDelta < 0 ? styles.weightDeltaDown : styles.weightDeltaUp} ${kcalDraftDelta == null || kcalDraftDelta === 0 ? styles.kcalDeltaHidden : ''}`}
-                    >
-                      {kcalDraftDelta != null && kcalDraftDelta !== 0 ? `${kcalDraftDelta > 0 ? '+' : ''}${kcalDraftDelta} kcal` : '+0 kcal'}
-                    </em>
-                  </div>
+                  <span>Actual kcal</span>
                   <input
                     className={`${styles.featureInput} ${styles.kcalPrimaryInput}`}
                     type="number"
@@ -2080,6 +2209,14 @@ export default function CutCoachPage() {
                     onChange={(event) => setCheckin((current) => ({ ...current, kcal_actual: event.target.value }))}
                     placeholder="e.g. 2140"
                   />
+                  <div className={styles.kcalTargetLine}>
+                    <strong>{selectedTargetKcal != null ? `Target ${selectedTargetKcal}` : 'No target yet'}</strong>
+                    <em
+                      className={`${kcalDraftDelta != null && kcalDraftDelta < 0 ? styles.weightDeltaDown : styles.weightDeltaUp} ${kcalDraftDelta == null || kcalDraftDelta === 0 ? styles.kcalDeltaHidden : ''}`}
+                    >
+                      {kcalDraftDelta != null && kcalDraftDelta !== 0 ? `${kcalDraftDelta > 0 ? '+' : ''}${kcalDraftDelta}` : '+0'}
+                    </em>
+                  </div>
                 </label>
               </div>
 
@@ -2110,6 +2247,64 @@ export default function CutCoachPage() {
                 </button>
                 <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveCheckinAndClose()} type="button">
                   {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Save kcal'}
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+        {activityModalOpen ? (
+          <div className={styles.modalScrim} onClick={closeActivityModal} role="presentation">
+            <section
+              aria-modal="true"
+              className={styles.weightModal}
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+            >
+              <div className={styles.modalHead}>
+                <div>
+                  <div className={styles.sectionEyebrow}>activity</div>
+                  <h3 className={styles.modalTitle}>Quick activity entry</h3>
+                  <p className={styles.panelText}>Keep movement separate. Add the burn and a short note.</p>
+                </div>
+              </div>
+
+              <div className={styles.kcalModalGrid}>
+                <label className={styles.field}>
+                  <span>Date</span>
+                  <input
+                    type="date"
+                    value={activityDraft.date}
+                    onChange={(event) => setActivityDraft(seedActivityEntry(event.target.value, data))}
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>Burned kcal</span>
+                  <input
+                    className={styles.featureInput}
+                    inputMode="numeric"
+                    placeholder="e.g. 340"
+                    type="number"
+                    value={activityDraft.activity_kcal_burned}
+                    onChange={(event) => setActivityDraft((current) => ({ ...current, activity_kcal_burned: event.target.value }))}
+                  />
+                </label>
+                <label className={`${styles.field} ${styles.kcalPrimaryField}`}>
+                  <span>What did you do?</span>
+                  <input
+                    placeholder="Walk, bike, gym, stairs..."
+                    type="text"
+                    value={activityDraft.activity_summary}
+                    onChange={(event) => setActivityDraft((current) => ({ ...current, activity_summary: event.target.value }))}
+                  />
+                </label>
+              </div>
+
+              <div className={styles.modalActions}>
+                <button className="btn-base btn-ghost" onClick={closeActivityModal} type="button">
+                  Cancel
+                </button>
+                <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveActivityDraft()} type="button">
+                  {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Save activity'}
                 </button>
               </div>
             </section>
@@ -2203,26 +2398,48 @@ export default function CutCoachPage() {
           </div>
 
           {!collapsedSections.flow ? <>
-          <div className={styles.flowRail}>
-            {(data?.week ?? []).map((day) => (
-              <button className={`${styles.dayCard} ${toneForDay(day, todayIsoDate)} ${day.date === todayIsoDate ? styles.dayCardToday : ''}`} key={day.date} onClick={() => {
-                setCheckin(fillCheckin(day.date, data));
-                setWeight(fillWeight(day.date, data));
-              }} type="button">
-                <div className={styles.dayTop}>
-                  <span>{shortDay(day.date)}</span>
-                  <span>{day.date === todayIsoDate ? 'Today' : formatDate(day.date)}</span>
+          {weekLoading ? (
+            <div className={styles.flowRailSkeleton} aria-hidden="true">
+              {Array.from({ length: 7 }).map((_, index) => (
+                <div className={styles.flowRailSkeletonCard} key={`flow-skeleton-${index}`}>
+                  <span className={styles.loadingLineTiny} />
+                  <span className={styles.loadingLineMedium} />
+                  <span className={styles.loadingLineShort} />
                 </div>
-                <div className={styles.dayKcal}>{day.target ? Math.round(day.target.kcal_target) : '—'} kcal</div>
-                <div className={styles.dayRecommendation}>
-                  <span className={styles.dayRecommendationIcon} aria-hidden="true">
-                    {day.target?.day_type === 'training' ? <Dumbbell size={13} strokeWidth={2.2} /> : <MoonStar size={13} strokeWidth={2.2} />}
-                  </span>
-                  <span>{day.target?.day_type === 'training' ? 'Train day' : 'Rest day'}</span>
-                </div>
-              </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.flowRail}>
+              {(data?.week ?? []).map((day, index) => {
+                const planTone = describeDayPlan(day, data);
+                return (
+                  <button
+                    className={`${styles.dayCard} ${toneForDay(day, todayIsoDate)} ${day.date === todayIsoDate ? styles.dayCardToday : ''}`}
+                    key={day.date}
+                    onClick={() => openCalendarDay(day.date)}
+                    type="button"
+                  >
+                    <div className={styles.dayTrackRow}>
+                      <span className={styles.dayTrackDot} aria-hidden="true" />
+                      {index < (data?.week.length ?? 0) - 1 ? <span className={styles.dayTrackLine} aria-hidden="true" /> : null}
+                    </div>
+                    <div className={styles.dayTop}>
+                      <span>{shortDay(day.date)}</span>
+                      <span>{day.date === todayIsoDate ? 'Today' : formatDate(day.date)}</span>
+                    </div>
+                    <div className={styles.dayKcal}>{day.target ? Math.round(day.target.kcal_target) : '—'} kcal</div>
+                    <div className={styles.dayRecommendation}>
+                      <span className={styles.dayRecommendationIcon} aria-hidden="true">
+                        {day.target?.day_type === 'training' ? <Dumbbell size={13} strokeWidth={2.2} /> : <MoonStar size={13} strokeWidth={2.2} />}
+                      </span>
+                      <span>{planTone.note}</span>
+                    </div>
+                    <div className={styles.dayMode}>{planTone.emphasis}</div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           <div className={styles.flowMetaGrid}>
             <section className={`surface-card ${styles.panel}`}>
@@ -2314,10 +2531,13 @@ export default function CutCoachPage() {
                                       ? styles.monthCellChallenge
                                       : styles.monthCellNeutral;
                         return (
-                          <div
+                          <button
+                            type="button"
                             className={`${styles.monthCell} ${tone} ${cell.isInChallenge ? styles.monthCellInChallenge : ''} ${cell.isChallengePast ? styles.monthCellPastChallenge : ''} ${cell.isChallengeCurrent ? styles.monthCellCurrentChallenge : ''} ${cell.isChallengeFuture ? styles.monthCellFutureChallenge : ''} ${cell.isToday ? styles.monthCellToday : ''} ${!cell.inMonth ? styles.monthCellMuted : ''}`}
                             id={cell.isToday ? 'calendar-today' : undefined}
                             key={cell.isoDate}
+                            onClick={() => openCalendarDay(cell.isoDate)}
+                            title={`Open ${formatFullDate(cell.isoDate)}`}
                           >
                             <div className={styles.monthCellTop}>
                               <span>{cell.label}</span>
@@ -2349,7 +2569,7 @@ export default function CutCoachPage() {
                                 <div className={styles.monthCellHint}>start</div>
                               ) : null}
                             </div>
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
