@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type WheelEvent as ReactWheelEvent } from 'react';
 import {
+  Dumbbell,
   ArrowUp,
   CalendarDays,
   CalendarRange,
   Flag,
   Flame,
+  MoonStar,
   Gauge,
   Goal,
   Scale,
@@ -2178,18 +2180,20 @@ export default function CutCoachPage() {
           {!collapsedSections.flow ? <>
           <div className={styles.flowRail}>
             {(data?.week ?? []).map((day) => (
-              <button className={`${styles.dayCard} ${toneForDay(day, todayIsoDate)}`} key={day.date} onClick={() => {
+              <button className={`${styles.dayCard} ${toneForDay(day, todayIsoDate)} ${day.date === todayIsoDate ? styles.dayCardToday : ''}`} key={day.date} onClick={() => {
                 setCheckin(fillCheckin(day.date, data));
                 setWeight(fillWeight(day.date, data));
               }} type="button">
                 <div className={styles.dayTop}>
                   <span>{shortDay(day.date)}</span>
-                  <span>{formatDate(day.date)}</span>
+                  <span>{day.date === todayIsoDate ? 'Today' : formatDate(day.date)}</span>
                 </div>
                 <div className={styles.dayKcal}>{day.target ? Math.round(day.target.kcal_target) : '—'} kcal</div>
-                <div className={styles.dayBottom}>
-                  <span>{day.caloriesSource === 'none' ? 'No log' : `${Math.round(day.consumed.calories)} logged`}</span>
-                  <span>{day.target?.day_type === 'training' ? 'training' : 'rest'}</span>
+                <div className={styles.dayRecommendation}>
+                  <span className={styles.dayRecommendationIcon} aria-hidden="true">
+                    {day.target?.day_type === 'training' ? <Dumbbell size={13} strokeWidth={2.2} /> : <MoonStar size={13} strokeWidth={2.2} />}
+                  </span>
+                  <span>{day.target?.day_type === 'training' ? 'Train day' : 'Rest day'}</span>
                 </div>
               </button>
             ))}
