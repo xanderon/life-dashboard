@@ -1719,6 +1719,7 @@ export default function CutCoachPage() {
     selectedTargetKcal != null && toNumber(checkin.kcal_actual) > 0
       ? Math.round(toNumber(checkin.kcal_actual) - selectedTargetKcal)
       : null;
+  const initialLoading = !data && busy === 'loading';
   const weightDraftDelta =
     latestKnownWeight != null && toNumber(weightDraft.weight_kg) > 0
       ? Math.round((toNumber(weightDraft.weight_kg) - latestKnownWeight) * 100) / 100
@@ -1839,6 +1840,51 @@ export default function CutCoachPage() {
           <BackLink href="/">← Back to dashboard</BackLink>
           <ThemeToggle />
         </section>
+
+        {initialLoading ? (
+          <>
+            <section className={`hero-card ${styles.hero} ${styles.loadingHero}`}>
+              <div className={styles.loadingMetaRow}>
+                <span className={styles.loadingPill} />
+                <span className={styles.loadingPillShort} />
+              </div>
+              <div className={styles.loadingStatsGrid}>
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div className={styles.loadingMetricCard} key={`loading-metric-${index}`}>
+                    <span className={styles.loadingLineShort} />
+                    <span className={styles.loadingLineMedium} />
+                    <span className={styles.loadingLineTiny} />
+                  </div>
+                ))}
+              </div>
+              <div className={styles.loadingHeroDeck}>
+                <div className={styles.loadingPanel}>
+                  <span className={styles.loadingLineShort} />
+                  <span className={styles.loadingLineWide} />
+                  <span className={styles.loadingBar} />
+                </div>
+                <div className={styles.loadingPanel}>
+                  <span className={styles.loadingLineShort} />
+                  <span className={styles.loadingChart} />
+                </div>
+              </div>
+            </section>
+
+            <section className={styles.loadingSectionGrid}>
+              <div className={`surface-card ${styles.panel} ${styles.loadingPanel}`}>
+                <span className={styles.loadingLineShort} />
+                <span className={styles.loadingCalendarBlock} />
+              </div>
+              <div className={`surface-card ${styles.panel} ${styles.loadingPanel}`}>
+                <span className={styles.loadingLineShort} />
+                <span className={styles.loadingListBlock} />
+              </div>
+            </section>
+          </>
+        ) : null}
+
+        {!initialLoading ? (
+          <>
 
         <section className={`hero-card ${styles.hero}`}>
           <div className={styles.heroIntro}>
@@ -1993,12 +2039,11 @@ export default function CutCoachPage() {
                   <span>Kcal today</span>
                   <div className={styles.kcalTargetLine}>
                     <strong>{selectedTargetKcal != null ? `${selectedTargetKcal} kcal target` : 'No target yet'}</strong>
-                    {kcalDraftDelta != null && kcalDraftDelta !== 0 ? (
-                      <em className={kcalDraftDelta < 0 ? styles.weightDeltaDown : styles.weightDeltaUp}>
-                        {kcalDraftDelta > 0 ? '+' : ''}
-                        {kcalDraftDelta} kcal
-                      </em>
-                    ) : null}
+                    <em
+                      className={`${kcalDraftDelta != null && kcalDraftDelta < 0 ? styles.weightDeltaDown : styles.weightDeltaUp} ${kcalDraftDelta == null || kcalDraftDelta === 0 ? styles.kcalDeltaHidden : ''}`}
+                    >
+                      {kcalDraftDelta != null && kcalDraftDelta !== 0 ? `${kcalDraftDelta > 0 ? '+' : ''}${kcalDraftDelta} kcal` : '+0 kcal'}
+                    </em>
                   </div>
                   <input
                     className={`${styles.featureInput} ${styles.kcalPrimaryInput}`}
@@ -2833,6 +2878,8 @@ export default function CutCoachPage() {
           >
             <ArrowUp size={18} strokeWidth={2.4} />
           </button>
+        ) : null}
+          </>
         ) : null}
       </div>
     </PageShell>

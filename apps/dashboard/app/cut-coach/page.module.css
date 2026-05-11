@@ -79,6 +79,142 @@
   padding-inline: 0.95rem;
 }
 
+.loadingHero {
+  overflow: hidden;
+}
+
+.loadingMetaRow,
+.loadingStatsGrid,
+.loadingHeroDeck,
+.loadingSectionGrid {
+  display: grid;
+}
+
+.loadingMetaRow {
+  grid-auto-flow: column;
+  justify-content: start;
+  gap: 0.7rem;
+}
+
+.loadingStatsGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-top: 0.95rem;
+}
+
+.loadingHeroDeck {
+  gap: 0.85rem;
+  margin-top: 0.95rem;
+}
+
+.loadingSectionGrid {
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.loadingMetricCard,
+.loadingPanel {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.loadingMetricCard {
+  padding: 0.8rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 1.1rem;
+  background: color-mix(in srgb, var(--panel-2) 78%, transparent);
+}
+
+.loadingPill,
+.loadingPillShort,
+.loadingLineShort,
+.loadingLineMedium,
+.loadingLineWide,
+.loadingLineTiny,
+.loadingBar,
+.loadingChart,
+.loadingCalendarBlock,
+.loadingListBlock {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-2) 86%, transparent);
+}
+
+.loadingPill::after,
+.loadingPillShort::after,
+.loadingLineShort::after,
+.loadingLineMedium::after,
+.loadingLineWide::after,
+.loadingLineTiny::after,
+.loadingBar::after,
+.loadingChart::after,
+.loadingCalendarBlock::after,
+.loadingListBlock::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface-highlight) 24%, transparent), transparent);
+  animation: cut-coach-shimmer 1.4s ease-in-out infinite;
+}
+
+.loadingPill {
+  width: 8.4rem;
+  height: 0.9rem;
+}
+
+.loadingPillShort {
+  width: 6rem;
+  height: 0.9rem;
+}
+
+.loadingLineShort {
+  width: 5.4rem;
+  height: 0.72rem;
+}
+
+.loadingLineMedium {
+  width: 7.8rem;
+  height: 1.15rem;
+}
+
+.loadingLineWide {
+  width: min(22rem, 72%);
+  height: 1.25rem;
+}
+
+.loadingLineTiny {
+  width: 4.2rem;
+  height: 0.66rem;
+}
+
+.loadingBar {
+  width: 100%;
+  height: 0.8rem;
+}
+
+.loadingChart {
+  width: 100%;
+  height: 12rem;
+  border-radius: 1.1rem;
+}
+
+.loadingCalendarBlock,
+.loadingListBlock {
+  width: 100%;
+  border-radius: 1.15rem;
+}
+
+.loadingCalendarBlock {
+  height: 22rem;
+}
+
+.loadingListBlock {
+  height: 12rem;
+}
+
 .backToTopButton {
   position: fixed;
   right: clamp(0.8rem, 2vw, 1.45rem);
@@ -2755,11 +2891,11 @@
 }
 
 .kcalTargetLine {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
-  justify-content: space-between;
   gap: 0.75rem;
-  flex-wrap: wrap;
+  min-height: 1.4rem;
 }
 
 .kcalTargetLine strong {
@@ -2768,6 +2904,19 @@
   font-weight: 800;
   letter-spacing: 0.01em;
   text-transform: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.kcalTargetLine em {
+  min-width: 5.75rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.kcalDeltaHidden {
+  visibility: hidden;
 }
 
 .kcalPrimaryInput {
@@ -2777,6 +2926,7 @@
   font-weight: 900 !important;
   letter-spacing: -0.08em !important;
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .kcalDialArea {
@@ -2938,7 +3088,17 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
+  .loadingStatsGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .heroDeck {
+    grid-template-columns: 0.9fr 1.1fr;
+    align-items: stretch;
+  }
+
+  .loadingHeroDeck,
+  .loadingSectionGrid {
     grid-template-columns: 0.9fr 1.1fr;
     align-items: stretch;
   }
@@ -3082,6 +3242,12 @@
     justify-content: center;
   }
 
+  .loadingStatsGrid,
+  .loadingHeroDeck,
+  .loadingSectionGrid {
+    grid-template-columns: 1fr;
+  }
+
   .calendarLegend {
     gap: 0.55rem 0.75rem;
     font-size: 0.66rem;
@@ -3171,6 +3337,16 @@
     left: 0.3rem;
     right: 0.3rem;
     bottom: 0.24rem;
+  }
+
+  .kcalTargetLine {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+
+  .kcalTargetLine em {
+    min-width: 0;
+    text-align: left;
   }
 
   .backToTopButton {
@@ -3370,6 +3546,12 @@
     box-shadow:
       inset 0 0 0 1px color-mix(in srgb, #ffe4b1 34%, transparent),
       inset 0 0 0 999px color-mix(in srgb, #e0a84c 7%, transparent);
+  }
+}
+
+@keyframes cut-coach-shimmer {
+  100% {
+    transform: translateX(100%);
   }
 }
 
