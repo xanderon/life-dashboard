@@ -2853,11 +2853,11 @@ export default function CutCoachPage() {
               <div className={styles.formGrid}>
                 <label className={styles.field}>
                   <span>Current kg</span>
-                  <input className={styles.featureInput} inputMode="decimal" value={setup.initial_weight_kg} onChange={(event) => setSetup((current) => ({ ...current, initial_weight_kg: event.target.value }))} placeholder="e.g. 89.8" />
+                  <input className={styles.featureInput} type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" value={setup.initial_weight_kg} onChange={(event) => setSetup((current) => ({ ...current, initial_weight_kg: event.target.value }))} placeholder="e.g. 89.8" />
                 </label>
                 <label className={styles.field}>
                   <span>Age</span>
-                  <input value={setup.age} onChange={(event) => setSetup((current) => ({ ...current, age: event.target.value }))} inputMode="numeric" />
+                  <input type="text" value={setup.age} onChange={(event) => setSetup((current) => ({ ...current, age: event.target.value }))} inputMode="numeric" pattern="[0-9]*" />
                 </label>
                 <label className={styles.field}>
                   <span>Sex</span>
@@ -2868,7 +2868,7 @@ export default function CutCoachPage() {
                 </label>
                 <label className={styles.field}>
                   <span>Height cm</span>
-                  <input value={setup.height_cm} onChange={(event) => setSetup((current) => ({ ...current, height_cm: event.target.value }))} inputMode="decimal" />
+                  <input type="text" value={setup.height_cm} onChange={(event) => setSetup((current) => ({ ...current, height_cm: event.target.value }))} inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" />
                 </label>
                 <label className={styles.field}>
                   <span>Activity</span>
@@ -2972,19 +2972,19 @@ export default function CutCoachPage() {
                 <div className={styles.formGrid}>
                   <label className={styles.field}>
                     <span>Protein / kg</span>
-                    <input value={setup.protein_target_per_kg} onChange={(event) => setSetup((current) => ({ ...current, protein_target_per_kg: event.target.value }))} inputMode="decimal" />
+                    <input type="text" value={setup.protein_target_per_kg} onChange={(event) => setSetup((current) => ({ ...current, protein_target_per_kg: event.target.value }))} inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" />
                   </label>
                   <label className={styles.field}>
                     <span>Fat min / kg</span>
-                    <input value={setup.fat_min_per_kg} onChange={(event) => setSetup((current) => ({ ...current, fat_min_per_kg: event.target.value }))} inputMode="decimal" />
+                    <input type="text" value={setup.fat_min_per_kg} onChange={(event) => setSetup((current) => ({ ...current, fat_min_per_kg: event.target.value }))} inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" />
                   </label>
                   <label className={styles.field}>
                     <span>Meals / day</span>
-                    <input value={setup.meals_per_day} onChange={(event) => setSetup((current) => ({ ...current, meals_per_day: event.target.value }))} inputMode="numeric" />
+                    <input type="text" value={setup.meals_per_day} onChange={(event) => setSetup((current) => ({ ...current, meals_per_day: event.target.value }))} inputMode="numeric" pattern="[0-9]*" />
                   </label>
                   <label className={styles.field}>
                     <span>Training delta kcal</span>
-                    <input value={setup.training_day_kcal_delta} onChange={(event) => setSetup((current) => ({ ...current, training_day_kcal_delta: event.target.value }))} inputMode="numeric" />
+                    <input type="text" value={setup.training_day_kcal_delta} onChange={(event) => setSetup((current) => ({ ...current, training_day_kcal_delta: event.target.value }))} inputMode="numeric" pattern="[0-9]*" />
                   </label>
                 </div>
               </details>
@@ -3034,7 +3034,7 @@ export default function CutCoachPage() {
                 </label>
                 <label className={styles.field}>
                   <span>Goal kg</span>
-                  <input value={challenge.target_weight_kg} onChange={(event) => setChallenge((current) => ({ ...current, target_weight_kg: event.target.value }))} placeholder="optional" />
+                  <input type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" value={challenge.target_weight_kg} onChange={(event) => setChallenge((current) => ({ ...current, target_weight_kg: event.target.value }))} placeholder="optional" />
                 </label>
               </div>
               <label className={`${styles.field} ${styles.fieldFull}`}>
