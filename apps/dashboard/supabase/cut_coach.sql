@@ -308,3 +308,14 @@ for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists cut_coach_reminders_rw on public.cut_coach_reminders;
 create policy cut_coach_reminders_rw on public.cut_coach_reminders
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+grant select, insert, update, delete on public.cut_coach_profiles to authenticated, service_role;
+grant select, insert, update, delete on public.cut_coach_foods to authenticated, service_role;
+grant select, insert, update, delete on public.cut_coach_food_logs to authenticated, service_role;
+grant select, insert, update, delete on public.cut_coach_body_metrics to authenticated, service_role;
+grant select, insert, update, delete on public.cut_coach_daily_targets to authenticated, service_role;
+grant select, insert, update, delete on public.cut_coach_daily_plan_items to authenticated, service_role;
+grant select, insert, update, delete on public.cut_coach_plan_adjustments to authenticated, service_role;
+grant select, insert, update, delete on public.cut_coach_daily_checkins to authenticated, service_role;
+grant select, insert, update, delete on public.cut_coach_challenges to authenticated, service_role;
+grant select, insert, update, delete on public.cut_coach_reminders to authenticated, service_role;

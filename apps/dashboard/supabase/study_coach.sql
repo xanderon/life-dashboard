@@ -63,3 +63,8 @@ create policy study_sessions_rw on public.study_sessions for all using (true) wi
 
 drop policy if exists study_gap_cards_rw on public.study_gap_cards;
 create policy study_gap_cards_rw on public.study_gap_cards for all using (true) with check (true);
+
+grant select, insert, update, delete on public.study_topics to anon, authenticated, service_role;
+grant select, insert, update, delete on public.study_days to anon, authenticated, service_role;
+grant select, insert, update, delete on public.study_sessions to anon, authenticated, service_role;
+grant select, insert, update, delete on public.study_gap_cards to anon, authenticated, service_role;

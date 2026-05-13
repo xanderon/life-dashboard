@@ -106,3 +106,13 @@ create policy "sprintpulse_instances_read" on public.sprintpulse_sprint_task_ins
   for select using (true);
 create policy "sprintpulse_adhoc_read" on public.sprintpulse_adhoc_tasks
   for select using (true);
+
+grant select on public.sprintpulse_sprints to anon, authenticated;
+grant select on public.sprintpulse_task_templates to anon, authenticated;
+grant select on public.sprintpulse_sprint_task_instances to anon, authenticated;
+grant select on public.sprintpulse_adhoc_tasks to anon, authenticated;
+
+grant select, insert, update, delete on public.sprintpulse_sprints to service_role;
+grant select, insert, update, delete on public.sprintpulse_task_templates to service_role;
+grant select, insert, update, delete on public.sprintpulse_sprint_task_instances to service_role;
+grant select, insert, update, delete on public.sprintpulse_adhoc_tasks to service_role;

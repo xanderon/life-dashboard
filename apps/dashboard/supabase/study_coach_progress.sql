@@ -41,3 +41,5 @@ create policy study_concept_progress_rw
   for all
   using (true)
   with check (true);
+
+grant select, insert, update, delete on public.study_concept_progress to anon, authenticated, service_role;

@@ -23,3 +23,6 @@ alter table public.termo_status_periods enable row level security;
 drop policy if exists termo_status_periods_read on public.termo_status_periods;
 create policy termo_status_periods_read on public.termo_status_periods
   for select using (true);
+
+grant select on public.termo_status_periods to authenticated;
+grant select, insert, update, delete on public.termo_status_periods to service_role;

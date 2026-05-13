@@ -35,3 +35,17 @@ for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 drop policy if exists receipt_items_rw on public.receipt_items;
 create policy receipt_items_rw on public.receipt_items
 for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+grant select on public.apps to authenticated;
+grant select on public.app_runs to authenticated;
+grant select on public.devices to authenticated;
+grant select, insert, update, delete on public.push_subscriptions to authenticated;
+grant select, insert, update, delete on public.receipts to authenticated;
+grant select, insert, update, delete on public.receipt_items to authenticated;
+
+grant select, insert, update, delete on public.apps to service_role;
+grant select, insert, update, delete on public.app_runs to service_role;
+grant select, insert, update, delete on public.devices to service_role;
+grant select, insert, update, delete on public.push_subscriptions to service_role;
+grant select, insert, update, delete on public.receipts to service_role;
+grant select, insert, update, delete on public.receipt_items to service_role;

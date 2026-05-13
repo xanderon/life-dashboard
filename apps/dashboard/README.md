@@ -133,6 +133,14 @@ create policy "apps_read" on public.apps
 
 create policy "app_runs_read" on public.app_runs
   for select using (true);
+
+grant select on public.apps to authenticated;
+grant select on public.app_runs to authenticated;
+grant select on public.termo_status_periods to authenticated;
+
+grant select, insert, update, delete on public.apps to service_role;
+grant select, insert, update, delete on public.app_runs to service_role;
+grant select, insert, update, delete on public.termo_status_periods to service_role;
 ```
 
 ### Rulare manuala (Mac)
@@ -182,6 +190,9 @@ create table if not exists public.push_subscriptions (
   updated_at timestamptz not null default now(),
   last_seen_at timestamptz
 );
+
+grant select, insert, update, delete on public.push_subscriptions to authenticated;
+grant select, insert, update, delete on public.push_subscriptions to service_role;
 ```
 
 Env vars (pe mac pentru script + pe dashboard pentru API):
@@ -277,6 +288,9 @@ Optional (RLS read-only):
 alter table public.devices enable row level security;
 create policy "devices_read" on public.devices
   for select using (true);
+
+grant select on public.devices to anon, authenticated;
+grant select, insert, update, delete on public.devices to service_role;
 ```
 
 Daca ai creat deja tabela, adauga coloana user_name:

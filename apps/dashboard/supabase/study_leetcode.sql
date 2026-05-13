@@ -50,3 +50,5 @@ create policy study_leetcode_entries_rw
   for all
   using (true)
   with check (true);
+
+grant select, insert, update, delete on public.study_leetcode_entries to anon, authenticated, service_role;

@@ -196,6 +196,12 @@ create policy "receipts_rw" on public.receipts
 
 create policy "receipt_items_rw" on public.receipt_items
   for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+grant select, insert, update, delete on public.receipts to authenticated;
+grant select, insert, update, delete on public.receipt_items to authenticated;
+
+grant select, insert, update, delete on public.receipts to service_role;
+grant select, insert, update, delete on public.receipt_items to service_role;
 ```
 
 ### Dashboard viewer
