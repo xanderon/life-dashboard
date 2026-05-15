@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import {
+  addDays,
   getCheckins,
   getDailySummary,
+  getWeekSnapshot,
   recomputePlan,
   toNumber,
   todayIsoDate,
@@ -83,11 +85,14 @@ export async function POST(req: Request) {
     }
 
     await recomputePlan(supabase, user.id, 'food-log-update');
-    const [summary, checkins] = await Promise.all([
+    const [summary, today, tomorrow, week, checkins] = await Promise.all([
       getDailySummary(supabase, user.id, date),
+      getDailySummary(supabase, user.id, todayIsoDate()),
+      getDailySummary(supabase, user.id, addDays(todayIsoDate(), 1)),
+      getWeekSnapshot(supabase, user.id, todayIsoDate()),
       getCheckins(supabase, user.id, 90),
     ]);
-    return NextResponse.json({ summary, checkins });
+    return NextResponse.json({ summary, today, tomorrow, week, checkins });
   } catch (error) {
     const message = getErrorMessage(error);
     return jsonError(message, message === 'Unauthorized' ? 401 : 500);

@@ -4,10 +4,9 @@ import {
   getCheckins,
   getChallenges,
   getDailySummary,
+  ensureCurrentWeekPlan,
   getProfile,
-  getReminderSettings,
   getWeights,
-  recomputePlan,
   todayIsoDate,
 } from '@/lib/cutCoach';
 import { withCutCoachUser } from '@/lib/cutCoachRoute';
@@ -15,17 +14,14 @@ import { withCutCoachUser } from '@/lib/cutCoachRoute';
 export async function GET() {
   return withCutCoachUser(async ({ userId, supabase }) => {
     const profile = await getProfile(supabase, userId);
-    if (profile) {
-      await recomputePlan(supabase, userId, 'bootstrap-refresh');
-    }
+    await ensureCurrentWeekPlan(supabase, userId, profile);
 
-    const [today, tomorrow, weights, checkins, challenges, reminders] = await Promise.all([
+    const [today, tomorrow, weights, checkins, challenges] = await Promise.all([
       getDailySummary(supabase, userId, todayIsoDate()),
       getDailySummary(supabase, userId, addDays(todayIsoDate(), 1)),
       getWeights(supabase, userId, 30),
       getCheckins(supabase, userId, 60),
       getChallenges(supabase, userId, 12),
-      getReminderSettings(supabase, userId),
     ]);
 
     return {
@@ -37,7 +33,7 @@ export async function GET() {
       weights,
       checkins,
       challenges,
-      reminders,
+      reminders: [],
       trends: buildTrendSummary(weights),
     };
   });

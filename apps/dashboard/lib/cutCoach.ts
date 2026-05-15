@@ -231,7 +231,6 @@ type PlannerContext = {
   latestWeight: number;
   recentWeights: CutCoachWeightRow[];
   upcomingDates: string[];
-  recentLogs: CutCoachFoodLogRow[];
   todaySummary: DailySummary | null;
   favoriteFoods: CutCoachFoodRow[];
 };
@@ -1000,10 +999,8 @@ export async function recomputePlan(client: SupabaseClient, userId: string, reas
 
   const today = todayIsoDate();
   const upcomingDates = enumerateDates(today, 7);
-  const recentStart = addDays(today, -13);
-  const [recentWeights, recentLogs, todaySummary, favoriteFoods] = await Promise.all([
+  const [recentWeights, todaySummary, favoriteFoods] = await Promise.all([
     getWeights(client, userId, 20),
-    getLogsForDateRange(client, userId, recentStart, today),
     getDailySummary(client, userId, today),
     getFavoriteFoods(client, userId, 10),
   ]);
@@ -1013,7 +1010,6 @@ export async function recomputePlan(client: SupabaseClient, userId: string, reas
     latestWeight: latestWeightRow.weight_kg,
     recentWeights,
     upcomingDates,
-    recentLogs,
     todaySummary,
     favoriteFoods,
   };
@@ -1085,6 +1081,24 @@ export async function recomputePlan(client: SupabaseClient, userId: string, reas
   }
 
   return { ok: true as const, targets };
+}
+
+export async function ensureCurrentWeekPlan(
+  client: SupabaseClient,
+  userId: string,
+  profile: CutCoachProfileRow | null,
+  startDate = todayIsoDate()
+) {
+  if (!profile) {
+    return { ok: false as const, reason: 'missing-profile' };
+  }
+
+  const existingTargets = await getTargetsForDateRange(client, userId, startDate, addDays(startDate, 6));
+  if (existingTargets.length >= 7) {
+    return { ok: true as const, reason: 'already-current' };
+  }
+
+  return recomputePlan(client, userId, 'bootstrap-refresh');
 }
 
 export async function getWeekSnapshot(client: SupabaseClient, userId: string, startDate = todayIsoDate()) {

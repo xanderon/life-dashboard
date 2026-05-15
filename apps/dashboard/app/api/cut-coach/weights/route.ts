@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { buildTrendSummary, getWeights, recomputePlan, toNumber } from '@/lib/cutCoach';
+import { addDays, buildTrendSummary, getDailySummary, getWeekSnapshot, getWeights, recomputePlan, toNumber, todayIsoDate } from '@/lib/cutCoach';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
 import { jsonError, withCutCoachUser } from '@/lib/cutCoachRoute';
 
@@ -38,8 +38,13 @@ export async function POST(req: Request) {
     if (error) throw error;
 
     await recomputePlan(supabase, user.id, 'weight-update');
-    const weights = await getWeights(supabase, user.id, 60);
-    return NextResponse.json({ weights, trends: buildTrendSummary(weights) });
+    const [weights, today, tomorrow, week] = await Promise.all([
+      getWeights(supabase, user.id, 60),
+      getDailySummary(supabase, user.id, todayIsoDate()),
+      getDailySummary(supabase, user.id, addDays(todayIsoDate(), 1)),
+      getWeekSnapshot(supabase, user.id, todayIsoDate()),
+    ]);
+    return NextResponse.json({ weights, trends: buildTrendSummary(weights), today, tomorrow, week });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unexpected error';
     return jsonError(message, message === 'Unauthorized' ? 401 : 500);

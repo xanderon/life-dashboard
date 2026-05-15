@@ -1,8 +1,13 @@
-import { getWeekSnapshot, todayIsoDate } from '@/lib/cutCoach';
+import { getReminderSettings, getWeekSnapshot, todayIsoDate } from '@/lib/cutCoach';
 import { withCutCoachUser } from '@/lib/cutCoachRoute';
 
 export async function GET() {
-  return withCutCoachUser(async ({ userId, supabase }) => ({
-    week: await getWeekSnapshot(supabase, userId, todayIsoDate()),
-  }));
+  return withCutCoachUser(async ({ userId, supabase }) => {
+    const [week, reminders] = await Promise.all([
+      getWeekSnapshot(supabase, userId, todayIsoDate()),
+      getReminderSettings(supabase, userId),
+    ]);
+
+    return { week, reminders };
+  });
 }

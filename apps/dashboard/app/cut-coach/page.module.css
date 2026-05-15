@@ -23,6 +23,10 @@
   padding: 0 1rem;
 }
 
+.mobileTopbarFooter {
+  display: none;
+}
+
 .hero {
   margin: 0;
   border-radius: 0;
@@ -3908,25 +3912,20 @@
   }
 
   .topbar {
-    position: fixed;
-    left: 0.75rem;
-    right: 0.75rem;
-    bottom: calc(5.35rem + env(safe-area-inset-bottom, 0px));
-    z-index: 34;
+    display: none;
+  }
+
+  .mobileTopbarFooter {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    padding: 0.55rem;
-    border-radius: 1.2rem;
-    border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
-    background: color-mix(in srgb, var(--panel-strong) 88%, transparent);
-    backdrop-filter: blur(18px);
-    box-shadow: 0 1.4rem 2.8rem -2rem rgba(0, 0, 0, 0.65);
+    gap: 0.7rem;
+    padding: 0.2rem 0.1rem 0;
   }
 
   .page {
     gap: 0.85rem;
-    padding-bottom: 10.9rem;
+    padding-bottom: 5.75rem;
   }
 
   .todayBoard {
@@ -4044,7 +4043,7 @@
     width: 3rem;
     height: 3rem;
     right: 0.8rem;
-    bottom: calc(10.35rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(5.9rem + env(safe-area-inset-bottom, 0px));
   }
 
   .formGrid,
@@ -4136,8 +4135,8 @@
     display: none;
   }
 
-  .topbar :global(a),
-  .topbar :global(button) {
+  .mobileTopbarFooter :global(a),
+  .mobileTopbarFooter :global(button) {
     min-height: 3.2rem;
   }
 

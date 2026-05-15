@@ -2,11 +2,11 @@ import {
   getDailySummary,
   getCheckins,
   getChallenges,
+  ensureCurrentWeekPlan,
   getProfile,
   getReminderSettings,
   getWeights,
   getWeekSnapshot,
-  recomputePlan,
   todayIsoDate,
   addDays,
   buildTrendSummary,
@@ -16,9 +16,7 @@ import { withCutCoachUser } from '@/lib/cutCoachRoute';
 export async function GET() {
   return withCutCoachUser(async ({ userId, supabase }) => {
     const profile = await getProfile(supabase, userId);
-    if (profile) {
-      await recomputePlan(supabase, userId, 'bootstrap-refresh');
-    }
+    await ensureCurrentWeekPlan(supabase, userId, profile);
 
     const [today, tomorrow, week, weights, checkins, challenges, reminders] =
       await Promise.all([

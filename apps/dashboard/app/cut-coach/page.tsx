@@ -142,6 +142,27 @@ type DragOrigin = { kind: 'equipped'; slot: string } | { kind: 'stash'; index: n
 type SelectedItem = DragOrigin;
 type BootstrapDetailPayload = {
   week: DailySummary[];
+  reminders: CutCoachReminderRow[];
+};
+
+type CheckinMutationPayload = {
+  summary: DailySummary;
+  today: DailySummary;
+  tomorrow: DailySummary;
+  week: DailySummary[];
+  checkins: CutCoachDailyCheckinRow[];
+};
+
+type WeightMutationPayload = {
+  weights: CutCoachWeightRow[];
+  trends: BootstrapPayload['trends'];
+  today: DailySummary;
+  tomorrow: DailySummary;
+  week: DailySummary[];
+};
+
+type ReminderMutationPayload = {
+  reminders: CutCoachReminderRow[];
 };
 
 type CharacterItem = {
@@ -1355,8 +1376,10 @@ export default function CutCoachPage() {
       return {
         ...current,
         week: payload.week,
+        reminders: payload.reminders,
       };
     });
+    setReminders(defaultReminderDrafts(payload.reminders));
   }
 
   async function loadBootstrap(options?: { silent?: boolean }) {
@@ -1442,7 +1465,15 @@ export default function CutCoachPage() {
     return () => window.clearTimeout(timer);
   }, [rewardToast]);
 
-  async function postJson(url: string, body: unknown, successMessage: string) {
+  async function postJson<T>(
+    url: string,
+    body: unknown,
+    successMessage: string,
+    options?: {
+      reload?: 'full' | 'none';
+      apply?: (payload: T) => void | Promise<void>;
+    }
+  ) {
     setBusy(url);
     setError(null);
     setNotice(null);
@@ -1451,7 +1482,7 @@ export default function CutCoachPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    const payload = (await res.json().catch(() => ({}))) as T & { error?: string };
     if (!res.ok) {
       setError(payload.error ?? 'Request failed.');
       setBusy(null);
@@ -1459,7 +1490,11 @@ export default function CutCoachPage() {
     }
     setNotice(successMessage);
     setRewardToast(buildReward(url));
-    await loadBootstrap({ silent: true });
+    if (options?.apply) {
+      await options.apply(payload);
+    } else if (options?.reload !== 'none') {
+      await loadBootstrap({ silent: true });
+    }
     setBusy(null);
     return true;
   }
@@ -1489,13 +1524,28 @@ export default function CutCoachPage() {
   }
 
   async function persistCheckin(nextCheckin: CheckinState, successMessage: string, copiedFromPrevious = false) {
-    const ok = await postJson(
+    const ok = await postJson<CheckinMutationPayload>(
       '/api/cut-coach/checkins',
       {
         ...nextCheckin,
         copied_from_previous: copiedFromPrevious,
       },
-      successMessage
+      successMessage,
+      {
+        reload: 'none',
+        apply: async (payload) => {
+          setData((current) => {
+            if (!current) return current;
+            return {
+              ...current,
+              today: payload.today,
+              tomorrow: payload.tomorrow,
+              week: payload.week,
+              checkins: payload.checkins,
+            };
+          });
+        },
+      }
     );
     return ok;
   }
@@ -1512,13 +1562,28 @@ export default function CutCoachPage() {
 
   async function saveActivityDraft() {
     const existing = fillCheckin(activityDraft.date, data);
-    const ok = await postJson(
+    const ok = await postJson<CheckinMutationPayload>(
       '/api/cut-coach/checkins',
       {
         ...existing,
         ...activityDraft,
       },
-      'Activity saved.'
+      'Activity saved.',
+      {
+        reload: 'none',
+        apply: async (payload) => {
+          setData((current) => {
+            if (!current) return current;
+            return {
+              ...current,
+              today: payload.today,
+              tomorrow: payload.tomorrow,
+              week: payload.week,
+              checkins: payload.checkins,
+            };
+          });
+        },
+      }
     );
     if (ok) {
       setActivityModalOpen(false);
@@ -1531,7 +1596,22 @@ export default function CutCoachPage() {
       setNotice('Add a valid weight first.');
       return false;
     }
-    return await postJson('/api/cut-coach/weights', nextWeight, successMessage);
+    return await postJson<WeightMutationPayload>('/api/cut-coach/weights', nextWeight, successMessage, {
+      reload: 'none',
+      apply: async (payload) => {
+        setData((current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            today: payload.today,
+            tomorrow: payload.tomorrow,
+            week: payload.week,
+            weights: payload.weights,
+            trends: payload.trends,
+          };
+        });
+      },
+    });
   }
 
   async function saveWeightDraft() {
@@ -1603,7 +1683,19 @@ export default function CutCoachPage() {
   }
 
   async function saveReminders() {
-    const ok = await postJson('/api/cut-coach/reminders', { reminders }, 'Reminders saved.');
+    const ok = await postJson<ReminderMutationPayload>('/api/cut-coach/reminders', { reminders }, 'Reminders saved.', {
+      reload: 'none',
+      apply: async (payload) => {
+        setData((current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            reminders: payload.reminders,
+          };
+        });
+        setReminders(defaultReminderDrafts(payload.reminders));
+      },
+    });
     if (ok) setSetupComposer(null);
     return ok;
   }
@@ -3165,6 +3257,11 @@ export default function CutCoachPage() {
             </section> : null}
           </div>
           </> : null}
+        </section>
+
+        <section className={styles.mobileTopbarFooter}>
+          <BackLink href="/">← Back to dashboard</BackLink>
+          <ThemeToggle />
         </section>
 
         <div className={styles.mobileActionDock} aria-label="Quick actions">
