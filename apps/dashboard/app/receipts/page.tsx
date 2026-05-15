@@ -589,7 +589,21 @@ export default function ReceiptsPage() {
   );
   const isDeleteItemsAckValid =
     !pendingDeletedItems.length || deleteItemsAckSignature === pendingDeletedItemsSignature;
-  const canUseSaveShortcut = Boolean(selected) && !saving;
+  const editorHasUnsavedChanges = useMemo(() => {
+    if (!selected) return false;
+    return (
+      normalizeReceiptForDirtyCheck(selected) !== editorBaselineReceiptRef.current ||
+      normalizeItemsForDirtyCheck(items) !== editorBaselineItemsRef.current
+    );
+  }, [selected, items]);
+  const canSaveEditor = Boolean(selected) && !saving && isDeleteItemsAckValid && editorHasUnsavedChanges;
+  const canUseSaveShortcut = canSaveEditor;
+  const saveButtonTitle = !isDeleteItemsAckValid
+    ? 'Confirmă mai întâi itemele care vor fi șterse definitiv'
+    : !editorHasUnsavedChanges
+      ? 'Nu există modificări de salvat'
+      : undefined;
+  const saveButtonLabel = saving ? 'Se salvează…' : editorHasUnsavedChanges ? 'Save' : 'Saved';
   saveChangesRef.current = saveChanges;
   selectedRef.current = selected;
   showJsonImportRef.current = showJsonImport;
@@ -1240,7 +1254,7 @@ export default function ReceiptsPage() {
   }, [selectedId]);
 
   async function saveChanges() {
-    if (!selected) return;
+    if (!selected || savingRef.current || !hasUnsavedEditorChanges()) return;
     setSaving(true);
     setErr(null);
     setSuccess(null);
@@ -1899,15 +1913,11 @@ export default function ReceiptsPage() {
                   </button>
                   <button
                     className="hidden rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50 lg:inline-flex"
-                    disabled={!selected || saving || !isDeleteItemsAckValid}
+                    disabled={!canSaveEditor}
                     onClick={saveChanges}
-                    title={
-                      !isDeleteItemsAckValid
-                        ? 'Confirmă mai întâi itemele care vor fi șterse definitiv'
-                        : undefined
-                    }
+                    title={saveButtonTitle}
                 >
-                  {saving ? 'Se salvează…' : 'Save'}
+                  {saveButtonLabel}
                 </button>
                 <span className="hidden text-xs text-[var(--muted)] lg:inline">
                   Ctrl/Cmd+S
@@ -2006,16 +2016,12 @@ export default function ReceiptsPage() {
                 <div className="mt-3 flex flex-col gap-2">
                   <button
                     className="btn-base btn-primary min-h-12 w-full text-base disabled:opacity-50"
-                    disabled={!selected || saving || !isDeleteItemsAckValid}
+                    disabled={!canSaveEditor}
                     onClick={saveChanges}
-                    title={
-                      !isDeleteItemsAckValid
-                        ? 'Confirmă mai întâi itemele care vor fi șterse definitiv'
-                        : undefined
-                    }
+                    title={saveButtonTitle}
                     type="button"
                   >
-                    {saving ? 'Se salvează…' : 'Save'}
+                    {saveButtonLabel}
                   </button>
                   <button
                     className="btn-base btn-secondary min-h-11 w-full disabled:opacity-50"
