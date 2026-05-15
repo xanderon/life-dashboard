@@ -2,30 +2,19 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type WheelEvent as ReactWheelEvent } from 'react';
 import {
+  CheckCircle2,
+  CircleAlert,
   Dumbbell,
   ArrowUp,
-  CalendarDays,
-  CalendarRange,
   Flag,
-  Flame,
   MoonStar,
-  Gauge,
   Goal,
   Scale,
-  Settings2,
+  Smartphone,
   Sparkles,
   UtensilsCrossed,
   Weight,
 } from 'lucide-react';
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { BackLink, PageShell } from '@/components/PageShell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import {
@@ -44,6 +33,7 @@ import {
 import styles from './page.module.css';
 
 const APP_SLUG = 'cut-coach';
+const SHOW_CHARACTER_LAYER = false;
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const PACE_PRESETS = [
@@ -326,6 +316,23 @@ function reminderTitle(kind: CutCoachReminderRow['kind']) {
   }
 }
 
+function reminderDescription(kind: CutCoachReminderRow['kind']) {
+  switch (kind) {
+    case 'weigh_in':
+      return 'A short morning prompt so the trend stays reliable.';
+    case 'kcal_log':
+      return 'One evening nudge to close the day with a clean total.';
+    case 'weekend_measure':
+      return 'Low-frequency body measurements for better context.';
+    case 'over_target_recovery':
+      return 'A softer reset when the previous day drifted high.';
+    case 'milestone':
+      return 'Celebrate meaningful checkpoints without spamming.';
+    default:
+      return 'A focused reminder tied to one action.';
+  }
+}
+
 function formatDate(isoDate: string, options?: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat('en-GB', {
     day: 'numeric',
@@ -518,18 +525,6 @@ function buildChallengeStats(challenge: CutCoachChallengeRow | null, payload: Bo
     underTargetDays,
     checkinDays: challengeCheckins.filter((item) => item.kcal_actual != null).length,
   };
-}
-
-function buildWeightChartData(payload: BootstrapPayload | null) {
-  if (!payload) return [];
-  return [...payload.weights]
-    .sort((left, right) => left.date.localeCompare(right.date))
-    .slice(-14)
-    .map((item) => ({
-      date: formatDate(item.date, { day: 'numeric', month: 'short' }),
-      weight: item.weight_kg,
-      waist: item.waist_cm,
-    }));
 }
 
 function buildXp(payload: BootstrapPayload | null) {
@@ -781,6 +776,26 @@ function buildAchievements(
   });
 }
 
+function buildCheckinStreak(checkins: CutCoachDailyCheckinRow[], todayIsoDate: string) {
+  const loggedDays = checkins
+    .filter((item) => item.kcal_actual != null)
+    .map((item) => item.date)
+    .sort((left, right) => right.localeCompare(left));
+
+  if (!loggedDays.length) return 0;
+
+  let expected = loggedDays[0];
+  if (expected !== todayIsoDate && expected !== addDays(todayIsoDate, -1)) return 0;
+
+  let streak = 0;
+  for (const date of loggedDays) {
+    if (date !== expected) break;
+    streak += 1;
+    expected = addDays(expected, -1);
+  }
+  return streak;
+}
+
 const SLOT_LIBRARY: Record<string, string[]> = {
   helm: ['Morning Weigh Circlet', 'Cold Iron Hood', 'Discipline Visor', 'Skull of Routine'],
   chest: ['Deficit Carapace', 'Ledger Plate', 'Fasting Harness', 'Quiet Bulkmail'],
@@ -1021,10 +1036,6 @@ function seedWeightEntry(date: string, payload: BootstrapPayload | null): Weight
   };
 }
 
-function weekdaySummary(days: number[]) {
-  return days.map((day) => WEEKDAY_LABELS[day] ?? '?').join(' • ');
-}
-
 function phaseLabel(progress: number) {
   if (progress < 0.2) return 'Ignition';
   if (progress < 0.55) return 'Rhythm';
@@ -1177,7 +1188,7 @@ export default function CutCoachPage() {
     today: false,
     flow: false,
     calendar: true,
-    progress: true,
+    progress: false,
     settings: false,
   });
   const [setupComposer, setSetupComposer] = useState<SetupComposer>(null);
@@ -1185,7 +1196,7 @@ export default function CutCoachPage() {
   const [draggedItem, setDraggedItem] = useState<DragOrigin>(null);
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [characterCollapsed, setCharacterCollapsed] = useState(false);
-  const [achievementsCollapsed, setAchievementsCollapsed] = useState(true);
+  const [achievementsCollapsed, setAchievementsCollapsed] = useState(false);
   const [kcalModalOpen, setKcalModalOpen] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [weightModalOpen, setWeightModalOpen] = useState(false);
@@ -1234,27 +1245,6 @@ export default function CutCoachPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  function scrollToId(id: string) {
-    if (typeof window === 'undefined') return;
-    window.requestAnimationFrame(() => {
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }
-
-  function scrollToCalendarToday() {
-    if (typeof window === 'undefined') return;
-    setCollapsedSections((current) => ({ ...current, calendar: false }));
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        document.getElementById('calendar-today')?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-          inline: 'center',
-        });
-      });
-    });
-  }
-
   function openCalendarDay(date: string) {
     setCheckin(seedCheckinEntry(date, data));
     setKcalDialRotation(0);
@@ -1270,11 +1260,6 @@ export default function CutCoachPage() {
   function openActivityModal(date = todayIsoDate) {
     setActivityDraft(seedActivityEntry(date, data));
     setActivityModalOpen(true);
-  }
-
-  function openSection(section: SectionKey) {
-    setCollapsedSections((current) => ({ ...current, [section]: false }));
-    scrollToId(section);
   }
 
   function baseWeightEntryState(date: string) {
@@ -1836,17 +1821,6 @@ export default function CutCoachPage() {
   const tomorrow = data?.tomorrow ?? null;
   const selectedDay = findWeekDay(data, checkin.date);
   const yearMonths = buildYearMonths(todayIsoDate, data, activeChallenge);
-  const weightChartData = buildWeightChartData(data);
-  const weightTrendDelta =
-    weightChartData.length > 1
-      ? Math.round((weightChartData[weightChartData.length - 1]!.weight - weightChartData[0]!.weight) * 100) / 100
-      : null;
-  const weightTrendMeta =
-    weightTrendDelta != null
-      ? `${weightTrendDelta > 0 ? '+' : ''}${formatWeightKg(weightTrendDelta)} kg`
-      : weightChartData.length > 0
-        ? `${weightChartData.length} log${weightChartData.length === 1 ? '' : 's'}`
-        : 'No logs yet';
   const overToday =
     today?.target && today.caloriesSource !== 'none' ? Math.round(today.consumed.calories - today.target.kcal_target) : null;
   const todayCheckinDone = Boolean(data && findCheckinForDate(data.checkins, todayIsoDate)?.kcal_actual != null);
@@ -1878,12 +1852,81 @@ export default function CutCoachPage() {
     selectedTargetKcal != null && toNumber(checkin.kcal_actual) > 0
       ? Math.round(toNumber(checkin.kcal_actual) - selectedTargetKcal)
       : null;
-  const initialLoading = !heroReady && !data;
-  const weekLoading = heroReady && !detailReady;
   const weightDraftDelta =
     latestKnownWeight != null && toNumber(weightDraft.weight_kg) > 0
       ? Math.round((toNumber(weightDraft.weight_kg) - latestKnownWeight) * 100) / 100
       : null;
+  const todayTargetKcal = today?.target ? Math.round(today.target.kcal_target) : null;
+  const todayConsumedKcal =
+    today && today.caloriesSource !== 'none'
+      ? Math.round(today.consumed.calories)
+      : findCheckinForDate(data?.checkins ?? [], todayIsoDate)?.kcal_actual != null
+        ? Math.round(findCheckinForDate(data?.checkins ?? [], todayIsoDate)!.kcal_actual ?? 0)
+        : null;
+  const checkinStreak = buildCheckinStreak(data?.checkins ?? [], todayIsoDate);
+  const currentWeightLabel = data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : 'No weigh-in';
+  const currentWeightHelper =
+    challengeStats.deltaWeight != null
+      ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${formatWeightKg(challengeStats.deltaWeight)} kg vs start`
+      : latestKnownWeight != null
+        ? 'Latest saved weight'
+        : 'Save first weight';
+  const calorieProgress = todayTargetKcal && todayConsumedKcal != null
+    ? clamp(todayConsumedKcal / Math.max(todayTargetKcal, 1), 0, 1.35)
+    : 0;
+  const calorieProgressDegrees = `${Math.round(calorieProgress * 360)}deg`;
+  const calorieDeltaLabel =
+    overToday == null
+      ? 'Waiting for data'
+      : overToday > 0
+        ? `+${overToday} kcal`
+        : overToday < 0
+          ? `${Math.abs(overToday)} kcal under`
+          : 'On target';
+  const todayDialHeaderText =
+    todayTargetKcal != null
+      ? todayConsumedKcal == null
+        ? 'Plan for today'
+        : overToday == null
+          ? 'Tracking today'
+          : overToday > 0
+            ? 'Adjust the rest'
+            : overToday < 0
+              ? 'Room to finish'
+              : 'Locked in'
+      : 'Set profile';
+  const todayDialTitle =
+    todayConsumedKcal == null
+      ? 'Daily target'
+      : overToday == null
+        ? 'Logged today'
+        : overToday > 0
+          ? 'Over target'
+          : overToday < 0
+            ? 'Left today'
+            : 'On target';
+  const todayDialValue =
+    todayConsumedKcal == null
+      ? todayTargetKcal != null
+        ? String(todayTargetKcal)
+        : '—'
+      : overToday == null
+        ? String(todayConsumedKcal)
+        : overToday === 0
+          ? 'Perfect'
+          : String(Math.abs(overToday));
+  const todayDialUnit =
+    todayConsumedKcal == null
+      ? todayTargetKcal != null
+        ? 'kcal'
+        : 'Set profile'
+      : overToday == null
+        ? 'kcal logged'
+        : overToday === 0
+          ? `${todayConsumedKcal} kcal logged`
+          : 'kcal';
+  const initialLoading = !heroReady && !data;
+  const weekLoading = heroReady && !detailReady;
 
   function startDrag(origin: DragOrigin) {
     setDraggedItem(origin);
@@ -2047,126 +2090,101 @@ export default function CutCoachPage() {
           <>
 
         <section className={`hero-card ${styles.hero}`}>
-          <div className={styles.heroIntro}>
-            <div className={styles.heroMeta}>
-              <span>{activeChallenge ? activeChallenge.title : 'No active challenge'}</span>
-              <span>{activeChallenge ? `${formatDate(activeChallenge.start_date)} → ${formatDate(activeChallenge.end_date)}` : 'Start whenever you are ready'}</span>
-            </div>
-            <div className={styles.heroActions}>
-              <button className={`btn-base btn-primary ${styles.heroActionButton}`} onClick={() => openTodayEntry()} type="button">
-                <span className={styles.heroActionIcon} aria-hidden="true"><UtensilsCrossed size={15} strokeWidth={2.2} /></span>
-                <span>Kcal</span>
-              </button>
-              <button className={`btn-base btn-secondary ${styles.heroActionButton}`} onClick={() => openActivityModal()} type="button">
-                <span className={styles.heroActionIcon} aria-hidden="true"><Dumbbell size={15} strokeWidth={2.2} /></span>
-                <span>Activity</span>
-              </button>
-              <button className={`btn-base btn-secondary ${styles.heroActionButton}`} onClick={() => openWeightModal()} type="button">
-                <span className={styles.heroActionIcon} aria-hidden="true"><Scale size={15} strokeWidth={2.2} /></span>
-                <span>Weight</span>
-              </button>
-              <button className={`btn-base btn-ghost ${styles.heroActionButton}`} onClick={() => openSection('flow')} type="button">
-                <span className={styles.heroActionIcon} aria-hidden="true"><CalendarRange size={15} strokeWidth={2.2} /></span>
-                <span>Plan</span>
-              </button>
-              <button className={`btn-base btn-ghost ${styles.heroActionButton}`} onClick={() => openSection('settings')} type="button">
-                <span className={styles.heroActionIcon} aria-hidden="true"><Settings2 size={15} strokeWidth={2.2} /></span>
-                <span>Setup</span>
-              </button>
-              <button className={`btn-base btn-ghost ${styles.heroActionButton}`} onClick={scrollToCalendarToday} type="button">
-                <span className={styles.heroActionIcon} aria-hidden="true"><CalendarDays size={15} strokeWidth={2.2} /></span>
-                <span>Year</span>
-              </button>
-            </div>
+          <div className={styles.heroMeta}>
+            <span className={styles.heroMetaBadge}>Today</span>
+            <span>{checkinStreak > 0 ? `${checkinStreak} day streak` : 'Build a streak'}</span>
+            {activeChallenge ? <span>{activeChallenge.title}</span> : null}
           </div>
 
-          <div className={styles.heroStats}>
-            <MetricBox icon={<CalendarDays size={14} strokeWidth={2.2} />} label="Day" value={challengeStats.currentDay > 0 ? `${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready'} />
-            <MetricBox icon={<Flame size={14} strokeWidth={2.2} />} label="Kcal today" value={today?.target ? `${Math.round(today.target.kcal_target)}` : '—'} helper={today?.remaining ? `${Math.round(today.remaining.calories)} left` : undefined} />
-            <MetricBox icon={<Weight size={14} strokeWidth={2.2} />} label="Weight" onClick={() => openWeightModal()} value={data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : '—'} helper={challengeStats.deltaWeight != null ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${formatWeightKg(challengeStats.deltaWeight)}` : undefined} />
-            <MetricBox icon={<Sparkles size={14} strokeWidth={2.2} />} label="XP / Lv" value={`${xp.xp}`} helper={`Lv ${xp.level}`} />
-          </div>
-
-          {overToday != null ? (
-            <div className={`${styles.alert} ${overToday > 150 ? styles.alertBad : overToday > 0 ? styles.alertWarn : styles.alertGood}`}>
-              {overToday > 150 ? `+${overToday} kcal` : overToday > 0 ? `+${overToday} kcal` : today?.remaining ? `${Math.max(0, Math.round(today.remaining.calories))} kcal left` : 'On target'}
-            </div>
-          ) : null}
-          <div className={styles.heroDeck}>
-            <section className={styles.heroPanel}>
-              <div className={styles.focusKicker}><Flag size={13} strokeWidth={2.2} /> Current run</div>
-              <div className={styles.focusNow}>{challengeStats.currentDay > 0 ? `Day ${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready to start'}</div>
-              <div className={styles.focusNext}>
-                {activeChallenge
-                  ? `${formatDate(activeChallenge.start_date)} → ${formatDate(activeChallenge.end_date)}`
-                  : 'Set a start date when you are ready'}
+          <div className={styles.todayBoard}>
+            <section className={`${styles.spotlightCard} ${styles.spotlightWeight} ${styles.todayWeightCard}`}>
+              <div className={styles.spotlightTop}>
+                <span className={styles.spotlightLabel}>Weight</span>
+                <Scale size={16} strokeWidth={2.2} />
               </div>
-              <div className={styles.phaseTrack}>
-                <div className={styles.phaseBar}>
-                  <span style={{ width: `${Math.round(challengeStats.progress * 100)}%` }} />
-                </div>
-                <div className={styles.phaseLabels}>
-                  <span>{Math.round(challengeStats.progress * 100)}%</span>
-                  <span>{challengeStats.checkinDays} logs</span>
-                </div>
-              </div>
+              <strong className={styles.spotlightValue}>{currentWeightLabel}</strong>
+              <p className={styles.spotlightMeta}>{currentWeightHelper}</p>
+              <button className={`btn-base btn-secondary ${styles.spotlightButton}`} onClick={() => openWeightModal()} type="button">
+                Log weight
+              </button>
             </section>
 
-            <section className={styles.heroPanel}>
-              <div className={styles.chartHead}>
+            <div className={styles.todayDialCard}>
+              <div className={styles.todayDialHeader}>
                 <div>
-                  <div className={styles.focusKicker}><Gauge size={13} strokeWidth={2.2} /> Weight trend</div>
-                  <div className={styles.chartTitle}>Weight history</div>
+                  <span className={styles.todayDialLabel}>Target</span>
+                  <strong className={styles.todayDialHeaderValue}>{todayDialHeaderText}</strong>
                 </div>
-                <div className={styles.chartMeta}>{weightTrendMeta}</div>
               </div>
-              <div className={styles.chartBox}>
-                {weightChartData.length > 1 ? (
-                  <ResponsiveContainer width="100%" height={190}>
-                    <LineChart data={weightChartData} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
-                      <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="date" tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={42} domain={['dataMin - 0.5', 'dataMax + 0.5']} />
-                      <Tooltip
-                        contentStyle={{
-                          background: 'var(--panel-strong)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 14,
-                          color: 'var(--text)',
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="weight"
-                        stroke="var(--accent)"
-                        strokeWidth={3}
-                        dot={{ r: 3, fill: 'var(--accent)' }}
-                        activeDot={{ r: 5 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className={styles.chartEmpty}>Add at least 2 weigh-ins to unlock the chart.</div>
-                )}
+              <div
+                className={styles.todayDial}
+                style={{ '--dial-progress': calorieProgressDegrees } as CSSProperties}
+              >
+                <div className={styles.todayDialInner}>
+                  <span>{todayDialTitle}</span>
+                  <strong>{todayDialValue}</strong>
+                  <small>{todayDialUnit}</small>
+                </div>
               </div>
-            </section>
+              <div className={styles.todayDialMeta}>
+                <div className={styles.todayConsumedCard}>
+                  <span>Consumed</span>
+                  <strong>{todayConsumedKcal != null ? `${todayConsumedKcal} kcal` : 'Not logged'}</strong>
+                </div>
+                <div className={`${styles.todayDeltaCard} ${overToday != null && overToday > 0 ? styles.todayDeltaCardBad : overToday != null ? styles.todayDeltaCardGood : ''}`}>
+                  <span>{overToday != null && overToday > 0 ? 'Over' : overToday != null && overToday < 0 ? 'Left' : 'Status'}</span>
+                  <strong>{calorieDeltaLabel}</strong>
+                </div>
+              </div>
+              <button className={`btn-base btn-primary ${styles.spotlightButton} ${styles.todayDialButton}`} onClick={() => openTodayEntry()} type="button">
+                Log kcal
+              </button>
+            </div>
           </div>
         </section>
 
-        {error ? <section className={`surface-card ${styles.banner} ${styles.bannerError}`}>{error}</section> : null}
         {error ? (
-          <section className={`surface-card ${styles.banner} ${styles.bannerHint}`}>
-            <strong>Debug tip</strong>
-            <p>
-              If you see `unexpected error` or `500`, the usual causes are missing SQL from `cut_coach.sql` or a bad timezone from env before the last refresh.
-            </p>
+          <section className={`surface-card ${styles.banner} ${styles.bannerError}`}>
+            <div className={styles.bannerInner}>
+              <span className={styles.bannerIcon} aria-hidden="true"><CircleAlert size={18} strokeWidth={2.2} /></span>
+              <div>
+                <strong className={styles.bannerTitle}>Could not load Cut Coach</strong>
+                <p className={styles.bannerText}>{error}</p>
+              </div>
+            </div>
           </section>
         ) : null}
-        {notice ? <section className={`surface-card ${styles.banner} ${styles.bannerOk}`}>{notice}</section> : null}
+        {error ? (
+          <section className={`surface-card ${styles.banner} ${styles.bannerHint}`}>
+            <div className={styles.bannerInner}>
+              <span className={styles.bannerIcon} aria-hidden="true"><CircleAlert size={18} strokeWidth={2.2} /></span>
+              <div>
+                <strong className={styles.bannerTitle}>Debug tip</strong>
+                <p className={styles.bannerText}>
+              If you see `unexpected error` or `500`, the usual causes are missing SQL from `cut_coach.sql` or a bad timezone from env before the last refresh.
+                </p>
+              </div>
+            </div>
+          </section>
+        ) : null}
+        {notice ? (
+          <section className={`surface-card ${styles.banner} ${styles.bannerOk}`}>
+            <div className={styles.bannerInner}>
+              <span className={styles.bannerIcon} aria-hidden="true"><CheckCircle2 size={18} strokeWidth={2.2} /></span>
+              <div>
+                <strong className={styles.bannerTitle}>Saved</strong>
+                <p className={styles.bannerText}>{notice}</p>
+              </div>
+            </div>
+          </section>
+        ) : null}
         {rewardToast ? (
           <div className={styles.rewardToast} key={rewardToast.id}>
             <div className={styles.rewardGlow} />
-            <div className={styles.rewardKicker}>XP +{rewardToast.xp}</div>
+            <div className={styles.rewardToastTop}>
+              <div className={styles.rewardKicker}>XP +{rewardToast.xp}</div>
+              <span className={styles.rewardToastBadge}><Sparkles size={14} strokeWidth={2.2} /></span>
+            </div>
             <strong>{rewardToast.title}</strong>
             <p>{rewardToast.body}</p>
           </div>
@@ -2445,8 +2463,10 @@ export default function CutCoachPage() {
             <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Current run</h3>
               <p className={styles.panelText}>
-                {today?.target ? `Day ${Math.max(0, challengeStats.currentDay)} carries a ${Math.round(today.target.kcal_target)} kcal target.` : 'Save setup first.'}{' '}
-                {tomorrow?.target ? `Tomorrow points to ${Math.round(tomorrow.target.kcal_target)} kcal.` : ''}
+                {today?.target
+                  ? `Day ${Math.max(0, challengeStats.currentDay)} of ${Math.max(0, challengeStats.totalDays)}. ${Math.round(today.target.kcal_target)} kcal today.`
+                  : 'Save setup first.'}{' '}
+                {tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal tomorrow.` : ''}
               </p>
               <div className={styles.phaseTrack}>
                 <div className={styles.phaseBar}>
@@ -2642,6 +2662,7 @@ export default function CutCoachPage() {
             </section>
           </div>
 
+            {SHOW_CHARACTER_LAYER ? (
             <section className={`surface-card ${styles.panel} ${styles.characterPanel}`} id="character-sheet">
               <div className={styles.panelHead}>
                 <div>
@@ -2801,6 +2822,7 @@ export default function CutCoachPage() {
                 </div>
               ) : null}
             </section>
+            ) : null}
           </> : null}
         </section>
 
@@ -3067,12 +3089,42 @@ export default function CutCoachPage() {
 
             {setupComposer === 'reminders' ? <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Reminders + push</h3>
+              <div className={styles.notificationHero}>
+                <div>
+                  <div className={styles.notificationEyebrow}>Mobile delivery</div>
+                  <strong className={styles.notificationTitle}>Short, useful nudges</strong>
+                  <p className={styles.notificationText}>
+                    Keep reminders tied to one action only: morning weigh-in, evening kcal close, weekend measurements, or a gentle recovery prompt.
+                  </p>
+                </div>
+                <div className={styles.notificationSummary}>
+                  <span className={styles.notificationSummaryLabel}>
+                    <Smartphone size={14} strokeWidth={2.2} />
+                    {pushEnabled ? 'Push active' : 'Push inactive'}
+                  </span>
+                  <strong>{pushEnabled ? 'This device can receive reminders.' : 'Enable push for mobile delivery.'}</strong>
+                </div>
+              </div>
+
               <div className={styles.reminderList}>
                 {reminders.map((item) => (
-                  <div className={styles.reminderRow} key={item.kind}>
-                    <div>
+                  <article className={`${styles.reminderCard} ${item.enabled ? styles.reminderCardOn : styles.reminderCardOff}`} key={item.kind}>
+                    <div className={styles.reminderCardHead}>
+                      <div>
                       <strong>{item.title}</strong>
-                      <p>{weekdaySummary(item.weekdays)}</p>
+                        <p>{reminderDescription(item.kind)}</p>
+                      </div>
+                      <span className={styles.reminderTimeBadge}>{item.local_time}</span>
+                    </div>
+                    <div className={styles.reminderWeekdays}>
+                      {[1, 2, 3, 4, 5, 6, 0].map((day) => (
+                        <span
+                          className={`${styles.reminderWeekday} ${item.weekdays.includes(day) ? styles.reminderWeekdayActive : ''}`}
+                          key={`${item.kind}-${day}`}
+                        >
+                          {WEEKDAY_LABELS[day]}
+                        </span>
+                      ))}
                     </div>
                     <div className={styles.reminderControls}>
                       <input type="time" value={item.local_time} onChange={(event) => setReminders((current) => current.map((entry) => entry.kind === item.kind ? { ...entry, local_time: event.target.value } : entry))} />
@@ -3081,7 +3133,7 @@ export default function CutCoachPage() {
                         <span>{item.enabled ? 'On' : 'Off'}</span>
                       </label>
                     </div>
-                  </div>
+                  </article>
                 ))}
               </div>
 
@@ -3115,6 +3167,21 @@ export default function CutCoachPage() {
           </> : null}
         </section>
 
+        <div className={styles.mobileActionDock} aria-label="Quick actions">
+          <button className={styles.mobileActionButton} onClick={() => openTodayEntry()} type="button">
+            <UtensilsCrossed size={16} strokeWidth={2.2} />
+            <span>Kcal</span>
+          </button>
+          <button className={styles.mobileActionButton} onClick={() => openWeightModal()} type="button">
+            <Scale size={16} strokeWidth={2.2} />
+            <span>Weight</span>
+          </button>
+          <button className={styles.mobileActionButton} onClick={() => openActivityModal()} type="button">
+            <Dumbbell size={16} strokeWidth={2.2} />
+            <span>Move</span>
+          </button>
+        </div>
+
         {showBackToTop ? (
           <button
             aria-label="Back to top"
@@ -3133,41 +3200,6 @@ export default function CutCoachPage() {
       </div>
     </PageShell>
   );
-}
-
-function MetricBox({
-  icon,
-  label,
-  value,
-  helper,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  helper?: string;
-  onClick?: () => void;
-}) {
-  const content = (
-    <>
-      <div className={styles.metricLabelRow}>
-        <span className={styles.metricIcon} aria-hidden="true">{icon}</span>
-        <div className={styles.metricLabel}>{label}</div>
-      </div>
-      <div className={styles.metricValue}>{value}</div>
-      {helper ? <div className={styles.metricHelper}>{helper}</div> : null}
-    </>
-  );
-
-  if (onClick) {
-    return (
-      <button className={`${styles.metricBox} ${styles.metricBoxButton}`} onClick={onClick} type="button">
-        {content}
-      </button>
-    );
-  }
-
-  return <div className={styles.metricBox}>{content}</div>;
 }
 
 function InventoryPanel({
