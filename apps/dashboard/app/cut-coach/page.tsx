@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, 
 import {
   CheckCircle2,
   CircleAlert,
+  ChevronLeft,
+  ChevronRight,
   Dumbbell,
   ArrowUp,
   Flag,
@@ -447,7 +449,7 @@ function buildMonthCells(
   const gridStart = new Date(monthStart);
   gridStart.setDate(monthStart.getDate() - firstWeekday);
 
-  return Array.from({ length: 35 }, (_, index) => {
+  return Array.from({ length: 42 }, (_, index) => {
     const date = new Date(gridStart);
     date.setDate(gridStart.getDate() + index);
     const isoDate = formatLocalIsoDate(date);
@@ -493,24 +495,25 @@ function buildMonthCells(
   });
 }
 
-function buildYearMonths(
+function shiftMonthIsoDate(monthIsoDate: string, offset: number) {
+  const base = new Date(`${monthIsoDate}T12:00:00`);
+  const shifted = new Date(base.getFullYear(), base.getMonth() + offset, 1, 12, 0, 0);
+  return formatLocalIsoDate(shifted);
+}
+
+function buildMonthView(
+  monthIsoDate: string,
   todayIsoDate: string,
   payload: BootstrapPayload | null,
   activeChallenge: CutCoachChallengeRow | null
 ) {
-  const current = new Date(`${todayIsoDate}T12:00:00`);
-  const year = current.getFullYear();
-  return Array.from({ length: 12 }, (_, monthIndex) => {
-    const monthDate = new Date(year, monthIndex, 1, 12, 0, 0);
-    const monthIsoDate = formatLocalIsoDate(monthDate);
-    return {
-      key: monthIsoDate,
-      label: new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' }).format(monthDate),
-      shortLabel: new Intl.DateTimeFormat('en-GB', { month: 'short' }).format(monthDate),
-      monthIndex,
-      cells: buildMonthCells(monthIsoDate, todayIsoDate, payload, activeChallenge),
-    };
-  });
+  const monthDate = new Date(`${monthIsoDate}T12:00:00`);
+  return {
+    key: monthIsoDate,
+    label: new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' }).format(monthDate),
+    shortLabel: new Intl.DateTimeFormat('en-GB', { month: 'short' }).format(monthDate),
+    cells: buildMonthCells(monthIsoDate, todayIsoDate, payload, activeChallenge),
+  };
 }
 
 function buildChallengeStats(challenge: CutCoachChallengeRow | null, payload: BootstrapPayload | null) {
@@ -1205,6 +1208,11 @@ export default function CutCoachPage() {
   const [rewardToast, setRewardToast] = useState<RewardToast | null>(null);
   const [optimisticCheckin, setOptimisticCheckin] = useState<{ date: string; kcalActual: number | null } | null>(null);
   const [optimisticWeight, setOptimisticWeight] = useState<{ date: string; weightKg: number } | null>(null);
+  const [visibleMonthIsoDate, setVisibleMonthIsoDate] = useState(() => {
+    const now = new Date();
+    return formatLocalIsoDate(new Date(now.getFullYear(), now.getMonth(), 1, 12, 0, 0));
+  });
+  const [monthTransitionDirection, setMonthTransitionDirection] = useState<'backward' | 'forward'>('forward');
   const [collapsedSections, setCollapsedSections] = useState<Record<SectionKey, boolean>>({
     today: false,
     flow: false,
@@ -1914,8 +1922,7 @@ export default function CutCoachPage() {
   const today = data?.today ?? null;
   const tomorrow = data?.tomorrow ?? null;
   const selectedDay = findWeekDay(data, checkin.date);
-  const yearMonths = buildYearMonths(todayIsoDate, data, activeChallenge);
-  const currentMonth = yearMonths[new Date(`${todayIsoDate}T12:00:00`).getMonth()] ?? yearMonths[0] ?? null;
+  const currentMonth = buildMonthView(visibleMonthIsoDate, todayIsoDate, data, activeChallenge);
   const todayCheckinDone = Boolean(data && findCheckinForDate(data.checkins, todayIsoDate)?.kcal_actual != null);
   const todayWeightDone = Boolean(data && findWeightForDate(data.weights, todayIsoDate)?.weight_kg != null);
   const latestKnownWeight = data?.trends.latest?.weight_kg ?? null;
@@ -2604,6 +2611,9 @@ export default function CutCoachPage() {
                         strokeWidth={3}
                         dot={{ r: 3, fill: 'var(--accent)' }}
                         activeDot={{ r: 5 }}
+                        isAnimationActive
+                        animationDuration={1100}
+                        animationEasing="ease-out"
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -2704,10 +2714,34 @@ export default function CutCoachPage() {
             <section className={`surface-card ${styles.panel}`}>
               <div className={styles.calendarHeader}>
                 <div>
-                  <h3 className={styles.panelTitle}>This month</h3>
-                  <p className={styles.panelText}>Tap any day to open it. The run markers stay visible without showing the whole year.</p>
+                  <h3 className={styles.panelTitle}>Calendar</h3>
+                  <p className={styles.panelText}>Browse month by month. Tap any day to open it.</p>
                 </div>
-                <span className={styles.panelText}>{currentMonth?.label ?? ''}</span>
+                <div className={styles.monthNavigator}>
+                  <button
+                    aria-label="Previous month"
+                    className={styles.monthNavButton}
+                    onClick={() => {
+                      setMonthTransitionDirection('backward');
+                      setVisibleMonthIsoDate((current) => shiftMonthIsoDate(current, -1));
+                    }}
+                    type="button"
+                  >
+                    <ChevronLeft size={16} strokeWidth={2.2} />
+                  </button>
+                  <span className={styles.monthNavigatorLabel}>{currentMonth.label}</span>
+                  <button
+                    aria-label="Next month"
+                    className={styles.monthNavButton}
+                    onClick={() => {
+                      setMonthTransitionDirection('forward');
+                      setVisibleMonthIsoDate((current) => shiftMonthIsoDate(current, 1));
+                    }}
+                    type="button"
+                  >
+                    <ChevronRight size={16} strokeWidth={2.2} />
+                  </button>
+                </div>
               </div>
               <div className={styles.calendarLegend}>
                 <span><Goal size={13} strokeWidth={2.2} /> target</span>
@@ -2716,7 +2750,10 @@ export default function CutCoachPage() {
                 <span><Flag size={13} strokeWidth={2.2} /> run marks</span>
               </div>
               {currentMonth ? (
-                <section className={`${styles.yearMonthCard} ${styles.singleMonthCard}`} key={currentMonth.key}>
+                <section
+                  className={`${styles.yearMonthCard} ${styles.singleMonthCard} ${monthTransitionDirection === 'forward' ? styles.monthCardForward : styles.monthCardBackward}`}
+                  key={currentMonth.key}
+                >
                   <div className={styles.weekdays}>
                     {WEEKDAY_LABELS.map((label) => (
                       <span key={`${currentMonth.key}-${label}`}>{label}</span>
