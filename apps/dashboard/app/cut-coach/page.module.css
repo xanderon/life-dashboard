@@ -8,14 +8,14 @@
 }
 
 .page {
-  --cc-surface-main: color-mix(in srgb, var(--panel-strong) 94%, var(--bg) 6%);
-  --cc-surface-steel: color-mix(in srgb, #5b708b 14%, var(--panel-strong));
-  --cc-surface-recessed: color-mix(in srgb, var(--bg) 32%, var(--panel) 68%);
-  --cc-surface-accent: color-mix(in srgb, var(--accent-soft) 18%, var(--panel-strong));
-  --cc-surface-warm: color-mix(in srgb, var(--warning) 10%, var(--panel-strong));
-  --cc-surface-toolbar: color-mix(in srgb, var(--panel) 90%, var(--bg) 10%);
-  --cc-line-soft: color-mix(in srgb, var(--border) 88%, transparent);
-  --cc-line-strong: color-mix(in srgb, var(--border-strong) 78%, var(--border));
+  --cc-surface-main: #182433;
+  --cc-surface-steel: #233247;
+  --cc-surface-recessed: #0a1018;
+  --cc-surface-accent: #10293b;
+  --cc-surface-warm: #2b2218;
+  --cc-surface-toolbar: #111a25;
+  --cc-line-soft: rgba(142, 171, 210, 0.16);
+  --cc-line-strong: rgba(164, 201, 236, 0.24);
   --cc-title: color-mix(in srgb, var(--text) 98%, white 2%);
   --cc-shadow: color-mix(in srgb, #02060d 68%, var(--shadow-color));
   display: flex;
@@ -33,23 +33,70 @@
 
 .page :global(.btn-primary) {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 26%, #31597b 74%), color-mix(in srgb, var(--cc-surface-recessed) 96%, transparent));
-  border-color: color-mix(in srgb, var(--accent) 26%, var(--cc-line-soft));
+    linear-gradient(180deg, #2d6ca0, #1d4364);
+  border-color: rgba(118, 194, 255, 0.34);
+  color: #f4fbff;
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 9%, transparent),
-    0 1rem 2rem -1.5rem color-mix(in srgb, var(--accent) 24%, transparent);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 1rem 2rem -1.5rem rgba(52, 132, 199, 0.34);
 }
 
 .page :global(.btn-secondary) {
   background:
-    linear-gradient(180deg, color-mix(in srgb, #6b7f96 24%, var(--cc-surface-main)), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
-  border-color: color-mix(in srgb, #8095af 18%, var(--cc-line-soft));
+    linear-gradient(180deg, #314153, #1f2b39);
+  border-color: rgba(145, 171, 200, 0.22);
+  color: #edf2fb;
 }
 
 .page :global(.btn-ghost) {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-toolbar) 98%, transparent), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
-  border-color: color-mix(in srgb, var(--cc-line-soft) 92%, transparent);
+    linear-gradient(180deg, #161e28, #0e151d);
+  border-color: rgba(145, 171, 200, 0.14);
+}
+
+:global(:root[data-theme="light"]) .page,
+:global(:root[data-theme="sunrise"]) .page {
+  --cc-surface-main: #fffaf4;
+  --cc-surface-steel: #e2ecf5;
+  --cc-surface-recessed: #f1e9df;
+  --cc-surface-accent: #edf7f3;
+  --cc-surface-warm: #f7efe2;
+  --cc-surface-toolbar: #f4ede4;
+  --cc-line-soft: rgba(83, 62, 41, 0.12);
+  --cc-line-strong: rgba(83, 62, 41, 0.2);
+}
+
+:global(:root[data-theme="light"]) .page :global(.btn-primary),
+:global(:root[data-theme="sunrise"]) .page :global(.btn-primary) {
+  background: linear-gradient(180deg, #dff1ea, #b9ddd1);
+  border-color: rgba(20, 122, 104, 0.2);
+  color: #1e2a24;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 1rem 2rem -1.5rem rgba(20, 122, 104, 0.12);
+}
+
+:global(:root[data-theme="light"]) .page :global(.btn-secondary),
+:global(:root[data-theme="sunrise"]) .page :global(.btn-secondary) {
+  background: linear-gradient(180deg, #eef3f8, #dbe4ec);
+  border-color: rgba(79, 102, 127, 0.14);
+  color: #2c2b29;
+}
+
+:global(:root[data-theme="light"]) .page :global(.btn-ghost),
+:global(:root[data-theme="sunrise"]) .page :global(.btn-ghost) {
+  background: linear-gradient(180deg, #fbf7f1, #ece4d9);
+  border-color: rgba(79, 57, 33, 0.1);
+  color: #342b24;
+}
+
+:global(:root[data-theme="forest"]) .page {
+  --cc-surface-main: #16261e;
+  --cc-surface-steel: #21382d;
+  --cc-surface-recessed: #0a1511;
+  --cc-surface-accent: #113126;
+  --cc-surface-warm: #2a2818;
+  --cc-surface-toolbar: #101b16;
 }
 
 .topbar {
@@ -69,8 +116,8 @@
   border-radius: 0;
   padding: 0.95rem 1rem 1rem;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-main) 98%, transparent), color-mix(in srgb, var(--cc-surface-recessed) 92%, transparent)),
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 8%, transparent) 0, transparent 26%);
+    linear-gradient(180deg, #1a2737, #101720 88%),
+    linear-gradient(90deg, rgba(117, 208, 255, 0.08) 0, transparent 24%);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 54%, transparent),
     0 2rem 4rem -3rem var(--cc-shadow);
@@ -743,35 +790,151 @@
   padding: 1rem;
   border-color: var(--cc-line-soft);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-main) 98%, transparent), color-mix(in srgb, var(--cc-surface-recessed) 92%, transparent));
+    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-main) 100%, transparent), color-mix(in srgb, var(--cc-surface-recessed) 90%, transparent));
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 46%, transparent),
     0 1.4rem 2.8rem -2.2rem var(--cc-shadow);
 }
 
 .panelSteel {
+  border-color: rgba(131, 167, 211, 0.18);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-steel) 100%, transparent), color-mix(in srgb, var(--cc-surface-main) 96%, transparent));
+    linear-gradient(180deg, #2a394b, #1a2735 86%);
+}
+
+.panelSteel::before,
+.panelRecessed::before,
+.panelAccent::before,
+.panelWarm::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 0.2rem;
+  pointer-events: none;
+}
+
+.panelSteel::before {
+  background: linear-gradient(90deg, #7bb8ea, #4d7fae 55%, transparent);
 }
 
 .panelRecessed {
+  border-color: rgba(116, 139, 165, 0.14);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-recessed) 100%, transparent), color-mix(in srgb, var(--bg) 18%, var(--cc-surface-main)));
+    linear-gradient(180deg, #111923, #0a1017 72%);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 28%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, black 12%, transparent);
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.22),
+    0 1.2rem 2.6rem -2.2rem rgba(0, 0, 0, 0.48);
+}
+
+.panelRecessed::before {
+  background: linear-gradient(90deg, #4f6278, #253546 55%, transparent);
 }
 
 .panelAccent {
-  border-color: color-mix(in srgb, var(--accent) 22%, var(--cc-line-soft));
+  border-color: rgba(77, 158, 225, 0.18);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-accent) 100%, transparent), color-mix(in srgb, var(--cc-surface-main) 96%, transparent));
+    linear-gradient(180deg, #15304a, #121f30 84%);
+}
+
+.panelAccent::before {
+  background: linear-gradient(90deg, #72cfff, #2f75ae 55%, transparent);
 }
 
 .panelWarm {
-  border-color: color-mix(in srgb, var(--warning) 22%, var(--cc-line-soft));
+  border-color: rgba(212, 162, 91, 0.2);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-warm) 100%, transparent), color-mix(in srgb, var(--cc-surface-main) 96%, transparent));
+    linear-gradient(180deg, #322617, #1d1813 84%);
+}
+
+.panelWarm::before {
+  background: linear-gradient(90deg, #e2b36a, #835e32 55%, transparent);
+}
+
+:global(:root[data-theme="light"]) .hero,
+:global(:root[data-theme="sunrise"]) .hero {
+  background:
+    linear-gradient(180deg, #fffaf4, #efe7dc 88%),
+    linear-gradient(90deg, rgba(20, 122, 104, 0.08) 0, transparent 24%);
+}
+
+:global(:root[data-theme="light"]) .todayDialCard,
+:global(:root[data-theme="sunrise"]) .todayDialCard {
+  background:
+    linear-gradient(180deg, #fffdf9, #eee7de 88%),
+    linear-gradient(90deg, rgba(20, 122, 104, 0.07) 0, transparent 26%);
+}
+
+:global(:root[data-theme="light"]) .spotlightCard,
+:global(:root[data-theme="sunrise"]) .spotlightCard {
+  background: linear-gradient(180deg, #fefbf6, #eee6da 88%);
+}
+
+:global(:root[data-theme="light"]) .heroRunCard,
+:global(:root[data-theme="sunrise"]) .heroRunCard {
+  background: linear-gradient(180deg, #eaf0f6, #dce4ec 88%);
+}
+
+:global(:root[data-theme="light"]) .spotlightCalories,
+:global(:root[data-theme="sunrise"]) .spotlightCalories {
+  background: linear-gradient(180deg, #edf7f3, #dceee7 88%);
+}
+
+:global(:root[data-theme="light"]) .spotlightWeight,
+:global(:root[data-theme="sunrise"]) .spotlightWeight {
+  background: linear-gradient(180deg, #f8f1e6, #efe3cf 88%);
+}
+
+:global(:root[data-theme="light"]) .heroCoachBar,
+:global(:root[data-theme="sunrise"]) .heroCoachBar {
+  background: linear-gradient(180deg, #fbf7f1, #ece3d8 90%);
+}
+
+:global(:root[data-theme="light"]) .panelSteel,
+:global(:root[data-theme="sunrise"]) .panelSteel {
+  background: linear-gradient(180deg, #e8eef5, #d9e2ec 86%);
+}
+
+:global(:root[data-theme="light"]) .panelRecessed,
+:global(:root[data-theme="sunrise"]) .panelRecessed {
+  background: linear-gradient(180deg, #f5efe6, #e9e0d3 78%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    inset 0 0 0 1px rgba(77, 57, 33, 0.06);
+}
+
+:global(:root[data-theme="light"]) .panelAccent,
+:global(:root[data-theme="sunrise"]) .panelAccent {
+  background: linear-gradient(180deg, #edf7f3, #ddeee8 86%);
+}
+
+:global(:root[data-theme="light"]) .panelWarm,
+:global(:root[data-theme="sunrise"]) .panelWarm {
+  background: linear-gradient(180deg, #f8f1e6, #efe3cf 86%);
+}
+
+:global(:root[data-theme="light"]) .calendarPanel,
+:global(:root[data-theme="sunrise"]) .calendarPanel {
+  background: linear-gradient(180deg, #f7f2e9, #e8dfd2 78%);
+}
+
+:global(:root[data-theme="light"]) .yearMonthCard,
+:global(:root[data-theme="sunrise"]) .yearMonthCard {
+  background: linear-gradient(180deg, #fffdf9, #eee7dc 84%);
+}
+
+:global(:root[data-theme="light"]) .calendarLegend span,
+:global(:root[data-theme="sunrise"]) .calendarLegend span,
+:global(:root[data-theme="light"]) .monthNavButton,
+:global(:root[data-theme="sunrise"]) .monthNavButton {
+  background: linear-gradient(180deg, #fffdf9, #ece5da);
+}
+
+:global(:root[data-theme="light"]) .dayCard,
+:global(:root[data-theme="sunrise"]) .dayCard {
+  background: linear-gradient(180deg, #fffdf9, #ede5da 90%);
 }
 
 .panelHead {
@@ -1390,7 +1553,7 @@
 
 .calendarPanel {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-main) 98%, transparent), color-mix(in srgb, var(--bg) 22%, var(--cc-surface-recessed)));
+    linear-gradient(180deg, #141d28, #0a1017 76%);
 }
 
 .calendarLegend {
@@ -1413,7 +1576,7 @@
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--cc-line-soft) 82%, transparent);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-toolbar) 98%, transparent), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
+    linear-gradient(180deg, #1b2633, #101720);
 }
 
 .yearCalendar {
@@ -1438,7 +1601,7 @@
   border: 1px solid var(--cc-line-soft);
   border-radius: 1rem;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-main) 98%, transparent), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
+    linear-gradient(180deg, #0f1822, #0a1017 82%);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 42%, transparent),
     0 1.2rem 2.4rem -2rem var(--cc-shadow);
@@ -3343,8 +3506,8 @@
   border-radius: 1.35rem;
   border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--cc-line-soft));
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-main) 100%, transparent), color-mix(in srgb, var(--cc-surface-recessed) 92%, transparent)),
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 7%, transparent) 0, transparent 28%);
+    linear-gradient(180deg, #172536, #0f1822 88%),
+    linear-gradient(90deg, rgba(117, 208, 255, 0.08) 0, transparent 26%);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 42%, transparent),
     0 1.4rem 2.8rem -2rem var(--cc-shadow);
@@ -3486,7 +3649,7 @@
   border-radius: 1.25rem;
   border: 1px solid color-mix(in srgb, var(--cc-line-soft) 92%, transparent);
   align-content: start;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-main) 98%, transparent), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
+  background: linear-gradient(180deg, #1b2734, #121923 88%);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 52%, transparent),
     0 1rem 2rem -1.6rem var(--cc-shadow);
@@ -3499,8 +3662,7 @@
 .heroRunCard {
   grid-area: run;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-steel) 100%, transparent), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent)),
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 5%, transparent) 0, transparent 22%);
+    linear-gradient(180deg, #29394d, #17212d 88%);
 }
 
 .heroRunValue {
@@ -3511,13 +3673,13 @@
 
 .spotlightCalories {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-accent) 100%, transparent), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
+    linear-gradient(180deg, #17344b, #111c28 88%);
   border-color: color-mix(in srgb, var(--accent) 22%, var(--cc-line-soft));
 }
 
 .spotlightWeight {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-warm) 100%, transparent), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
+    linear-gradient(180deg, #322719, #1c1712 88%);
   border-color: color-mix(in srgb, var(--warning) 22%, var(--cc-line-soft));
 }
 
@@ -3557,7 +3719,7 @@
   border-radius: 1.25rem;
   border: 1px solid color-mix(in srgb, var(--cc-line-soft) 92%, transparent);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-toolbar) 100%, transparent), color-mix(in srgb, var(--cc-surface-recessed) 96%, transparent));
+    linear-gradient(180deg, #101924, #0c1219 90%);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 34%, transparent);
 }
 
