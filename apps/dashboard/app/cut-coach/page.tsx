@@ -1227,16 +1227,15 @@ export default function CutCoachPage() {
   const [collapsedSections, setCollapsedSections] = useState<Record<SectionKey, boolean>>({
     today: false,
     flow: false,
-    calendar: true,
+    calendar: false,
     progress: false,
-    settings: false,
+    settings: true,
   });
   const [setupComposer, setSetupComposer] = useState<SetupComposer>(null);
   const [inventoryOverride, setInventoryOverride] = useState<CharacterInventory | null>(null);
   const [draggedItem, setDraggedItem] = useState<DragOrigin>(null);
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [characterCollapsed, setCharacterCollapsed] = useState(false);
-  const [achievementsCollapsed, setAchievementsCollapsed] = useState(false);
   const [kcalModalOpen, setKcalModalOpen] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [weightModalOpen, setWeightModalOpen] = useState(false);
@@ -1932,6 +1931,7 @@ export default function CutCoachPage() {
   const tomorrow = data?.tomorrow ?? null;
   const selectedDay = findWeekDay(data, checkin.date);
   const yearMonths = buildYearMonths(todayIsoDate, data, activeChallenge);
+  const currentMonth = yearMonths[new Date(`${todayIsoDate}T12:00:00`).getMonth()] ?? yearMonths[0] ?? null;
   const overToday =
     today?.target && today.caloriesSource !== 'none' ? Math.round(today.consumed.calories - today.target.kcal_target) : null;
   const todayCheckinDone = Boolean(data && findCheckinForDate(data.checkins, todayIsoDate)?.kcal_actual != null);
@@ -1967,6 +1967,9 @@ export default function CutCoachPage() {
     latestKnownWeight != null && toNumber(weightDraft.weight_kg) > 0
       ? Math.round((toNumber(weightDraft.weight_kg) - latestKnownWeight) * 100) / 100
       : null;
+  const visibleAchievements = (achievements.filter((item) => item.unlocked).length
+    ? achievements.filter((item) => item.unlocked)
+    : achievements).slice(0, 3);
   const todayTargetKcal = today?.target ? Math.round(today.target.kcal_target) : null;
   const todayConsumedKcal =
     today && today.caloriesSource !== 'none'
@@ -2045,6 +2048,17 @@ export default function CutCoachPage() {
       : data?.weights.length === 1
         ? 'First point saved. The line fills in from here.'
         : 'Your first few weigh-ins will build the line here.';
+  const heroCoachTitle =
+    todayConsumedKcal == null
+      ? 'One total tonight and you are done'
+      : overToday != null && overToday > 0
+        ? 'Trim the rest of the day'
+        : overToday != null && overToday < 0
+          ? 'You still have room to finish clean'
+          : 'Stay in the same rhythm';
+  const heroCoachText = today?.target
+    ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today')
+    : 'Save profile and the daily target plus the weekly plan appear here.';
   const initialLoading = !heroReady && !data;
   const weekLoading = heroReady && !detailReady;
 
@@ -2212,27 +2226,15 @@ export default function CutCoachPage() {
         <section className={`hero-card ${styles.hero}`}>
           <div className={styles.heroMeta}>
             <span className={styles.heroMetaBadge}>Today</span>
-            <span>{checkinStreak > 0 ? `${checkinStreak} day streak` : 'Build a streak'}</span>
-            {activeChallenge ? <span>{activeChallenge.title}</span> : null}
+            <span>{checkinStreak > 0 ? `${checkinStreak} day streak` : 'Start a streak'}</span>
+            <span>{activeChallenge ? `${phaseLabel(challengeStats.progress)} phase` : 'No active run'}</span>
           </div>
 
           <div className={styles.todayBoard}>
-            <section className={`${styles.spotlightCard} ${styles.spotlightWeight} ${styles.todayWeightCard}`}>
-              <div className={styles.spotlightTop}>
-                <span className={styles.spotlightLabel}>Weight</span>
-                <Scale size={16} strokeWidth={2.2} />
-              </div>
-              <strong className={styles.spotlightValue}>{currentWeightLabel}</strong>
-              <p className={styles.spotlightMeta}>{currentWeightHelper}</p>
-              <button className={`btn-base btn-secondary ${styles.spotlightButton}`} onClick={() => openWeightModal()} type="button">
-                Log weight
-              </button>
-            </section>
-
             <div className={styles.todayDialCard}>
               <div className={styles.todayDialHeader}>
                 <div>
-                  <span className={styles.todayDialLabel}>Target</span>
+                  <span className={styles.todayDialLabel}>Plan for today</span>
                   <strong className={styles.todayDialHeaderValue}>{todayDialHeaderText}</strong>
                 </div>
               </div>
@@ -2255,11 +2257,65 @@ export default function CutCoachPage() {
                 <div className={`${styles.todayDeltaCard} ${overToday != null && overToday > 0 ? styles.todayDeltaCardBad : overToday != null ? styles.todayDeltaCardGood : ''}`}>
                   <span>{overToday != null && overToday > 0 ? 'Over' : overToday != null && overToday < 0 ? 'Left' : 'Status'}</span>
                   <strong>{calorieDeltaLabel}</strong>
-                  {overToday == null ? <small className={styles.todayMetaHint}>The target is set. Weight trend and pace update as you check in.</small> : null}
+                  {overToday == null ? <small className={styles.todayMetaHint}>Weight trend and run pace fill in as you check in.</small> : null}
                 </div>
               </div>
-              <button className={`btn-base btn-primary ${styles.spotlightButton} ${styles.todayDialButton}`} onClick={() => openTodayEntry()} type="button">
+            </div>
+
+            <section className={`${styles.spotlightCard} ${styles.spotlightWeight} ${styles.todayWeightCard}`}>
+              <div className={styles.spotlightTop}>
+                <span className={styles.spotlightLabel}>Weight</span>
+                <Scale size={16} strokeWidth={2.2} />
+              </div>
+              <strong className={styles.spotlightValue}>{currentWeightLabel}</strong>
+              <p className={styles.spotlightMeta}>{currentWeightHelper}</p>
+            </section>
+
+            <section className={`${styles.spotlightCard} ${styles.heroRunCard}`}>
+              <div className={styles.spotlightTop}>
+                <span className={styles.spotlightLabel}>Current run</span>
+                <Flag size={16} strokeWidth={2.2} />
+              </div>
+              <strong className={styles.heroRunValue}>
+                {activeChallenge ? `Day ${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready when you are'}
+              </strong>
+              <p className={styles.spotlightMeta}>
+                {activeChallenge
+                  ? `${Math.round(challengeStats.progress * 100)}% complete${activeChallenge.title ? ` • ${activeChallenge.title}` : ''}`
+                  : 'Start a challenge only if you want a fixed timeline.'}
+              </p>
+              <div className={styles.heroRunStats}>
+                <div>
+                  <span>Green</span>
+                  <strong>{challengeStats.underTargetDays}</strong>
+                </div>
+                <div>
+                  <span>Check-ins</span>
+                  <strong>{challengeStats.checkinDays}</strong>
+                </div>
+                <div>
+                  <span>Level</span>
+                  <strong>{xp.level}</strong>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div className={styles.heroCoachBar}>
+            <div className={styles.heroCoachCopy}>
+              <span className={styles.heroCoachLabel}>Coach note</span>
+              <strong className={styles.heroCoachTitle}>{heroCoachTitle}</strong>
+              <p className={styles.heroCoachText}>{heroCoachText}</p>
+            </div>
+            <div className={styles.heroActionRail}>
+              <button className={`btn-base btn-primary ${styles.heroActionButton}`} onClick={() => openTodayEntry()} type="button">
                 Log kcal
+              </button>
+              <button className={`btn-base btn-secondary ${styles.heroActionButton}`} onClick={() => openWeightModal()} type="button">
+                Log weight
+              </button>
+              <button className={`btn-base btn-ghost ${styles.heroActionButton}`} onClick={() => openActivityModal()} type="button">
+                Add movement
               </button>
             </div>
           </div>
@@ -2527,7 +2583,7 @@ export default function CutCoachPage() {
           <div className={styles.sectionHead}>
             <div>
               <div className={styles.sectionEyebrow}>flow</div>
-              <h2 className={styles.sectionTitle}>Week plan</h2>
+              <h2 className={styles.sectionTitle}>Run and week plan</h2>
             </div>
             <div className={styles.sectionHeadActions}>
               <div className={styles.sectionMeta}>{activeChallenge ? `${phaseLabel(challengeStats.progress)} phase` : 'Set up a challenge'}</div>
@@ -2543,9 +2599,9 @@ export default function CutCoachPage() {
               <h3 className={styles.panelTitle}>Current run</h3>
               <p className={styles.panelText}>
                 {today?.target
-                  ? `Day ${Math.max(0, challengeStats.currentDay)} of ${Math.max(0, challengeStats.totalDays)}. ${Math.round(today.target.kcal_target)} kcal today.`
-                  : 'Save setup first.'}{' '}
-                {tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal tomorrow.` : ''}
+                  ? `Day ${Math.max(0, challengeStats.currentDay)} of ${Math.max(0, challengeStats.totalDays)} with ${Math.round(today.target.kcal_target)} kcal today.`
+                  : 'Save setup first to create the daily plan.'}{' '}
+                {tomorrow?.target ? `Tomorrow points to ${Math.round(tomorrow.target.kcal_target)} kcal.` : ''}
               </p>
               <div className={styles.phaseTrack}>
                 <div className={styles.phaseBar}>
@@ -2604,63 +2660,70 @@ export default function CutCoachPage() {
             </section>
           </div>
 
-          <div className={styles.flowSubhead}>
-            <div>
-              <div className={styles.sectionEyebrow}>week view</div>
-              <h3 className={styles.panelTitle}>This week</h3>
-            </div>
-          </div>
-
-          {weekLoading ? (
-            <div className={styles.flowRailSkeleton} aria-hidden="true">
-              {Array.from({ length: 7 }).map((_, index) => (
-                <div className={styles.flowRailSkeletonCard} key={`flow-skeleton-${index}`}>
-                  <span className={styles.loadingLineTiny} />
-                  <span className={styles.loadingLineMedium} />
-                  <span className={styles.loadingLineShort} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className={styles.flowRail}>
-              {(data?.week ?? []).map((day, index) => {
-                const planTone = describeDayPlan(day, data);
-                return (
-                  <button
-                    className={`${styles.dayCard} ${toneForDay(day, todayIsoDate)} ${day.date === todayIsoDate ? styles.dayCardToday : ''}`}
-                    key={day.date}
-                    onClick={() => openCalendarDay(day.date)}
-                    type="button"
-                  >
-                    <div className={styles.dayTrackRow}>
-                      <span className={styles.dayTrackDot} aria-hidden="true" />
-                      {index < (data?.week.length ?? 0) - 1 ? <span className={styles.dayTrackLine} aria-hidden="true" /> : null}
-                    </div>
-                    <div className={styles.dayTop}>
-                      <span>{shortDay(day.date)}</span>
-                      <span>{day.date === todayIsoDate ? 'Today' : formatDate(day.date)}</span>
-                    </div>
-                    <div className={styles.dayKcal}>{day.target ? Math.round(day.target.kcal_target) : '—'} kcal</div>
-                    <div className={styles.dayRecommendation}>
-                      <span className={styles.dayRecommendationIcon} aria-hidden="true">
-                        {day.target?.day_type === 'training' ? <Dumbbell size={13} strokeWidth={2.2} /> : <MoonStar size={13} strokeWidth={2.2} />}
-                      </span>
-                      <span>{planTone.note}</span>
-                    </div>
-                    <div className={styles.dayMode}>{planTone.emphasis}</div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <section className={`surface-card ${styles.panel} ${styles.flowWidePanel}`}>
-              <h3 className={styles.panelTitle}>Adaptive note</h3>
-              <p className={styles.panelText}>
+          <section className={`surface-card ${styles.panel} ${styles.weekPlanPanel}`}>
+            <div className={styles.weekPlanHead}>
+              <div>
+                <div className={styles.sectionEyebrow}>week plan</div>
+                <h3 className={styles.panelTitle}>This week</h3>
+              </div>
+              <p className={styles.weekPlanMeta}>
                 {today?.target
                   ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today')
-                  : 'The planner starts after profile + weight are saved.'}
+                  : 'The planner starts after profile and weight are saved.'}
               </p>
+            </div>
+
+            {weekLoading ? (
+              <div className={styles.flowRailSkeleton} aria-hidden="true">
+                {Array.from({ length: 7 }).map((_, index) => (
+                  <div className={styles.flowRailSkeletonCard} key={`flow-skeleton-${index}`}>
+                    <span className={styles.loadingLineTiny} />
+                    <span className={styles.loadingLineMedium} />
+                    <span className={styles.loadingLineShort} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.flowRail}>
+                {(data?.week ?? []).map((day, index) => {
+                  const planTone = describeDayPlan(day, data);
+                  return (
+                    <button
+                      className={`${styles.dayCard} ${toneForDay(day, todayIsoDate)} ${day.date === todayIsoDate ? styles.dayCardToday : ''}`}
+                      key={day.date}
+                      onClick={() => openCalendarDay(day.date)}
+                      type="button"
+                    >
+                      <div className={styles.dayTrackRow}>
+                        <span className={styles.dayTrackDot} aria-hidden="true" />
+                        {index < (data?.week.length ?? 0) - 1 ? <span className={styles.dayTrackLine} aria-hidden="true" /> : null}
+                      </div>
+                      <div className={styles.dayTop}>
+                        <span>{shortDay(day.date)}</span>
+                        <span>{day.date === todayIsoDate ? 'Today' : formatDate(day.date)}</span>
+                      </div>
+                      <div className={styles.dayKcal}>{day.target ? Math.round(day.target.kcal_target) : '—'} kcal</div>
+                      <div className={styles.dayRecommendation}>
+                        <span className={styles.dayRecommendationIcon} aria-hidden="true">
+                          {day.target?.day_type === 'training' ? <Dumbbell size={13} strokeWidth={2.2} /> : <MoonStar size={13} strokeWidth={2.2} />}
+                        </span>
+                        <span>{planTone.note}</span>
+                      </div>
+                      <div className={styles.dayMode}>{planTone.emphasis}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className={styles.weekPlanFooter}>
+              <div className={styles.weekPlanFooterCopy}>
+                <span>Tomorrow</span>
+                <strong>{tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal` : 'Shows after setup'}</strong>
+                <p>{tomorrow?.target ? humanizeAdjustmentReason(tomorrow.target.adjustment_reason, 'tomorrow') : 'Add your profile and first weight to unlock the planner.'}</p>
+              </div>
+              {activeChallenge ? <div className={styles.weekPlanPhaseBadge}>{phaseLabel(challengeStats.progress)} phase</div> : null}
+            </div>
           </section>
           </> : null}
         </section>
@@ -2669,10 +2732,10 @@ export default function CutCoachPage() {
           <div className={styles.sectionHead}>
             <div>
               <div className={styles.sectionEyebrow}>history</div>
-              <h2 className={styles.sectionTitle}>Year calendar</h2>
+              <h2 className={styles.sectionTitle}>Month snapshot</h2>
             </div>
             <div className={styles.sectionHeadActions}>
-              <div className={styles.sectionMeta}>whole year + marked challenge span</div>
+              <div className={styles.sectionMeta}>{currentMonth?.label ?? 'Current month'}</div>
               <button className={styles.sectionToggle} onClick={() => toggleSection('calendar')} type="button">
                 {collapsedSections.calendar ? 'Expand' : 'Collapse'}
               </button>
@@ -2682,116 +2745,89 @@ export default function CutCoachPage() {
           {!collapsedSections.calendar ? <div className={styles.calendarGrid}>
             <section className={`surface-card ${styles.panel}`}>
               <div className={styles.calendarHeader}>
-                <h3 className={styles.panelTitle}>Full year</h3>
-                <span className={styles.panelText}>{new Intl.DateTimeFormat('en-GB', { year: 'numeric' }).format(new Date(`${todayIsoDate}T12:00:00`))}</span>
+                <div>
+                  <h3 className={styles.panelTitle}>This month</h3>
+                  <p className={styles.panelText}>Tap any day to open it. The run markers stay visible without showing the whole year.</p>
+                </div>
+                <span className={styles.panelText}>{currentMonth?.label ?? ''}</span>
               </div>
               <div className={styles.calendarLegend}>
                 <span><Goal size={13} strokeWidth={2.2} /> target</span>
-                <span><UtensilsCrossed size={13} strokeWidth={2.2} /> actual</span>
+                <span><UtensilsCrossed size={13} strokeWidth={2.2} /> logged</span>
                 <span><Weight size={13} strokeWidth={2.2} /> weight</span>
-                <span><Flag size={13} strokeWidth={2.2} /> start</span>
+                <span><Flag size={13} strokeWidth={2.2} /> run marks</span>
               </div>
-              <div className={styles.yearCalendar}>
-                {yearMonths.map((month) => (
-                  <section className={styles.yearMonthCard} key={month.key}>
-                    <div className={styles.yearMonthHeader}>
-                      <strong>{month.shortLabel}</strong>
-                    </div>
-                    <div className={styles.weekdays}>
-                      {WEEKDAY_LABELS.map((label) => (
-                        <span key={`${month.key}-${label}`}>{label}</span>
-                      ))}
-                    </div>
-                    <div className={styles.monthGrid}>
-                      {month.cells.map((cell) => {
-                        const tone =
-                          cell.isChallengePast
-                            ? styles.monthCellPastPhase
-                            : cell.isChallengeCurrent
-                              ? styles.monthCellCurrentPhase
-                              : cell.isChallengeFuture
-                                ? styles.monthCellFuturePhase
-                                : cell.kcalDiff != null
-                                  ? cell.kcalDiff <= 50
-                                    ? styles.monthCellGood
-                                    : cell.kcalDiff <= 180
-                                      ? styles.monthCellWarn
-                                      : styles.monthCellBad
-                                  : cell.weight
-                                    ? styles.monthCellWeight
-                                    : cell.isInChallenge
-                                      ? styles.monthCellChallenge
-                                      : styles.monthCellNeutral;
-                        return (
-                          <button
-                            type="button"
-                            className={`${styles.monthCell} ${tone} ${cell.isInChallenge ? styles.monthCellInChallenge : ''} ${cell.isChallengePast ? styles.monthCellPastChallenge : ''} ${cell.isChallengeCurrent ? styles.monthCellCurrentChallenge : ''} ${cell.isChallengeFuture ? styles.monthCellFutureChallenge : ''} ${cell.isToday ? styles.monthCellToday : ''} ${!cell.inMonth ? styles.monthCellMuted : ''}`}
-                            id={cell.isToday ? 'calendar-today' : undefined}
-                            key={cell.isoDate}
-                            onClick={() => openCalendarDay(cell.isoDate)}
-                            title={`Open ${formatFullDate(cell.isoDate)}`}
-                          >
-                            <div className={styles.monthCellTop}>
-                              <span>{cell.label}</span>
-                              <div className={styles.monthCellBadges}>
-                                {cell.isChallengeStart ? <em className={styles.monthCellBadge} title="Challenge start"><Flag size={10} strokeWidth={2.5} /></em> : null}
-                                {cell.isChallengeEnd ? <em className={`${styles.monthCellBadge} ${styles.monthCellBadgeEnd}`} title="Challenge end"><Goal size={10} strokeWidth={2.5} /></em> : null}
+              {currentMonth ? (
+                <section className={`${styles.yearMonthCard} ${styles.singleMonthCard}`} key={currentMonth.key}>
+                  <div className={styles.weekdays}>
+                    {WEEKDAY_LABELS.map((label) => (
+                      <span key={`${currentMonth.key}-${label}`}>{label}</span>
+                    ))}
+                  </div>
+                  <div className={styles.monthGrid}>
+                    {currentMonth.cells.map((cell) => {
+                      const tone =
+                        cell.isChallengePast
+                          ? styles.monthCellPastPhase
+                          : cell.isChallengeCurrent
+                            ? styles.monthCellCurrentPhase
+                            : cell.isChallengeFuture
+                              ? styles.monthCellFuturePhase
+                              : cell.kcalDiff != null
+                                ? cell.kcalDiff <= 50
+                                  ? styles.monthCellGood
+                                  : cell.kcalDiff <= 180
+                                    ? styles.monthCellWarn
+                                    : styles.monthCellBad
+                                : cell.weight
+                                  ? styles.monthCellWeight
+                                  : cell.isInChallenge
+                                    ? styles.monthCellChallenge
+                                    : styles.monthCellNeutral;
+                      return (
+                        <button
+                          type="button"
+                          className={`${styles.monthCell} ${tone} ${cell.isInChallenge ? styles.monthCellInChallenge : ''} ${cell.isChallengePast ? styles.monthCellPastChallenge : ''} ${cell.isChallengeCurrent ? styles.monthCellCurrentChallenge : ''} ${cell.isChallengeFuture ? styles.monthCellFutureChallenge : ''} ${cell.isToday ? styles.monthCellToday : ''} ${!cell.inMonth ? styles.monthCellMuted : ''}`}
+                          id={cell.isToday ? 'calendar-today' : undefined}
+                          key={cell.isoDate}
+                          onClick={() => openCalendarDay(cell.isoDate)}
+                          title={`Open ${formatFullDate(cell.isoDate)}`}
+                        >
+                          <div className={styles.monthCellTop}>
+                            <span>{cell.label}</span>
+                            <div className={styles.monthCellBadges}>
+                              {cell.isChallengeStart ? <em className={styles.monthCellBadge} title="Challenge start"><Flag size={10} strokeWidth={2.5} /></em> : null}
+                              {cell.isChallengeEnd ? <em className={`${styles.monthCellBadge} ${styles.monthCellBadgeEnd}`} title="Challenge end"><Goal size={10} strokeWidth={2.5} /></em> : null}
+                            </div>
+                          </div>
+                          <div className={styles.monthCellBody}>
+                            {cell.targetKcal != null ? (
+                              <div className={`${styles.monthCellMetric} ${cell.isChallengeFuture ? styles.monthCellMetricPlanned : ''}`}>
+                                <span className={styles.monthCellMetricIcon} aria-hidden="true"><Goal size={11} strokeWidth={2.2} /></span>
+                                <small>{cell.targetKcal}</small>
                               </div>
-                            </div>
-                            <div className={styles.monthCellBody}>
-                              {cell.targetKcal != null ? (
-                                <div className={`${styles.monthCellMetric} ${cell.isChallengeFuture ? styles.monthCellMetricPlanned : ''}`}>
-                                  <span className={styles.monthCellMetricIcon} aria-hidden="true"><Goal size={11} strokeWidth={2.2} /></span>
-                                  <small>{cell.targetKcal}</small>
-                                </div>
-                              ) : null}
-                              {cell.actualKcal != null ? (
-                                <div className={styles.monthCellMetric}>
-                                  <span className={styles.monthCellMetricIcon} aria-hidden="true"><UtensilsCrossed size={11} strokeWidth={2.2} /></span>
-                                  <small>{cell.actualKcal}</small>
-                                </div>
-                              ) : null}
-                              {cell.weight ? (
-                                <div className={styles.monthCellMetric}>
-                                  <span className={styles.monthCellMetricIcon} aria-hidden="true"><Weight size={11} strokeWidth={2.2} /></span>
-                                  <small>{formatWeightKg(cell.weight.weight_kg)}</small>
-                                </div>
-                              ) : null}
-                              {cell.kcalDiff == null && !cell.weight && cell.isChallengeStart ? (
-                                <div className={styles.monthCellHint}>start</div>
-                              ) : null}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            </section>
-
-            <section className={`surface-card ${styles.panel}`}>
-              <div className={styles.panelHead}>
-                <div>
-                  <h3 className={styles.panelTitle}>Achievements</h3>
-                  <p className={styles.panelText}>Collapsed by default. Open only when you want the RPG layer.</p>
-                </div>
-                <button className={styles.sectionToggle} onClick={() => setAchievementsCollapsed((current) => !current)} type="button">
-                  {achievementsCollapsed ? 'Open' : 'Collapse'}
-                </button>
-              </div>
-              {!achievementsCollapsed ? (
-                <div className={styles.achievementList}>
-                  {achievements.map((item) => (
-                    <div className={`${styles.achievement} ${item.unlocked ? styles.achievementOn : styles.achievementOff}`} key={item.title}>
-                      <div>
-                        <strong>{item.title}</strong>
-                        <p>{item.body}</p>
-                      </div>
-                      <span>{item.unlocked ? 'Unlocked' : 'Locked'}</span>
-                    </div>
-                  ))}
-                </div>
+                            ) : null}
+                            {cell.actualKcal != null ? (
+                              <div className={styles.monthCellMetric}>
+                                <span className={styles.monthCellMetricIcon} aria-hidden="true"><UtensilsCrossed size={11} strokeWidth={2.2} /></span>
+                                <small>{cell.actualKcal}</small>
+                              </div>
+                            ) : null}
+                            {cell.weight ? (
+                              <div className={styles.monthCellMetric}>
+                                <span className={styles.monthCellMetricIcon} aria-hidden="true"><Weight size={11} strokeWidth={2.2} /></span>
+                                <small>{formatWeightKg(cell.weight.weight_kg)}</small>
+                              </div>
+                            ) : null}
+                            {cell.kcalDiff == null && !cell.weight && cell.isChallengeStart ? (
+                              <div className={styles.monthCellHint}>start</div>
+                            ) : null}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
               ) : null}
             </section>
           </div> : null}
@@ -2800,11 +2836,11 @@ export default function CutCoachPage() {
         <section id="progress" className={styles.appSection}>
           <div className={styles.sectionHead}>
             <div>
-              <div className={styles.sectionEyebrow}>progress</div>
-              <h2 className={styles.sectionTitle}>Challenge status</h2>
+              <div className={styles.sectionEyebrow}>milestones</div>
+              <h2 className={styles.sectionTitle}>Score and achievements</h2>
             </div>
             <div className={styles.sectionHeadActions}>
-              <div className={styles.sectionMeta}>{activeChallenge ? `${Math.round(challengeStats.progress * 100)}% complete` : 'No active challenge'}</div>
+              <div className={styles.sectionMeta}>{activeChallenge ? `${Math.round(challengeStats.progress * 100)}% complete` : 'Ready to start'}</div>
               <button className={styles.sectionToggle} onClick={() => toggleSection('progress')} type="button">
                 {collapsedSections.progress ? 'Expand' : 'Collapse'}
               </button>
@@ -2816,6 +2852,8 @@ export default function CutCoachPage() {
             <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Scoreboard</h3>
               <div className={styles.scoreGrid}>
+                <SummaryTile label="Level" value={`Lv ${xp.level}`} tone="future" />
+                <SummaryTile label="XP" value={String(xp.xp)} tone="good" />
                 <SummaryTile label="Check-in days" value={String(challengeStats.checkinDays)} tone="neutral" />
                 <SummaryTile label="Green days" value={String(challengeStats.underTargetDays)} tone="good" />
                 <SummaryTile label="Start kg" value={challengeStats.startWeight != null ? `${formatWeightKg(challengeStats.startWeight)}` : '—'} tone="future" />
@@ -2824,12 +2862,22 @@ export default function CutCoachPage() {
             </section>
 
             <section className={`surface-card ${styles.panel}`}>
-              <h3 className={styles.panelTitle}>What matters now</h3>
+              <h3 className={styles.panelTitle}>Unlocked lately</h3>
+              <div className={styles.achievementList}>
+                {visibleAchievements.map((item) => (
+                  <div className={`${styles.achievement} ${item.unlocked ? styles.achievementOn : styles.achievementOff}`} key={item.title}>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <p>{item.body}</p>
+                    </div>
+                    <span>{item.unlocked ? 'Unlocked' : 'Locked'}</span>
+                  </div>
+                ))}
+              </div>
               <ul className={styles.cleanList}>
-                <li>Main daily input: total kcal at the end of the day.</li>
-                <li>Daily weigh-in in the morning, same context.</li>
-                <li>Waist and the rest of the measurements on weekends.</li>
-                <li>Movement stays optional, but helps with context.</li>
+                <li>Close the day with one kcal total.</li>
+                <li>Morning weigh-ins matter more than more widgets.</li>
+                <li>Use movement as context, not as the main event.</li>
               </ul>
             </section>
           </div>
@@ -3001,11 +3049,14 @@ export default function CutCoachPage() {
         <section id="settings" className={styles.appSection}>
           <div className={styles.sectionHead}>
             <div>
-              <div className={styles.sectionEyebrow}>setup</div>
-              <h2 className={styles.sectionTitle}>Setup and controls</h2>
+              <div className={styles.sectionEyebrow}>adjust</div>
+              <h2 className={styles.sectionTitle}>Profile, challenge, reminders</h2>
             </div>
             <div className={styles.sectionHeadActions}>
-              <div className={styles.sectionMeta}>flexible, not hardcoded to 100 days</div>
+              <div className={styles.sectionMeta}>secondary controls, not daily actions</div>
+              <button className={styles.sectionToggle} onClick={() => toggleSection('settings')} type="button">
+                {collapsedSections.settings ? 'Expand' : 'Collapse'}
+              </button>
             </div>
           </div>
 
