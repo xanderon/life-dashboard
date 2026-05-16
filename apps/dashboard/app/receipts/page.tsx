@@ -557,6 +557,7 @@ export default function ReceiptsPage() {
   const [jsonInput, setJsonInput] = useState('');
   const [metaLocked, setMetaLocked] = useState(true);
   const [deleteItemsAckSignature, setDeleteItemsAckSignature] = useState('');
+  const [editorSessionMode, setEditorSessionMode] = useState<EditorSessionMode | null>(null);
   const itemPrefillCache = useRef<Record<string, Partial<ReceiptItemRow>>>({});
   const prevSelectionRef = useRef<ReceiptRow | null>(null);
   const editorRef = useRef<HTMLDivElement | null>(null);
@@ -570,7 +571,6 @@ export default function ReceiptsPage() {
   const confirmDeleteReceiptRef = useRef<ReceiptRow | null>(null);
   const savingRef = useRef(false);
   const deletingReceiptRef = useRef(false);
-  const editorSessionModeRef = useRef<EditorSessionMode | null>(null);
   const editorBaselineReceiptRef = useRef('');
   const editorBaselineItemsRef = useRef('');
   const selectedId = selected?.id ?? null;
@@ -589,13 +589,15 @@ export default function ReceiptsPage() {
   );
   const isDeleteItemsAckValid =
     !pendingDeletedItems.length || deleteItemsAckSignature === pendingDeletedItemsSignature;
+  const needsInitialDraftSave = Boolean(selected && !selected.id && editorSessionMode === 'draft-imported');
   const editorHasUnsavedChanges = useMemo(() => {
     if (!selected) return false;
+    if (needsInitialDraftSave) return true;
     return (
       normalizeReceiptForDirtyCheck(selected) !== editorBaselineReceiptRef.current ||
       normalizeItemsForDirtyCheck(items) !== editorBaselineItemsRef.current
     );
-  }, [selected, items]);
+  }, [items, needsInitialDraftSave, selected]);
   const canSaveEditor = Boolean(selected) && !saving && isDeleteItemsAckValid && editorHasUnsavedChanges;
   const canUseSaveShortcut = canSaveEditor;
   const saveButtonTitle = !isDeleteItemsAckValid
@@ -758,7 +760,7 @@ export default function ReceiptsPage() {
     nextItems: ReceiptItemRow[],
     mode: EditorSessionMode | null
   ) {
-    editorSessionModeRef.current = mode;
+    setEditorSessionMode(mode);
     editorBaselineReceiptRef.current = normalizeReceiptForDirtyCheck(receipt);
     editorBaselineItemsRef.current = normalizeItemsForDirtyCheck(nextItems);
   }
@@ -767,8 +769,13 @@ export default function ReceiptsPage() {
     setEditorBaseline(null, [], null);
   }
 
+  function requiresInitialDraftSave(receipt: ReceiptRow | null) {
+    return Boolean(receipt && !receipt.id && editorSessionMode === 'draft-imported');
+  }
+
   function hasUnsavedEditorChanges() {
     if (!selected) return false;
+    if (requiresInitialDraftSave(selected)) return true;
 
     const currentReceiptSnapshot = normalizeReceiptForDirtyCheck(selected);
     const currentItemsSnapshot = normalizeItemsForDirtyCheck(items);
@@ -1216,7 +1223,7 @@ export default function ReceiptsPage() {
     if (!selectedId) {
       setPersistedItemsSnapshot([]);
       if (!selectedRef.current) {
-        editorSessionModeRef.current = null;
+        setEditorSessionMode(null);
         editorBaselineReceiptRef.current = '';
         editorBaselineItemsRef.current = '';
       }
@@ -1858,9 +1865,21 @@ export default function ReceiptsPage() {
                 ref={editorRef}
                 className="surface-card order-1 p-3 lg:order-2"
               >
-              <div className="flex items-center justify-between">
-                <div className="text-xl font-semibold">Editor bon</div>
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-xl font-semibold">Editor bon</div>
+                  <div
+                    className={`hidden rounded-full px-2.5 py-1 text-[11px] font-semibold lg:inline-flex ${
+                      selectedTotals.hasMatch
+                        ? 'bg-emerald-500/15 text-emerald-200'
+                        : 'bg-amber-500/15 text-amber-100'
+                    }`}
+                  >
+                    {selectedTotals.hasMatch ? 'Total ok' : `Delta ${formatSignedMoney(selectedTotals.delta)}`}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 lg:min-w-[26rem] lg:items-end">
+                  <div className="flex items-center gap-2 self-end">
                   <button
                     className="rounded-full border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-xs text-[var(--text)]"
                     onClick={() =>
@@ -1874,7 +1893,7 @@ export default function ReceiptsPage() {
                       })
                     }
                     type="button"
-                  >
+                >
                   {metaLocked ? '🔒 Unlock' : '✏️ Lock'}
                 </button>
                   <button
@@ -1912,18 +1931,7 @@ export default function ReceiptsPage() {
                     🗑️
                   </button>
                   <button
-                    className="hidden rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50 lg:inline-flex"
-                    disabled={!canSaveEditor}
-                    onClick={saveChanges}
-                    title={saveButtonTitle}
-                >
-                  {saveButtonLabel}
-                </button>
-                <span className="hidden text-xs text-[var(--muted)] lg:inline">
-                  Ctrl/Cmd+S
-                </span>
-                <button
-                  className="hidden rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50 sm:inline-flex"
+                    className="hidden rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1 text-sm text-[var(--text)] disabled:opacity-50 md:inline-flex"
                   disabled={!selected}
                   onClick={() => {
                     if (!selected) return;
@@ -1951,7 +1959,7 @@ export default function ReceiptsPage() {
                   Export JSON
                 </button>
                   <button
-                    className="hidden rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-sm text-[var(--text)] lg:inline-flex"
+                    className="hidden rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1 text-sm text-[var(--text)] md:inline-flex"
                     onClick={() => {
                       closeSelectedEditor();
                     }}
@@ -1961,10 +1969,45 @@ export default function ReceiptsPage() {
                 >
                   ✕
                 </button>
-              </div>
+                  </div>
+
+                  <div className="hidden w-full rounded-2xl border border-[var(--border)] bg-[var(--panel-2)]/75 p-3 md:block">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                          Ready to save
+                        </div>
+                        <div className="mt-1 text-sm font-semibold text-[var(--text)]">
+                          {selected?.store || 'receipt'} · {items.length} item{items.length === 1 ? '' : 'e'}
+                        </div>
+                        <div className="mt-1 text-xs text-[var(--muted)]">
+                          {editorHasUnsavedChanges ? 'Ai modificări locale.' : 'Nicio modificare locală.'}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-right">
+                        <div className="text-[10px] uppercase tracking-[0.16em] text-[var(--muted)]">Computed</div>
+                        <div className="mt-1 text-sm font-semibold text-[var(--text)]">
+                          {selectedTotals.bestComputedTotal.toFixed(2)} {selected?.currency ?? 'RON'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <div className="text-xs text-[var(--muted)]">Ctrl/Cmd+S</div>
+                      <button
+                        className="btn-base btn-primary min-h-11 min-w-[11rem] justify-center text-sm disabled:opacity-50"
+                        disabled={!canSaveEditor}
+                        onClick={saveChanges}
+                        title={saveButtonTitle}
+                        type="button"
+                      >
+                        {saveButtonLabel}
+                      </button>
+                    </div>
+                  </div>
+                </div>
             </div>
 
-            <div className="sticky top-3 z-20 mt-3 lg:hidden">
+            <div className="sticky top-3 z-20 mt-3 md:hidden">
               <div
                 className={`surface-card p-3 ${
                   selectedTotals.hasMatch ? 'surface-card--success' : 'surface-card--danger'
