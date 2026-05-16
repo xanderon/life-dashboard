@@ -611,6 +611,7 @@
 .chartBox {
   height: 190px;
   margin-top: 0.55rem;
+  overflow: visible;
 }
 
 .chartEmpty {
@@ -3504,6 +3505,14 @@
 .flowMetaGrid,
 .scoreGrid {
   gap: 0.9rem;
+}
+
+.flowSubhead {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-top: 0.2rem;
 }
 
 .flowWidePanel {

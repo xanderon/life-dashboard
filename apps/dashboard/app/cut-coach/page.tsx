@@ -2538,6 +2538,79 @@ export default function CutCoachPage() {
           </div>
 
           {!collapsedSections.flow ? <>
+          <div className={styles.flowMetaGrid}>
+            <section className={`surface-card ${styles.panel}`}>
+              <h3 className={styles.panelTitle}>Current run</h3>
+              <p className={styles.panelText}>
+                {today?.target
+                  ? `Day ${Math.max(0, challengeStats.currentDay)} of ${Math.max(0, challengeStats.totalDays)}. ${Math.round(today.target.kcal_target)} kcal today.`
+                  : 'Save setup first.'}{' '}
+                {tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal tomorrow.` : ''}
+              </p>
+              <div className={styles.phaseTrack}>
+                <div className={styles.phaseBar}>
+                  <span style={{ width: `${Math.round(challengeStats.progress * 100)}%` }} />
+                </div>
+                <div className={styles.phaseLabels}>
+                  <span>Ignition</span>
+                  <span>Rhythm</span>
+                  <span>Lock-in</span>
+                  <span>Finish</span>
+                </div>
+              </div>
+            </section>
+
+            <section className={`surface-card ${styles.panel}`}>
+              <div className={styles.chartHead}>
+                <div>
+                  <h3 className={styles.panelTitle}>Weight trend</h3>
+                  <div className={styles.chartTitle}>Last weigh-ins</div>
+                </div>
+                <div className={styles.chartMeta}>{weightTrendMeta}</div>
+              </div>
+              <div className={styles.chartBox}>
+                {weightChartData.length > 1 ? (
+                  <ResponsiveContainer width="100%" height={190}>
+                    <LineChart data={weightChartData} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
+                      <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="date" tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={56} domain={['dataMin - 0.5', 'dataMax + 0.5']} />
+                      <Tooltip
+                        contentStyle={{
+                          background: 'var(--panel-strong)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 14,
+                          color: 'var(--text)',
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="weight"
+                        stroke="var(--accent)"
+                        strokeWidth={3}
+                        dot={{ r: 3, fill: 'var(--accent)' }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className={styles.chartEmpty}>
+                    {weightChartData.length === 1
+                      ? 'One weigh-in saved. Add the next one and the trend line starts to show.'
+                      : 'Your trend line appears here after the first couple of weigh-ins.'}
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+
+          <div className={styles.flowSubhead}>
+            <div>
+              <div className={styles.sectionEyebrow}>week view</div>
+              <h3 className={styles.panelTitle}>This week</h3>
+            </div>
+          </div>
+
           {weekLoading ? (
             <div className={styles.flowRailSkeleton} aria-hidden="true">
               {Array.from({ length: 7 }).map((_, index) => (
@@ -2581,80 +2654,14 @@ export default function CutCoachPage() {
             </div>
           )}
 
-          <div className={styles.flowMetaGrid}>
-            <section className={`surface-card ${styles.panel}`}>
-              <h3 className={styles.panelTitle}>Current run</h3>
-              <p className={styles.panelText}>
-                {today?.target
-                  ? `Day ${Math.max(0, challengeStats.currentDay)} of ${Math.max(0, challengeStats.totalDays)}. ${Math.round(today.target.kcal_target)} kcal today.`
-                  : 'Save setup first.'}{' '}
-                {tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal tomorrow.` : ''}
-              </p>
-              <div className={styles.phaseTrack}>
-                <div className={styles.phaseBar}>
-                  <span style={{ width: `${Math.round(challengeStats.progress * 100)}%` }} />
-                </div>
-                <div className={styles.phaseLabels}>
-                  <span>Ignition</span>
-                  <span>Rhythm</span>
-                  <span>Lock-in</span>
-                  <span>Finish</span>
-                </div>
-              </div>
-            </section>
-
-            <section className={`surface-card ${styles.panel}`}>
-              <div className={styles.chartHead}>
-                <div>
-                  <h3 className={styles.panelTitle}>Weight trend</h3>
-                  <div className={styles.chartTitle}>Last weigh-ins</div>
-                </div>
-                <div className={styles.chartMeta}>{weightTrendMeta}</div>
-              </div>
-              <div className={styles.chartBox}>
-                {weightChartData.length > 1 ? (
-                  <ResponsiveContainer width="100%" height={190}>
-                    <LineChart data={weightChartData} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
-                      <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="date" tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={42} domain={['dataMin - 0.5', 'dataMax + 0.5']} />
-                      <Tooltip
-                        contentStyle={{
-                          background: 'var(--panel-strong)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 14,
-                          color: 'var(--text)',
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="weight"
-                        stroke="var(--accent)"
-                        strokeWidth={3}
-                        dot={{ r: 3, fill: 'var(--accent)' }}
-                        activeDot={{ r: 5 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className={styles.chartEmpty}>
-                    {weightChartData.length === 1
-                      ? 'One weigh-in saved. Add the next one and the trend line starts to show.'
-                      : 'Your trend line appears here after the first couple of weigh-ins.'}
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className={`surface-card ${styles.panel} ${styles.flowWidePanel}`}>
+          <section className={`surface-card ${styles.panel} ${styles.flowWidePanel}`}>
               <h3 className={styles.panelTitle}>Adaptive note</h3>
               <p className={styles.panelText}>
                 {today?.target
                   ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today')
                   : 'The planner starts after profile + weight are saved.'}
               </p>
-            </section>
-          </div>
+          </section>
           </> : null}
         </section>
 
