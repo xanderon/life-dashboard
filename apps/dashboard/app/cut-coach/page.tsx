@@ -2560,7 +2560,7 @@ export default function CutCoachPage() {
 
           {!collapsedSections.flow ? <>
           <div className={styles.flowMetaGrid}>
-            <section className={`surface-card ${styles.panel}`}>
+            <section className={`surface-card ${styles.panel} ${styles.panelSteel}`}>
               <h3 className={styles.panelTitle}>Challenge pace</h3>
               <p className={styles.panelText}>
                 {today?.target
@@ -2581,7 +2581,7 @@ export default function CutCoachPage() {
               </div>
             </section>
 
-            <section className={`surface-card ${styles.panel}`}>
+            <section className={`surface-card ${styles.panel} ${styles.panelRecessed}`}>
               <div className={styles.chartHead}>
                 <div>
                   <h3 className={styles.panelTitle}>Weight trend</h3>
@@ -2628,7 +2628,7 @@ export default function CutCoachPage() {
             </section>
           </div>
 
-          <section className={`surface-card ${styles.panel} ${styles.weekPlanPanel}`}>
+          <section className={`surface-card ${styles.panel} ${styles.panelAccent} ${styles.weekPlanPanel}`}>
             <div className={styles.weekPlanHead}>
               <div>
                 <div className={styles.sectionEyebrow}>week plan</div>
@@ -2711,7 +2711,7 @@ export default function CutCoachPage() {
           </div>
 
           {!collapsedSections.calendar ? <div className={styles.calendarGrid}>
-            <section className={`surface-card ${styles.panel}`}>
+            <section className={`surface-card ${styles.panel} ${styles.panelRecessed} ${styles.calendarPanel}`}>
               <div className={styles.calendarHeader}>
                 <div>
                   <h3 className={styles.panelTitle}>Calendar</h3>
@@ -2844,7 +2844,7 @@ export default function CutCoachPage() {
 
           {!collapsedSections.progress ? <>
           <div className={styles.progressGrid}>
-            <section className={`surface-card ${styles.panel}`}>
+            <section className={`surface-card ${styles.panel} ${styles.panelSteel}`}>
               <h3 className={styles.panelTitle}>Scoreboard</h3>
               <div className={styles.scoreGrid}>
                 <SummaryTile label="Level" value={`Lv ${xp.level}`} tone="future" />
@@ -2856,7 +2856,7 @@ export default function CutCoachPage() {
               </div>
             </section>
 
-            <section className={`surface-card ${styles.panel}`}>
+            <section className={`surface-card ${styles.panel} ${styles.panelWarm}`}>
               <h3 className={styles.panelTitle}>Unlocked lately</h3>
               <div className={styles.achievementList}>
                 {visibleAchievements.map((item) => (
