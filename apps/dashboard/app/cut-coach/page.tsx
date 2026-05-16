@@ -2258,23 +2258,13 @@ export default function CutCoachPage() {
                 <Flag size={16} strokeWidth={2.2} />
               </div>
               <strong className={styles.heroRunValue}>
-                {activeChallenge ? `Day ${challengeStats.currentDay}/${challengeStats.totalDays}` : 'Ready when you are'}
+                {activeChallenge ? `Day ${challengeStats.currentDay} of ${challengeStats.totalDays}` : 'Ready when you are'}
               </strong>
               <p className={styles.spotlightMeta}>
                 {activeChallenge
                   ? `${Math.round(challengeStats.progress * 100)}% complete${activeChallenge.title ? ` • ${activeChallenge.title}` : ''}`
                   : 'Start a challenge only if you want a fixed timeline.'}
               </p>
-              <div className={styles.heroRunStats}>
-                <div>
-                  <span>Check-ins</span>
-                  <strong>{challengeStats.checkinDays}</strong>
-                </div>
-                <div>
-                  <span>Level</span>
-                  <strong>{xp.level}</strong>
-                </div>
-              </div>
             </section>
           </div>
 

@@ -3412,34 +3412,6 @@
   letter-spacing: -0.07em;
 }
 
-.heroRunStats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem;
-}
-
-.heroRunStats > div {
-  display: grid;
-  gap: 0.18rem;
-  padding: 0.68rem 0.72rem;
-  border-radius: 0.95rem;
-  border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
-  background: color-mix(in srgb, var(--panel-strong) 72%, transparent);
-}
-
-.heroRunStats span {
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.heroRunStats strong {
-  font-size: 1rem;
-  letter-spacing: -0.03em;
-}
-
 .spotlightCalories {
   background:
     radial-gradient(circle at top right, color-mix(in srgb, var(--accent-soft) 34%, transparent), transparent 42%),
@@ -4117,10 +4089,6 @@
 
   .todayBoard {
     gap: 0.8rem;
-  }
-
-  .heroRunStats {
-    grid-template-columns: 1fr;
   }
 
   .loadingStatsGrid,
