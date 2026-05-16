@@ -3366,6 +3366,12 @@
   letter-spacing: -0.03em;
 }
 
+.todayMetaHint {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 .spotlightCard {
   display: grid;
   gap: 0.7rem;
@@ -3498,6 +3504,10 @@
 .flowMetaGrid,
 .scoreGrid {
   gap: 0.9rem;
+}
+
+.flowWidePanel {
+  grid-column: 1 / -1;
 }
 
 .settingsGrid {

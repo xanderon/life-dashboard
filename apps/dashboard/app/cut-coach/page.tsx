@@ -15,6 +15,15 @@ import {
   UtensilsCrossed,
   Weight,
 } from 'lucide-react';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { BackLink, PageShell } from '@/components/PageShell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import {
@@ -815,6 +824,16 @@ function buildCheckinStreak(checkins: CutCoachDailyCheckinRow[], todayIsoDate: s
     expected = addDays(expected, -1);
   }
   return streak;
+}
+
+function buildWeightChartData(weights: CutCoachWeightRow[]) {
+  return [...weights]
+    .sort((left, right) => left.date.localeCompare(right.date))
+    .slice(-14)
+    .map((item) => ({
+      date: formatDate(item.date, { day: 'numeric', month: 'short' }),
+      weight: item.weight_kg,
+    }));
 }
 
 const SLOT_LIBRARY: Record<string, string[]> = {
@@ -1956,20 +1975,21 @@ export default function CutCoachPage() {
         ? Math.round(findCheckinForDate(data?.checkins ?? [], todayIsoDate)!.kcal_actual ?? 0)
         : null;
   const checkinStreak = buildCheckinStreak(data?.checkins ?? [], todayIsoDate);
-  const currentWeightLabel = data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : 'No weigh-in';
+  const weightChartData = buildWeightChartData(data?.weights ?? []);
+  const currentWeightLabel = data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : 'Ready to start';
   const currentWeightHelper =
     challengeStats.deltaWeight != null
       ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${formatWeightKg(challengeStats.deltaWeight)} kg vs start`
       : latestKnownWeight != null
         ? 'Latest saved weight'
-        : 'Save first weight';
+        : 'One morning weigh-in starts your trend line.';
   const calorieProgress = todayTargetKcal && todayConsumedKcal != null
     ? clamp(todayConsumedKcal / Math.max(todayTargetKcal, 1), 0, 1.35)
     : 0;
   const calorieProgressDegrees = `${Math.round(calorieProgress * 360)}deg`;
   const calorieDeltaLabel =
     overToday == null
-      ? 'Waiting for data'
+      ? 'Target is ready'
       : overToday > 0
         ? `+${overToday} kcal`
         : overToday < 0
@@ -1978,7 +1998,7 @@ export default function CutCoachPage() {
   const todayDialHeaderText =
     todayTargetKcal != null
       ? todayConsumedKcal == null
-        ? 'Plan for today'
+        ? 'Your number is ready'
         : overToday == null
           ? 'Tracking today'
           : overToday > 0
@@ -1989,7 +2009,7 @@ export default function CutCoachPage() {
       : 'Set profile';
   const todayDialTitle =
     todayConsumedKcal == null
-      ? 'Daily target'
+      ? 'Target set'
       : overToday == null
         ? 'Logged today'
         : overToday > 0
@@ -2010,13 +2030,21 @@ export default function CutCoachPage() {
   const todayDialUnit =
     todayConsumedKcal == null
       ? todayTargetKcal != null
-        ? 'kcal'
+        ? 'kcal ready'
         : 'Set profile'
       : overToday == null
         ? 'kcal logged'
         : overToday === 0
           ? `${todayConsumedKcal} kcal logged`
           : 'kcal';
+  const weightTrendMeta =
+    data?.weights.length && data.weights.length > 1
+      ? data?.trends.delta7 != null
+        ? `${data.trends.delta7 > 0 ? '+' : ''}${formatWeightKg(data.trends.delta7)} kg vs prev 7d`
+        : 'Trend updates with each weigh-in'
+      : data?.weights.length === 1
+        ? 'First point saved. The line fills in from here.'
+        : 'Your first few weigh-ins will build the line here.';
   const initialLoading = !heroReady && !data;
   const weekLoading = heroReady && !detailReady;
 
@@ -2220,12 +2248,14 @@ export default function CutCoachPage() {
               </div>
               <div className={styles.todayDialMeta}>
                 <div className={styles.todayConsumedCard}>
-                  <span>Consumed</span>
-                  <strong>{todayConsumedKcal != null ? `${todayConsumedKcal} kcal` : 'Not logged'}</strong>
+                  <span>{todayConsumedKcal != null ? 'Consumed' : 'Tonight'}</span>
+                  <strong>{todayConsumedKcal != null ? `${todayConsumedKcal} kcal` : 'Log your total'}</strong>
+                  {todayConsumedKcal == null ? <small className={styles.todayMetaHint}>One number at the end of the day is enough.</small> : null}
                 </div>
                 <div className={`${styles.todayDeltaCard} ${overToday != null && overToday > 0 ? styles.todayDeltaCardBad : overToday != null ? styles.todayDeltaCardGood : ''}`}>
                   <span>{overToday != null && overToday > 0 ? 'Over' : overToday != null && overToday < 0 ? 'Left' : 'Status'}</span>
                   <strong>{calorieDeltaLabel}</strong>
+                  {overToday == null ? <small className={styles.todayMetaHint}>The target is set. Weight trend and pace update as you check in.</small> : null}
                 </div>
               </div>
               <button className={`btn-base btn-primary ${styles.spotlightButton} ${styles.todayDialButton}`} onClick={() => openTodayEntry()} type="button">
@@ -2574,6 +2604,49 @@ export default function CutCoachPage() {
             </section>
 
             <section className={`surface-card ${styles.panel}`}>
+              <div className={styles.chartHead}>
+                <div>
+                  <h3 className={styles.panelTitle}>Weight trend</h3>
+                  <div className={styles.chartTitle}>Last weigh-ins</div>
+                </div>
+                <div className={styles.chartMeta}>{weightTrendMeta}</div>
+              </div>
+              <div className={styles.chartBox}>
+                {weightChartData.length > 1 ? (
+                  <ResponsiveContainer width="100%" height={190}>
+                    <LineChart data={weightChartData} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
+                      <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="date" tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={42} domain={['dataMin - 0.5', 'dataMax + 0.5']} />
+                      <Tooltip
+                        contentStyle={{
+                          background: 'var(--panel-strong)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 14,
+                          color: 'var(--text)',
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="weight"
+                        stroke="var(--accent)"
+                        strokeWidth={3}
+                        dot={{ r: 3, fill: 'var(--accent)' }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className={styles.chartEmpty}>
+                    {weightChartData.length === 1
+                      ? 'One weigh-in saved. Add the next one and the trend line starts to show.'
+                      : 'Your trend line appears here after the first couple of weigh-ins.'}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className={`surface-card ${styles.panel} ${styles.flowWidePanel}`}>
               <h3 className={styles.panelTitle}>Adaptive note</h3>
               <p className={styles.panelText}>
                 {today?.target
