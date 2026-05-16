@@ -11,7 +11,6 @@ import {
   Goal,
   Scale,
   Smartphone,
-  Sparkles,
   UtensilsCrossed,
   Weight,
 } from 'lucide-react';
@@ -60,7 +59,7 @@ type RewardToast = {
   id: number;
   title: string;
   body: string;
-  xp: number;
+  xp?: number;
 };
 
 type BootstrapPayload = {
@@ -806,26 +805,6 @@ function buildAchievements(
   });
 }
 
-function buildCheckinStreak(checkins: CutCoachDailyCheckinRow[], todayIsoDate: string) {
-  const loggedDays = checkins
-    .filter((item) => item.kcal_actual != null)
-    .map((item) => item.date)
-    .sort((left, right) => right.localeCompare(left));
-
-  if (!loggedDays.length) return 0;
-
-  let expected = loggedDays[0];
-  if (expected !== todayIsoDate && expected !== addDays(todayIsoDate, -1)) return 0;
-
-  let streak = 0;
-  for (const date of loggedDays) {
-    if (date !== expected) break;
-    streak += 1;
-    expected = addDays(expected, -1);
-  }
-  return streak;
-}
-
 function buildWeightChartData(weights: CutCoachWeightRow[]) {
   return [...weights]
     .sort((left, right) => left.date.localeCompare(right.date))
@@ -1166,21 +1145,21 @@ function buildPacePreview(setup: SetupState, percentValue: string) {
   };
 }
 
-function buildReward(url: string): RewardToast {
+function buildReward(url: string, successMessage: string): RewardToast {
   const id = Date.now();
   if (url.includes('/checkins')) {
-    return { id, title: 'Daily log saved', body: 'XP +12 for consistency and clear kcal tracking.', xp: 12 };
+    return { id, title: 'Saved', body: successMessage };
   }
   if (url.includes('/weights')) {
-    return { id, title: 'Scale sync', body: 'XP +14 for weight and measurements.', xp: 14 };
+    return { id, title: 'Saved', body: successMessage };
   }
   if (url.includes('/profile')) {
-    return { id, title: 'Metabolism tuned', body: 'XP +20. Your kcal plan now has a stronger base.', xp: 20 };
+    return { id, title: 'Saved', body: successMessage };
   }
   if (url.includes('/challenges')) {
-    return { id, title: 'Challenge locked', body: 'XP +16. Your cut now has a clear timeline.', xp: 16 };
+    return { id, title: 'Saved', body: successMessage };
   }
-  return { id, title: 'Settings saved', body: 'XP +8. Your system is better calibrated now.', xp: 8 };
+  return { id, title: 'Saved', body: successMessage };
 }
 
 function applyNoGymPreset() {
@@ -1224,6 +1203,8 @@ export default function CutCoachPage() {
   const [pushError, setPushError] = useState<string | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [rewardToast, setRewardToast] = useState<RewardToast | null>(null);
+  const [optimisticCheckin, setOptimisticCheckin] = useState<{ date: string; kcalActual: number | null } | null>(null);
+  const [optimisticWeight, setOptimisticWeight] = useState<{ date: string; weightKg: number } | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<SectionKey, boolean>>({
     today: false,
     flow: false,
@@ -1506,8 +1487,7 @@ export default function CutCoachPage() {
       setBusy(null);
       return false;
     }
-    setNotice(successMessage);
-    setRewardToast(buildReward(url));
+    setRewardToast(buildReward(url, successMessage));
     if (options?.apply) {
       await options.apply(payload);
     } else if (options?.reload !== 'none') {
@@ -1573,12 +1553,16 @@ export default function CutCoachPage() {
   }
 
   async function saveCheckinAndClose() {
+    const optimisticValue = toNumber(checkin.kcal_actual) > 0 ? Math.round(toNumber(checkin.kcal_actual)) : null;
+    closeKcalModal();
+    setOptimisticCheckin({ date: checkin.date, kcalActual: optimisticValue });
     const ok = await saveCheckin();
-    if (ok) closeKcalModal();
+    setOptimisticCheckin(null);
     return ok;
   }
 
   async function saveActivityDraft() {
+    setActivityModalOpen(false);
     const existing = fillCheckin(activityDraft.date, data);
     const ok = await postJson<CheckinMutationPayload>(
       '/api/cut-coach/checkins',
@@ -1603,9 +1587,6 @@ export default function CutCoachPage() {
         },
       }
     );
-    if (ok) {
-      setActivityModalOpen(false);
-    }
     return ok;
   }
 
@@ -1633,11 +1614,14 @@ export default function CutCoachPage() {
   }
 
   async function saveWeightDraft() {
-    const ok = await persistWeightEntry(weightDraft, 'Weight saved.');
-    if (ok) {
-      setWeight(weightDraft);
-      setWeightModalOpen(false);
+    const optimisticValue = toNumber(weightDraft.weight_kg);
+    setWeightModalOpen(false);
+    if (optimisticValue > 0) {
+      setOptimisticWeight({ date: weightDraft.date, weightKg: optimisticValue });
     }
+    const ok = await persistWeightEntry(weightDraft, 'Weight saved.');
+    setOptimisticWeight(null);
+    if (ok) setWeight(weightDraft);
     return ok;
   }
 
@@ -1932,11 +1916,32 @@ export default function CutCoachPage() {
   const selectedDay = findWeekDay(data, checkin.date);
   const yearMonths = buildYearMonths(todayIsoDate, data, activeChallenge);
   const currentMonth = yearMonths[new Date(`${todayIsoDate}T12:00:00`).getMonth()] ?? yearMonths[0] ?? null;
-  const overToday =
-    today?.target && today.caloriesSource !== 'none' ? Math.round(today.consumed.calories - today.target.kcal_target) : null;
   const todayCheckinDone = Boolean(data && findCheckinForDate(data.checkins, todayIsoDate)?.kcal_actual != null);
   const todayWeightDone = Boolean(data && findWeightForDate(data.weights, todayIsoDate)?.weight_kg != null);
   const latestKnownWeight = data?.trends.latest?.weight_kg ?? null;
+  const selectedTargetKcal = selectedDay?.target ? Math.round(selectedDay.target.kcal_target) : null;
+  const kcalDraftDelta =
+    selectedTargetKcal != null && toNumber(checkin.kcal_actual) > 0
+      ? Math.round(toNumber(checkin.kcal_actual) - selectedTargetKcal)
+      : null;
+  const weightDraftDelta =
+    latestKnownWeight != null && toNumber(weightDraft.weight_kg) > 0
+      ? Math.round((toNumber(weightDraft.weight_kg) - latestKnownWeight) * 100) / 100
+      : null;
+  const visibleAchievements = (achievements.filter((item) => item.unlocked).length
+    ? achievements.filter((item) => item.unlocked)
+    : achievements).slice(0, 3);
+  const todayTargetKcal = today?.target ? Math.round(today.target.kcal_target) : null;
+  const optimisticTodayKcal = optimisticCheckin?.date === todayIsoDate ? optimisticCheckin.kcalActual : null;
+  const todayConsumedKcal =
+    optimisticTodayKcal != null
+      ? optimisticTodayKcal
+      : today && today.caloriesSource !== 'none'
+        ? Math.round(today.consumed.calories)
+        : findCheckinForDate(data?.checkins ?? [], todayIsoDate)?.kcal_actual != null
+          ? Math.round(findCheckinForDate(data?.checkins ?? [], todayIsoDate)!.kcal_actual ?? 0)
+          : null;
+  const overToday = todayTargetKcal != null && todayConsumedKcal != null ? Math.round(todayConsumedKcal - todayTargetKcal) : null;
   const characterState = buildCharacterState({
     payload: data,
     activeChallenge,
@@ -1958,46 +1963,25 @@ export default function CutCoachPage() {
   const kcalDialStyle: CSSProperties & Record<'--dial-rotation', string> = {
     '--dial-rotation': `${kcalDialRotation}deg`,
   };
-  const selectedTargetKcal = selectedDay?.target ? Math.round(selectedDay.target.kcal_target) : null;
-  const kcalDraftDelta =
-    selectedTargetKcal != null && toNumber(checkin.kcal_actual) > 0
-      ? Math.round(toNumber(checkin.kcal_actual) - selectedTargetKcal)
-      : null;
-  const weightDraftDelta =
-    latestKnownWeight != null && toNumber(weightDraft.weight_kg) > 0
-      ? Math.round((toNumber(weightDraft.weight_kg) - latestKnownWeight) * 100) / 100
-      : null;
-  const visibleAchievements = (achievements.filter((item) => item.unlocked).length
-    ? achievements.filter((item) => item.unlocked)
-    : achievements).slice(0, 3);
-  const todayTargetKcal = today?.target ? Math.round(today.target.kcal_target) : null;
-  const todayConsumedKcal =
-    today && today.caloriesSource !== 'none'
-      ? Math.round(today.consumed.calories)
-      : findCheckinForDate(data?.checkins ?? [], todayIsoDate)?.kcal_actual != null
-        ? Math.round(findCheckinForDate(data?.checkins ?? [], todayIsoDate)!.kcal_actual ?? 0)
-        : null;
-  const checkinStreak = buildCheckinStreak(data?.checkins ?? [], todayIsoDate);
   const weightChartData = buildWeightChartData(data?.weights ?? []);
-  const currentWeightLabel = data?.trends.latest ? `${formatWeightKg(data.trends.latest.weight_kg)} kg` : 'Ready to start';
+  const optimisticLatestWeight = optimisticWeight ? optimisticWeight.weightKg : data?.trends.latest?.weight_kg ?? null;
+  const currentWeightDelta =
+    challengeStats.startWeight != null && optimisticLatestWeight != null
+      ? Number((optimisticLatestWeight - challengeStats.startWeight).toFixed(1))
+      : null;
+  const currentWeightLabel = optimisticLatestWeight != null ? `${formatWeightKg(optimisticLatestWeight)} kg` : 'Ready to start';
   const currentWeightHelper =
-    challengeStats.deltaWeight != null
-      ? `${challengeStats.deltaWeight > 0 ? '+' : ''}${formatWeightKg(challengeStats.deltaWeight)} kg vs start`
-      : latestKnownWeight != null
+    currentWeightDelta != null
+      ? `${currentWeightDelta > 0 ? '+' : ''}${formatWeightKg(currentWeightDelta)} kg vs start`
+      : optimisticLatestWeight != null
         ? 'Latest saved weight'
         : 'One morning weigh-in starts your trend line.';
+  const isTodaySavePending = busy === '/api/cut-coach/checkins' && optimisticCheckin?.date === todayIsoDate;
+  const isWeightSavePending = busy === '/api/cut-coach/weights' && optimisticWeight?.date === todayIsoDate;
   const calorieProgress = todayTargetKcal && todayConsumedKcal != null
     ? clamp(todayConsumedKcal / Math.max(todayTargetKcal, 1), 0, 1.35)
     : 0;
   const calorieProgressDegrees = `${Math.round(calorieProgress * 360)}deg`;
-  const calorieDeltaLabel =
-    overToday == null
-      ? 'Target is ready'
-      : overToday > 0
-        ? `+${overToday} kcal`
-        : overToday < 0
-          ? `${Math.abs(overToday)} kcal under`
-          : 'On target';
   const todayDialHeaderText =
     todayTargetKcal != null
       ? todayConsumedKcal == null
@@ -2224,12 +2208,6 @@ export default function CutCoachPage() {
           <>
 
         <section className={`hero-card ${styles.hero}`}>
-          <div className={styles.heroMeta}>
-            <span className={styles.heroMetaBadge}>Today</span>
-            <span>{checkinStreak > 0 ? `${checkinStreak} day streak` : 'Start a streak'}</span>
-            <span>{activeChallenge ? `${phaseLabel(challengeStats.progress)} phase` : 'No active run'}</span>
-          </div>
-
           <div className={styles.todayBoard}>
             <div className={styles.todayDialCard}>
               <div className={styles.todayDialHeader}>
@@ -2237,6 +2215,7 @@ export default function CutCoachPage() {
                   <span className={styles.todayDialLabel}>Plan for today</span>
                   <strong className={styles.todayDialHeaderValue}>{todayDialHeaderText}</strong>
                 </div>
+                {isTodaySavePending ? <span className={styles.inlineSavingBadge}>Saving…</span> : null}
               </div>
               <div
                 className={styles.todayDial}
@@ -2254,10 +2233,12 @@ export default function CutCoachPage() {
                   <strong>{todayConsumedKcal != null ? `${todayConsumedKcal} kcal` : 'Log your total'}</strong>
                   {todayConsumedKcal == null ? <small className={styles.todayMetaHint}>One number at the end of the day is enough.</small> : null}
                 </div>
-                <div className={`${styles.todayDeltaCard} ${overToday != null && overToday > 0 ? styles.todayDeltaCardBad : overToday != null ? styles.todayDeltaCardGood : ''}`}>
-                  <span>{overToday != null && overToday > 0 ? 'Over' : overToday != null && overToday < 0 ? 'Left' : 'Status'}</span>
-                  <strong>{calorieDeltaLabel}</strong>
-                  {overToday == null ? <small className={styles.todayMetaHint}>Weight trend and run pace fill in as you check in.</small> : null}
+                <div className={styles.todayTargetCard}>
+                  <span>Target</span>
+                  <strong>{todayTargetKcal != null ? `${todayTargetKcal} kcal` : 'Set profile'}</strong>
+                  <small className={styles.todayMetaHint}>
+                    {todayTargetKcal != null ? 'The ring shows how much room is left today.' : 'Weight trend and challenge pace appear after setup.'}
+                  </small>
                 </div>
               </div>
             </div>
@@ -2268,12 +2249,12 @@ export default function CutCoachPage() {
                 <Scale size={16} strokeWidth={2.2} />
               </div>
               <strong className={styles.spotlightValue}>{currentWeightLabel}</strong>
-              <p className={styles.spotlightMeta}>{currentWeightHelper}</p>
+              <p className={styles.spotlightMeta}>{isWeightSavePending ? 'Saving your weigh-in…' : currentWeightHelper}</p>
             </section>
 
             <section className={`${styles.spotlightCard} ${styles.heroRunCard}`}>
               <div className={styles.spotlightTop}>
-                <span className={styles.spotlightLabel}>Current run</span>
+                <span className={styles.spotlightLabel}>Challenge</span>
                 <Flag size={16} strokeWidth={2.2} />
               </div>
               <strong className={styles.heroRunValue}>
@@ -2285,10 +2266,6 @@ export default function CutCoachPage() {
                   : 'Start a challenge only if you want a fixed timeline.'}
               </p>
               <div className={styles.heroRunStats}>
-                <div>
-                  <span>Green</span>
-                  <strong>{challengeStats.underTargetDays}</strong>
-                </div>
                 <div>
                   <span>Check-ins</span>
                   <strong>{challengeStats.checkinDays}</strong>
@@ -2346,23 +2323,14 @@ export default function CutCoachPage() {
           </section>
         ) : null}
         {notice ? (
-          <section className={`surface-card ${styles.banner} ${styles.bannerOk}`}>
-            <div className={styles.bannerInner}>
-              <span className={styles.bannerIcon} aria-hidden="true"><CheckCircle2 size={18} strokeWidth={2.2} /></span>
-              <div>
-                <strong className={styles.bannerTitle}>Saved</strong>
-                <p className={styles.bannerText}>{notice}</p>
-              </div>
-            </div>
-          </section>
+          <div className={styles.noticeToast} key={notice}>
+            <span className={styles.noticeToastIcon} aria-hidden="true"><CircleAlert size={16} strokeWidth={2.2} /></span>
+            <p>{notice}</p>
+          </div>
         ) : null}
         {rewardToast ? (
           <div className={styles.rewardToast} key={rewardToast.id}>
-            <div className={styles.rewardGlow} />
-            <div className={styles.rewardToastTop}>
-              <div className={styles.rewardKicker}>XP +{rewardToast.xp}</div>
-              <span className={styles.rewardToastBadge}><Sparkles size={14} strokeWidth={2.2} /></span>
-            </div>
+            <span className={styles.noticeToastIcon} aria-hidden="true"><CheckCircle2 size={16} strokeWidth={2.2} /></span>
             <strong>{rewardToast.title}</strong>
             <p>{rewardToast.body}</p>
           </div>
@@ -2596,7 +2564,7 @@ export default function CutCoachPage() {
           {!collapsedSections.flow ? <>
           <div className={styles.flowMetaGrid}>
             <section className={`surface-card ${styles.panel}`}>
-              <h3 className={styles.panelTitle}>Current run</h3>
+              <h3 className={styles.panelTitle}>Challenge pace</h3>
               <p className={styles.panelText}>
                 {today?.target
                   ? `Day ${Math.max(0, challengeStats.currentDay)} of ${Math.max(0, challengeStats.totalDays)} with ${Math.round(today.target.kcal_target)} kcal today.`
@@ -2855,7 +2823,7 @@ export default function CutCoachPage() {
                 <SummaryTile label="Level" value={`Lv ${xp.level}`} tone="future" />
                 <SummaryTile label="XP" value={String(xp.xp)} tone="good" />
                 <SummaryTile label="Check-in days" value={String(challengeStats.checkinDays)} tone="neutral" />
-                <SummaryTile label="Green days" value={String(challengeStats.underTargetDays)} tone="good" />
+                <SummaryTile label="Days on target" value={String(challengeStats.underTargetDays)} tone="good" />
                 <SummaryTile label="Start kg" value={challengeStats.startWeight != null ? `${formatWeightKg(challengeStats.startWeight)}` : '—'} tone="future" />
                 <SummaryTile label="Current kg" value={challengeStats.currentWeight != null ? `${formatWeightKg(challengeStats.currentWeight)}` : '—'} tone="neutral" />
               </div>

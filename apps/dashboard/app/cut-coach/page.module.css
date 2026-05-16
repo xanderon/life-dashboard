@@ -427,56 +427,57 @@
   border-radius: 1.2rem;
 }
 
-.rewardToast {
+.rewardToast,
+.noticeToast {
   position: fixed;
   right: 0.75rem;
   bottom: 0.9rem;
   z-index: 40;
-  width: min(20rem, calc(100vw - 1.5rem));
-  padding: 1rem 1.05rem;
-  border-radius: 1.35rem;
-  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border));
-  background:
-    radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 26%, transparent), transparent 42%),
-    linear-gradient(180deg, color-mix(in srgb, var(--panel-strong) 96%, transparent), color-mix(in srgb, var(--panel) 96%, transparent));
+  display: grid;
+  gap: 0.3rem;
+  width: min(18rem, calc(100vw - 1.5rem));
+  padding: 0.9rem 0.95rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--panel-strong) 96%, transparent);
   box-shadow:
-    0 24px 50px -28px color-mix(in srgb, var(--accent) 42%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 94%, transparent);
-  overflow: hidden;
-  animation: reward-toast-in 380ms cubic-bezier(.2, .9, .2, 1), reward-toast-out 420ms ease 2.1s forwards;
+    0 1rem 2rem -1.3rem rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 88%, transparent);
+  animation: reward-toast-in 220ms ease, reward-toast-out 320ms ease 2.2s forwards;
 }
 
-.rewardGlow {
-  position: absolute;
-  inset: -20% auto auto 70%;
-  width: 7rem;
-  height: 7rem;
+.noticeToast {
+  z-index: 41;
+  border-color: color-mix(in srgb, var(--warning) 22%, var(--border));
+}
+
+.noticeToastIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 28%, transparent);
-  filter: blur(18px);
-}
-
-.rewardKicker {
-  position: relative;
-  color: var(--accent);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
 }
 
 .rewardToast strong {
-  position: relative;
   display: block;
-  margin-top: 0.35rem;
   font-size: 1.05rem;
   letter-spacing: -0.03em;
 }
 
 .rewardToast p {
-  position: relative;
-  margin: 0.3rem 0 0;
+  margin: 0;
   color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.noticeToast p {
+  margin: 0;
+  color: var(--text);
   font-size: 0.88rem;
   line-height: 1.4;
 }
@@ -3256,7 +3257,24 @@
 .todayDialHeader {
   display: flex;
   align-items: flex-start;
+  justify-content: space-between;
   gap: 0.75rem;
+}
+
+.inlineSavingBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0 0.78rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 16%, var(--panel-strong));
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .todayDialLabel {
@@ -3349,18 +3367,9 @@
   border-color: color-mix(in srgb, var(--border) 96%, transparent);
 }
 
-.todayDeltaCard {
-  border-color: color-mix(in srgb, var(--border) 96%, transparent);
-}
-
-.todayDeltaCardGood {
-  border-color: color-mix(in srgb, var(--success) 28%, var(--border));
-  background: color-mix(in srgb, var(--success) 8%, var(--panel-strong));
-}
-
-.todayDeltaCardBad {
-  border-color: color-mix(in srgb, var(--warning) 28%, var(--border));
-  background: color-mix(in srgb, var(--warning) 8%, var(--panel-strong));
+.todayTargetCard {
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 10%, var(--panel-strong));
 }
 
 .todayDialMeta strong {
@@ -3405,7 +3414,7 @@
 
 .heroRunStats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.55rem;
 }
 
@@ -3565,26 +3574,6 @@
 
 .bannerHint p {
   margin-top: 0;
-}
-
-.rewardToastTop {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-}
-
-.rewardToastBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
-  background: color-mix(in srgb, var(--panel-strong) 80%, transparent);
-  color: var(--accent);
 }
 
 .flowMetaGrid,
@@ -4454,6 +4443,12 @@
   .rewardToast {
     right: 0.5rem;
     bottom: 0.6rem;
+    width: calc(100vw - 1rem);
+  }
+
+  .noticeToast {
+    right: 0.5rem;
+    bottom: calc(4.9rem + env(safe-area-inset-bottom, 0px));
     width: calc(100vw - 1rem);
   }
 
