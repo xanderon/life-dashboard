@@ -18,6 +18,14 @@
   --cc-line-strong: rgba(164, 201, 236, 0.24);
   --cc-title: color-mix(in srgb, var(--text) 98%, white 2%);
   --cc-shadow: color-mix(in srgb, #02060d 68%, var(--shadow-color));
+  --cc-kcal: #ff8b3d;
+  --cc-kcal-deep: #9f4722;
+  --cc-weight: #e0b35d;
+  --cc-weight-deep: #7b5c2e;
+  --cc-move: #66d8a6;
+  --cc-move-deep: #2f7259;
+  --cc-run: #7eb7ff;
+  --cc-run-deep: #34567e;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -64,6 +72,14 @@
   --cc-surface-toolbar: #f4ede4;
   --cc-line-soft: rgba(83, 62, 41, 0.12);
   --cc-line-strong: rgba(83, 62, 41, 0.2);
+  --cc-kcal: #d96a2f;
+  --cc-kcal-deep: #f4d2bf;
+  --cc-weight: #ad7e2d;
+  --cc-weight-deep: #f3e1bb;
+  --cc-move: #1f9b73;
+  --cc-move-deep: #d8efe6;
+  --cc-run: #3f7ed7;
+  --cc-run-deep: #dbe8f9;
 }
 
 :global(:root[data-theme="light"]) .page :global(.btn-primary),
@@ -169,8 +185,58 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  justify-content: center;
   min-height: 2.9rem;
   padding-inline: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.heroActionButton :global(svg),
+.mobileActionButton :global(svg) {
+  flex: 0 0 auto;
+}
+
+.actionButtonKcal {
+  border-color: color-mix(in srgb, var(--cc-kcal) 40%, var(--cc-line-soft)) !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-kcal) 78%, #251812), color-mix(in srgb, var(--cc-kcal-deep) 90%, #18120f)) !important;
+  color: #fff6f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 1rem 2rem -1.5rem color-mix(in srgb, var(--cc-kcal) 42%, transparent) !important;
+}
+
+.actionButtonWeight {
+  border-color: color-mix(in srgb, var(--cc-weight) 40%, var(--cc-line-soft)) !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-weight) 42%, #2a2015), color-mix(in srgb, var(--cc-weight-deep) 86%, #17130f)) !important;
+  color: #fff9ed !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 1rem 2rem -1.5rem color-mix(in srgb, var(--cc-weight) 32%, transparent) !important;
+}
+
+.actionButtonMovement {
+  border-color: color-mix(in srgb, var(--cc-move) 38%, var(--cc-line-soft)) !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-move) 64%, #13231e), color-mix(in srgb, var(--cc-move-deep) 88%, #0f1715)) !important;
+  color: #effff7 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 1rem 2rem -1.5rem color-mix(in srgb, var(--cc-move) 34%, transparent) !important;
+}
+
+:global(:root[data-theme="light"]) .actionButtonKcal,
+:global(:root[data-theme="sunrise"]) .actionButtonKcal {
+  color: #3f2115 !important;
+}
+
+:global(:root[data-theme="light"]) .actionButtonWeight,
+:global(:root[data-theme="sunrise"]) .actionButtonWeight {
+  color: #3c2d13 !important;
+}
+
+:global(:root[data-theme="light"]) .actionButtonMovement,
+:global(:root[data-theme="sunrise"]) .actionButtonMovement {
+  color: #173226 !important;
 }
 
 .loadingHero {
@@ -597,6 +663,58 @@
     inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 54%, transparent);
 }
 
+.entryModal {
+  position: relative;
+  overflow: hidden;
+}
+
+.entryModal::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 0.28rem;
+  pointer-events: none;
+}
+
+.entryModalKcal {
+  border-color: color-mix(in srgb, var(--cc-kcal) 28%, var(--cc-line-soft));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-kcal) 7%, var(--cc-surface-main)), color-mix(in srgb, var(--cc-surface-recessed) 96%, transparent));
+}
+
+.entryModalKcal::before {
+  background: linear-gradient(90deg, var(--cc-kcal), color-mix(in srgb, var(--cc-kcal) 18%, transparent));
+}
+
+.entryModalMovement {
+  border-color: color-mix(in srgb, var(--cc-move) 26%, var(--cc-line-soft));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-move) 7%, var(--cc-surface-main)), color-mix(in srgb, var(--cc-surface-recessed) 96%, transparent));
+}
+
+.entryModalMovement::before {
+  background: linear-gradient(90deg, var(--cc-move), color-mix(in srgb, var(--cc-move) 18%, transparent));
+}
+
+.entryModalWeight {
+  border-color: color-mix(in srgb, var(--cc-weight) 26%, var(--cc-line-soft));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-weight) 7%, var(--cc-surface-main)), color-mix(in srgb, var(--cc-surface-recessed) 96%, transparent));
+}
+
+.entryModalWeight::before {
+  background: linear-gradient(90deg, var(--cc-weight), color-mix(in srgb, var(--cc-weight) 18%, transparent));
+}
+
+.entryModalKcal .sectionEyebrow {
+  color: var(--cc-kcal);
+}
+
+.entryModalMovement .sectionEyebrow {
+  color: var(--cc-move);
+}
+
+.entryModalWeight .sectionEyebrow {
+  color: var(--cc-weight);
+}
+
 .modalHead {
   display: flex;
   align-items: start;
@@ -974,6 +1092,18 @@
   letter-spacing: -0.04em;
 }
 
+.panelSteel .panelTitle {
+  color: color-mix(in srgb, var(--cc-run) 58%, var(--text));
+}
+
+.panelAccent .panelTitle {
+  color: color-mix(in srgb, var(--cc-move) 54%, var(--text));
+}
+
+.panelWarm .panelTitle {
+  color: color-mix(in srgb, var(--cc-weight) 58%, var(--text));
+}
+
 .panelText {
   margin: 0.35rem 0 0;
   color: var(--muted);
@@ -1142,7 +1272,9 @@
   padding: 0.85rem 0.95rem;
   border-radius: 1rem;
   border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--panel-2) 80%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-toolbar) 100%, transparent), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 18%, transparent);
 }
 
 .summaryTile span {
@@ -1159,22 +1291,27 @@
 
 .summaryTileGood {
   border-color: color-mix(in srgb, var(--success) 40%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--success) 14%, var(--cc-surface-toolbar)), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
 }
 
 .summaryTileBad {
   border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--danger) 13%, var(--cc-surface-toolbar)), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
 }
 
 .summaryTileWarn {
   border-color: color-mix(in srgb, var(--warning) 40%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--warning) 13%, var(--cc-surface-toolbar)), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
 }
 
 .summaryTileFuture {
   border-color: color-mix(in srgb, var(--accent) 26%, var(--border));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-run) 14%, var(--cc-surface-toolbar)), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
 }
 
 .summaryTileNeutral {
   border-color: var(--border);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-highlight) 8%, var(--cc-surface-toolbar)), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
 }
 
 .quickActionsRow,
@@ -1610,6 +1747,26 @@
     linear-gradient(180deg, #1b2633, #101720);
 }
 
+.calendarLegend span:nth-child(1) {
+  border-color: color-mix(in srgb, var(--cc-weight) 28%, var(--cc-line-soft));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-weight) 12%, #1b2633), #101720);
+}
+
+.calendarLegend span:nth-child(2) {
+  border-color: color-mix(in srgb, var(--cc-kcal) 28%, var(--cc-line-soft));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-kcal) 12%, #1b2633), #101720);
+}
+
+.calendarLegend span:nth-child(3) {
+  border-color: color-mix(in srgb, var(--cc-run) 28%, var(--cc-line-soft));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-run) 12%, #1b2633), #101720);
+}
+
+.calendarLegend span:nth-child(4) {
+  border-color: color-mix(in srgb, var(--cc-move) 24%, var(--cc-line-soft));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-move) 12%, #1b2633), #101720);
+}
+
 .yearCalendar {
   --challenge-dot-past: #58e4c1;
   --challenge-dot-current: #ffcf76;
@@ -1756,6 +1913,25 @@
   justify-content: center;
   color: var(--muted);
   line-height: 1;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-highlight) 8%, transparent);
+}
+
+.monthCellMetric:nth-child(1) .monthCellMetricIcon {
+  color: var(--cc-weight);
+  background: color-mix(in srgb, var(--cc-weight) 16%, transparent);
+}
+
+.monthCellMetric:nth-child(2) .monthCellMetricIcon {
+  color: var(--cc-kcal);
+  background: color-mix(in srgb, var(--cc-kcal) 16%, transparent);
+}
+
+.monthCellMetric:nth-child(3) .monthCellMetricIcon {
+  color: var(--cc-run);
+  background: color-mix(in srgb, var(--cc-run) 16%, transparent);
 }
 
 .monthCellMetric small {
@@ -3728,6 +3904,27 @@
   color: var(--muted);
 }
 
+.spotlightTop :global(svg) {
+  width: 2rem;
+  height: 2rem;
+  padding: 0.4rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--cc-line-soft) 88%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-surface-toolbar) 100%, transparent), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
+}
+
+.todayWeightCard .spotlightTop :global(svg) {
+  color: var(--cc-weight);
+  border-color: color-mix(in srgb, var(--cc-weight) 28%, var(--cc-line-soft));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-weight) 14%, var(--cc-surface-toolbar)), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
+}
+
+.heroRunCard .spotlightTop :global(svg) {
+  color: var(--cc-run);
+  border-color: color-mix(in srgb, var(--cc-run) 28%, var(--cc-line-soft));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-run) 14%, var(--cc-surface-toolbar)), color-mix(in srgb, var(--cc-surface-recessed) 94%, transparent));
+}
+
 .spotlightLabel {
   font-size: 0.72rem;
   font-weight: 800;
@@ -4138,6 +4335,33 @@
 
 .mobileActionButton :global(svg) {
   color: var(--accent);
+}
+
+.mobileActionButtonKcal {
+  border-color: color-mix(in srgb, var(--cc-kcal) 34%, var(--cc-line-soft));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-kcal) 14%, var(--cc-surface-toolbar)), color-mix(in srgb, var(--cc-surface-main) 94%, transparent));
+}
+
+.mobileActionButtonKcal :global(svg) {
+  color: var(--cc-kcal);
+}
+
+.mobileActionButtonWeight {
+  border-color: color-mix(in srgb, var(--cc-weight) 34%, var(--cc-line-soft));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-weight) 14%, var(--cc-surface-toolbar)), color-mix(in srgb, var(--cc-surface-main) 94%, transparent));
+}
+
+.mobileActionButtonWeight :global(svg) {
+  color: var(--cc-weight);
+}
+
+.mobileActionButtonMovement {
+  border-color: color-mix(in srgb, var(--cc-move) 34%, var(--cc-line-soft));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-move) 14%, var(--cc-surface-toolbar)), color-mix(in srgb, var(--cc-surface-main) 94%, transparent));
+}
+
+.mobileActionButtonMovement :global(svg) {
+  color: var(--cc-move);
 }
 
 @media (min-width: 768px) {

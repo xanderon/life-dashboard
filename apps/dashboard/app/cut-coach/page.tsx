@@ -2282,13 +2282,16 @@ export default function CutCoachPage() {
               <p className={styles.heroCoachText}>{heroCoachText}</p>
             </div>
             <div className={styles.heroActionRail}>
-              <button className={`btn-base btn-primary ${styles.heroActionButton}`} onClick={() => openTodayEntry()} type="button">
+              <button className={`btn-base btn-primary ${styles.heroActionButton} ${styles.actionButtonKcal}`} onClick={() => openTodayEntry()} type="button">
+                <UtensilsCrossed size={16} strokeWidth={2.2} />
                 Log kcal
               </button>
-              <button className={`btn-base btn-secondary ${styles.heroActionButton}`} onClick={() => openWeightModal()} type="button">
+              <button className={`btn-base btn-secondary ${styles.heroActionButton} ${styles.actionButtonWeight}`} onClick={() => openWeightModal()} type="button">
+                <Scale size={16} strokeWidth={2.2} />
                 Log weight
               </button>
-              <button className={`btn-base btn-ghost ${styles.heroActionButton}`} onClick={() => openActivityModal()} type="button">
+              <button className={`btn-base btn-ghost ${styles.heroActionButton} ${styles.actionButtonMovement}`} onClick={() => openActivityModal()} type="button">
+                <Dumbbell size={16} strokeWidth={2.2} />
                 Add movement
               </button>
             </div>
@@ -2336,7 +2339,7 @@ export default function CutCoachPage() {
           <div className={styles.modalScrim} onClick={closeKcalModal} role="presentation">
             <section
               aria-modal="true"
-              className={styles.weightModal}
+              className={`${styles.weightModal} ${styles.entryModal} ${styles.entryModalKcal}`}
               onClick={(event) => event.stopPropagation()}
               role="dialog"
             >
@@ -2412,7 +2415,7 @@ export default function CutCoachPage() {
                 <button className="btn-base btn-ghost" onClick={closeKcalModal} type="button">
                   Cancel
                 </button>
-                <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveCheckinAndClose()} type="button">
+                <button className={`btn-base btn-primary ${styles.actionButtonKcal}`} disabled={busy !== null} onClick={() => void saveCheckinAndClose()} type="button">
                   {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Save kcal'}
                 </button>
               </div>
@@ -2423,7 +2426,7 @@ export default function CutCoachPage() {
           <div className={styles.modalScrim} onClick={closeActivityModal} role="presentation">
             <section
               aria-modal="true"
-              className={styles.weightModal}
+              className={`${styles.weightModal} ${styles.entryModal} ${styles.entryModalMovement}`}
               onClick={(event) => event.stopPropagation()}
               role="dialog"
             >
@@ -2474,7 +2477,7 @@ export default function CutCoachPage() {
                 <button className="btn-base btn-ghost" onClick={closeActivityModal} type="button">
                   Cancel
                 </button>
-                <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveActivityDraft()} type="button">
+                <button className={`btn-base btn-primary ${styles.actionButtonMovement}`} disabled={busy !== null} onClick={() => void saveActivityDraft()} type="button">
                   {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Save movement'}
                 </button>
               </div>
@@ -2485,7 +2488,7 @@ export default function CutCoachPage() {
           <div className={styles.modalScrim} onClick={closeWeightModal} role="presentation">
             <section
               aria-modal="true"
-              className={styles.weightModal}
+              className={`${styles.weightModal} ${styles.entryModal} ${styles.entryModalWeight}`}
               onClick={(event) => event.stopPropagation()}
               role="dialog"
             >
@@ -2548,7 +2551,7 @@ export default function CutCoachPage() {
                 <button className="btn-base btn-ghost" onClick={closeWeightModal} type="button">
                   Cancel
                 </button>
-                <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveWeightDraft()} type="button">
+                <button className={`btn-base btn-primary ${styles.actionButtonWeight}`} disabled={busy !== null} onClick={() => void saveWeightDraft()} type="button">
                   {busy === '/api/cut-coach/weights' ? 'Saving…' : 'Save weight'}
                 </button>
               </div>
@@ -3403,15 +3406,15 @@ export default function CutCoachPage() {
         </section>
 
         <div className={styles.mobileActionDock} aria-label="Quick actions">
-          <button className={styles.mobileActionButton} onClick={() => openTodayEntry()} type="button">
+          <button className={`${styles.mobileActionButton} ${styles.mobileActionButtonKcal}`} onClick={() => openTodayEntry()} type="button">
             <UtensilsCrossed size={16} strokeWidth={2.2} />
             <span>Kcal</span>
           </button>
-          <button className={styles.mobileActionButton} onClick={() => openWeightModal()} type="button">
+          <button className={`${styles.mobileActionButton} ${styles.mobileActionButtonWeight}`} onClick={() => openWeightModal()} type="button">
             <Scale size={16} strokeWidth={2.2} />
             <span>Weight</span>
           </button>
-          <button className={styles.mobileActionButton} onClick={() => openActivityModal()} type="button">
+          <button className={`${styles.mobileActionButton} ${styles.mobileActionButtonMovement}`} onClick={() => openActivityModal()} type="button">
             <Dumbbell size={16} strokeWidth={2.2} />
             <span>Move</span>
           </button>
