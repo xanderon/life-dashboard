@@ -2348,58 +2348,64 @@ export default function CutCoachPage() {
                 </div>
               </div>
 
-              <div className={styles.kcalModalGrid}>
-                <label className={styles.field}>
-                  <span>Date</span>
-                  <input
-                    type="date"
-                    value={checkin.date}
-                    onChange={(event) => {
-                      setCheckin(seedCheckinEntry(event.target.value, data));
-                      setKcalDialRotation(0);
-                    }}
-                  />
-                </label>
-                <label className={`${styles.field} ${styles.kcalPrimaryField}`}>
-                  <span>Actual kcal</span>
-                  <input
-                    className={`${styles.featureInput} ${styles.kcalPrimaryInput}`}
-                    type="number"
-                    inputMode="numeric"
-                    value={checkin.kcal_actual}
-                    onChange={(event) => setCheckin((current) => ({ ...current, kcal_actual: event.target.value }))}
-                    placeholder="e.g. 2140"
-                  />
-                  <div className={styles.kcalTargetLine}>
-                    <strong>{selectedTargetKcal != null ? `Target ${selectedTargetKcal}` : 'No target yet'}</strong>
-                    <em
-                      className={`${kcalDraftDelta != null && kcalDraftDelta < 0 ? styles.weightDeltaDown : styles.weightDeltaUp} ${kcalDraftDelta == null || kcalDraftDelta === 0 ? styles.kcalDeltaHidden : ''}`}
-                    >
-                      {kcalDraftDelta != null && kcalDraftDelta !== 0 ? `${kcalDraftDelta > 0 ? '+' : ''}${kcalDraftDelta}` : '+0'}
-                    </em>
+              <div className={styles.modalBody}>
+                <div className={styles.modalCard}>
+                  <div className={styles.kcalModalGrid}>
+                    <label className={styles.field}>
+                      <span>Date</span>
+                      <input
+                        type="date"
+                        value={checkin.date}
+                        onChange={(event) => {
+                          setCheckin(seedCheckinEntry(event.target.value, data));
+                          setKcalDialRotation(0);
+                        }}
+                      />
+                    </label>
+                    <label className={`${styles.field} ${styles.kcalPrimaryField}`}>
+                      <span>Actual kcal</span>
+                      <input
+                        className={`${styles.featureInput} ${styles.kcalPrimaryInput}`}
+                        type="number"
+                        inputMode="numeric"
+                        value={checkin.kcal_actual}
+                        onChange={(event) => setCheckin((current) => ({ ...current, kcal_actual: event.target.value }))}
+                        placeholder="e.g. 2140"
+                      />
+                      <div className={styles.kcalTargetLine}>
+                        <strong>{selectedTargetKcal != null ? `Target ${selectedTargetKcal}` : 'No target yet'}</strong>
+                        <em
+                          className={`${kcalDraftDelta != null && kcalDraftDelta < 0 ? styles.weightDeltaDown : styles.weightDeltaUp} ${kcalDraftDelta == null || kcalDraftDelta === 0 ? styles.kcalDeltaHidden : ''}`}
+                        >
+                          {kcalDraftDelta != null && kcalDraftDelta !== 0 ? `${kcalDraftDelta > 0 ? '+' : ''}${kcalDraftDelta}` : '+0'}
+                        </em>
+                      </div>
+                    </label>
                   </div>
-                </label>
-              </div>
+                </div>
 
-              <div className={styles.kcalDialArea}>
-                <button
-                  aria-label="Rotate kcal dial"
-                  className={styles.weightDial}
-                  onPointerDown={handleKcalDialStart}
-                  onPointerMove={handleKcalDialMove}
-                  onPointerUp={handleKcalDialEnd}
-                  onPointerCancel={handleKcalDialEnd}
-                  onWheel={handleKcalDialWheel}
-                  style={kcalDialStyle}
-                  type="button"
-                >
-                  <span className={styles.weightDialNeedle} aria-hidden="true" />
-                </button>
-              </div>
+                <div className={`${styles.modalCard} ${styles.modalDialCard}`}>
+                  <div className={styles.kcalDialArea}>
+                    <button
+                      aria-label="Rotate kcal dial"
+                      className={styles.weightDial}
+                      onPointerDown={handleKcalDialStart}
+                      onPointerMove={handleKcalDialMove}
+                      onPointerUp={handleKcalDialEnd}
+                      onPointerCancel={handleKcalDialEnd}
+                      onWheel={handleKcalDialWheel}
+                      style={kcalDialStyle}
+                      type="button"
+                    >
+                      <span className={styles.weightDialNeedle} aria-hidden="true" />
+                    </button>
+                  </div>
 
-              <div className={styles.kcalModalSummary}>
-                <SummaryTile label="Target" value={selectedDay?.target ? `${Math.round(selectedDay.target.kcal_target)} kcal` : '—'} tone="neutral" />
-                <SummaryTile label="Logged" value={toNumber(checkin.kcal_actual) > 0 ? `${Math.round(toNumber(checkin.kcal_actual))} kcal` : '—'} tone="future" />
+                  <div className={styles.kcalModalSummary}>
+                    <SummaryTile label="Target" value={selectedDay?.target ? `${Math.round(selectedDay.target.kcal_target)} kcal` : '—'} tone="neutral" />
+                    <SummaryTile label="Logged" value={toNumber(checkin.kcal_actual) > 0 ? `${Math.round(toNumber(checkin.kcal_actual))} kcal` : '—'} tone="future" />
+                  </div>
+                </div>
               </div>
 
               <div className={styles.modalActions}>
@@ -2423,41 +2429,45 @@ export default function CutCoachPage() {
             >
               <div className={styles.modalHead}>
                 <div>
-                  <div className={styles.sectionEyebrow}>activity</div>
-                  <h3 className={styles.modalTitle}>Quick activity entry</h3>
+                  <div className={styles.sectionEyebrow}>movement</div>
+                  <h3 className={styles.modalTitle}>Quick movement entry</h3>
                   <p className={styles.panelText}>Keep movement separate. Add the burn and a short note.</p>
                 </div>
               </div>
 
-              <div className={styles.kcalModalGrid}>
-                <label className={styles.field}>
-                  <span>Date</span>
-                  <input
-                    type="date"
-                    value={activityDraft.date}
-                    onChange={(event) => setActivityDraft(seedActivityEntry(event.target.value, data))}
-                  />
-                </label>
-                <label className={styles.field}>
-                  <span>Burned kcal</span>
-                  <input
-                    className={styles.featureInput}
-                    inputMode="numeric"
-                    placeholder="e.g. 340"
-                    type="number"
-                    value={activityDraft.activity_kcal_burned}
-                    onChange={(event) => setActivityDraft((current) => ({ ...current, activity_kcal_burned: event.target.value }))}
-                  />
-                </label>
-                <label className={`${styles.field} ${styles.kcalPrimaryField}`}>
-                  <span>What did you do?</span>
-                  <input
-                    placeholder="Walk, bike, gym, stairs..."
-                    type="text"
-                    value={activityDraft.activity_summary}
-                    onChange={(event) => setActivityDraft((current) => ({ ...current, activity_summary: event.target.value }))}
-                  />
-                </label>
+              <div className={styles.modalBody}>
+                <div className={styles.modalCard}>
+                  <div className={styles.kcalModalGrid}>
+                    <label className={styles.field}>
+                      <span>Date</span>
+                      <input
+                        type="date"
+                        value={activityDraft.date}
+                        onChange={(event) => setActivityDraft(seedActivityEntry(event.target.value, data))}
+                      />
+                    </label>
+                    <label className={styles.field}>
+                      <span>Movement kcal</span>
+                      <input
+                        className={styles.featureInput}
+                        inputMode="numeric"
+                        placeholder="e.g. 340"
+                        type="number"
+                        value={activityDraft.activity_kcal_burned}
+                        onChange={(event) => setActivityDraft((current) => ({ ...current, activity_kcal_burned: event.target.value }))}
+                      />
+                    </label>
+                    <label className={`${styles.field} ${styles.kcalPrimaryField}`}>
+                      <span>Movement note</span>
+                      <textarea
+                        placeholder="Walk, bike, gym, stairs..."
+                        rows={3}
+                        value={activityDraft.activity_summary}
+                        onChange={(event) => setActivityDraft((current) => ({ ...current, activity_summary: event.target.value }))}
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div className={styles.modalActions}>
@@ -2465,7 +2475,7 @@ export default function CutCoachPage() {
                   Cancel
                 </button>
                 <button className="btn-base btn-primary" disabled={busy !== null} onClick={() => void saveActivityDraft()} type="button">
-                  {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Save activity'}
+                  {busy === '/api/cut-coach/checkins' ? 'Saving…' : 'Save movement'}
                 </button>
               </div>
             </section>
@@ -2487,47 +2497,49 @@ export default function CutCoachPage() {
                 </div>
               </div>
 
-              <div className={styles.weightAdjuster}>
-                <div className={styles.weightAdjustTop}>
-                  <span>Current input</span>
-                  <div className={styles.weightValueRow}>
-                    <strong>{toNumber(weightDraft.weight_kg) > 0 ? `${formatWeightKg(toNumber(weightDraft.weight_kg))} kg` : '—'}</strong>
-                    {weightDraftDelta != null && weightDraftDelta !== 0 ? (
-                      <em className={weightDraftDelta < 0 ? styles.weightDeltaDown : styles.weightDeltaUp}>
-                        {weightDraftDelta > 0 ? '+' : ''}
-                        {formatWeightKg(weightDraftDelta)}
-                      </em>
-                    ) : null}
+              <div className={styles.modalBody}>
+                <div className={`${styles.modalCard} ${styles.weightAdjuster}`}>
+                  <div className={styles.weightAdjustTop}>
+                    <span>Current input</span>
+                    <div className={styles.weightValueRow}>
+                      <strong>{toNumber(weightDraft.weight_kg) > 0 ? `${formatWeightKg(toNumber(weightDraft.weight_kg))} kg` : '—'}</strong>
+                      {weightDraftDelta != null && weightDraftDelta !== 0 ? (
+                        <em className={weightDraftDelta < 0 ? styles.weightDeltaDown : styles.weightDeltaUp}>
+                          {weightDraftDelta > 0 ? '+' : ''}
+                          {formatWeightKg(weightDraftDelta)}
+                        </em>
+                      ) : null}
+                    </div>
+                    <small>{latestKnownWeight != null ? `Latest saved: ${formatWeightKg(latestKnownWeight)} kg` : 'First weigh-in.'}</small>
                   </div>
-                  <small>{latestKnownWeight != null ? `Latest saved: ${formatWeightKg(latestKnownWeight)} kg` : 'First weigh-in.'}</small>
-                </div>
 
-                <div className={styles.weightQuickCard}>
-                  <label className={styles.field}>
-                    <span>Date</span>
-                    <input
-                      type="date"
-                      value={weightDraft.date}
-                      onChange={(event) => setWeightDraft(fillWeight(event.target.value, data))}
-                    />
-                  </label>
-                </div>
+                  <div className={styles.weightQuickCard}>
+                    <label className={styles.field}>
+                      <span>Date</span>
+                      <input
+                        type="date"
+                        value={weightDraft.date}
+                        onChange={(event) => setWeightDraft(fillWeight(event.target.value, data))}
+                      />
+                    </label>
+                  </div>
 
-                <div className={styles.weightControlBoard}>
-                  <div className={styles.weightDialWrap}>
-                    <button
-                      aria-label="Rotate weight dial"
-                      className={styles.weightDial}
-                      onPointerDown={handleWeightDialStart}
-                      onPointerMove={handleWeightDialMove}
-                      onPointerUp={handleWeightDialEnd}
-                      onPointerCancel={handleWeightDialEnd}
-                      onWheel={handleWeightDialWheel}
-                      style={weightDialStyle}
-                      type="button"
-                    >
-                      <span className={styles.weightDialNeedle} aria-hidden="true" />
-                    </button>
+                  <div className={`${styles.weightControlBoard} ${styles.modalDialCard}`}>
+                    <div className={styles.weightDialWrap}>
+                      <button
+                        aria-label="Rotate weight dial"
+                        className={styles.weightDial}
+                        onPointerDown={handleWeightDialStart}
+                        onPointerMove={handleWeightDialMove}
+                        onPointerUp={handleWeightDialEnd}
+                        onPointerCancel={handleWeightDialEnd}
+                        onWheel={handleWeightDialWheel}
+                        style={weightDialStyle}
+                        type="button"
+                      >
+                        <span className={styles.weightDialNeedle} aria-hidden="true" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2548,7 +2560,7 @@ export default function CutCoachPage() {
           <div className={styles.sectionHead}>
             <div>
               <div className={styles.sectionEyebrow}>flow</div>
-              <h2 className={styles.sectionTitle}>Run and week plan</h2>
+              <h2 className={styles.sectionTitle}>Challenge and trend</h2>
             </div>
             <div className={styles.sectionHeadActions}>
               <div className={styles.sectionMeta}>{activeChallenge ? `${phaseLabel(challengeStats.progress)} phase` : 'Set up a challenge'}</div>
@@ -2627,72 +2639,6 @@ export default function CutCoachPage() {
               </div>
             </section>
           </div>
-
-          <section className={`surface-card ${styles.panel} ${styles.panelAccent} ${styles.weekPlanPanel}`}>
-            <div className={styles.weekPlanHead}>
-              <div>
-                <div className={styles.sectionEyebrow}>week plan</div>
-                <h3 className={styles.panelTitle}>This week</h3>
-              </div>
-              <p className={styles.weekPlanMeta}>
-                {today?.target
-                  ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today')
-                  : 'The planner starts after profile and weight are saved.'}
-              </p>
-            </div>
-
-            {weekLoading ? (
-              <div className={styles.flowRailSkeleton} aria-hidden="true">
-                {Array.from({ length: 7 }).map((_, index) => (
-                  <div className={styles.flowRailSkeletonCard} key={`flow-skeleton-${index}`}>
-                    <span className={styles.loadingLineTiny} />
-                    <span className={styles.loadingLineMedium} />
-                    <span className={styles.loadingLineShort} />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className={styles.flowRail}>
-                {(data?.week ?? []).map((day, index) => {
-                  const planTone = describeDayPlan(day, data);
-                  return (
-                    <button
-                      className={`${styles.dayCard} ${toneForDay(day, todayIsoDate)} ${day.date === todayIsoDate ? styles.dayCardToday : ''}`}
-                      key={day.date}
-                      onClick={() => openCalendarDay(day.date)}
-                      type="button"
-                    >
-                      <div className={styles.dayTrackRow}>
-                        <span className={styles.dayTrackDot} aria-hidden="true" />
-                        {index < (data?.week.length ?? 0) - 1 ? <span className={styles.dayTrackLine} aria-hidden="true" /> : null}
-                      </div>
-                      <div className={styles.dayTop}>
-                        <span>{shortDay(day.date)}</span>
-                        <span>{day.date === todayIsoDate ? 'Today' : formatDate(day.date)}</span>
-                      </div>
-                      <div className={styles.dayKcal}>{day.target ? Math.round(day.target.kcal_target) : '—'} kcal</div>
-                      <div className={styles.dayRecommendation}>
-                        <span className={styles.dayRecommendationIcon} aria-hidden="true">
-                          {day.target?.day_type === 'training' ? <Dumbbell size={13} strokeWidth={2.2} /> : <MoonStar size={13} strokeWidth={2.2} />}
-                        </span>
-                        <span>{planTone.note}</span>
-                      </div>
-                      <div className={styles.dayMode}>{planTone.emphasis}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className={styles.weekPlanFooter}>
-              <div className={styles.weekPlanFooterCopy}>
-                <span>Tomorrow</span>
-                <strong>{tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal` : 'Shows after setup'}</strong>
-                <p>{tomorrow?.target ? humanizeAdjustmentReason(tomorrow.target.adjustment_reason, 'tomorrow') : 'Add your profile and first weight to unlock the planner.'}</p>
-              </div>
-              {activeChallenge ? <div className={styles.weekPlanPhaseBadge}>{phaseLabel(challengeStats.progress)} phase</div> : null}
-            </div>
-          </section>
           </> : null}
         </section>
 
@@ -2747,7 +2693,7 @@ export default function CutCoachPage() {
                 <span><Goal size={13} strokeWidth={2.2} /> target</span>
                 <span><UtensilsCrossed size={13} strokeWidth={2.2} /> logged</span>
                 <span><Weight size={13} strokeWidth={2.2} /> weight</span>
-                <span><Flag size={13} strokeWidth={2.2} /> run marks</span>
+                <span><Flag size={13} strokeWidth={2.2} /> run</span>
               </div>
               {currentMonth ? (
                 <section
@@ -2824,6 +2770,72 @@ export default function CutCoachPage() {
                   </div>
                 </section>
               ) : null}
+            </section>
+
+            <section className={`surface-card ${styles.panel} ${styles.panelAccent} ${styles.weekPlanPanel}`}>
+              <div className={styles.weekPlanHead}>
+                <div>
+                  <div className={styles.sectionEyebrow}>planner</div>
+                  <h3 className={styles.panelTitle}>This week</h3>
+                </div>
+                <p className={styles.weekPlanMeta}>
+                  {today?.target
+                    ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today')
+                    : 'The planner starts after profile and weight are saved.'}
+                </p>
+              </div>
+
+              {weekLoading ? (
+                <div className={styles.flowRailSkeleton} aria-hidden="true">
+                  {Array.from({ length: 7 }).map((_, index) => (
+                    <div className={styles.flowRailSkeletonCard} key={`flow-skeleton-${index}`}>
+                      <span className={styles.loadingLineTiny} />
+                      <span className={styles.loadingLineMedium} />
+                      <span className={styles.loadingLineShort} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.flowRail}>
+                  {(data?.week ?? []).map((day, index) => {
+                    const planTone = describeDayPlan(day, data);
+                    return (
+                      <button
+                        className={`${styles.dayCard} ${toneForDay(day, todayIsoDate)} ${day.date === todayIsoDate ? styles.dayCardToday : ''}`}
+                        key={day.date}
+                        onClick={() => openCalendarDay(day.date)}
+                        type="button"
+                      >
+                        <div className={styles.dayTrackRow}>
+                          <span className={styles.dayTrackDot} aria-hidden="true" />
+                          {index < (data?.week.length ?? 0) - 1 ? <span className={styles.dayTrackLine} aria-hidden="true" /> : null}
+                        </div>
+                        <div className={styles.dayTop}>
+                          <span>{shortDay(day.date)}</span>
+                          <span>{day.date === todayIsoDate ? 'Today' : formatDate(day.date)}</span>
+                        </div>
+                        <div className={styles.dayKcal}>{day.target ? Math.round(day.target.kcal_target) : '—'} kcal</div>
+                        <div className={styles.dayRecommendation}>
+                          <span className={styles.dayRecommendationIcon} aria-hidden="true">
+                            {day.target?.day_type === 'training' ? <Dumbbell size={13} strokeWidth={2.2} /> : <MoonStar size={13} strokeWidth={2.2} />}
+                          </span>
+                          <span>{planTone.note}</span>
+                        </div>
+                        <div className={styles.dayMode}>{planTone.emphasis}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className={styles.weekPlanFooter}>
+                <div className={styles.weekPlanFooterCopy}>
+                  <span>Tomorrow</span>
+                  <strong>{tomorrow?.target ? `${Math.round(tomorrow.target.kcal_target)} kcal` : 'Shows after setup'}</strong>
+                  <p>{tomorrow?.target ? humanizeAdjustmentReason(tomorrow.target.adjustment_reason, 'tomorrow') : 'Add your profile and first weight to unlock the planner.'}</p>
+                </div>
+                {activeChallenge ? <div className={styles.weekPlanPhaseBadge}>{phaseLabel(challengeStats.progress)} phase</div> : null}
+              </div>
             </section>
           </div> : null}
         </section>
