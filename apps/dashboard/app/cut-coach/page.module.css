@@ -4595,9 +4595,36 @@
     border-radius: 1rem;
   }
 
-  .entryModalKcal .modalDialCard,
   .entryModalWeight .weightControlBoard {
     display: none;
+  }
+
+  .entryModalKcal .modalDialCard {
+    display: grid;
+    gap: 0.55rem;
+    padding: 0.7rem 0.85rem 0.8rem;
+  }
+
+  .entryModalKcal .kcalDialArea {
+    width: 100%;
+  }
+
+  .entryModalKcal .weightDial {
+    width: 5.35rem;
+    height: 5.35rem;
+    animation: kcal-mobile-dial-breathe 3.2s ease-in-out infinite;
+  }
+
+  .entryModalKcal .weightDial::after {
+    inset: 1.28rem;
+  }
+
+  .entryModalKcal .weightDialNeedle {
+    animation: kcal-mobile-needle-glow 2.3s ease-in-out infinite;
+  }
+
+  .entryModalKcal .kcalModalSummary {
+    margin-top: 0.05rem;
   }
 
   .entryModalWeight .weightQuickCard {
@@ -5099,6 +5126,34 @@
   to {
     opacity: 1;
     transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes kcal-mobile-dial-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--surface-highlight) 12%, transparent),
+      inset 0 -0.5rem 1rem rgba(0, 0, 0, 0.24),
+      0 0.8rem 1.4rem -1rem color-mix(in srgb, var(--accent) 38%, transparent);
+  }
+  50% {
+    transform: translateY(-1px) scale(1.02);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--surface-highlight) 18%, transparent),
+      inset 0 -0.5rem 1rem rgba(0, 0, 0, 0.24),
+      0 1rem 1.8rem -1rem color-mix(in srgb, var(--accent) 52%, transparent);
+  }
+}
+
+@keyframes kcal-mobile-needle-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0.55rem color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0.9rem color-mix(in srgb, var(--accent) 48%, transparent);
   }
 }
 
