@@ -4579,9 +4579,10 @@
 
 @media (max-width: 767px) {
   .weightModal {
-    width: calc(100vw - 1rem);
-    padding: 0.9rem;
-    border-radius: 1.2rem;
+    width: min(26rem, calc(100vw - 1.15rem));
+    max-height: calc(100dvh - 3rem);
+    padding: 0.85rem;
+    border-radius: 1.15rem;
   }
 
   .modalBody {
@@ -4592,6 +4593,15 @@
   .modalCard {
     padding: 0.85rem;
     border-radius: 1rem;
+  }
+
+  .entryModalKcal .modalDialCard,
+  .entryModalWeight .weightControlBoard {
+    display: none;
+  }
+
+  .entryModalWeight .weightQuickCard {
+    grid-template-columns: 1fr;
   }
 
   .composerGridThree {
@@ -4852,7 +4862,7 @@
   }
 
   .heroRunCard {
-    gap: 0.65rem;
+    display: none;
   }
 
   .todayWeightCard .spotlightTop {

@@ -2050,6 +2050,32 @@ export default function CutCoachPage() {
   const heroCoachText = today?.target
     ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today')
     : 'Save profile and the daily target plus the weekly plan appear here.';
+  const todaySupportLabel =
+    activeChallenge
+      ? 'Challenge day'
+      : todayConsumedKcal != null
+        ? 'Result'
+        : 'Target';
+  const todaySupportValue =
+    activeChallenge
+      ? `Day ${challengeStats.currentDay}/${challengeStats.totalDays}`
+      : todayConsumedKcal != null
+        ? overToday == null || overToday === 0
+          ? 'On target'
+          : `${Math.abs(overToday)} kcal ${overToday > 0 ? 'over' : 'under'}`
+        : todayTargetKcal != null
+          ? `${todayTargetKcal} kcal`
+          : 'Set profile';
+  const todaySupportHint =
+    activeChallenge
+      ? `${Math.round(challengeStats.progress * 100)}% complete${activeChallenge.title ? ` • ${activeChallenge.title}` : ''}`
+      : todayConsumedKcal != null
+        ? todayTargetKcal != null
+          ? `Target ${todayTargetKcal} kcal for today.`
+          : 'Save profile to compute today.'
+        : todayTargetKcal != null
+          ? 'The ring already shows your room for today.'
+          : 'Weight trend and challenge pace appear after setup.';
   const initialLoading = !heroReady && !data;
   const weekLoading = heroReady && !detailReady;
 
@@ -2241,11 +2267,9 @@ export default function CutCoachPage() {
                   {todayConsumedKcal == null ? <small className={styles.todayMetaHint}>One number at the end of the day is enough.</small> : null}
                 </div>
                 <div className={styles.todayTargetCard}>
-                  <span>Target</span>
-                  <strong>{todayTargetKcal != null ? `${todayTargetKcal} kcal` : 'Set profile'}</strong>
-                  <small className={styles.todayMetaHint}>
-                    {todayTargetKcal != null ? 'The ring shows how much room is left today.' : 'Weight trend and challenge pace appear after setup.'}
-                  </small>
+                  <span>{todaySupportLabel}</span>
+                  <strong>{todaySupportValue}</strong>
+                  <small className={styles.todayMetaHint}>{todaySupportHint}</small>
                 </div>
               </div>
             </div>
@@ -2523,6 +2547,18 @@ export default function CutCoachPage() {
                         type="date"
                         value={weightDraft.date}
                         onChange={(event) => setWeightDraft(fillWeight(event.target.value, data))}
+                      />
+                    </label>
+                    <label className={styles.field}>
+                      <span>Weight kg</span>
+                      <input
+                        className={styles.featureInput}
+                        inputMode="decimal"
+                        pattern="[0-9]*[.,]?[0-9]*"
+                        placeholder="e.g. 96.4"
+                        type="text"
+                        value={weightDraft.weight_kg}
+                        onChange={(event) => setWeightDraft((current) => ({ ...current, weight_kg: event.target.value }))}
                       />
                     </label>
                   </div>
