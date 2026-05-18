@@ -12,6 +12,7 @@ import {
   MoonStar,
   Goal,
   Scale,
+  Settings2,
   Smartphone,
   UtensilsCrossed,
   Weight,
@@ -62,6 +63,7 @@ type RewardToast = {
   title: string;
   body: string;
   xp?: number;
+  celebrate?: boolean;
 };
 
 type BootstrapPayload = {
@@ -144,7 +146,6 @@ type ReminderDraft = {
   enabled: boolean;
 };
 
-type SectionKey = 'today' | 'flow' | 'calendar' | 'progress' | 'settings';
 type SetupComposer = 'profile' | 'challenge' | 'reminders' | null;
 type ItemRarity = 'common' | 'magic' | 'rare' | 'set' | 'legendary';
 type EquipmentSlotSize = 'small' | 'medium' | 'large' | 'tall';
@@ -1160,7 +1161,7 @@ function buildReward(url: string, successMessage: string): RewardToast {
     return { id, title: 'Saved', body: successMessage };
   }
   if (url.includes('/challenges')) {
-    return { id, title: 'Saved', body: successMessage };
+    return { id, title: 'Saved', body: successMessage, celebrate: true };
   }
   return { id, title: 'Saved', body: successMessage };
 }
@@ -1213,13 +1214,7 @@ export default function CutCoachPage() {
     return formatLocalIsoDate(new Date(now.getFullYear(), now.getMonth(), 1, 12, 0, 0));
   });
   const [monthTransitionDirection, setMonthTransitionDirection] = useState<'backward' | 'forward'>('forward');
-  const [collapsedSections, setCollapsedSections] = useState<Record<SectionKey, boolean>>({
-    today: false,
-    flow: false,
-    calendar: false,
-    progress: false,
-    settings: true,
-  });
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [setupComposer, setSetupComposer] = useState<SetupComposer>(null);
   const [inventoryOverride, setInventoryOverride] = useState<CharacterInventory | null>(null);
   const [draggedItem, setDraggedItem] = useState<DragOrigin>(null);
@@ -1290,6 +1285,16 @@ export default function CutCoachPage() {
     setActivityModalOpen(true);
   }
 
+  function openSettings(nextComposer: SetupComposer = 'profile') {
+    setSettingsOpen(true);
+    setSetupComposer((current) => current ?? nextComposer);
+  }
+
+  function closeSettings() {
+    setSettingsOpen(false);
+    setSetupComposer(null);
+  }
+
   function baseWeightEntryState(date: string) {
     return seedWeightEntry(date, data);
   }
@@ -1320,7 +1325,7 @@ export default function CutCoachPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (!kcalModalOpen && !weightModalOpen && !activityModalOpen) return;
+    if (!kcalModalOpen && !weightModalOpen && !activityModalOpen && !settingsOpen) return;
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key !== 'Escape') return;
@@ -1341,12 +1346,17 @@ export default function CutCoachPage() {
         setWeightDraft(seedWeightEntry(todayIsoDate, data));
         weightDialDragRef.current = null;
         setWeightDialRotation(0);
+        return;
+      }
+      if (settingsOpen) {
+        setSettingsOpen(false);
+        setSetupComposer(null);
       }
     }
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activityModalOpen, data, kcalModalOpen, todayIsoDate, weightModalOpen]);
+  }, [activityModalOpen, data, kcalModalOpen, settingsOpen, todayIsoDate, weightModalOpen]);
 
   function applyBootstrap(payload: BootstrapPayload) {
     setData(payload);
@@ -1525,7 +1535,7 @@ export default function CutCoachPage() {
       return false;
     }
     const ok = await persistProfile(setup);
-    if (ok) setSetupComposer(null);
+    if (ok) closeSettings();
     return ok;
   }
 
@@ -1644,7 +1654,7 @@ export default function CutCoachPage() {
       return false;
     }
     const ok = await postJson('/api/cut-coach/challenges', challenge, 'Challenge saved.');
-    if (ok) setSetupComposer(null);
+    if (ok) closeSettings();
     return ok;
   }
 
@@ -1662,7 +1672,7 @@ export default function CutCoachPage() {
     };
     setChallenge(nextChallenge);
     const ok = await postJson('/api/cut-coach/challenges', nextChallenge, '100-day challenge started.');
-    if (ok) setSetupComposer(null);
+    if (ok) closeSettings();
     return ok;
   }
 
@@ -1680,7 +1690,7 @@ export default function CutCoachPage() {
       },
       'Active challenge stopped.'
     );
-    if (ok) setSetupComposer(null);
+    if (ok) closeSettings();
   }
 
   async function applyProfilePreset(patch: Partial<SetupState>, successMessage: string) {
@@ -1706,7 +1716,7 @@ export default function CutCoachPage() {
         setReminders(defaultReminderDrafts(payload.reminders));
       },
     });
-    if (ok) setSetupComposer(null);
+    if (ok) closeSettings();
     return ok;
   }
 
@@ -1841,13 +1851,6 @@ export default function CutCoachPage() {
     event.preventDefault();
     setWeightDialRotation((current) => current + (event.deltaY < 0 ? 10 : -10));
     applyWeightDelta(event.deltaY < 0 ? 0.01 : -0.01, 'draft', weightDraft);
-  }
-
-  function toggleSection(section: SectionKey) {
-    setCollapsedSections((current) => ({
-      ...current,
-      [section]: !current[section],
-    }));
   }
 
   async function enableNotifications() {
@@ -2192,7 +2195,13 @@ export default function CutCoachPage() {
       <div className={styles.page}>
         <section className={styles.topbar}>
           <BackLink href="/">← Back to dashboard</BackLink>
-          <ThemeToggle />
+          <div className={styles.topbarActions}>
+            <button className={`btn-base btn-ghost ${styles.settingsLauncher}`} onClick={() => openSettings('profile')} type="button">
+              <Settings2 size={16} strokeWidth={2.2} />
+              Settings
+            </button>
+            <ThemeToggle />
+          </div>
         </section>
 
         {initialLoading ? (
@@ -2353,11 +2362,32 @@ export default function CutCoachPage() {
           </div>
         ) : null}
         {rewardToast ? (
-          <div className={styles.rewardToast} key={rewardToast.id}>
-            <span className={styles.noticeToastIcon} aria-hidden="true"><CheckCircle2 size={16} strokeWidth={2.2} /></span>
-            <strong>{rewardToast.title}</strong>
-            <p>{rewardToast.body}</p>
-          </div>
+          <>
+            {rewardToast.celebrate ? (
+              <div className={styles.confettiBurst} aria-hidden="true">
+                {Array.from({ length: 22 }).map((_, index) => (
+                  <span
+                    key={`confetti-${rewardToast.id}-${index}`}
+                    className={styles.confettiPiece}
+                    style={
+                      {
+                        '--confetti-left': `${(index * 17) % 100}%`,
+                        '--confetti-drift': `${(index % 2 === 0 ? -1 : 1) * (26 + (index % 5) * 10)}px`,
+                        '--confetti-delay': `${(index % 6) * 55}ms`,
+                        '--confetti-duration': `${1600 + (index % 5) * 140}ms`,
+                        '--confetti-rotate': `${index % 2 === 0 ? 18 : -18}deg`,
+                      } as CSSProperties
+                    }
+                  />
+                ))}
+              </div>
+            ) : null}
+            <div className={styles.rewardToast} key={rewardToast.id}>
+              <span className={styles.noticeToastIcon} aria-hidden="true"><CheckCircle2 size={16} strokeWidth={2.2} /></span>
+              <strong>{rewardToast.title}</strong>
+              <p>{rewardToast.body}</p>
+            </div>
+          </>
         ) : null}
         {kcalModalOpen ? (
           <div className={styles.modalScrim} onClick={closeKcalModal} role="presentation">
@@ -2601,15 +2631,9 @@ export default function CutCoachPage() {
               <div className={styles.sectionEyebrow}>flow</div>
               <h2 className={styles.sectionTitle}>Challenge and trend</h2>
             </div>
-            <div className={styles.sectionHeadActions}>
-              <div className={styles.sectionMeta}>{activeChallenge ? `${phaseLabel(challengeStats.progress)} phase` : 'Set up a challenge'}</div>
-              <button className={styles.sectionToggle} onClick={() => toggleSection('flow')} type="button">
-                {collapsedSections.flow ? 'Expand' : 'Collapse'}
-              </button>
-            </div>
+            <div className={styles.sectionMeta}>{activeChallenge ? `${phaseLabel(challengeStats.progress)} phase` : 'Set up a challenge'}</div>
           </div>
 
-          {!collapsedSections.flow ? <>
           <div className={styles.flowMetaGrid}>
             <section className={`surface-card ${styles.panel} ${styles.panelSteel}`}>
               <h3 className={styles.panelTitle}>Challenge pace</h3>
@@ -2678,7 +2702,6 @@ export default function CutCoachPage() {
               </div>
             </section>
           </div>
-          </> : null}
         </section>
 
         <section id="calendar" className={styles.appSection}>
@@ -2687,15 +2710,10 @@ export default function CutCoachPage() {
               <div className={styles.sectionEyebrow}>history</div>
               <h2 className={styles.sectionTitle}>Month snapshot</h2>
             </div>
-            <div className={styles.sectionHeadActions}>
-              <div className={styles.sectionMeta}>{currentMonth?.label ?? 'Current month'}</div>
-              <button className={styles.sectionToggle} onClick={() => toggleSection('calendar')} type="button">
-                {collapsedSections.calendar ? 'Expand' : 'Collapse'}
-              </button>
-            </div>
+            <div className={styles.sectionMeta}>{currentMonth?.label ?? 'Current month'}</div>
           </div>
 
-          {!collapsedSections.calendar ? <div className={styles.calendarGrid}>
+          <div className={styles.calendarGrid}>
             <section className={`surface-card ${styles.panel} ${styles.panelRecessed} ${styles.calendarPanel}`}>
               <div className={styles.calendarHeader}>
                 <div>
@@ -2876,7 +2894,7 @@ export default function CutCoachPage() {
                 {activeChallenge ? <div className={styles.weekPlanPhaseBadge}>{phaseLabel(challengeStats.progress)} phase</div> : null}
               </div>
             </section>
-          </div> : null}
+          </div>
         </section>
 
         <section id="progress" className={styles.appSection}>
@@ -2885,15 +2903,9 @@ export default function CutCoachPage() {
               <div className={styles.sectionEyebrow}>milestones</div>
               <h2 className={styles.sectionTitle}>Score and achievements</h2>
             </div>
-            <div className={styles.sectionHeadActions}>
-              <div className={styles.sectionMeta}>{activeChallenge ? `${Math.round(challengeStats.progress * 100)}% complete` : 'Ready to start'}</div>
-              <button className={styles.sectionToggle} onClick={() => toggleSection('progress')} type="button">
-                {collapsedSections.progress ? 'Expand' : 'Collapse'}
-              </button>
-            </div>
+            <div className={styles.sectionMeta}>{activeChallenge ? `${Math.round(challengeStats.progress * 100)}% complete` : 'Ready to start'}</div>
           </div>
 
-          {!collapsedSections.progress ? <>
           <div className={styles.progressGrid}>
             <section className={`surface-card ${styles.panel} ${styles.panelSteel}`}>
               <h3 className={styles.panelTitle}>Scoreboard</h3>
@@ -2928,7 +2940,7 @@ export default function CutCoachPage() {
             </section>
           </div>
 
-            {SHOW_CHARACTER_LAYER ? (
+          {SHOW_CHARACTER_LAYER ? (
             <section className={`surface-card ${styles.panel} ${styles.characterPanel}`} id="character-sheet">
               <div className={styles.panelHead}>
                 <div>
@@ -3088,29 +3100,46 @@ export default function CutCoachPage() {
                 </div>
               ) : null}
             </section>
-            ) : null}
-          </> : null}
+          ) : null}
         </section>
 
-        <section id="settings" className={styles.appSection}>
-          <div className={styles.sectionHead}>
+        <section className={styles.appSection}>
+          <section className={`surface-card ${styles.panel} ${styles.settingsTeaser}`}>
             <div>
-              <div className={styles.sectionEyebrow}>adjust</div>
+              <div className={styles.sectionEyebrow}>settings</div>
               <h2 className={styles.sectionTitle}>Profile, challenge, reminders</h2>
+              <p className={styles.panelText}>Move setup and notification controls out of the daily surface.</p>
             </div>
-            <div className={styles.sectionHeadActions}>
-              <div className={styles.sectionMeta}>secondary controls, not daily actions</div>
-              <button className={styles.sectionToggle} onClick={() => toggleSection('settings')} type="button">
-                {collapsedSections.settings ? 'Expand' : 'Collapse'}
-              </button>
-            </div>
-          </div>
+            <button className={`btn-base btn-secondary ${styles.settingsLauncher}`} onClick={() => openSettings('profile')} type="button">
+              <Settings2 size={16} strokeWidth={2.2} />
+              Open settings
+            </button>
+          </section>
+        </section>
 
-          {!collapsedSections.settings ? <>
-              <div className={`${styles.composerGrid} ${styles.composerGridThree}`}>
+        {settingsOpen ? (
+          <div className={styles.modalScrim} onClick={closeSettings} role="presentation">
+            <section
+              aria-modal="true"
+              className={styles.settingsSheet}
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+            >
+              <div className={styles.settingsSheetHead}>
+                <div>
+                  <div className={styles.sectionEyebrow}>settings</div>
+                  <h2 className={styles.sectionTitle}>Profile, challenge, reminders</h2>
+                  <p className={styles.panelText}>Secondary controls, not daily actions.</p>
+                </div>
+                <button className="btn-base btn-ghost" onClick={closeSettings} type="button">
+                  Close
+                </button>
+              </div>
+
+              <div className={`${styles.composerGrid} ${styles.composerGridThree} ${styles.settingsComposerGrid}`}>
             <button
               className={`${styles.composerButton} ${setupComposer === 'profile' ? styles.composerButtonActive : ''}`}
-              onClick={() => setSetupComposer((current) => (current === 'profile' ? null : 'profile'))}
+              onClick={() => setSetupComposer('profile')}
               type="button"
             >
               <strong>Profile</strong>
@@ -3118,7 +3147,7 @@ export default function CutCoachPage() {
             </button>
             <button
               className={`${styles.composerButton} ${activeChallenge ? styles.composerButtonDone : ''} ${setupComposer === 'challenge' ? styles.composerButtonActive : ''}`}
-              onClick={() => setSetupComposer((current) => (current === 'challenge' ? null : 'challenge'))}
+              onClick={() => setSetupComposer('challenge')}
               type="button"
             >
               <strong>{activeChallenge ? 'Challenge active' : 'Challenge setup'}</strong>
@@ -3126,7 +3155,7 @@ export default function CutCoachPage() {
             </button>
             <button
               className={`${styles.composerButton} ${setupComposer === 'reminders' ? styles.composerButtonActive : ''}`}
-              onClick={() => setSetupComposer((current) => (current === 'reminders' ? null : 'reminders'))}
+              onClick={() => setSetupComposer('reminders')}
               type="button"
             >
               <strong>Reminders</strong>
@@ -3134,7 +3163,7 @@ export default function CutCoachPage() {
             </button>
           </div>
 
-          <div className={styles.settingsGrid}>
+          <div className={`${styles.settingsGrid} ${styles.settingsSheetGrid}`}>
             {setupComposer === 'profile' ? <section className={`surface-card ${styles.panel}`}>
               <h3 className={styles.panelTitle}>Profile</h3>
               <p className={styles.panelText}>Basic first. The rest is fine tuning.</p>
@@ -3433,12 +3462,19 @@ export default function CutCoachPage() {
               </button>
             </section> : null}
           </div>
-          </> : null}
-        </section>
+            </section>
+          </div>
+        ) : null}
 
         <section className={styles.mobileTopbarFooter}>
           <BackLink href="/">← Back to dashboard</BackLink>
-          <ThemeToggle />
+          <div className={styles.mobileTopbarActions}>
+            <button className={`btn-base btn-ghost ${styles.settingsLauncher}`} onClick={() => openSettings('profile')} type="button">
+              <Settings2 size={16} strokeWidth={2.2} />
+              Settings
+            </button>
+            <ThemeToggle />
+          </div>
         </section>
 
         <div className={styles.mobileActionDock} aria-label="Quick actions">
