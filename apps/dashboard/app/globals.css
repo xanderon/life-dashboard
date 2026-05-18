@@ -176,7 +176,7 @@ a {
   background:
     linear-gradient(140deg, color-mix(in srgb, var(--card-ink, transparent) 7%, transparent) 0%, transparent 38%),
     radial-gradient(circle at top right, color-mix(in srgb, var(--card-accent, transparent) 16%, transparent) 0%, transparent 34%);
-  opacity: 0.56;
+  opacity: 0.34;
 }
 
 .surface-card--solid {
@@ -217,7 +217,7 @@ a {
   --card-accent: #f0b04b;
   --card-accent-2: #6cbf92;
   --card-ink: #53331f;
-  border-color: color-mix(in srgb, var(--card-accent) 26%, var(--border));
+  border-color: color-mix(in srgb, var(--card-accent) 18%, var(--border));
   background:
     radial-gradient(circle at top right, color-mix(in srgb, var(--card-accent) 11%, transparent) 0%, transparent 28%),
     radial-gradient(circle at bottom left, color-mix(in srgb, var(--card-accent-2) 8%, transparent) 0%, transparent 30%),
@@ -230,7 +230,7 @@ a {
   --card-accent: #64c6ff;
   --card-accent-2: #3c8dff;
   --card-ink: #10283e;
-  border-color: color-mix(in srgb, var(--card-accent) 28%, var(--border));
+  border-color: color-mix(in srgb, var(--card-accent) 18%, var(--border));
   background:
     radial-gradient(circle at top left, color-mix(in srgb, var(--card-accent) 11%, transparent) 0%, transparent 30%),
     radial-gradient(circle at bottom right, color-mix(in srgb, var(--card-accent-2) 9%, transparent) 0%, transparent 32%),
@@ -243,7 +243,7 @@ a {
   --card-accent: #69d88f;
   --card-accent-2: #ff9d57;
   --card-ink: #173622;
-  border-color: color-mix(in srgb, var(--card-accent) 28%, var(--border));
+  border-color: color-mix(in srgb, var(--card-accent) 18%, var(--border));
   background:
     radial-gradient(circle at top center, color-mix(in srgb, var(--card-accent) 11%, transparent) 0%, transparent 30%),
     radial-gradient(circle at bottom right, color-mix(in srgb, var(--card-accent-2) 9%, transparent) 0%, transparent 28%),
@@ -256,7 +256,7 @@ a {
   --card-accent: #8b8eff;
   --card-accent-2: #58d1ff;
   --card-ink: #1c2147;
-  border-color: color-mix(in srgb, var(--card-accent) 28%, var(--border));
+  border-color: color-mix(in srgb, var(--card-accent) 18%, var(--border));
   background:
     radial-gradient(circle at top left, color-mix(in srgb, var(--card-accent) 11%, transparent) 0%, transparent 30%),
     radial-gradient(circle at bottom right, color-mix(in srgb, var(--card-accent-2) 9%, transparent) 0%, transparent 32%),
@@ -269,7 +269,7 @@ a {
   --card-accent: #b37fff;
   --card-accent-2: #5cc8c8;
   --card-ink: #28193f;
-  border-color: color-mix(in srgb, var(--card-accent) 26%, var(--border));
+  border-color: color-mix(in srgb, var(--card-accent) 18%, var(--border));
   background:
     radial-gradient(circle at top center, color-mix(in srgb, var(--card-accent) 11%, transparent) 0%, transparent 28%),
     radial-gradient(circle at bottom left, color-mix(in srgb, var(--card-accent-2) 9%, transparent) 0%, transparent 30%),
@@ -282,7 +282,7 @@ a {
   --card-accent: #9daec6;
   --card-accent-2: #d6a062;
   --card-ink: #2c3140;
-  border-color: color-mix(in srgb, var(--card-accent) 24%, var(--border));
+  border-color: color-mix(in srgb, var(--card-accent) 16%, var(--border));
   background:
     radial-gradient(circle at top right, color-mix(in srgb, var(--card-accent) 9%, transparent) 0%, transparent 30%),
     radial-gradient(circle at bottom left, color-mix(in srgb, var(--card-accent-2) 7%, transparent) 0%, transparent 28%),
@@ -327,6 +327,12 @@ a {
     transform 160ms ease,
     border-color 160ms ease,
     background 160ms ease;
+}
+
+.app-open-button--wide {
+  justify-content: space-between;
+  min-height: 3.35rem;
+  padding-right: 0.92rem;
 }
 
 .app-open-button:hover {
@@ -602,107 +608,6 @@ a {
   margin-top: 0.2rem;
   font-size: 0.76rem;
   color: var(--muted);
-}
-
-.receipts-cta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.9rem;
-  width: 100%;
-  min-height: 3.75rem;
-  padding: 0.55rem 0.55rem 0.55rem 1.05rem;
-  border-radius: 999px;
-  border: 6px solid color-mix(in srgb, var(--accent-soft) 96%, var(--border-strong));
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--surface-highlight) 85%, transparent) 0%,
-      color-mix(in srgb, var(--panel-strong) 96%, transparent) 100%
-    );
-  box-shadow:
-    0 18px 36px -30px color-mix(in srgb, var(--accent) 32%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 95%, transparent);
-  color: var(--text);
-  transition:
-    transform 180ms ease,
-    border-color 180ms ease,
-    background 180ms ease,
-    color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.receipts-cta:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--accent-soft) 100%, var(--accent) 12%);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--accent-soft) 34%, var(--surface-highlight)) 0%,
-      color-mix(in srgb, var(--panel-strong) 98%, transparent) 100%
-    );
-  box-shadow:
-    0 22px 40px -28px color-mix(in srgb, var(--accent) 42%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 95%, transparent);
-}
-
-.receipts-cta__text {
-  min-width: 0;
-  font-size: 1rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-
-.receipts-cta__icon {
-  width: 2.35rem;
-  height: 1rem;
-  display: block;
-  color: color-mix(in srgb, var(--accent) 72%, var(--text));
-  flex: none;
-}
-
-.receipts-cta:hover .receipts-cta__icon {
-  color: var(--accent);
-  animation: receipts-cta-jello 0.8s both;
-  transform-origin: left center;
-}
-
-@keyframes receipts-cta-jello {
-  0% {
-    transform: scale3d(1, 1, 1);
-  }
-  30% {
-    transform: scale3d(0.82, 1.18, 1);
-  }
-  40% {
-    transform: scale3d(1.12, 0.88, 1);
-  }
-  55% {
-    transform: scale3d(0.92, 1.08, 1);
-  }
-  70% {
-    transform: scale3d(1.03, 0.97, 1);
-  }
-  100% {
-    transform: scale3d(1, 1, 1);
-  }
-}
-
-@media (max-width: 640px) {
-  .receipts-cta {
-    min-height: 3.45rem;
-    padding-left: 0.9rem;
-    border-width: 5px;
-  }
-
-  .receipts-cta__text {
-    font-size: 0.95rem;
-  }
-
-  .receipts-cta__icon {
-    width: 2rem;
-  }
 }
 
 .btn-ghost {
