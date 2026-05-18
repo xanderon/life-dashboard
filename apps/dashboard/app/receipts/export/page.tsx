@@ -293,7 +293,7 @@ export default function ReceiptsExportPage() {
   return (
     <PageShell width="6xl">
       <div className="space-y-6">
-        <section className="hero-card p-5 sm:p-7">
+        <section className="hero-card hero-card--finance p-5 sm:p-7">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <span className="eyebrow">Receipts export</span>
@@ -325,7 +325,7 @@ export default function ReceiptsExportPage() {
                 value={endDate}
               />
               <button
-                className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-4 py-2 text-sm text-[var(--text)] disabled:opacity-50"
+                className="btn-base btn-primary disabled:opacity-50"
                 disabled={loading || !startDate || !endDate}
                 onClick={generateExport}
                 type="button"
@@ -336,7 +336,7 @@ export default function ReceiptsExportPage() {
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="surface-card p-4">
+            <div className="surface-card surface-card--finance p-4">
               <div className="text-sm font-semibold text-[var(--text)]">Query Supabase de bază</div>
               <p className="mt-1 text-xs text-[var(--muted)]">
                 Da, Supabase poate întoarce rezultatul. Pentru volume mari însă endpointul de mai jos este
@@ -347,7 +347,7 @@ export default function ReceiptsExportPage() {
               </pre>
             </div>
 
-            <div className="surface-card p-4">
+            <div className="surface-card surface-card--finance p-4">
               <div className="text-sm font-semibold text-[var(--text)]">Ce întoarce exportul</div>
               <div className="mt-2 text-sm text-[var(--muted)]">
                 Structură:
@@ -370,7 +370,7 @@ export default function ReceiptsExportPage() {
             </div>
         </section>
 
-        <section className="surface-card p-5">
+        <section className="surface-card surface-card--finance p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-lg font-semibold">Rezultat</div>
@@ -380,7 +380,7 @@ export default function ReceiptsExportPage() {
             </div>
             <div className="flex gap-2">
               <button
-                className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm text-[var(--text)] disabled:opacity-50"
+                className="btn-base btn-ghost disabled:opacity-50"
                 disabled={!jsonText}
                 onClick={copyJson}
                 type="button"
@@ -388,7 +388,7 @@ export default function ReceiptsExportPage() {
                 Copy
               </button>
               <button
-                className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm text-[var(--text)] disabled:opacity-50"
+                className="btn-base btn-secondary disabled:opacity-50"
                 disabled={!jsonText}
                 onClick={downloadJson}
                 type="button"

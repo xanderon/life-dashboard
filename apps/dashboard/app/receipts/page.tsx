@@ -1573,7 +1573,7 @@ export default function ReceiptsPage() {
     <>
       <PageShell>
         <div className="space-y-6">
-        <section className="surface-card surface-card--soft p-4 sm:p-5">
+        <section className="hero-card hero-card--finance p-4 sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="display-title text-2xl font-semibold tracking-[-0.06em] sm:text-3xl">
               Receipts
@@ -1600,7 +1600,7 @@ export default function ReceiptsPage() {
           </div>
         </section>
 
-        <div className="surface-card p-4 sm:p-5">
+        <div className="surface-card surface-card--finance p-4 sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
@@ -1667,7 +1667,7 @@ export default function ReceiptsPage() {
             </div>
           </div>
           {showJsonImport ? (
-            <div className="surface-card surface-card--soft mt-4 p-4">
+            <div className="surface-card surface-card--soft surface-card--finance mt-4 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold">Import JSON</div>
@@ -1751,7 +1751,7 @@ export default function ReceiptsPage() {
           }`}
         >
           <div
-            className={`surface-card p-3 ${
+            className={`surface-card surface-card--finance p-3 ${
               selected ? 'order-2 lg:order-1' : ''
             }`}
           >
@@ -1863,7 +1863,7 @@ export default function ReceiptsPage() {
             {selected ? (
               <div
                 ref={editorRef}
-                className="surface-card order-1 p-3 lg:order-2"
+                className="surface-card surface-card--finance order-1 p-3 lg:order-2"
               >
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -2004,7 +2004,7 @@ export default function ReceiptsPage() {
 
             <div className="sticky top-3 z-20 mt-3 md:hidden">
               <div
-                className={`surface-card p-3 ${
+                className={`surface-card surface-card--finance p-3 ${
                   selectedTotals.hasMatch ? 'surface-card--success' : 'surface-card--danger'
                 }`}
               >

@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 export function TricorderCard() {
   return (
-    <section className="surface-card p-4 sm:p-5">
+    <section className="surface-card surface-card--tools p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-lg font-semibold tracking-tight">Tricorder</div>

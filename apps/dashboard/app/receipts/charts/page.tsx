@@ -481,7 +481,7 @@ export default function ReceiptsChartsPage() {
   if (loading) {
     return (
       <PageShell width="6xl">
-        <div className="surface-card p-5 text-sm text-[var(--muted)]">
+        <div className="surface-card surface-card--finance p-5 text-sm text-[var(--muted)]">
           Se incarca graficele…
         </div>
       </PageShell>
@@ -501,7 +501,7 @@ export default function ReceiptsChartsPage() {
   return (
     <PageShell width="6xl">
       <div className="space-y-6">
-        <section className="hero-card p-5 sm:p-7">
+        <section className="hero-card hero-card--finance p-5 sm:p-7">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <span className="eyebrow">Receipts analytics</span>
@@ -525,7 +525,7 @@ export default function ReceiptsChartsPage() {
                 className={`rounded-full px-3 py-1 transition ${
                   monthOffset <= minOffset
                     ? 'cursor-not-allowed text-[var(--muted)]'
-                    : 'hover:text-[var(--text)]'
+                    : 'bg-[color:color-mix(in_srgb,var(--panel-2)_72%,transparent)] text-[var(--text)] hover:bg-[color:color-mix(in_srgb,var(--accent-soft)_56%,var(--panel-2))]'
                 }`}
               >
                 ◀
@@ -534,7 +534,7 @@ export default function ReceiptsChartsPage() {
                 type="button"
                 onClick={() => setMonthOffset(Math.max(minOffset, -1))}
                 className={`rounded-full px-3 py-1 transition ${
-                  monthOffset === -1 ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'hover:text-[var(--text)]'
+                  monthOffset === -1 ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'bg-[color:color-mix(in_srgb,var(--panel-2)_72%,transparent)] text-[var(--text)] hover:bg-[color:color-mix(in_srgb,var(--accent-soft)_56%,var(--panel-2))]'
                 }`}
               >
                 Luna trecuta
@@ -543,7 +543,7 @@ export default function ReceiptsChartsPage() {
                 type="button"
                 onClick={() => setMonthOffset(0)}
                 className={`rounded-full px-3 py-1 transition ${
-                  monthOffset === 0 ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'hover:text-[var(--text)]'
+                  monthOffset === 0 ? 'bg-[var(--accent-2)] text-[var(--bg)]' : 'bg-[color:color-mix(in_srgb,var(--panel-2)_72%,transparent)] text-[var(--text)] hover:bg-[color:color-mix(in_srgb,var(--accent-soft)_56%,var(--panel-2))]'
                 }`}
               >
                 Luna curenta
@@ -555,7 +555,7 @@ export default function ReceiptsChartsPage() {
                 className={`rounded-full px-3 py-1 transition ${
                   monthOffset >= maxOffset
                     ? 'cursor-not-allowed text-[var(--muted)]'
-                    : 'hover:text-[var(--text)]'
+                    : 'bg-[color:color-mix(in_srgb,var(--panel-2)_72%,transparent)] text-[var(--text)] hover:bg-[color:color-mix(in_srgb,var(--accent-soft)_56%,var(--panel-2))]'
                 }`}
               >
                 ▶
@@ -713,7 +713,7 @@ export default function ReceiptsChartsPage() {
           </ChartCard>
         </div>
 
-        <div className="surface-card p-4">
+        <div className="surface-card surface-card--finance p-4">
           <div className="flex items-start gap-3">
             <div className="text-xl">📈</div>
             <div>
@@ -806,7 +806,7 @@ function StatCard({
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="surface-card p-5">
+    <div className="surface-card surface-card--finance p-5">
       <div className="mb-3 text-sm font-semibold text-[var(--text)]">{title}</div>
       {children}
     </div>

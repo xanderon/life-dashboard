@@ -1,5 +1,12 @@
 'use client';
 
+import {
+  FileText,
+  Flame,
+  Radio,
+  Sparkles,
+  Waves,
+} from 'lucide-react';
 import Link from 'next/link';
 import { StatusPill } from './StatusPill';
 
@@ -15,6 +22,42 @@ type AppRow = {
   home_url: string | null;
 };
 
+function variantForSlug(slug: string) {
+  if (slug === 'receipts') {
+    return {
+      family: 'finance',
+      kicker: 'Finance',
+      icon: <FileText aria-hidden="true" />,
+    };
+  }
+  if (slug === 'termo-alert') {
+    return {
+      family: 'infra',
+      kicker: 'Infra',
+      icon: <Waves aria-hidden="true" />,
+    };
+  }
+  if (slug === 'cut-coach' || slug === 'nutrition') {
+    return {
+      family: 'nutrition',
+      kicker: 'Nutrition',
+      icon: <Flame aria-hidden="true" />,
+    };
+  }
+  if (slug === 'tricorder') {
+    return {
+      family: 'tools',
+      kicker: 'Tools',
+      icon: <Radio aria-hidden="true" />,
+    };
+  }
+  return {
+    family: 'personal',
+    kicker: 'App',
+    icon: <Sparkles aria-hidden="true" />,
+  };
+}
+
 export function AppCard({
   app,
 }: {
@@ -22,7 +65,10 @@ export function AppCard({
 }) {
   const isTermo = app.slug === 'termo-alert';
   const isReceipts = app.slug === 'receipts';
-  const wrapperClassName = isReceipts ? 'hero-card p-4 sm:p-5' : 'surface-card p-4 sm:p-5';
+  const variant = variantForSlug(app.slug);
+  const wrapperClassName = isReceipts
+    ? `hero-card hero-card--${variant.family} p-4 sm:p-5`
+    : `surface-card surface-card--${variant.family} p-4 sm:p-5`;
   const termoParts = isTermo
     ? app.description.split('|').map((part) => part.trim()).filter(Boolean)
     : [];
@@ -57,20 +103,22 @@ export function AppCard({
 
   return (
     <section className={wrapperClassName}>
-      <div className="min-w-0">
+      <div className="app-card-shell min-w-0">
         {isReceipts ? (
           <>
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-                  Finance
-                </div>
-                <div className="display-title truncate text-2xl font-semibold tracking-[-0.06em] sm:text-[2rem]">
+            <div className="app-card-head">
+              <div className="app-card-meta">
+                <div className="app-card-kicker">{variant.kicker}</div>
+                <div className="display-title app-card-title truncate text-2xl sm:text-[2rem]">
                   {app.name}
                 </div>
+                <div className="app-card-description max-w-xl">
+                  All receipts, charts, export and cleanup in one place.
+                </div>
               </div>
+              <span className="app-card-icon">{variant.icon}</span>
             </div>
-            <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="app-card-footer mt-1 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
               <Link className="receipts-cta" href="/receipts">
                 <span className="receipts-cta__text truncate">Open receipts</span>
                 <svg
@@ -93,18 +141,21 @@ export function AppCard({
           </>
         ) : isTermo ? (
           <>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-                Infra
+            <div className="app-card-head">
+              <div className="app-card-meta">
+                <div className="app-card-kicker">{variant.kicker}</div>
+                <div className="app-card-title truncate text-lg">{app.name}</div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <StatusPill status={app.status} />
+                </div>
               </div>
-              <div className="truncate text-lg font-semibold tracking-tight">{app.name}</div>
-              <StatusPill status={app.status} />
+              <span className="app-card-icon">{variant.icon}</span>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2 text-sm">
+            <div className="app-card-pills text-sm">
               {termoParts.map((part) => (
                 <span
                   key={part}
-                  className="rounded-full border px-2.5 py-1 font-semibold"
+                  className="app-card-pill"
                   style={termoBadgeStyle(part)}
                 >
                   {part}
@@ -113,12 +164,12 @@ export function AppCard({
             </div>
             {app.home_url ? (
               app.home_url.startsWith('/') ? (
-                <Link className="btn-base btn-secondary mt-4" href={app.home_url}>
+                <Link className="btn-base btn-secondary app-card-footer" href={app.home_url}>
                   Open termo alert
                 </Link>
               ) : (
                 <a
-                  className="btn-base btn-secondary mt-4"
+                  className="btn-base btn-secondary app-card-footer"
                   href={app.home_url}
                   target="_blank"
                   rel="noreferrer"
@@ -130,24 +181,27 @@ export function AppCard({
           </>
         ) : (
           <>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-                App
+            <div className="app-card-head">
+              <div className="app-card-meta">
+                <div className="app-card-kicker">{variant.kicker}</div>
+                <div className="app-card-title truncate text-lg">{app.name}</div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <StatusPill status={app.status} />
+                </div>
               </div>
-              <div className="truncate text-lg font-semibold tracking-tight">{app.name}</div>
-              <StatusPill status={app.status} />
+              <span className="app-card-icon">{variant.icon}</span>
             </div>
-            <div className="mt-4 text-sm leading-6 text-[var(--muted)]">
+            <div className="app-card-description">
               {app.description}
             </div>
             {app.home_url ? (
               app.home_url.startsWith('/') ? (
-                <Link className="btn-base btn-secondary mt-4" href={app.home_url}>
+                <Link className="btn-base btn-secondary app-card-footer" href={app.home_url}>
                   Open
                 </Link>
               ) : (
                 <a
-                  className="btn-base btn-secondary mt-4"
+                  className="btn-base btn-secondary app-card-footer"
                   href={app.home_url}
                   target="_blank"
                   rel="noreferrer"

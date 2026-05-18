@@ -42,7 +42,7 @@ export function ClockCard() {
     <Card
       title="Clock"
       subtitle={date}
-      className="hero-card p-4 sm:p-5"
+      className="hero-card hero-card--personal p-4 sm:p-5"
     >
       <div className="display-title text-3xl font-semibold tracking-[-0.06em] sm:text-4xl lg:text-5xl">{time}</div>
     </Card>

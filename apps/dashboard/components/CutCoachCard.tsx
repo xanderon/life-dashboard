@@ -32,7 +32,7 @@ export function CutCoachCard() {
   }, []);
 
   return (
-    <section className="surface-card p-5">
+    <section className="surface-card surface-card--nutrition p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="eyebrow">Nutrition</div>

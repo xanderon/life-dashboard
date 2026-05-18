@@ -74,7 +74,7 @@ export function DevicesCard() {
 
   if (err) {
     return (
-      <section className="surface-card surface-card--danger p-5">
+      <section className="surface-card surface-card--danger surface-card--infra p-5">
         <div className="text-sm font-semibold">Eroare DB</div>
         <div className="mt-1 text-sm text-[var(--muted)]">{err}</div>
       </section>
@@ -83,7 +83,7 @@ export function DevicesCard() {
 
   if (devices === null) {
     return (
-      <section className="surface-card p-5">
+      <section className="surface-card surface-card--infra p-5">
         <div className="text-lg font-semibold tracking-tight">Devices</div>
         <div className="mt-2 text-sm text-[var(--muted)]">Loading…</div>
       </section>
@@ -91,7 +91,7 @@ export function DevicesCard() {
   }
 
   return (
-    <section className="surface-card p-5">
+    <section className="surface-card surface-card--infra p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-3">

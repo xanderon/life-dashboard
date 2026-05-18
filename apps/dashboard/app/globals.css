@@ -153,6 +153,7 @@ a {
 
 .surface-card {
   position: relative;
+  isolation: isolate;
   overflow: hidden;
   border: 1px solid var(--border);
   background:
@@ -163,6 +164,19 @@ a {
     0 24px 60px -36px var(--shadow-color),
     inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 85%, transparent);
   backdrop-filter: blur(18px);
+}
+
+.surface-card::after,
+.hero-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(140deg, color-mix(in srgb, var(--card-ink, transparent) 7%, transparent) 0%, transparent 38%),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--card-accent, transparent) 16%, transparent) 0%, transparent 34%);
+  opacity: 0.9;
 }
 
 .surface-card--solid {
@@ -185,6 +199,7 @@ a {
 
 .hero-card {
   position: relative;
+  isolation: isolate;
   overflow: hidden;
   border: 1px solid var(--border-strong);
   border-radius: 2rem;
@@ -195,6 +210,118 @@ a {
     0 32px 80px -48px var(--shadow-color),
     inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 95%, transparent);
   backdrop-filter: blur(24px);
+}
+
+.surface-card--finance,
+.hero-card--finance {
+  --card-accent: #f0b04b;
+  --card-accent-2: #6cbf92;
+  --card-ink: #53331f;
+  border-color: color-mix(in srgb, var(--card-accent) 26%, var(--border));
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--card-accent) 18%, transparent) 0%, transparent 28%),
+    radial-gradient(circle at bottom left, color-mix(in srgb, var(--card-accent-2) 12%, transparent) 0%, transparent 30%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-highlight) 44%, transparent) 0%, transparent 4rem),
+    color-mix(in srgb, var(--panel) 88%, transparent);
+}
+
+.surface-card--infra,
+.hero-card--infra {
+  --card-accent: #64c6ff;
+  --card-accent-2: #3c8dff;
+  --card-ink: #10283e;
+  border-color: color-mix(in srgb, var(--card-accent) 28%, var(--border));
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--card-accent) 18%, transparent) 0%, transparent 30%),
+    radial-gradient(circle at bottom right, color-mix(in srgb, var(--card-accent-2) 14%, transparent) 0%, transparent 32%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-highlight) 40%, transparent) 0%, transparent 4rem),
+    color-mix(in srgb, var(--panel) 90%, transparent);
+}
+
+.surface-card--nutrition,
+.hero-card--nutrition {
+  --card-accent: #69d88f;
+  --card-accent-2: #ff9d57;
+  --card-ink: #173622;
+  border-color: color-mix(in srgb, var(--card-accent) 28%, var(--border));
+  background:
+    radial-gradient(circle at top center, color-mix(in srgb, var(--card-accent) 18%, transparent) 0%, transparent 30%),
+    radial-gradient(circle at bottom right, color-mix(in srgb, var(--card-accent-2) 14%, transparent) 0%, transparent 28%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-highlight) 42%, transparent) 0%, transparent 4rem),
+    color-mix(in srgb, var(--panel) 90%, transparent);
+}
+
+.surface-card--links,
+.hero-card--links {
+  --card-accent: #8b8eff;
+  --card-accent-2: #58d1ff;
+  --card-ink: #1c2147;
+  border-color: color-mix(in srgb, var(--card-accent) 28%, var(--border));
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--card-accent) 18%, transparent) 0%, transparent 30%),
+    radial-gradient(circle at bottom right, color-mix(in srgb, var(--card-accent-2) 14%, transparent) 0%, transparent 32%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-highlight) 44%, transparent) 0%, transparent 4rem),
+    color-mix(in srgb, var(--panel) 90%, transparent);
+}
+
+.surface-card--tools,
+.hero-card--tools {
+  --card-accent: #b37fff;
+  --card-accent-2: #5cc8c8;
+  --card-ink: #28193f;
+  border-color: color-mix(in srgb, var(--card-accent) 26%, var(--border));
+  background:
+    radial-gradient(circle at top center, color-mix(in srgb, var(--card-accent) 18%, transparent) 0%, transparent 28%),
+    radial-gradient(circle at bottom left, color-mix(in srgb, var(--card-accent-2) 14%, transparent) 0%, transparent 30%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-highlight) 42%, transparent) 0%, transparent 4rem),
+    color-mix(in srgb, var(--panel) 90%, transparent);
+}
+
+.surface-card--personal,
+.hero-card--personal {
+  --card-accent: #9daec6;
+  --card-accent-2: #d6a062;
+  --card-ink: #2c3140;
+  border-color: color-mix(in srgb, var(--card-accent) 24%, var(--border));
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--card-accent) 14%, transparent) 0%, transparent 30%),
+    radial-gradient(circle at bottom left, color-mix(in srgb, var(--card-accent-2) 12%, transparent) 0%, transparent 28%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-highlight) 42%, transparent) 0%, transparent 4rem),
+    color-mix(in srgb, var(--panel) 90%, transparent);
+}
+
+.surface-card--finance::before,
+.surface-card--infra::before,
+.surface-card--nutrition::before,
+.surface-card--links::before,
+.surface-card--tools::before,
+.surface-card--personal::before,
+.hero-card--finance::before,
+.hero-card--infra::before,
+.hero-card--nutrition::before,
+.hero-card--links::before,
+.hero-card--tools::before,
+.hero-card--personal::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 0;
+  width: 0.32rem;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--card-accent) 84%, white) 0%, color-mix(in srgb, var(--card-accent-2) 74%, transparent) 100%);
+  opacity: 0.92;
+}
+
+.surface-card--subtle {
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 18px 44px -34px var(--shadow-color),
+    inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 74%, transparent);
+}
+
+.surface-card > *,
+.hero-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .eyebrow {
@@ -288,6 +415,159 @@ a {
 .btn-secondary {
   background: color-mix(in srgb, var(--accent-soft) 76%, var(--panel-2));
   color: var(--text);
+}
+
+.app-card-shell {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.app-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.app-card-meta {
+  min-width: 0;
+}
+
+.app-card-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--card-accent, var(--muted)) 64%, var(--muted));
+}
+
+.app-card-title {
+  margin-top: 0.7rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--text);
+}
+
+.app-card-description {
+  margin-top: 0.65rem;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.app-card-icon {
+  display: inline-flex;
+  height: 3rem;
+  width: 3rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--card-accent, var(--border-strong)) 36%, var(--border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-highlight) 86%, transparent) 0%, transparent 100%),
+    color-mix(in srgb, var(--card-accent, var(--accent)) 18%, var(--panel-2));
+  color: color-mix(in srgb, var(--card-accent, var(--accent)) 78%, white);
+  box-shadow:
+    0 16px 28px -22px color-mix(in srgb, var(--card-accent, var(--accent)) 34%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--surface-highlight) 90%, transparent);
+}
+
+.app-card-icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.app-card-footer {
+  margin-top: auto;
+}
+
+.app-card-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.app-card-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--card-accent, var(--border)) 24%, var(--border));
+  background: color-mix(in srgb, var(--card-accent, var(--accent)) 10%, var(--panel-2));
+  padding: 0.48rem 0.76rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--card-accent, var(--accent)) 70%, var(--text));
+}
+
+.app-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.link-tile {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.85rem;
+  border-radius: 1.2rem;
+  border: 1px solid color-mix(in srgb, var(--tile-accent, var(--border-strong)) 28%, var(--border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-highlight) 86%, transparent) 0%, transparent 3rem),
+    color-mix(in srgb, var(--tile-accent, var(--accent)) 10%, var(--panel-2));
+  padding: 0.9rem;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.link-tile:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--tile-accent, var(--accent)) 42%, var(--border));
+}
+
+.link-tile__icon {
+  display: inline-flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--tile-accent, var(--accent)) 34%, var(--border));
+  background: color-mix(in srgb, var(--tile-accent, var(--accent)) 18%, var(--panel));
+  color: color-mix(in srgb, var(--tile-accent, var(--accent)) 78%, white);
+}
+
+.link-tile__meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.link-tile__title {
+  display: block;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.link-tile__subtitle {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.76rem;
+  color: var(--muted);
 }
 
 .receipts-cta {

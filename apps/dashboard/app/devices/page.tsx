@@ -132,7 +132,7 @@ export default function DevicesPage() {
   return (
     <PageShell width="6xl">
       <div className="space-y-6">
-        <section className="hero-card p-5 sm:p-7">
+        <section className="hero-card hero-card--infra p-5 sm:p-7">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
               <span className="eyebrow">Infrastructure</span>
@@ -161,7 +161,7 @@ export default function DevicesPage() {
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {derived.length ? (
             derived.map((device) => (
-              <article key={device.id} className="surface-card p-5">
+              <article key={device.id} className="surface-card surface-card--infra surface-card--subtle p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -251,7 +251,7 @@ export default function DevicesPage() {
                 ) : null}
 
                 {device.alerts && device.alerts.length ? (
-                  <div className="surface-card surface-card--soft mt-4 p-3 text-xs">
+                  <div className="surface-card surface-card--soft surface-card--infra mt-4 p-3 text-xs">
                     <div className="text-[11px] uppercase text-[var(--warning)]">Alerte</div>
                     <div className="mt-1">
                       {device.alerts.map((alert, idx) => (
