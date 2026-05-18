@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  ArrowUpRight,
   FileText,
   Flame,
   Radio,
@@ -164,17 +165,21 @@ export function AppCard({
             </div>
             {app.home_url ? (
               app.home_url.startsWith('/') ? (
-                <Link className="btn-base btn-secondary app-card-footer" href={app.home_url}>
-                  Open termo alert
+                <Link className="app-open-button app-card-footer" href={app.home_url}>
+                  <span className="app-open-button__icon">{variant.icon}</span>
+                  <span>Open termo alert</span>
+                  <ArrowUpRight aria-hidden="true" className="h-4 w-4 text-[var(--muted)]" />
                 </Link>
               ) : (
                 <a
-                  className="btn-base btn-secondary app-card-footer"
+                  className="app-open-button app-card-footer"
                   href={app.home_url}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Open termo alert
+                  <span className="app-open-button__icon">{variant.icon}</span>
+                  <span>Open termo alert</span>
+                  <ArrowUpRight aria-hidden="true" className="h-4 w-4 text-[var(--muted)]" />
                 </a>
               )
             ) : null}
@@ -196,17 +201,21 @@ export function AppCard({
             </div>
             {app.home_url ? (
               app.home_url.startsWith('/') ? (
-                <Link className="btn-base btn-secondary app-card-footer" href={app.home_url}>
-                  Open
+                <Link className="app-open-button app-card-footer" href={app.home_url}>
+                  <span className="app-open-button__icon">{variant.icon}</span>
+                  <span>Open</span>
+                  <ArrowUpRight aria-hidden="true" className="h-4 w-4 text-[var(--muted)]" />
                 </Link>
               ) : (
                 <a
-                  className="btn-base btn-secondary app-card-footer"
+                  className="app-open-button app-card-footer"
                   href={app.home_url}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Open
+                  <span className="app-open-button__icon">{variant.icon}</span>
+                  <span>Open</span>
+                  <ArrowUpRight aria-hidden="true" className="h-4 w-4 text-[var(--muted)]" />
                 </a>
               )
             ) : null}

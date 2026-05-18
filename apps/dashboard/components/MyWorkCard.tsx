@@ -47,8 +47,8 @@ const links: WorkLink[] = [
   },
   {
     title: "Tata's art",
-    href: 'https://nutuart.vercel.app/',
-    meta: 'nutuart.vercel.app',
+    href: 'https://marcelnutu.art/',
+    meta: 'marcelnutu.art',
     accent: '#ff9f61',
     icon: (
       <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="h-4 w-4">

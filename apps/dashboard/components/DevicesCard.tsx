@@ -1,5 +1,6 @@
 'use client';
 
+import { ArrowUpRight, MonitorSmartphone } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
@@ -107,10 +108,14 @@ export function DevicesCard() {
         </div>
 
         <Link
-          className="page-back-link !px-3 !py-2 !text-[0.72rem]"
+          className="app-open-button"
           href="/devices"
         >
-          Details
+          <span className="app-open-button__icon">
+            <MonitorSmartphone aria-hidden="true" />
+          </span>
+          <span>Open</span>
+          <ArrowUpRight aria-hidden="true" className="h-4 w-4 text-[var(--muted)]" />
         </Link>
       </div>
 

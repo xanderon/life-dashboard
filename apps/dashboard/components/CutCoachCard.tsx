@@ -1,5 +1,6 @@
 'use client';
 
+import { ArrowUpRight, Flame } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -40,10 +41,14 @@ export function CutCoachCard() {
           <p className="mt-2 text-sm text-[var(--muted)]">Today + tomorrow nutrition plan</p>
         </div>
         <Link
-          className="btn-base btn-secondary"
+          className="app-open-button"
           href="/cut-coach"
         >
-          Open
+          <span className="app-open-button__icon">
+            <Flame aria-hidden="true" />
+          </span>
+          <span>Open</span>
+          <ArrowUpRight aria-hidden="true" className="h-4 w-4 text-[var(--muted)]" />
         </Link>
       </div>
 
