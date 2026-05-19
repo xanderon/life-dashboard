@@ -1226,6 +1226,7 @@ export default function CutCoachPage() {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [weightDraft, setWeightDraft] = useState<WeightState>(emptyWeight(initialIsoDate));
   const [kcalDialRotation, setKcalDialRotation] = useState(0);
+  const [activityDialRotation, setActivityDialRotation] = useState(0);
   const [weightDialRotation, setWeightDialRotation] = useState(0);
   const kcalDialDragRef = useRef<{
     pointerId: number;
@@ -1236,6 +1237,14 @@ export default function CutCoachPage() {
     startRotation: number;
   } | null>(null);
   const weightDialDragRef = useRef<{
+    pointerId: number;
+    startValue: number;
+    lastAngle: number;
+    lastStep: number;
+    accumulatedAngle: number;
+    startRotation: number;
+  } | null>(null);
+  const activityDialDragRef = useRef<{
     pointerId: number;
     startValue: number;
     lastAngle: number;
@@ -1282,6 +1291,7 @@ export default function CutCoachPage() {
 
   function openActivityModal(date = todayIsoDate) {
     setActivityDraft(seedActivityEntry(date, data));
+    setActivityDialRotation(0);
     setActivityModalOpen(true);
   }
 
@@ -1314,6 +1324,8 @@ export default function CutCoachPage() {
   function closeActivityModal() {
     setActivityModalOpen(false);
     setActivityDraft(seedActivityEntry(todayIsoDate, data));
+    activityDialDragRef.current = null;
+    setActivityDialRotation(0);
   }
 
   function closeWeightModal() {
@@ -1752,6 +1764,18 @@ export default function CutCoachPage() {
     }));
   }
 
+  function currentActivitySeed(source: ActivityState = activityDraft) {
+    return toNumber(source.activity_kcal_burned) > 0 ? toNumber(source.activity_kcal_burned) : 0;
+  }
+
+  function setActivityFromNumber(nextValue: number) {
+    const safeValue = Math.max(0, Math.round(nextValue));
+    setActivityDraft((current) => ({
+      ...current,
+      activity_kcal_burned: safeValue > 0 ? String(safeValue) : '',
+    }));
+  }
+
   function handleKcalDialStart(event: ReactPointerEvent<HTMLButtonElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
@@ -1851,6 +1875,56 @@ export default function CutCoachPage() {
     event.preventDefault();
     setWeightDialRotation((current) => current + (event.deltaY < 0 ? 10 : -10));
     applyWeightDelta(event.deltaY < 0 ? 0.01 : -0.01, 'draft', weightDraft);
+  }
+
+  function handleActivityDialStart(event: ReactPointerEvent<HTMLButtonElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const angle = Math.atan2(event.clientY - centerY, event.clientX - centerX) * (180 / Math.PI);
+    activityDialDragRef.current = {
+      pointerId: event.pointerId,
+      startValue: currentActivitySeed(activityDraft),
+      lastAngle: angle,
+      lastStep: 0,
+      accumulatedAngle: 0,
+      startRotation: activityDialRotation,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleActivityDialMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const dragState = activityDialDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const nextAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX) * (180 / Math.PI);
+    let delta = nextAngle - dragState.lastAngle;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    dragState.lastAngle = nextAngle;
+    dragState.accumulatedAngle += delta;
+    const nextStep = Math.trunc(dragState.accumulatedAngle / 8);
+    if (nextStep === dragState.lastStep) return;
+    dragState.lastStep = nextStep;
+    setActivityDialRotation(dragState.startRotation + nextStep * 8);
+    setActivityFromNumber(dragState.startValue + nextStep * 10);
+  }
+
+  function handleActivityDialEnd(event: ReactPointerEvent<HTMLButtonElement>) {
+    const dragState = activityDialDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+    activityDialDragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function handleActivityDialWheel(event: ReactWheelEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    setActivityDialRotation((current) => current + (event.deltaY < 0 ? 10 : -10));
+    setActivityFromNumber(currentActivitySeed(activityDraft) + (event.deltaY < 0 ? 10 : -10));
   }
 
   async function enableNotifications() {
@@ -1972,6 +2046,9 @@ export default function CutCoachPage() {
   };
   const kcalDialStyle: CSSProperties & Record<'--dial-rotation', string> = {
     '--dial-rotation': `${kcalDialRotation}deg`,
+  };
+  const activityDialStyle: CSSProperties & Record<'--dial-rotation', string> = {
+    '--dial-rotation': `${activityDialRotation}deg`,
   };
   const weightChartData = buildWeightChartData(data?.weights ?? []);
   const optimisticLatestWeight = optimisticWeight ? optimisticWeight.weightKg : data?.trends.latest?.weight_kg ?? null;
@@ -2523,6 +2600,37 @@ export default function CutCoachPage() {
                         onChange={(event) => setActivityDraft((current) => ({ ...current, activity_summary: event.target.value }))}
                       />
                     </label>
+                  </div>
+                </div>
+
+                <div className={`${styles.modalCard} ${styles.modalDialCard}`}>
+                  <div className={styles.kcalDialArea}>
+                    <button
+                      aria-label="Rotate movement dial"
+                      className={styles.weightDial}
+                      onPointerDown={handleActivityDialStart}
+                      onPointerMove={handleActivityDialMove}
+                      onPointerUp={handleActivityDialEnd}
+                      onPointerCancel={handleActivityDialEnd}
+                      onWheel={handleActivityDialWheel}
+                      style={activityDialStyle}
+                      type="button"
+                    >
+                      <span className={styles.weightDialNeedle} aria-hidden="true" />
+                    </button>
+                  </div>
+
+                  <div className={styles.kcalModalSummary}>
+                    <SummaryTile
+                      label="Burn"
+                      value={toNumber(activityDraft.activity_kcal_burned) > 0 ? `${Math.round(toNumber(activityDraft.activity_kcal_burned))} kcal` : '—'}
+                      tone="good"
+                    />
+                    <SummaryTile
+                      label="Date"
+                      value={activityDraft.date ? activityDraft.date.slice(5) : '—'}
+                      tone="neutral"
+                    />
                   </div>
                 </div>
               </div>

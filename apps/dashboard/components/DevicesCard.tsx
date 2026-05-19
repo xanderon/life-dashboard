@@ -93,9 +93,9 @@ export function DevicesCard() {
 
   return (
     <section className="surface-card surface-card--infra p-5">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <span className="eyebrow">Infra</span>
             <div className="text-lg font-semibold tracking-tight">Devices</div>
             <StatusPill status={derived.overall} />
@@ -108,7 +108,7 @@ export function DevicesCard() {
         </div>
 
         <Link
-          className="app-open-button"
+          className="app-open-button self-start sm:self-auto"
           href="/devices"
         >
           <span className="app-open-button__icon">
