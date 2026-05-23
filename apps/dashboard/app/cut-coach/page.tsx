@@ -2900,8 +2900,9 @@ export default function CutCoachPage() {
                           title={`Open ${formatFullDate(cell.isoDate)}`}
                         >
                           <div className={styles.monthCellTop}>
-                            <span>{cell.label}</span>
+                            <span className={styles.monthCellDayNumber}>{cell.label}</span>
                             <div className={styles.monthCellBadges}>
+                              {cell.isToday ? <span className={styles.monthCellTodayTag}>Today</span> : null}
                               {cell.isChallengeStart ? <em className={styles.monthCellBadge} title="Challenge start"><Flag size={10} strokeWidth={2.5} /></em> : null}
                               {cell.isChallengeEnd ? <em className={`${styles.monthCellBadge} ${styles.monthCellBadgeEnd}`} title="Challenge end"><Goal size={10} strokeWidth={2.5} /></em> : null}
                             </div>

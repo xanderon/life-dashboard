@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronDown, ChevronUp, GripHorizontal } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { AppCard, type AppRow } from './AppCard';
 import { ClockCard } from './ClockCard';
@@ -18,6 +18,14 @@ type DashboardTile = {
   node: ReactNode;
 };
 
+type DashboardOrderContextValue = {
+  arrangeMode: boolean;
+  customOrderedIds: string[] | null;
+  setArrangeMode: (value: boolean) => void;
+  setCustomOrderedIds: React.Dispatch<React.SetStateAction<string[] | null>>;
+  resetOrder: () => void;
+};
+
 const CUSTOM_TILE_ORDER = [
   'widget:cut-coach',
   'widget:clock',
@@ -26,6 +34,8 @@ const CUSTOM_TILE_ORDER = [
   'app:termo-alert',
   'widget:tricorder',
 ] as const;
+
+const DashboardOrderContext = createContext<DashboardOrderContextValue | null>(null);
 
 function mergeStoredOrder(nextIds: string[], storedIds: string[] | null) {
   if (!storedIds?.length) return nextIds;
@@ -56,11 +66,82 @@ function getStoredDashboardOrder() {
   }
 }
 
+function useDashboardOrder() {
+  const value = useContext(DashboardOrderContext);
+  if (!value) {
+    throw new Error('Dashboard order components must be used inside DashboardOrderProvider.');
+  }
+  return value;
+}
+
+export function DashboardOrderProvider({ children }: { children: ReactNode }) {
+  const [arrangeMode, setArrangeMode] = useState(false);
+  const [customOrderedIds, setCustomOrderedIds] = useState<string[] | null>(() => getStoredDashboardOrder());
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!customOrderedIds?.length) {
+      window.localStorage.removeItem(DASHBOARD_CARD_ORDER_KEY);
+      return;
+    }
+    window.localStorage.setItem(DASHBOARD_CARD_ORDER_KEY, JSON.stringify(customOrderedIds));
+  }, [customOrderedIds]);
+
+  function resetOrder() {
+    setCustomOrderedIds(null);
+  }
+
+  return (
+    <DashboardOrderContext.Provider
+      value={{
+        arrangeMode,
+        customOrderedIds,
+        setArrangeMode,
+        setCustomOrderedIds,
+        resetOrder,
+      }}
+    >
+      {children}
+    </DashboardOrderContext.Provider>
+  );
+}
+
+export function DashboardOrderSettings() {
+  const { arrangeMode, setArrangeMode, resetOrder } = useDashboardOrder();
+
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="text-sm font-medium text-[var(--muted)]">Dashboard settings</div>
+        <div className="mt-1 text-xs leading-5 text-[var(--muted)]">
+          Reorder cards only when you want to. Changes stay saved on this device.
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {arrangeMode ? (
+          <>
+            <button className="btn-base btn-ghost" onClick={resetOrder} type="button">
+              Reset order
+            </button>
+            <button className="btn-base btn-primary" onClick={() => setArrangeMode(false)} type="button">
+              Done arranging
+            </button>
+          </>
+        ) : (
+          <button className="btn-base btn-secondary" onClick={() => setArrangeMode(true)} type="button">
+            <GripHorizontal size={16} />
+            Arrange cards
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function DashboardGrid() {
   const [apps, setApps] = useState<AppRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [arrangeMode, setArrangeMode] = useState(false);
-  const [customOrderedIds, setCustomOrderedIds] = useState<string[] | null>(() => getStoredDashboardOrder());
+  const { arrangeMode, customOrderedIds, setCustomOrderedIds } = useDashboardOrder();
 
   useEffect(() => {
     let alive = true;
@@ -120,11 +201,6 @@ export function DashboardGrid() {
     };
   }, [apps]);
 
-  useEffect(() => {
-    if (!customOrderedIds || typeof window === 'undefined') return;
-    window.localStorage.setItem(DASHBOARD_CARD_ORDER_KEY, JSON.stringify(customOrderedIds));
-  }, [customOrderedIds]);
-
   const orderedIds = useMemo(
     () => mergeStoredOrder(tiles.defaultOrder, customOrderedIds),
     [customOrderedIds, tiles.defaultOrder]
@@ -144,40 +220,8 @@ export function DashboardGrid() {
     });
   }
 
-  function resetOrder() {
-    setCustomOrderedIds(tiles.defaultOrder);
-  }
-
   return (
-    <div className="space-y-4">
-      <section className="surface-card surface-card--personal surface-card--subtle p-3 sm:p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="text-sm font-semibold text-[var(--text)]">Dashboard cards</div>
-            <div className="mt-1 text-xs leading-5 text-[var(--muted)]">
-              Turn on arrange mode, move cards earlier or later, then exit. Order is saved on this device.
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {arrangeMode ? (
-              <>
-                <button className="btn-base btn-ghost" onClick={resetOrder} type="button">
-                  Reset
-                </button>
-                <button className="btn-base btn-primary" onClick={() => setArrangeMode(false)} type="button">
-                  Done arranging
-                </button>
-              </>
-            ) : (
-              <button className="btn-base btn-secondary" onClick={() => setArrangeMode(true)} type="button">
-                <GripHorizontal size={16} />
-                Arrange cards
-              </button>
-            )}
-          </div>
-        </div>
-      </section>
-
+    <>
       {err ? (
         <section className="surface-card surface-card--danger p-5">
           <div className="text-sm font-semibold">Eroare DB</div>
@@ -219,6 +263,6 @@ export function DashboardGrid() {
           </div>
         ))}
       </section>
-    </div>
+    </>
   );
 }

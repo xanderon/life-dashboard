@@ -1,4 +1,4 @@
-import { DashboardGrid } from '@/components/DashboardGrid';
+import { DashboardGrid, DashboardOrderProvider, DashboardOrderSettings } from '@/components/DashboardGrid';
 import { LogoutButton } from '@/components/LogoutButton';
 import { MyWorkCard } from '@/components/MyWorkCard';
 import { PageShell } from '@/components/PageShell';
@@ -18,16 +18,22 @@ export default function HomePage() {
             </div>
           </div>
         </section>
-        <DashboardGrid />
+        <DashboardOrderProvider>
+          <DashboardGrid />
 
-        <MyWorkCard />
+          <MyWorkCard />
 
-        <section className="surface-card surface-card--personal surface-card--subtle p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-sm font-medium text-[var(--muted)]">Session</div>
-            <LogoutButton />
-          </div>
-        </section>
+          <section className="surface-card surface-card--personal surface-card--subtle p-4 sm:p-5">
+            <div className="flex flex-col gap-4">
+              <DashboardOrderSettings />
+              <div className="h-px bg-[color:color-mix(in_srgb,var(--border)_82%,transparent)]" />
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-medium text-[var(--muted)]">Session</div>
+                <LogoutButton />
+              </div>
+            </div>
+          </section>
+        </DashboardOrderProvider>
       </div>
     </PageShell>
   );
