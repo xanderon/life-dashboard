@@ -1,12 +1,8 @@
-import { AppCards } from '@/components/AppCards';
-import { ClockCard } from '@/components/ClockCard';
-import { CutCoachCard } from '@/components/CutCoachCard';
-import { DevicesCard } from '@/components/DevicesCard';
+import { DashboardGrid } from '@/components/DashboardGrid';
 import { LogoutButton } from '@/components/LogoutButton';
 import { MyWorkCard } from '@/components/MyWorkCard';
 import { PageShell } from '@/components/PageShell';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { TricorderCard } from '@/components/TricorderCard';
 
 export default function HomePage() {
   return (
@@ -22,15 +18,7 @@ export default function HomePage() {
             </div>
           </div>
         </section>
-
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <ClockCard />
-          <AppCards slugs={['receipts', 'termo-alert']} />
-          <DevicesCard />
-          <TricorderCard />
-          <AppCards excludeSlugs={['receipts', 'termo-alert']} />
-          <CutCoachCard />
-        </section>
+        <DashboardGrid />
 
         <MyWorkCard />
 
