@@ -102,6 +102,10 @@ export type CutCoachDailyCheckinRow = {
   activity_kcal_burned: number | null;
   activity_summary: string | null;
   steps: number | null;
+  protein_g: number | null;
+  training_type: 'none' | 'gym' | 'walking' | 'recovery' | 'other' | null;
+  recovery_done: boolean | null;
+  neck_pain_score: number | null;
   walk_minutes: number | null;
   bike_minutes: number | null;
   notes: string | null;

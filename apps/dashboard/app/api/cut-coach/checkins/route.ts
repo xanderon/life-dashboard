@@ -52,6 +52,19 @@ export async function POST(req: Request) {
       activity_kcal_burned:
         body.activity_kcal_burned == null || body.activity_kcal_burned === '' ? null : toNumber(body.activity_kcal_burned),
       activity_summary: body.activity_summary ? String(body.activity_summary).trim() : null,
+      steps: body.steps == null || body.steps === '' ? null : Math.max(0, Math.round(toNumber(body.steps))),
+      protein_g: body.protein_g == null || body.protein_g === '' ? null : Math.max(0, toNumber(body.protein_g)),
+      training_type:
+        body.training_type === 'gym' || body.training_type === 'walking' || body.training_type === 'recovery' || body.training_type === 'other'
+          ? body.training_type
+          : body.training_type === 'none'
+            ? 'none'
+            : null,
+      recovery_done: typeof body.recovery_done === 'boolean' ? body.recovery_done : null,
+      neck_pain_score:
+        body.neck_pain_score == null || body.neck_pain_score === ''
+          ? null
+          : Math.min(10, Math.max(0, toNumber(body.neck_pain_score))),
     };
 
     const firstWrite = await supabase
@@ -60,7 +73,11 @@ export async function POST(req: Request) {
     if (firstWrite.error) {
       const fallbackNeeded =
         isMissingSchemaColumn(firstWrite.error, 'activity_kcal_burned') ||
-        isMissingSchemaColumn(firstWrite.error, 'activity_summary');
+        isMissingSchemaColumn(firstWrite.error, 'activity_summary') ||
+        isMissingSchemaColumn(firstWrite.error, 'protein_g') ||
+        isMissingSchemaColumn(firstWrite.error, 'training_type') ||
+        isMissingSchemaColumn(firstWrite.error, 'recovery_done') ||
+        isMissingSchemaColumn(firstWrite.error, 'neck_pain_score');
 
       if (!fallbackNeeded) throw firstWrite.error;
 
@@ -68,6 +85,11 @@ export async function POST(req: Request) {
         basePayload.notes,
         payload.activity_summary ? `Activity: ${payload.activity_summary}` : null,
         payload.activity_kcal_burned != null ? `Burned kcal: ${payload.activity_kcal_burned}` : null,
+        payload.protein_g != null ? `Protein: ${payload.protein_g} g` : null,
+        payload.steps != null ? `Steps: ${payload.steps}` : null,
+        payload.training_type ? `Training: ${payload.training_type}` : null,
+        payload.recovery_done ? 'Recovery done' : null,
+        payload.neck_pain_score != null ? `Neck: ${payload.neck_pain_score}/10` : null,
       ]
         .filter(Boolean)
         .join(' • ');

@@ -246,6 +246,10 @@ create table if not exists public.cut_coach_daily_checkins (
 
 alter table public.cut_coach_daily_checkins add column if not exists activity_kcal_burned numeric(8,2);
 alter table public.cut_coach_daily_checkins add column if not exists activity_summary text;
+alter table public.cut_coach_daily_checkins add column if not exists protein_g numeric(8,2) check (protein_g >= 0);
+alter table public.cut_coach_daily_checkins add column if not exists training_type text check (training_type in ('none', 'gym', 'walking', 'recovery', 'other'));
+alter table public.cut_coach_daily_checkins add column if not exists recovery_done boolean;
+alter table public.cut_coach_daily_checkins add column if not exists neck_pain_score numeric(4,1) check (neck_pain_score between 0 and 10);
 
 create table if not exists public.cut_coach_challenges (
   id uuid primary key default gen_random_uuid(),

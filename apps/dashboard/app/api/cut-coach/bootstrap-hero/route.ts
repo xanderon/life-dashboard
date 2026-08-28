@@ -19,8 +19,8 @@ export async function GET() {
     const [today, tomorrow, weights, checkins, challenges] = await Promise.all([
       getDailySummary(supabase, userId, todayIsoDate()),
       getDailySummary(supabase, userId, addDays(todayIsoDate(), 1)),
-      getWeights(supabase, userId, 30),
-      getCheckins(supabase, userId, 60),
+      getWeights(supabase, userId, 500),
+      getCheckins(supabase, userId, 500),
       getChallenges(supabase, userId, 12),
     ]);
 

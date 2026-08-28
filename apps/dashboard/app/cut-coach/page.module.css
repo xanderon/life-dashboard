@@ -5396,3 +5396,211 @@
     transform: translate3d(calc(-50% + var(--confetti-drift)), 104vh, 0) rotate(calc(var(--confetti-rotate) * 10)) scale(1);
   }
 }
+
+/* Transformation dashboard */
+.transformationHero {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(1rem, 2.5vw, 2.25rem);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border));
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--accent) 19%, transparent), transparent 30rem),
+    linear-gradient(145deg, color-mix(in srgb, var(--panel-strong) 96%, #07101b), var(--panel));
+  box-shadow: 0 1.5rem 4rem -2.5rem rgba(0, 0, 0, 0.7), inset 0 1px var(--surface-highlight);
+}
+
+.transformationHeading,
+.energyReservoirHead,
+.journeyTrackLabels,
+.weeklyReviewHead,
+.dailyLogHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.transformationEyebrow,
+.dailyLogHead span,
+.weeklyReviewHead span {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.transformationHeading h1 {
+  margin: 0.35rem 0 0;
+  max-width: 16ch;
+  font-size: clamp(2rem, 5vw, 4.5rem);
+  font-weight: 680;
+  letter-spacing: -0.065em;
+  line-height: 0.95;
+}
+
+.transformationHeading p { margin: 0.8rem 0 0; color: var(--muted); }
+
+.logTodayButton,
+.dailyLogSave {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 3rem;
+  padding: 0.75rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 65%, var(--border));
+  border-radius: 0.85rem;
+  color: var(--accent-contrast, white);
+  background: var(--accent);
+  font-weight: 800;
+  box-shadow: 0 0.8rem 2rem -1.1rem var(--accent);
+}
+
+.transformationGrid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(15rem, 0.55fr); gap: 1rem; margin-top: 1.5rem; }
+.weightInstrument,
+.energyReservoir,
+.journeyTrackCard,
+.primaryTrendPanel,
+.pacePanel,
+.weeklyReview {
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel-strong) 88%, transparent);
+  box-shadow: inset 0 1px var(--surface-highlight);
+}
+
+.weightInstrument { display: grid; grid-template-columns: minmax(13rem, 0.8fr) 1fr; align-items: center; min-height: 22rem; overflow: hidden; border-radius: 1.1rem; }
+.weightInstrumentVisual { position: relative; display: grid; place-items: end center; align-self: stretch; min-height: 21rem; padding-bottom: 1.8rem; background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 55%); }
+.bodyHalo { position: absolute; inset: 8% 8% 18%; border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent); border-radius: 50%; filter: blur(0.2px); }
+.bodySilhouette { position: absolute; bottom: 5.6rem; left: 50%; width: 7rem; height: 13rem; transform: translateX(-50%); filter: drop-shadow(0 1rem 1rem rgba(0,0,0,.35)); }
+.bodyHead { position: absolute; left: 50%; width: 2.8rem; height: 2.8rem; border-radius: 50%; transform: translateX(-50%); background: linear-gradient(145deg, color-mix(in srgb, var(--text) 72%, var(--accent)), color-mix(in srgb, var(--text) 25%, transparent)); }
+.bodyTorso { position: absolute; top: 3.1rem; left: 50%; width: 6.5rem; height: 6.8rem; transform: translateX(-50%); clip-path: polygon(22% 0,78% 0,100% 100%,0 100%); border-radius: 1.4rem; background: linear-gradient(180deg, color-mix(in srgb, var(--text) 54%, var(--accent)), color-mix(in srgb, var(--panel) 80%, var(--text))); }
+.bodyLegs { position: absolute; bottom: 0; left: 50%; width: 4.5rem; height: 4.2rem; transform: translateX(-50%); background: linear-gradient(90deg, color-mix(in srgb, var(--text) 30%, var(--panel)) 0 42%, transparent 42% 58%, color-mix(in srgb, var(--text) 30%, var(--panel)) 58%); }
+.scalePlatform { position: relative; z-index: 2; display: grid; grid-template-columns: auto auto auto; align-items: baseline; gap: 0.45rem; width: min(90%, 15rem); padding: 0.8rem 1rem; border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border)); border-radius: 0.7rem; background: linear-gradient(180deg, color-mix(in srgb, var(--panel-strong) 90%, #000), color-mix(in srgb, var(--panel) 75%, #000)); box-shadow: 0 1rem 2rem -1rem #000; }
+.scalePlatform span,.scalePlatform small { color: var(--muted); font-size: 0.62rem; font-weight: 800; letter-spacing: .13em; }
+.scalePlatform strong { margin-left: auto; font-size: 2rem; letter-spacing: -.05em; }
+.weightInstrumentCopy { padding: 2rem; }
+.weightInstrumentCopy span { color: var(--muted); font-size: .75rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.weightInstrumentCopy strong { display: block; margin-top: .35rem; font-size: clamp(2.8rem, 6vw, 6rem); letter-spacing: -.075em; line-height: .95; }
+.weightInstrumentCopy p { margin: .85rem 0 0; color: var(--muted); font-weight: 650; }
+
+.energyReservoir { display: flex; flex-direction: column; padding: 1.2rem; border-radius: 1.1rem; }
+.energyReservoirHead span,.energyStats span { display: block; color: var(--muted); font-size: .67rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.energyReservoirHead strong { display: block; margin-top: .25rem; font-size: 1.35rem; }
+.energyTank { position: relative; flex: 1; min-height: 12rem; margin: 1rem 0; overflow: hidden; border: 2px solid color-mix(in srgb, var(--border) 70%, var(--text)); border-radius: .7rem .7rem 1.1rem 1.1rem; background: color-mix(in srgb, var(--panel) 75%, #000); box-shadow: inset 0 .8rem 2rem rgba(0,0,0,.5); }
+.energyTankFill { position: absolute; inset: auto 0 0; background: linear-gradient(180deg, color-mix(in srgb, var(--warning) 72%, var(--accent)), color-mix(in srgb, var(--warning) 35%, #b23b20)); transition: height .8s cubic-bezier(.2,.8,.2,1); }
+.energyTankGlow { position: absolute; inset: auto 0 0; height: 45%; background: radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--warning) 45%, transparent), transparent 70%); }
+.energyStats { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.energyStats div { padding: .75rem; border: 1px solid var(--border); border-radius: .7rem; }
+.energyStats strong { display: block; margin-top: .2rem; }
+.energyReservoir > p { margin: .8rem 0 0; color: var(--muted); font-size: .72rem; line-height: 1.45; }
+
+.journeyTrackCard { margin-top: 1rem; padding: 1.1rem 1.2rem; border-radius: 1rem; }
+.journeyTrackLabels { color: var(--muted); font-size: .75rem; }
+.journeyTrackLabels strong { color: var(--text); }
+.journeyTrack { position: relative; height: .7rem; margin: 1.6rem .4rem .8rem; border-radius: 99px; background: color-mix(in srgb, var(--border) 80%, transparent); }
+.journeyTrackFill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(90deg, var(--success), var(--accent)); }
+.journeyMarker { position: absolute; top: 50%; width: 1.15rem; height: 1.15rem; border: 3px solid var(--panel-strong); border-radius: 50%; transform: translate(-50%,-50%); background: var(--accent); box-shadow: 0 0 0 .25rem color-mix(in srgb, var(--accent) 22%, transparent); }
+.journeyMarker em { position: absolute; bottom: 1.45rem; left: 50%; padding: .2rem .4rem; border-radius: .35rem; transform: translateX(-50%); color: var(--text); background: var(--panel-strong); font-size: .68rem; font-style: normal; font-weight: 800; white-space: nowrap; }
+.journeyMilestones { display: flex; justify-content: space-between; color: var(--muted); font-size: .7rem; font-weight: 750; }
+.milestoneReached { color: var(--success); }
+.heroQuickActions { display: flex; gap: .55rem; margin-top: 1rem; }
+.heroQuickActions button { display: inline-flex; align-items: center; gap: .4rem; padding: .65rem .8rem; border: 1px solid var(--border); border-radius: .7rem; color: var(--text); background: color-mix(in srgb, var(--panel) 90%, transparent); font-weight: 750; }
+.heroQuickActions button:hover { border-color: var(--accent); transform: translateY(-1px); }
+
+.rangeControl { display: flex; gap: .2rem; padding: .2rem; border: 1px solid var(--border); border-radius: .7rem; background: var(--panel); }
+.rangeControl button { min-width: 2.8rem; padding: .45rem .55rem; border: 0; border-radius: .5rem; color: var(--muted); background: transparent; font-size: .72rem; font-weight: 800; }
+.rangeControl .rangeActive { color: var(--text); background: color-mix(in srgb, var(--accent) 18%, var(--panel-strong)); }
+.progressDashboard { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 1rem; }
+.primaryTrendPanel,.pacePanel,.weeklyReview { padding: 1.2rem; border-radius: 1rem; }
+.primaryTrendPanel h3,.weeklyReview h3 { margin: 0; font-size: 1.35rem; }
+.trendLegend { display: flex; gap: 1rem; margin-top: .45rem; color: var(--muted); font-size: .7rem; }
+.trendLegend span::before { display: inline-block; width: .8rem; height: .15rem; margin-right: .35rem; vertical-align: middle; content: ''; background: var(--muted); }
+.trendLegend span:nth-child(2)::before { height: .22rem; background: var(--accent); }
+.trendLegend span:nth-child(3)::before { background: var(--warning); }
+.weightChartBox { min-height: 19rem; margin-top: .8rem; }
+.pacePanel { display: flex; flex-direction: column; gap: .75rem; }
+.paceHeadline { display: flex; align-items: center; gap: .5rem; color: var(--accent); font-size: .75rem; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+.paceMetric { padding: .8rem 0; border-bottom: 1px solid var(--border); }
+.paceMetric span { display: block; color: var(--muted); font-size: .72rem; }
+.paceMetric strong { display: block; margin-top: .2rem; font-size: 1.05rem; }
+.pacePanel p,.reviewCopy { margin: auto 0 0; color: var(--muted); font-size: .78rem; line-height: 1.5; }
+.weeklyReview { margin-top: 1rem; }
+.reviewStatus { padding: .45rem .65rem; border: 1px solid color-mix(in srgb, var(--success) 45%, var(--border)); border-radius: .5rem; color: var(--success); font-size: .67rem; letter-spacing: .09em; }
+.weeklyMetrics { display: grid; grid-template-columns: repeat(5,1fr); gap: .65rem; margin-top: 1rem; }
+.weeklyMetrics article { min-width: 0; padding: .9rem; border: 1px solid var(--border); border-radius: .75rem; background: color-mix(in srgb, var(--panel) 83%, transparent); }
+.weeklyMetrics article > svg { color: var(--accent); }
+.weeklyMetrics span,.weeklyMetrics small { display: block; margin-top: .45rem; color: var(--muted); font-size: .67rem; }
+.weeklyMetrics strong { display: block; margin-top: .2rem; font-size: .94rem; }
+.reviewCopy { margin-top: .85rem; }
+
+.dailyLogSheet { width: min(44rem, calc(100vw - 2rem)); max-height: min(90vh, 52rem); overflow: auto; padding: 1.25rem; border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border)); border-radius: 1.15rem; background: var(--panel-strong); box-shadow: 0 2rem 6rem rgba(0,0,0,.55); }
+.dailyLogHead h2 { margin: .25rem 0; font-size: 1.65rem; }
+.dailyLogHead p { margin: 0; color: var(--muted); font-size: .82rem; }
+.dailyLogGrid { display: grid; grid-template-columns: repeat(2,1fr); gap: .65rem; margin-top: 1rem; }
+.dailyLogField { display: block; padding: .8rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--panel); }
+.dailyLogField > span,.dailyNotes > span { display: flex; align-items: center; gap: .35rem; color: var(--muted); font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.dailyLogField > div { display: flex; align-items: baseline; margin-top: .35rem; }
+.dailyLogField input { min-width: 0; width: 100%; border: 0; outline: 0; color: var(--text); background: transparent; font-size: 1.5rem; font-weight: 800; }
+.dailyLogField em { color: var(--muted); font-size: .7rem; font-style: normal; }
+.dailyLogDate { grid-column: 1 / -1; padding: .6rem .8rem; }
+.dailyLogDate input { margin-top: .25rem; font-size: .95rem; }
+.dailyLogPrimary { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+.trainingSelector { margin-top: 1rem; }
+.trainingSelector > span { color: var(--muted); font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.trainingSelector > div { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .45rem; }
+.trainingSelector button,.recoveryRow button { padding: .55rem .75rem; border: 1px solid var(--border); border-radius: .6rem; color: var(--muted); background: var(--panel); font-weight: 750; }
+.trainingSelector .trainingTypeActive,.recoveryRow .recoveryToggleActive { border-color: var(--accent); color: var(--text); background: color-mix(in srgb, var(--accent) 15%, var(--panel)); }
+.recoveryRow { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; margin-top: .75rem; }
+.recoveryRow button { display: flex; align-items: center; gap: .45rem; }
+.recoveryRow label { padding: .65rem .8rem; border: 1px solid var(--border); border-radius: .65rem; }
+.recoveryRow label span { display: flex; justify-content: space-between; color: var(--muted); font-size: .75rem; }
+.recoveryRow input { width: 100%; margin-top: .45rem; accent-color: var(--accent); }
+.dailyNotes { display: block; margin-top: .75rem; }
+.dailyNotes span em { margin-left: auto; font-style: normal; font-weight: 500; text-transform: none; }
+.dailyNotes textarea { width: 100%; margin-top: .4rem; padding: .7rem; border: 1px solid var(--border); border-radius: .65rem; outline: 0; resize: vertical; color: var(--text); background: var(--panel); }
+.dailyLogSave { width: 100%; margin-top: .8rem; }
+
+@media (max-width: 900px) {
+  .transformationGrid,.progressDashboard { grid-template-columns: 1fr; }
+  .weightInstrument { grid-template-columns: minmax(11rem,.7fr) 1fr; }
+  .weeklyMetrics { grid-template-columns: repeat(2,1fr); }
+  .pacePanel { display: grid; grid-template-columns: repeat(3,1fr); }
+  .paceHeadline,.pacePanel p { grid-column: 1 / -1; }
+}
+
+@media (max-width: 600px) {
+  .transformationHero { padding: .85rem; border-radius: 1rem; }
+  .transformationHeading { align-items: flex-start; }
+  .transformationHeading h1 { font-size: 2.25rem; }
+  .transformationHeading p { font-size: .78rem; }
+  .logTodayButton { flex: 0 0 auto; min-height: 2.65rem; padding: .65rem; font-size: 0; }
+  .logTodayButton svg { width: 21px; height: 21px; }
+  .weightInstrument { grid-template-columns: 1fr; min-height: 0; }
+  .weightInstrumentVisual { min-height: 17rem; }
+  .weightInstrumentCopy { padding: 1rem; text-align: center; }
+  .weightInstrumentCopy strong { font-size: 3.4rem; }
+  .energyReservoir { min-height: 20rem; }
+  .journeyTrackLabels { font-size: .63rem; }
+  .heroQuickActions { display: grid; grid-template-columns: repeat(3,1fr); }
+  .heroQuickActions button { justify-content: center; padding: .65rem .3rem; font-size: .68rem; }
+  .sectionHead { align-items: flex-end; }
+  .rangeControl button { min-width: 2.25rem; padding: .4rem .3rem; }
+  .chartHead { align-items: flex-start; }
+  .chartMeta { max-width: 10rem; font-size: .64rem; text-align: right; }
+  .trendLegend { gap: .45rem; font-size: .58rem; }
+  .weightChartBox { margin-inline: -.65rem; }
+  .pacePanel { grid-template-columns: 1fr; }
+  .paceHeadline,.pacePanel p { grid-column: auto; }
+  .weeklyMetrics { grid-template-columns: 1fr 1fr; }
+  .weeklyMetrics article:last-child { grid-column: 1 / -1; }
+  .dailyLogSheet { width: 100vw; max-height: 92dvh; margin-top: auto; padding: 1rem; border-radius: 1.2rem 1.2rem 0 0; }
+  .dailyLogHead { align-items: flex-start; }
+  .dailyLogHead h2 { font-size: 1.25rem; }
+  .dailyLogHead p { display: none; }
+  .dailyLogGrid { grid-template-columns: 1fr 1fr; }
+  .dailyLogField { padding: .65rem; }
+  .dailyLogField input { font-size: 1.25rem; }
+  .recoveryRow { grid-template-columns: 1fr; }
+}

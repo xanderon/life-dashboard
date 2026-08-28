@@ -7,20 +7,26 @@ import {
   ChevronLeft,
   ChevronRight,
   Dumbbell,
+  Footprints,
   ArrowUp,
   Flag,
   MoonStar,
   Goal,
+  HeartPulse,
+  Plus,
   Scale,
   Settings2,
   Smartphone,
+  TrendingDown,
   UtensilsCrossed,
   Weight,
+  Zap,
 } from 'lucide-react';
 import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -103,6 +109,11 @@ type SetupState = {
 type CheckinState = {
   date: string;
   kcal_actual: string;
+  protein_g: string;
+  steps: string;
+  training_type: 'none' | 'gym' | 'walking' | 'recovery' | 'other';
+  recovery_done: boolean;
+  neck_pain_score: string;
   activity_kcal_burned: string;
   activity_summary: string;
   notes: string;
@@ -270,6 +281,11 @@ function emptyCheckin(date: string): CheckinState {
   return {
     date,
     kcal_actual: '',
+    protein_g: '',
+    steps: '',
+    training_type: 'none',
+    recovery_done: false,
+    neck_pain_score: '',
     activity_kcal_burned: '',
     activity_summary: '',
     notes: '',
@@ -809,14 +825,67 @@ function buildAchievements(
   });
 }
 
-function buildWeightChartData(weights: CutCoachWeightRow[]) {
-  return [...weights]
-    .sort((left, right) => left.date.localeCompare(right.date))
-    .slice(-14)
-    .map((item) => ({
-      date: formatDate(item.date, { day: 'numeric', month: 'short' }),
+type WeightChartRange = '1M' | '3M' | '6M' | 'ALL';
+
+function linearWeightTrend(weights: CutCoachWeightRow[], lookbackDays = 28) {
+  const sorted = [...weights].sort((left, right) => left.date.localeCompare(right.date));
+  if (sorted.length < 3) return null;
+  const lastDate = new Date(`${sorted.at(-1)!.date}T12:00:00`).getTime();
+  const cutoff = lastDate - lookbackDays * 86400000;
+  const sample = sorted.filter((item) => new Date(`${item.date}T12:00:00`).getTime() >= cutoff);
+  if (sample.length < 3) return null;
+  const first = new Date(`${sample[0]!.date}T12:00:00`).getTime();
+  const points = sample.map((item) => ({
+    x: (new Date(`${item.date}T12:00:00`).getTime() - first) / 86400000,
+    y: item.weight_kg,
+  }));
+  const meanX = average(points.map((point) => point.x));
+  const meanY = average(points.map((point) => point.y));
+  const denominator = points.reduce((sum, point) => sum + (point.x - meanX) ** 2, 0);
+  if (!denominator) return null;
+  const slopePerDay = points.reduce((sum, point) => sum + (point.x - meanX) * (point.y - meanY), 0) / denominator;
+  return {
+    weeklyChange: slopePerDay * 7,
+    slopePerDay,
+    intercept: meanY - slopePerDay * meanX,
+    first,
+  };
+}
+
+function buildWeightChartData(weights: CutCoachWeightRow[], range: WeightChartRange) {
+  const sorted = [...weights].sort((left, right) => left.date.localeCompare(right.date));
+  const rangeDays = range === '1M' ? 31 : range === '3M' ? 93 : range === '6M' ? 186 : Number.POSITIVE_INFINITY;
+  const latestTime = sorted.length ? new Date(`${sorted.at(-1)!.date}T12:00:00`).getTime() : 0;
+  const visible = sorted.filter((item) => latestTime - new Date(`${item.date}T12:00:00`).getTime() <= rangeDays * 86400000);
+  const trend = linearWeightTrend(visible, range === '1M' ? 31 : range === '3M' ? 93 : 186);
+
+  return visible.map((item, index) => {
+    const movingSlice = visible.slice(Math.max(0, index - 6), index + 1);
+    const x = trend ? (new Date(`${item.date}T12:00:00`).getTime() - trend.first) / 86400000 : 0;
+    return {
+      date: item.date,
+      label: formatDate(item.date, { day: 'numeric', month: 'short' }),
       weight: item.weight_kg,
-    }));
+      average7: movingSlice.length >= 3 ? Number(average(movingSlice.map((entry) => entry.weight_kg)).toFixed(2)) : null,
+      trend: trend ? Number((trend.intercept + trend.slopePerDay * x).toFixed(2)) : null,
+    };
+  });
+}
+
+function estimatedGoalWindow(currentWeight: number | null, targetWeight: number, weeklyChange: number | null) {
+  if (currentWeight == null || weeklyChange == null || weeklyChange >= -0.1 || currentWeight <= targetWeight) return null;
+  const weeks = (currentWeight - targetWeight) / Math.abs(weeklyChange);
+  if (!Number.isFinite(weeks) || weeks > 104) return null;
+  const midpoint = new Date();
+  midpoint.setDate(midpoint.getDate() + Math.round(weeks * 7));
+  const early = new Date(midpoint);
+  early.setDate(midpoint.getDate() - 18);
+  const late = new Date(midpoint);
+  late.setDate(midpoint.getDate() + 18);
+  const formatter = new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric' });
+  return formatter.format(early) === formatter.format(late)
+    ? formatter.format(midpoint)
+    : `${formatter.format(early)} – ${formatter.format(late)}`;
 }
 
 const SLOT_LIBRARY: Record<string, string[]> = {
@@ -1002,6 +1071,11 @@ function fillCheckin(date: string, payload: BootstrapPayload | null): CheckinSta
   return {
     date,
     kcal_actual: checkin.kcal_actual != null ? String(checkin.kcal_actual) : '',
+    protein_g: checkin.protein_g != null ? String(checkin.protein_g) : '',
+    steps: checkin.steps != null ? String(checkin.steps) : '',
+    training_type: checkin.training_type ?? 'none',
+    recovery_done: Boolean(checkin.recovery_done),
+    neck_pain_score: checkin.neck_pain_score != null ? String(checkin.neck_pain_score) : '',
     activity_kcal_burned: checkin.activity_kcal_burned != null ? String(checkin.activity_kcal_burned) : '',
     activity_summary: checkin.activity_summary ?? '',
     notes: checkin.notes ?? '',
@@ -1213,6 +1287,7 @@ export default function CutCoachPage() {
     const now = new Date();
     return formatLocalIsoDate(new Date(now.getFullYear(), now.getMonth(), 1, 12, 0, 0));
   });
+  const [weightChartRange, setWeightChartRange] = useState<WeightChartRange>('3M');
   const [monthTransitionDirection, setMonthTransitionDirection] = useState<'backward' | 'forward'>('forward');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [setupComposer, setSetupComposer] = useState<SetupComposer>(null);
@@ -1220,6 +1295,7 @@ export default function CutCoachPage() {
   const [draggedItem, setDraggedItem] = useState<DragOrigin>(null);
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [characterCollapsed, setCharacterCollapsed] = useState(false);
+  const [dailyLogOpen, setDailyLogOpen] = useState(false);
   const [kcalModalOpen, setKcalModalOpen] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [weightModalOpen, setWeightModalOpen] = useState(false);
@@ -1283,6 +1359,18 @@ export default function CutCoachPage() {
     setKcalModalOpen(true);
   }
 
+  function openDailyLog(date = todayIsoDate) {
+    setCheckin(fillCheckin(date, data));
+    setWeightDraft(seedWeightEntry(date, data));
+    setDailyLogOpen(true);
+  }
+
+  function closeDailyLog() {
+    setDailyLogOpen(false);
+    setCheckin(seedCheckinEntry(todayIsoDate, data));
+    setWeightDraft(seedWeightEntry(todayIsoDate, data));
+  }
+
   function openTodayEntry() {
     setCheckin(seedCheckinEntry(todayIsoDate, data));
     setKcalDialRotation(0);
@@ -1337,10 +1425,16 @@ export default function CutCoachPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (!kcalModalOpen && !weightModalOpen && !activityModalOpen && !settingsOpen) return;
+    if (!dailyLogOpen && !kcalModalOpen && !weightModalOpen && !activityModalOpen && !settingsOpen) return;
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key !== 'Escape') return;
+      if (dailyLogOpen) {
+        setDailyLogOpen(false);
+        setCheckin(seedCheckinEntry(todayIsoDate, data));
+        setWeightDraft(seedWeightEntry(todayIsoDate, data));
+        return;
+      }
       if (kcalModalOpen) {
         setKcalModalOpen(false);
         setCheckin(seedCheckinEntry(todayIsoDate, data));
@@ -1368,7 +1462,7 @@ export default function CutCoachPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activityModalOpen, data, kcalModalOpen, settingsOpen, todayIsoDate, weightModalOpen]);
+  }, [activityModalOpen, dailyLogOpen, data, kcalModalOpen, settingsOpen, todayIsoDate, weightModalOpen]);
 
   function applyBootstrap(payload: BootstrapPayload) {
     setData(payload);
@@ -1641,6 +1735,35 @@ export default function CutCoachPage() {
         });
       },
     });
+  }
+
+  async function saveDailyLog() {
+    const hasWeight = toNumber(weightDraft.weight_kg) > 0;
+    const hasCheckin =
+      toNumber(checkin.kcal_actual) > 0 ||
+      toNumber(checkin.protein_g) > 0 ||
+      toNumber(checkin.steps) > 0 ||
+      checkin.training_type !== 'none' ||
+      checkin.recovery_done ||
+      checkin.neck_pain_score !== '' ||
+      checkin.notes.trim() !== '';
+
+    if (!hasWeight && !hasCheckin) {
+      setNotice('Add at least one value before saving.');
+      return false;
+    }
+
+    setDailyLogOpen(false);
+    if (hasWeight) {
+      const weightOk = await persistWeightEntry(weightDraft, 'Weight saved.');
+      if (!weightOk) return false;
+    }
+    if (hasCheckin) {
+      const checkinOk = await persistCheckin(checkin, 'Daily log saved.');
+      if (!checkinOk) return false;
+    }
+    setRewardToast({ id: Date.now(), title: 'Day captured', body: 'Your trend and weekly review are up to date.', celebrate: false });
+    return true;
   }
 
   async function saveWeightDraft() {
@@ -2050,67 +2173,40 @@ export default function CutCoachPage() {
   const activityDialStyle: CSSProperties & Record<'--dial-rotation', string> = {
     '--dial-rotation': `${activityDialRotation}deg`,
   };
-  const weightChartData = buildWeightChartData(data?.weights ?? []);
+  const sortedWeights = [...(data?.weights ?? [])].sort((left, right) => left.date.localeCompare(right.date));
+  const weightChartData = buildWeightChartData(sortedWeights, weightChartRange);
   const optimisticLatestWeight = optimisticWeight ? optimisticWeight.weightKg : data?.trends.latest?.weight_kg ?? null;
-  const currentWeightDelta =
-    challengeStats.startWeight != null && optimisticLatestWeight != null
-      ? Number((optimisticLatestWeight - challengeStats.startWeight).toFixed(1))
-      : null;
+  const journeyStartWeight = challengeStats.startWeight ?? sortedWeights[0]?.weight_kg ?? 100;
+  const journeyTargetWeight = activeChallenge?.target_weight_kg ?? 85;
+  const journeyTotalKg = Math.max(0.1, journeyStartWeight - journeyTargetWeight);
+  const journeyLostKg = optimisticLatestWeight != null ? Math.max(0, journeyStartWeight - optimisticLatestWeight) : 0;
+  const journeyRemainingKg = optimisticLatestWeight != null ? Math.max(0, optimisticLatestWeight - journeyTargetWeight) : journeyTotalKg;
+  const journeyProgress = clamp(journeyLostKg / journeyTotalKg, 0, 1);
+  const estimatedEnergyTotal = journeyTotalKg * 7700;
+  const estimatedEnergyRemaining = estimatedEnergyTotal * (1 - journeyProgress);
+  const recentTrend = linearWeightTrend(sortedWeights, 28);
+  const actualWeeklyChange = recentTrend?.weeklyChange ?? null;
+  const plannedWeeklyChange = -0.5;
+  const goalWindow = estimatedGoalWindow(optimisticLatestWeight, journeyTargetWeight, actualWeeklyChange);
+  const weekStart = addDays(todayIsoDate, -6);
+  const recentCheckins = (data?.checkins ?? []).filter((entry) => entry.date >= weekStart && entry.date <= todayIsoDate);
+  const loggedCalories = recentCheckins.filter((entry) => entry.kcal_actual != null).map((entry) => entry.kcal_actual!);
+  const loggedProtein = recentCheckins.filter((entry) => entry.protein_g != null).map((entry) => entry.protein_g!);
+  const loggedSteps = recentCheckins.filter((entry) => entry.steps != null).map((entry) => entry.steps!);
+  const neckScores = recentCheckins.filter((entry) => entry.neck_pain_score != null).map((entry) => entry.neck_pain_score!);
+  const gymSessions = recentCheckins.filter((entry) => entry.training_type === 'gym').length;
+  const recoverySessions = recentCheckins.filter((entry) => entry.recovery_done || entry.training_type === 'recovery').length;
+  const weeklyCalorieTarget = todayTargetKcal != null ? todayTargetKcal * 7 : 2350 * 7;
+  const weeklyCaloriesLogged = loggedCalories.reduce((sum, value) => sum + value, 0);
+  const trendSpanDays = sortedWeights.length > 1 ? isoDiff(sortedWeights[0]!.date, sortedWeights.at(-1)!.date) : 0;
+  const weeklyReviewStatus =
+    trendSpanDays < 14 || sortedWeights.length < 8
+      ? 'BUILDING DATA'
+      : actualWeeklyChange != null && actualWeeklyChange < -0.25 && actualWeeklyChange > -0.9
+        ? 'KEEP PLAN'
+        : 'REVIEW DATA';
   const currentWeightLabel = optimisticLatestWeight != null ? `${formatWeightKg(optimisticLatestWeight)} kg` : 'Ready to start';
-  const currentWeightHelper =
-    currentWeightDelta != null
-      ? `${currentWeightDelta > 0 ? '+' : ''}${formatWeightKg(currentWeightDelta)} kg vs start`
-      : optimisticLatestWeight != null
-        ? 'Latest saved weight'
-        : 'One morning weigh-in starts your trend line.';
-  const isTodaySavePending = busy === '/api/cut-coach/checkins' && optimisticCheckin?.date === todayIsoDate;
   const isWeightSavePending = busy === '/api/cut-coach/weights' && optimisticWeight?.date === todayIsoDate;
-  const calorieProgress = todayTargetKcal && todayConsumedKcal != null
-    ? clamp(todayConsumedKcal / Math.max(todayTargetKcal, 1), 0, 1.35)
-    : 0;
-  const calorieProgressDegrees = `${Math.round(calorieProgress * 360)}deg`;
-  const todayDialHeaderText =
-    todayTargetKcal != null
-      ? todayConsumedKcal == null
-        ? 'Your number is ready'
-        : overToday == null
-          ? 'Tracking today'
-          : overToday > 0
-            ? 'Adjust the rest'
-            : overToday < 0
-              ? 'Room to finish'
-              : 'Locked in'
-      : 'Set profile';
-  const todayDialTitle =
-    todayConsumedKcal == null
-      ? 'Target set'
-      : overToday == null
-        ? 'Logged today'
-        : overToday > 0
-          ? 'Over target'
-          : overToday < 0
-            ? 'Left today'
-            : 'On target';
-  const todayDialValue =
-    todayConsumedKcal == null
-      ? todayTargetKcal != null
-        ? String(todayTargetKcal)
-        : '—'
-      : overToday == null
-        ? String(todayConsumedKcal)
-        : overToday === 0
-          ? 'Perfect'
-          : String(Math.abs(overToday));
-  const todayDialUnit =
-    todayConsumedKcal == null
-      ? todayTargetKcal != null
-        ? 'kcal ready'
-        : 'Set profile'
-      : overToday == null
-        ? 'kcal logged'
-        : overToday === 0
-          ? `${todayConsumedKcal} kcal logged`
-          : 'kcal';
   const weightTrendMeta =
     data?.weights.length && data.weights.length > 1
       ? data?.trends.delta7 != null
@@ -2119,43 +2215,6 @@ export default function CutCoachPage() {
       : data?.weights.length === 1
         ? 'First point saved. The line fills in from here.'
         : 'Your first few weigh-ins will build the line here.';
-  const heroCoachTitle =
-    todayConsumedKcal == null
-      ? 'One total tonight and you are done'
-      : overToday != null && overToday > 0
-        ? 'Trim the rest of the day'
-        : overToday != null && overToday < 0
-          ? 'You still have room to finish clean'
-          : 'Stay in the same rhythm';
-  const heroCoachText = today?.target
-    ? humanizeAdjustmentReason(today.target.adjustment_reason, 'today')
-    : 'Save profile and the daily target plus the weekly plan appear here.';
-  const todaySupportLabel =
-    activeChallenge
-      ? 'Challenge day'
-      : todayConsumedKcal != null
-        ? 'Result'
-        : 'Target';
-  const todaySupportValue =
-    activeChallenge
-      ? `Day ${challengeStats.currentDay}/${challengeStats.totalDays}`
-      : todayConsumedKcal != null
-        ? overToday == null || overToday === 0
-          ? 'On target'
-          : `${Math.abs(overToday)} kcal ${overToday > 0 ? 'over' : 'under'}`
-        : todayTargetKcal != null
-          ? `${todayTargetKcal} kcal`
-          : 'Set profile';
-  const todaySupportHint =
-    activeChallenge
-      ? `${Math.round(challengeStats.progress * 100)}% complete${activeChallenge.title ? ` • ${activeChallenge.title}` : ''}`
-      : todayConsumedKcal != null
-        ? todayTargetKcal != null
-          ? `Target ${todayTargetKcal} kcal for today.`
-          : 'Save profile to compute today.'
-        : todayTargetKcal != null
-          ? 'The ring already shows your room for today.'
-          : 'Weight trend and challenge pace appear after setup.';
   const initialLoading = !heroReady && !data;
   const weekLoading = heroReady && !detailReady;
 
@@ -2326,85 +2385,86 @@ export default function CutCoachPage() {
         {!initialLoading ? (
           <>
 
-        <section className={`hero-card ${styles.hero}`}>
-          <div className={styles.todayBoard}>
-            <div className={styles.todayDialCard}>
-              <div className={styles.todayDialHeader}>
-                <div>
-                  <span className={styles.todayDialLabel}>Plan for today</span>
-                  <strong className={styles.todayDialHeaderValue}>{todayDialHeaderText}</strong>
-                </div>
-                {isTodaySavePending ? <span className={styles.inlineSavingBadge}>Saving…</span> : null}
-              </div>
-              <div
-                className={styles.todayDial}
-                style={{ '--dial-progress': calorieProgressDegrees } as CSSProperties}
-              >
-                <div className={styles.todayDialInner}>
-                  <span>{todayDialTitle}</span>
-                  <strong>{todayDialValue}</strong>
-                  <small>{todayDialUnit}</small>
-                </div>
-              </div>
-              <div className={styles.todayDialMeta}>
-                <div className={styles.todayConsumedCard}>
-                  <span>{todayConsumedKcal != null ? 'Consumed' : 'Tonight'}</span>
-                  <strong>{todayConsumedKcal != null ? `${todayConsumedKcal} kcal` : 'Log your total'}</strong>
-                  {todayConsumedKcal == null ? <small className={styles.todayMetaHint}>One number at the end of the day is enough.</small> : null}
-                </div>
-                <div className={styles.todayTargetCard}>
-                  <span>{todaySupportLabel}</span>
-                  <strong>{todaySupportValue}</strong>
-                  <small className={styles.todayMetaHint}>{todaySupportHint}</small>
-                </div>
-              </div>
+        <section className={`${styles.transformationHero}`}>
+          <div className={styles.transformationHeading}>
+            <div>
+              <span className={styles.transformationEyebrow}>Your transformation</span>
+              <h1>From {formatWeightKg(journeyStartWeight)} to {formatWeightKg(journeyTargetWeight)} kg.</h1>
+              <p>Weight trend is the source of truth. Daily noise is just noise.</p>
             </div>
+            <button className={styles.logTodayButton} onClick={() => openDailyLog()} type="button">
+              <Plus size={20} strokeWidth={2.5} />
+              Log today
+            </button>
+          </div>
 
-            <section className={`${styles.spotlightCard} ${styles.spotlightWeight} ${styles.todayWeightCard}`}>
-              <div className={styles.spotlightTop}>
-                <span className={styles.spotlightLabel}>Weight</span>
-                <Scale size={16} strokeWidth={2.2} />
+          <div className={styles.transformationGrid}>
+            <section className={styles.weightInstrument}>
+              <div className={styles.weightInstrumentVisual} aria-hidden="true">
+                <div className={styles.bodyHalo} />
+                <div className={styles.bodySilhouette}>
+                  <span className={styles.bodyHead} />
+                  <span className={styles.bodyTorso} />
+                  <span className={styles.bodyLegs} />
+                </div>
+                <div className={styles.scalePlatform}>
+                  <span>NOW</span>
+                  <strong>{optimisticLatestWeight != null ? formatWeightKg(optimisticLatestWeight) : '—'}</strong>
+                  <small>KG</small>
+                </div>
               </div>
-              <strong className={styles.spotlightValue}>{currentWeightLabel}</strong>
-              <p className={styles.spotlightMeta}>{isWeightSavePending ? 'Saving your weigh-in…' : currentWeightHelper}</p>
+              <div className={styles.weightInstrumentCopy}>
+                <span>Current weight</span>
+                <strong>{currentWeightLabel}</strong>
+                <p>{isWeightSavePending ? 'Saving your weigh-in…' : `${formatWeightKg(journeyLostKg)} kg lost · ${formatWeightKg(journeyRemainingKg)} kg remaining`}</p>
+              </div>
             </section>
 
-            <section className={`${styles.spotlightCard} ${styles.heroRunCard}`}>
-              <div className={styles.spotlightTop}>
-                <span className={styles.spotlightLabel}>Challenge</span>
-                <Flag size={16} strokeWidth={2.2} />
+            <section className={styles.energyReservoir}>
+              <div className={styles.energyReservoirHead}>
+                <div>
+                  <span>Estimated energy remaining</span>
+                  <strong>{Math.round(estimatedEnergyRemaining).toLocaleString('en-GB')} kcal</strong>
+                </div>
+                <Zap size={21} strokeWidth={2} />
               </div>
-              <strong className={styles.heroRunValue}>
-                {activeChallenge ? `Day ${challengeStats.currentDay} of ${challengeStats.totalDays}` : 'Ready when you are'}
-              </strong>
-              <p className={styles.spotlightMeta}>
-                {activeChallenge
-                  ? `${Math.round(challengeStats.progress * 100)}% complete${activeChallenge.title ? ` • ${activeChallenge.title}` : ''}`
-                  : 'Start a challenge only if you want a fixed timeline.'}
-              </p>
+              <div className={styles.energyTank}>
+                <div className={styles.energyTankFill} style={{ height: `${Math.max(4, (1 - journeyProgress) * 100)}%` }} />
+                <div className={styles.energyTankGlow} />
+              </div>
+              <div className={styles.energyStats}>
+                <div><span>Completed</span><strong>{Math.round(estimatedEnergyTotal - estimatedEnergyRemaining).toLocaleString('en-GB')}</strong></div>
+                <div><span>Journey</span><strong>{Math.round(journeyProgress * 100)}%</strong></div>
+              </div>
+              <p>Motivational estimate based on 7,700 kcal/kg, not a body-fat measurement.</p>
             </section>
           </div>
 
-          <div className={styles.heroCoachBar}>
-            <div className={styles.heroCoachCopy}>
-              <span className={styles.heroCoachLabel}>Coach note</span>
-              <strong className={styles.heroCoachTitle}>{heroCoachTitle}</strong>
-              <p className={styles.heroCoachText}>{heroCoachText}</p>
+          <div className={styles.journeyTrackCard}>
+            <div className={styles.journeyTrackLabels}>
+              <span>Start <strong>{formatWeightKg(journeyStartWeight)}</strong></span>
+              <span>{Math.round(journeyProgress * 100)}% complete</span>
+              <span>Goal <strong>{formatWeightKg(journeyTargetWeight)}</strong></span>
             </div>
-            <div className={styles.heroActionRail}>
-              <button className={`btn-base btn-primary ${styles.heroActionButton} ${styles.actionButtonKcal}`} onClick={() => openTodayEntry()} type="button">
-                <UtensilsCrossed size={16} strokeWidth={2.2} />
-                Log kcal
-              </button>
-              <button className={`btn-base btn-secondary ${styles.heroActionButton} ${styles.actionButtonWeight}`} onClick={() => openWeightModal()} type="button">
-                <Scale size={16} strokeWidth={2.2} />
-                Log weight
-              </button>
-              <button className={`btn-base btn-ghost ${styles.heroActionButton} ${styles.actionButtonMovement}`} onClick={() => openActivityModal()} type="button">
-                <Dumbbell size={16} strokeWidth={2.2} />
-                Add movement
-              </button>
+            <div className={styles.journeyTrack}>
+              <span className={styles.journeyTrackFill} style={{ width: `${journeyProgress * 100}%` }} />
+              <span className={styles.journeyMarker} style={{ left: `${journeyProgress * 100}%` }}>
+                <em>{optimisticLatestWeight != null ? formatWeightKg(optimisticLatestWeight) : '—'}</em>
+              </span>
             </div>
+            <div className={styles.journeyMilestones}>
+              {[journeyStartWeight, 95, 90, journeyTargetWeight].filter((value, index, values) => values.indexOf(value) === index).map((value) => (
+                <span className={optimisticLatestWeight != null && optimisticLatestWeight <= value ? styles.milestoneReached : ''} key={value}>
+                  {formatWeightKg(value)}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.heroQuickActions}>
+            <button onClick={() => openWeightModal()} type="button"><Scale size={16} /> Weight</button>
+            <button onClick={() => openTodayEntry()} type="button"><UtensilsCrossed size={16} /> {todayConsumedKcal ?? '—'} / {todayTargetKcal ?? '—'} kcal</button>
+            <button onClick={() => openActivityModal()} type="button"><Footprints size={16} /> Movement</button>
           </div>
         </section>
 
@@ -2465,6 +2525,82 @@ export default function CutCoachPage() {
               <p>{rewardToast.body}</p>
             </div>
           </>
+        ) : null}
+        {dailyLogOpen ? (
+          <div className={styles.modalScrim} onClick={closeDailyLog} role="presentation">
+            <section aria-modal="true" className={`${styles.dailyLogSheet}`} onClick={(event) => event.stopPropagation()} role="dialog">
+              <div className={styles.dailyLogHead}>
+                <div>
+                  <span>Daily entry</span>
+                  <h2>Log only what you have.</h2>
+                  <p>Weight-only or calories-only is completely fine.</p>
+                </div>
+                <button className="btn-base btn-ghost" onClick={closeDailyLog} type="button">Cancel</button>
+              </div>
+
+              <div className={styles.dailyLogGrid}>
+                <label className={`${styles.dailyLogField} ${styles.dailyLogDate}`}>
+                  <span>Date</span>
+                  <input
+                    type="date"
+                    value={checkin.date}
+                    onChange={(event) => {
+                      const date = event.target.value;
+                      setCheckin(fillCheckin(date, data));
+                      setWeightDraft(seedWeightEntry(date, data));
+                    }}
+                  />
+                </label>
+                <label className={`${styles.dailyLogField} ${styles.dailyLogPrimary}`}>
+                  <span><Scale size={15} /> Weight</span>
+                  <div><input inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" placeholder="97.3" type="text" value={weightDraft.weight_kg} onChange={(event) => setWeightDraft((current) => ({ ...current, weight_kg: event.target.value }))} /><em>kg</em></div>
+                </label>
+                <label className={`${styles.dailyLogField} ${styles.dailyLogPrimary}`}>
+                  <span><UtensilsCrossed size={15} /> Calories</span>
+                  <div><input inputMode="numeric" pattern="[0-9]*" placeholder={todayTargetKcal != null ? String(todayTargetKcal) : '2350'} type="text" value={checkin.kcal_actual} onChange={(event) => setCheckin((current) => ({ ...current, kcal_actual: event.target.value }))} /><em>kcal</em></div>
+                </label>
+                <label className={styles.dailyLogField}>
+                  <span>Protein</span>
+                  <div><input inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" placeholder="145" type="text" value={checkin.protein_g} onChange={(event) => setCheckin((current) => ({ ...current, protein_g: event.target.value }))} /><em>g</em></div>
+                </label>
+                <label className={styles.dailyLogField}>
+                  <span>Steps</span>
+                  <div><input inputMode="numeric" pattern="[0-9]*" placeholder="7500" type="text" value={checkin.steps} onChange={(event) => setCheckin((current) => ({ ...current, steps: event.target.value }))} /><em>steps</em></div>
+                </label>
+              </div>
+
+              <div className={styles.trainingSelector}>
+                <span>Training</span>
+                <div>
+                  {(['none', 'gym', 'walking', 'recovery', 'other'] as const).map((type) => (
+                    <button className={checkin.training_type === type ? styles.trainingTypeActive : ''} key={type} onClick={() => setCheckin((current) => ({ ...current, training_type: type }))} type="button">
+                      {type === 'none' ? 'None' : type[0]!.toUpperCase() + type.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.recoveryRow}>
+                <button className={checkin.recovery_done ? styles.recoveryToggleActive : ''} onClick={() => setCheckin((current) => ({ ...current, recovery_done: !current.recovery_done }))} type="button">
+                  <HeartPulse size={17} /> Recovery {checkin.recovery_done ? 'done' : 'not logged'}
+                </button>
+                <label>
+                  <span>Neck <strong>{checkin.neck_pain_score || '—'}/10</strong></span>
+                  <input max="10" min="0" step="1" type="range" value={checkin.neck_pain_score || '0'} onChange={(event) => setCheckin((current) => ({ ...current, neck_pain_score: event.target.value }))} />
+                </label>
+              </div>
+
+              <label className={styles.dailyNotes}>
+                <span>Notes <em>optional</em></span>
+                <textarea placeholder="Anything worth remembering?" rows={2} value={checkin.notes} onChange={(event) => setCheckin((current) => ({ ...current, notes: event.target.value }))} />
+              </label>
+
+              <button className={styles.dailyLogSave} disabled={busy !== null} onClick={() => void saveDailyLog()} type="button">
+                <CheckCircle2 size={19} />
+                {busy ? 'Saving…' : 'Save today'}
+              </button>
+            </section>
+          </div>
         ) : null}
         {kcalModalOpen ? (
           <div className={styles.modalScrim} onClick={closeKcalModal} role="presentation">
@@ -2736,49 +2872,36 @@ export default function CutCoachPage() {
         <section id="flow" className={styles.appSection}>
           <div className={styles.sectionHead}>
             <div>
-              <div className={styles.sectionEyebrow}>flow</div>
-              <h2 className={styles.sectionTitle}>Challenge and trend</h2>
+              <div className={styles.sectionEyebrow}>progress</div>
+              <h2 className={styles.sectionTitle}>Weight trend</h2>
             </div>
-            <div className={styles.sectionMeta}>{activeChallenge ? `${phaseLabel(challengeStats.progress)} phase` : 'Set up a challenge'}</div>
+            <div className={styles.rangeControl} aria-label="Weight chart range">
+              {(['1M', '3M', '6M', 'ALL'] as const).map((range) => (
+                <button className={weightChartRange === range ? styles.rangeActive : ''} key={range} onClick={() => setWeightChartRange(range)} type="button">{range}</button>
+              ))}
+            </div>
           </div>
 
-          <div className={styles.flowMetaGrid}>
-            <section className={`surface-card ${styles.panel} ${styles.panelSteel}`}>
-              <h3 className={styles.panelTitle}>Challenge pace</h3>
-              <p className={styles.panelText}>
-                {today?.target
-                  ? `Day ${Math.max(0, challengeStats.currentDay)} of ${Math.max(0, challengeStats.totalDays)} with ${Math.round(today.target.kcal_target)} kcal today.`
-                  : 'Save setup first to create the daily plan.'}{' '}
-                {tomorrow?.target ? `Tomorrow points to ${Math.round(tomorrow.target.kcal_target)} kcal.` : ''}
-              </p>
-              <div className={styles.phaseTrack}>
-                <div className={styles.phaseBar}>
-                  <span style={{ width: `${Math.round(challengeStats.progress * 100)}%` }} />
-                </div>
-                <div className={styles.phaseLabels}>
-                  <span>Ignition</span>
-                  <span>Rhythm</span>
-                  <span>Lock-in</span>
-                  <span>Finish</span>
-                </div>
-              </div>
-            </section>
-
-            <section className={`surface-card ${styles.panel} ${styles.panelRecessed}`}>
+          <div className={styles.progressDashboard}>
+            <section className={styles.primaryTrendPanel}>
               <div className={styles.chartHead}>
                 <div>
-                  <h3 className={styles.panelTitle}>Weight trend</h3>
-                  <div className={styles.chartTitle}>Last weigh-ins</div>
+                  <h3>Daily weight</h3>
+                  <div className={styles.trendLegend}><span>Daily</span><span>7-day average</span><span>Trend</span></div>
                 </div>
                 <div className={styles.chartMeta}>{weightTrendMeta}</div>
               </div>
-              <div className={styles.chartBox}>
+              <div className={styles.weightChartBox}>
                 {weightChartData.length > 1 ? (
-                  <ResponsiveContainer width="100%" height={190}>
-                    <LineChart data={weightChartData} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
+                  <ResponsiveContainer width="100%" height={310}>
+                    <LineChart data={weightChartData} margin={{ top: 18, right: 18, left: 0, bottom: 4 }}>
                       <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="date" tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="label" tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={30} />
                       <YAxis tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={56} domain={['dataMin - 0.5', 'dataMax + 0.5']} />
+                      <ReferenceLine y={journeyTargetWeight} stroke="var(--success)" strokeDasharray="5 5" label={{ value: `${formatWeightKg(journeyTargetWeight)} goal`, fill: 'var(--success)', fontSize: 11 }} />
+                      {[95, 90].filter((milestone) => milestone < journeyStartWeight && milestone > journeyTargetWeight).map((milestone) => (
+                        <ReferenceLine key={milestone} y={milestone} stroke="var(--chart-grid)" strokeDasharray="2 7" label={{ value: `${milestone}`, fill: 'var(--muted)', fontSize: 10 }} />
+                      ))}
                       <Tooltip
                         contentStyle={{
                           background: 'var(--panel-strong)',
@@ -2790,13 +2913,16 @@ export default function CutCoachPage() {
                       <Line
                         type="monotone"
                         dataKey="weight"
-                        stroke="var(--accent)"
-                        strokeWidth={3}
-                        dot={{ r: 3, fill: 'var(--accent)' }}
-                        activeDot={{ r: 5 }}
+                        name="Daily"
+                        stroke="var(--muted)"
+                        strokeWidth={1.5}
+                        dot={{ r: 2, fill: 'var(--muted)' }}
+                        activeDot={{ r: 4 }}
                         isAnimationActive
-                        animationDuration={1100}
-                        animationEasing="ease-out"
+                        animationDuration={650}
+                      />
+                      <Line type="monotone" dataKey="average7" name="7-day average" connectNulls stroke="var(--accent)" strokeWidth={4} dot={false} isAnimationActive animationDuration={850} />
+                      <Line type="linear" dataKey="trend" name="Trend" connectNulls stroke="var(--warning)" strokeWidth={2} strokeDasharray="7 6" dot={false} isAnimationActive={false}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -2809,7 +2935,30 @@ export default function CutCoachPage() {
                 )}
               </div>
             </section>
+
+            <aside className={styles.pacePanel}>
+              <div className={styles.paceHeadline}><TrendingDown size={22} /><span>Pace</span></div>
+              <div className={styles.paceMetric}><span>Planned</span><strong>{Math.abs(plannedWeeklyChange).toFixed(1)} kg/week</strong></div>
+              <div className={styles.paceMetric}><span>Actual trend</span><strong>{actualWeeklyChange != null ? `${Math.abs(actualWeeklyChange).toFixed(2)} kg/week` : 'Building data'}</strong></div>
+              <div className={styles.paceMetric}><span>Estimated goal</span><strong>{goalWindow ?? 'Needs more weigh-ins'}</strong></div>
+              <p>Adjustments use the trend, not one noisy weigh-in.</p>
+            </aside>
           </div>
+
+          <section className={styles.weeklyReview}>
+            <div className={styles.weeklyReviewHead}>
+              <div><span>Last 7 days</span><h3>Weekly dashboard</h3></div>
+              <strong className={styles.reviewStatus}>{weeklyReviewStatus}</strong>
+            </div>
+            <div className={styles.weeklyMetrics}>
+              <article><UtensilsCrossed size={18} /><span>Calories</span><strong>{weeklyCaloriesLogged.toLocaleString('en-GB')} / {weeklyCalorieTarget.toLocaleString('en-GB')}</strong><small>{loggedCalories.length ? `${Math.round(average(loggedCalories))} kcal/day logged` : 'No days logged yet'}</small></article>
+              <article><Zap size={18} /><span>Protein</span><strong>{loggedProtein.length ? `${Math.round(average(loggedProtein))} g avg` : '130–160 g'}</strong><small>{loggedProtein.length} days tracked</small></article>
+              <article><Footprints size={18} /><span>Movement</span><strong>{loggedSteps.length ? Math.round(average(loggedSteps)).toLocaleString('en-GB') : '—'} steps</strong><small>Daily average</small></article>
+              <article><Dumbbell size={18} /><span>Training</span><strong>{gymSessions} / 2 gym</strong><small>{recoverySessions} recovery sessions</small></article>
+              <article><HeartPulse size={18} /><span>Neck</span><strong>{neckScores.length ? `${average(neckScores).toFixed(1)} / 10` : 'Not logged'}</strong><small>Weekly average</small></article>
+            </div>
+            <p className={styles.reviewCopy}>{weeklyReviewStatus === 'KEEP PLAN' ? 'Trend and adherence are in range. Keep the plan unchanged.' : weeklyReviewStatus === 'BUILDING DATA' ? 'Keep logging. No adjustment until there is enough signal.' : 'Review adherence and recovery before changing calories.'}</p>
+          </section>
         </section>
 
         <section id="calendar" className={styles.appSection}>
