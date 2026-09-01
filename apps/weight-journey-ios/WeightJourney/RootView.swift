@@ -7,7 +7,7 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $selection) {
             Tab("Home", systemImage: "house", value: 0) {
-                NavigationStack { HomeView(showingLog: $showingLog) }
+                NavigationStack { HomeView() }
             }
             Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: 1) {
                 NavigationStack { ProgressScreen() }
@@ -21,6 +21,25 @@ struct RootView: View {
         }
         .tabBarMinimizeBehavior(.onScrollDown)
         .tint(JourneyTheme.accent)
+        .tabViewBottomAccessory {
+            if selection == 0 {
+                Button { showingLog = true } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus")
+                        Text("Add today").fontWeight(.semibold)
+                        Spacer()
+                        Text("Weight")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 4)
+                    .frame(maxWidth: .infinity)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .tint(JourneyTheme.accent)
+            }
+        }
         .sheet(isPresented: $showingLog) { AddTodaySheet() }
     }
 }
