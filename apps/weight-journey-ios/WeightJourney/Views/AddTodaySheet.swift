@@ -10,6 +10,8 @@ struct AddTodaySheet: View {
     @State private var sliderTick = 0
     @State private var calories = ""
     @State private var note = ""
+    @State private var isTypingWeight = false
+    @State private var showsOptionalDetails = false
     @FocusState private var focused: Field?
 
     private enum Field { case weight, calories, note }
@@ -21,15 +23,38 @@ struct AddTodaySheet: View {
                     DatePicker("Date", selection: $date, displayedComponents: .date)
                 }
                 Section {
-                    HStack(alignment: .firstTextBaseline) {
-                        TextField(store.currentWeight.weightText, text: $weight)
-                            .font(.system(size: 56, weight: .semibold, design: .rounded))
-                            .tracking(-2)
-                            .keyboardType(.decimalPad)
-                            .focused($focused, equals: .weight)
-                        Text("kg").font(.title3).foregroundStyle(.secondary)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        if isTypingWeight {
+                            TextField(store.currentWeight.weightText, text: $weight)
+                                .font(.system(size: 56, weight: .semibold, design: .rounded))
+                                .tracking(-2)
+                                .keyboardType(.decimalPad)
+                                .focused($focused, equals: .weight)
+                                .textFieldStyle(.plain)
+                        } else {
+                            Text(parsedWeight?.weightText ?? store.currentWeight.weightText)
+                                .font(.system(size: 56, weight: .semibold, design: .rounded))
+                                .tracking(-2)
+                                .contentTransition(.numericText(value: parsedWeight ?? store.currentWeight))
+                                .animation(.smooth, value: parsedWeight)
+                        }
+                        Text("kg")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                        Spacer(minLength: 8)
+                        Button(isTypingWeight ? "Done" : "Type", systemImage: isTypingWeight ? "checkmark" : "keyboard") {
+                            if isTypingWeight {
+                                focused = nil
+                                isTypingWeight = false
+                            } else {
+                                isTypingWeight = true
+                                Task { @MainActor in focused = .weight }
+                            }
+                        }
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel(isTypingWeight ? "Finish typing" : "Type weight")
                     }
-                    .accessibilityElement(children: .contain)
                     Slider(
                         value: $sliderWeight,
                         in: sliderBounds,
@@ -61,16 +86,18 @@ struct AddTodaySheet: View {
                     .foregroundStyle(.secondary)
                 } header: { Text("Weight") } footer: { Text("This is the only essential field.") }
 
-                Section("Optional") {
-                    LabeledContent("Calories") {
-                        TextField("Not tracked", text: $calories)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .focused($focused, equals: .calories)
+                Section {
+                    DisclosureGroup("Optional details", isExpanded: $showsOptionalDetails) {
+                        LabeledContent("Calories") {
+                            TextField("Not tracked", text: $calories)
+                                .keyboardType(.numberPad)
+                                .multilineTextAlignment(.trailing)
+                                .focused($focused, equals: .calories)
+                        }
+                        TextField("Note", text: $note, axis: .vertical)
+                            .lineLimit(2...4)
+                            .focused($focused, equals: .note)
                     }
-                    TextField("Note", text: $note, axis: .vertical)
-                        .lineLimit(2...4)
-                        .focused($focused, equals: .note)
                 }
             }
             .navigationTitle("Add today")
@@ -87,7 +114,8 @@ struct AddTodaySheet: View {
                     Button("Done") { focused = nil }
                 }
             }
-            .onAppear { seed(); focused = .weight }
+            .onAppear { seed() }
+            .onChange(of: date) { _, _ in seed() }
             .onChange(of: weight) { _, newValue in
                 guard let value = Double(newValue.replacingOccurrences(of: ",", with: ".")) else { return }
                 if !sliderBounds.contains(value) {

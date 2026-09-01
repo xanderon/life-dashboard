@@ -48,7 +48,7 @@ private struct WeightHero: View {
                     .font(.title2.weight(.medium))
                     .foregroundStyle(.secondary)
             }
-            Text("\(store.lostWeight.weightText) kg lost  •  \(store.remainingWeight.weightText) kg to go")
+            Text("\(store.lostWeight.weightText) kg down from start")
                 .font(.subheadline.weight(.medium).monospacedDigit())
                 .foregroundStyle(.secondary)
             Text("Updated today")
@@ -109,7 +109,7 @@ private struct EnergyReservoir: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 5) {
-                Text("Energy remaining").font(.headline)
+                Text("What remains").font(.headline)
                 Button("About energy estimate", systemImage: "info.circle") { showingInfo = true }
                     .labelStyle(.iconOnly)
                     .buttonStyle(.plain)
@@ -117,12 +117,24 @@ private struct EnergyReservoir: View {
                 Spacer()
             }
 
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text(store.remainingWeight.weightText)
+                    .font(.system(.largeTitle, design: .rounded, weight: .semibold))
+                    .contentTransition(.numericText(value: store.remainingWeight))
+                Text("kg to goal")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+            }
+
             LiquidReservoir(level: 1 - store.progress)
                 .frame(height: 132)
 
-            Text("\(store.energyRemaining.formatted(.number.precision(.fractionLength(0)))) kcal remaining")
+            Text("\(store.energyRemaining.formatted(.number.precision(.fractionLength(0)))) kcal")
                 .font(.title3.bold().monospacedDigit())
-            Text("\(store.energyCompleted.formatted(.number.precision(.fractionLength(0)))) completed of \(store.totalEnergy.formatted(.number.precision(.fractionLength(0))))")
+            Text("Estimated deficit equivalent to goal")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text("\(store.energyCompleted.formatted(.number.precision(.fractionLength(0)))) completed of \(store.totalEnergy.formatted(.number.precision(.fractionLength(0)))) kcal")
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
         }
@@ -146,7 +158,7 @@ private struct LiquidReservoir: View {
                     WaveShape(phase: phase, amplitude: 5)
                         .fill(
                             LinearGradient(
-                                colors: [JourneyTheme.cyan.opacity(0.82), JourneyTheme.accent.opacity(0.96)],
+                                colors: [JourneyTheme.energyHighlight.opacity(0.88), JourneyTheme.energy.opacity(0.96)],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
@@ -161,7 +173,7 @@ private struct LiquidReservoir: View {
                         .stroke(Color.primary.opacity(0.14), lineWidth: 1)
                 }
                 .clipShape(.rect(cornerRadius: 30))
-                .shadow(color: JourneyTheme.accent.opacity(0.1), radius: 20, y: 9)
+                .shadow(color: JourneyTheme.energy.opacity(0.13), radius: 20, y: 9)
             }
         }
     }
