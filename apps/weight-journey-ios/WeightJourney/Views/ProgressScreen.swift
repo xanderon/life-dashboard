@@ -30,7 +30,8 @@ struct ProgressScreen: View {
     }
 
     private var chart: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        JourneySurface {
+          VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading) {
                     Text("Weight trend").font(.title2.bold())
@@ -41,15 +42,15 @@ struct ProgressScreen: View {
             }
             Chart(points) { point in
                 LineMark(x: .value("Date", point.date), y: .value("Daily", point.weight))
-                    .foregroundStyle(.secondary.opacity(0.3))
-                    .lineStyle(.init(lineWidth: 1))
+                    .foregroundStyle(JourneyTheme.cyan.opacity(0.48))
+                    .lineStyle(.init(lineWidth: 1.5))
                 PointMark(x: .value("Date", point.date), y: .value("Daily", point.weight))
                     .foregroundStyle(.secondary.opacity(0.35))
                     .symbolSize(16)
                 if let average = point.average {
                     LineMark(x: .value("Date", point.date), y: .value("7-day", average))
                         .foregroundStyle(JourneyTheme.accent)
-                        .lineStyle(.init(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                        .lineStyle(.init(lineWidth: 4.5, lineCap: .round, lineJoin: .round))
                         .interpolationMethod(.catmullRom)
                 }
                 RuleMark(y: .value("Goal", store.profile.targetWeight))
@@ -61,11 +62,13 @@ struct ProgressScreen: View {
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { AxisGridLine(); AxisValueLabel(format: .dateTime.month(.abbreviated).day()) } }
             .frame(height: 310)
             .accessibilityLabel("Weight chart showing daily weight and seven day average")
+          }
         }
     }
 
     private var pace: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        JourneySurface {
+          VStack(alignment: .leading, spacing: 14) {
             Label("PACE", systemImage: "gauge.with.dots.needle.50percent")
                 .font(.caption.bold()).tracking(1.3).foregroundStyle(JourneyTheme.accent)
             HStack {
@@ -86,9 +89,8 @@ struct ProgressScreen: View {
             }
             Text("Based on your longer trend, never one daily fluctuation.")
                 .font(.caption).foregroundStyle(.secondary)
+          }
         }
-        .padding(20)
-        .background(.regularMaterial, in: .rect(cornerRadius: 24))
     }
 
     private var actualPace: String {
@@ -104,6 +106,7 @@ struct ProgressScreen: View {
     }
 
     private var milestones: some View {
+      JourneySurface {
         VStack(alignment: .leading, spacing: 14) {
             Text("Milestones").font(.title2.bold())
             ForEach([100.0, 95, 90, 85], id: \.self) { value in
@@ -116,5 +119,6 @@ struct ProgressScreen: View {
                 }
             }
         }
+      }
     }
 }

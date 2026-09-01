@@ -6,6 +6,20 @@ struct ProfileScreen: View {
     var body: some View {
         @Bindable var store = store
         Form {
+            Section {
+                HStack(spacing: 14) {
+                    Image(systemName: "figure.walk.motion")
+                        .font(.title2)
+                        .foregroundStyle(.white)
+                        .frame(width: 48, height: 48)
+                        .background(JourneyTheme.accent.gradient, in: .circle)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Weight Journey").font(.headline)
+                        Text("Your goal, guidance and preferences").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
             Section("Goal") {
                 numericRow("Starting weight", value: $store.profile.startWeight, unit: "kg")
                 numericRow("Target weight", value: $store.profile.targetWeight, unit: "kg")
@@ -39,6 +53,8 @@ struct ProfileScreen: View {
                 LabeledContent("Version", value: "1.0")
             }
         }
+        .scrollContentBackground(.hidden)
+        .background { CutCoachBackground() }
         .navigationTitle("Profile")
     }
 

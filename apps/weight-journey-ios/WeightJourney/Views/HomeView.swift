@@ -42,29 +42,60 @@ struct HomeView: View {
 
 private struct JourneyHero: View {
   @Environment(JourneyStore.self) private var store
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @StateObject private var motion = MotionLight()
 
   var body: some View {
     VStack(alignment: .leading, spacing: 22) {
-      VStack(alignment: .leading, spacing: 8) {
-        HStack(alignment: .top, spacing: 7) {
-          Text(store.currentWeight.weightText)
-            .font(.system(size: 86, weight: .light, design: .rounded))
-            .monospacedDigit()
-            .lineLimit(1)
-            .minimumScaleFactor(0.82)
-            .fixedSize(horizontal: true, vertical: false)
-            .layoutPriority(1)
-            .padding(.vertical, 6)
-            .padding(.trailing, 8)
-            .contentTransition(.numericText(value: store.currentWeight))
-            .animation(.smooth, value: store.currentWeight)
-          Text("KG")
-            .font(.caption.weight(.bold))
-            .tracking(1)
-            .foregroundStyle(JourneyTheme.accent)
-            .padding(.top, 15)
+      HStack {
+        Spacer()
+        ZStack {
+          Circle()
+            .fill(
+              LinearGradient(
+                colors: reduceTransparency
+                  ? [Color(.secondarySystemBackground), Color(.tertiarySystemBackground)]
+                  : [.white.opacity(0.2), JourneyTheme.cyan.opacity(0.11), JourneyTheme.warm.opacity(0.16)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              )
+            )
+            .overlay {
+              Circle()
+                .stroke(
+                  LinearGradient(colors: [.white.opacity(0.7), .white.opacity(0.08), JourneyTheme.accent.opacity(0.25)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                  lineWidth: 1.2
+                )
+            }
+            .shadow(color: JourneyTheme.accent.opacity(0.15), radius: 32, y: 18)
+
+          Circle()
+            .fill(.white.opacity(0.22))
+            .frame(width: 92)
+            .blur(radius: 24)
+            .offset(x: -58 + motion.offset.width, y: -70 + motion.offset.height)
+
+          VStack(spacing: -2) {
+            Text(store.currentWeight.weightText)
+              .font(.system(size: 68, weight: .light, design: .rounded))
+              .monospacedDigit()
+              .lineLimit(1)
+              .minimumScaleFactor(0.75)
+              .contentTransition(.numericText(value: store.currentWeight))
+            Text("KILOGRAMS")
+              .font(.caption2.weight(.semibold))
+              .tracking(1.7)
+              .foregroundStyle(.secondary)
+          }
         }
-        HStack(spacing: 7) {
+        .frame(width: 252, height: 252)
+        .scaleEffect(reduceMotion ? 1 : 1.0 + min(0.008, abs(motion.offset.width) / 3500))
+        .animation(.smooth(duration: 0.35), value: motion.offset)
+        Spacer()
+      }
+
+      HStack(spacing: 7) {
           Image(systemName: weightDelta >= 0 ? "arrow.down.right" : "arrow.up.right")
             .font(.caption.weight(.bold))
           Text("\(abs(weightDelta).weightText) kg")
@@ -74,7 +105,6 @@ private struct JourneyHero: View {
         }
         .font(.subheadline.monospacedDigit())
         .foregroundStyle(weightDelta >= 0 ? Color.green : Color.orange)
-      }
 
       VStack(spacing: 10) {
         GeometryReader { proxy in
@@ -125,6 +155,9 @@ private struct JourneyHero: View {
     .accessibilityLabel(
       "Current weight \(store.currentWeight.weightText) kilograms. Journey \(store.progress.formatted(.percent)), from \(store.profile.startWeight.weightText) to \(store.profile.targetWeight.weightText) kilograms."
     )
+    .onAppear { motion.start(reduceMotion: reduceMotion) }
+    .onDisappear { motion.stop() }
+    .onChange(of: reduceMotion) { _, value in value ? motion.stop() : motion.start(reduceMotion: false) }
   }
 
   private var weightDelta: Double { store.profile.startWeight - store.currentWeight }

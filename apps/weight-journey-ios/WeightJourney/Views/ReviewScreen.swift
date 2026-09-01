@@ -21,30 +21,35 @@ struct ReviewScreen: View {
     }
 
     private var recommendation: some View {
+      JourneySurface {
         VStack(alignment: .leading, spacing: 12) {
             Text("WEEKLY RECOMMENDATION").font(.caption.bold()).tracking(1.4).foregroundStyle(.secondary)
             Image(systemName: verdictIcon).font(.system(size: 40, weight: .light)).foregroundStyle(JourneyTheme.accent)
             Text(store.verdict.title).font(.system(.largeTitle, design: .rounded, weight: .bold))
             Text(store.verdict.message).font(.title3).foregroundStyle(.secondary)
         }
-        .padding(.top, 8)
+      }
     }
 
     private var explanation: some View {
+      JourneySurface {
         VStack(spacing: 0) {
             reviewRow("Current", "\(store.currentWeight.weightText) kg")
+            Divider().padding(.leading, 44)
+            reviewRow("Start", "\(store.profile.startWeight.weightText) kg")
+            Divider().padding(.leading, 44)
+            reviewRow("Remaining", "\(store.remainingWeight.weightText) kg")
             Divider().padding(.leading, 44)
             reviewRow("Change", store.weeklyChange.map { "\($0.formatted(.number.precision(.fractionLength(2)))) kg" } ?? "Building trend")
             Divider().padding(.leading, 44)
             reviewRow("Logged", "\(store.weightEntries.suffix(7).count) of 7 days")
         }
-        .padding(.vertical, 6)
-        .background(.regularMaterial, in: .rect(cornerRadius: 22))
+      }
     }
 
     private func reviewRow(_ title: String, _ value: String) -> some View {
         HStack {
-            Image(systemName: title == "Current" ? "scalemass" : title == "Change" ? "chart.line.downtrend.xyaxis" : "calendar.badge.checkmark")
+            Image(systemName: reviewIcon(for: title))
                 .frame(width: 28).foregroundStyle(JourneyTheme.accent)
             Text(title)
             Spacer()
@@ -54,6 +59,7 @@ struct ReviewScreen: View {
     }
 
     private var recentDays: some View {
+      JourneySurface {
         VStack(alignment: .leading, spacing: 14) {
             Text("This week").font(.title2.bold())
             HStack(spacing: 8) {
@@ -70,9 +76,20 @@ struct ReviewScreen: View {
             Text("Daily fluctuations are normal. Your overall direction is what the review protects.")
                 .font(.subheadline).foregroundStyle(.secondary).padding(.top, 6)
         }
+      }
     }
 
     private var verdictIcon: String {
         switch store.verdict { case .keepPlan: "checkmark.seal"; case .smallAdjustment: "slider.horizontal.3"; case .needMoreData: "ellipsis.circle" }
+    }
+
+    private func reviewIcon(for title: String) -> String {
+        switch title {
+        case "Current": "scalemass"
+        case "Start": "flag"
+        case "Remaining": "scope"
+        case "Change": "chart.line.downtrend.xyaxis"
+        default: "calendar.badge.checkmark"
+        }
     }
 }
