@@ -51,19 +51,7 @@ private struct WeightHero: View {
     var body: some View {
         VStack(spacing: 10) {
             ScaleFigure(weight: store.currentWeight)
-                .frame(height: 260)
-                .accessibilityHidden(true)
-
-            Text(store.currentWeight.weightText)
-                .font(.system(size: 76, weight: .semibold, design: .rounded))
-                .tracking(-4)
-                .contentTransition(.numericText(value: store.currentWeight))
-                .animation(.smooth, value: store.currentWeight)
-                .accessibilityLabel("Current weight, \(store.currentWeight.weightText) kilograms")
-            Text("KG  ·  CURRENT")
-                .font(.caption.weight(.bold))
-                .tracking(2.4)
-                .foregroundStyle(.secondary)
+                .frame(height: 285)
 
             HStack(spacing: 24) {
                 metric("LOST", value: "\(store.lostWeight.weightText) kg")
@@ -73,6 +61,8 @@ private struct WeightHero: View {
             .padding(.top, 8)
         }
         .padding(.top, 14)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Current weight \(store.currentWeight.weightText) kilograms. \(store.lostWeight.weightText) kilograms lost, \(store.remainingWeight.weightText) kilograms remaining.")
     }
 
     private func metric(_ label: String, value: String) -> some View {
@@ -92,20 +82,25 @@ private struct ScaleFigure: View {
                 .frame(width: 230, height: 230)
                 .blur(radius: 1)
             Image(systemName: "figure.stand")
-                .font(.system(size: 148, weight: .ultraLight))
+                .font(.system(size: 156, weight: .ultraLight))
                 .foregroundStyle(
                     LinearGradient(colors: [JourneyTheme.cyan, JourneyTheme.accent], startPoint: .top, endPoint: .bottom)
                 )
-                .symbolEffect(.breathe, options: .repeat(.continuous))
-                .padding(.bottom, 34)
+                .padding(.bottom, 82)
             RoundedRectangle(cornerRadius: 12)
-                .fill(.ultraThinMaterial)
+                .fill(.regularMaterial)
                 .stroke(JourneyTheme.accent.opacity(0.45), lineWidth: 1)
-                .frame(width: 176, height: 58)
+                .frame(width: 242, height: 88)
                 .overlay {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(weight.weightText).font(.title2.bold().monospacedDigit())
-                        Text("KG").font(.caption2.bold()).foregroundStyle(.secondary)
+                    VStack(spacing: 2) {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(weight.weightText)
+                                .font(.system(size: 52, weight: .semibold, design: .rounded))
+                                .tracking(-2)
+                                .contentTransition(.numericText(value: weight))
+                            Text("kg").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                        }
+                        Text("CURRENT WEIGHT").font(.caption2.bold()).tracking(1.6).foregroundStyle(.secondary)
                     }
                 }
                 .shadow(color: JourneyTheme.accent.opacity(0.16), radius: 16, y: 8)
@@ -132,15 +127,10 @@ private struct JourneyTrack: View {
                     Text("\(store.profile.targetWeight.weightText) kg").font(.subheadline.bold())
                 }
             }
-            GeometryReader { proxy in
-                let x = proxy.size.width * store.progress
-                ZStack(alignment: .leading) {
-                    Capsule().fill(.tertiary).frame(height: 8)
-                    Capsule().fill(LinearGradient(colors: [JourneyTheme.accent, JourneyTheme.cyan], startPoint: .leading, endPoint: .trailing)).frame(width: max(8, x), height: 8)
-                    Circle().fill(JourneyTheme.accent).stroke(.background, lineWidth: 3).frame(width: 22, height: 22).offset(x: max(0, min(proxy.size.width - 22, x - 11)))
-                }
-            }
-            .frame(height: 22)
+            ProgressView(value: store.progress)
+                .tint(JourneyTheme.accent)
+                .scaleEffect(x: 1, y: 1.7)
+                .animation(.smooth, value: store.progress)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Journey \(store.progress.formatted(.percent)), from \(store.profile.startWeight.weightText) to \(store.profile.targetWeight.weightText) kilograms")
@@ -150,28 +140,30 @@ private struct JourneyTrack: View {
 private struct EnergyReservoir: View {
     @Environment(JourneyStore.self) private var store
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("ESTIMATED ENERGY REMAINING")
-                        .font(.caption2.bold()).tracking(1.2).foregroundStyle(.secondary)
-                    Text(store.energyRemaining, format: .number.precision(.fractionLength(0)))
-                        .font(.title.bold().monospacedDigit())
-                    Text("kcal equivalent").font(.caption).foregroundStyle(.secondary)
+        GroupBox {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(store.energyRemaining, format: .number.precision(.fractionLength(0)))
+                            .font(.title.bold().monospacedDigit())
+                        Text("kcal equivalent remaining").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    ReservoirShape(level: 1 - store.progress)
+                        .frame(width: 84, height: 108)
                 }
-                Spacer()
-                ReservoirShape(level: 1 - store.progress)
-                    .frame(width: 92, height: 120)
+                LabeledContent {
+                    Text("Approximation").foregroundStyle(.secondary)
+                } label: {
+                    Label("\(store.energyCompleted.formatted(.number.precision(.fractionLength(0)))) completed", systemImage: "checkmark.circle")
+                }
+                .font(.caption)
             }
-            HStack {
-                Label("\(store.energyCompleted.formatted(.number.precision(.fractionLength(0)))) completed", systemImage: "checkmark.circle")
-                Spacer()
-                Text("Approximation").foregroundStyle(.secondary)
-            }
-            .font(.caption)
+        } label: {
+            Label("Estimated energy", systemImage: "drop.fill")
+                .font(.headline)
+                .foregroundStyle(JourneyTheme.warm)
         }
-        .padding(20)
-        .background(.regularMaterial, in: .rect(cornerRadius: 24))
         .accessibilityElement(children: .combine)
     }
 }
