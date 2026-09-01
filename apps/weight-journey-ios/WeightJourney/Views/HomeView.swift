@@ -48,12 +48,14 @@ private struct JourneyHero: View {
       VStack(alignment: .leading, spacing: 8) {
         HStack(alignment: .top, spacing: 7) {
           Text(store.currentWeight.weightText)
-            .font(.system(size: 88, weight: .light, design: .rounded))
-            .tracking(-5.5)
+            .font(.system(size: 86, weight: .light, design: .rounded))
+            .monospacedDigit()
             .lineLimit(1)
             .minimumScaleFactor(0.82)
+            .fixedSize(horizontal: true, vertical: false)
             .layoutPriority(1)
-            .padding(.trailing, 5)
+            .padding(.vertical, 6)
+            .padding(.trailing, 8)
             .contentTransition(.numericText(value: store.currentWeight))
             .animation(.smooth, value: store.currentWeight)
           Text("KG")
