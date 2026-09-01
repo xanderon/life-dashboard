@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
   @Environment(JourneyStore.self) private var store
+  @Binding var showingLog: Bool
   @State private var showingEnergyInfo = false
 
   var body: some View {
@@ -19,6 +20,15 @@ struct HomeView: View {
     }
     .navigationTitle("Today")
     .navigationBarTitleDisplayMode(.large)
+    .toolbar {
+      ToolbarItem(placement: .topBarTrailing) {
+        Button("Add today", systemImage: "plus") { showingLog = true }
+          .labelStyle(.iconOnly)
+          .buttonStyle(.glassProminent)
+          .tint(JourneyTheme.accent)
+          .accessibilityHint("Log today's weight")
+      }
+    }
     .alert("Estimated energy", isPresented: $showingEnergyInfo) {
       Button("OK", role: .cancel) {}
     } message: {
@@ -40,6 +50,10 @@ private struct JourneyHero: View {
           Text(store.currentWeight.weightText)
             .font(.system(size: 88, weight: .light, design: .rounded))
             .tracking(-5.5)
+            .lineLimit(1)
+            .minimumScaleFactor(0.82)
+            .layoutPriority(1)
+            .padding(.trailing, 5)
             .contentTransition(.numericText(value: store.currentWeight))
             .animation(.smooth, value: store.currentWeight)
           Text("KG")
@@ -121,7 +135,7 @@ private struct EnergyReservoir: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       HStack(spacing: 5) {
-        Text("What remains").font(.headline)
+        Text("To goal").font(.headline)
         Button("About energy estimate", systemImage: "info.circle") { showingInfo = true }
           .labelStyle(.iconOnly)
           .buttonStyle(.plain)
@@ -185,8 +199,19 @@ private struct LiquidReservoir: View {
             .frame(height: liquidHeight + 8)
             .animation(.smooth(duration: 0.8), value: level)
 
+          WaveShape(phase: 1 - phase * 0.72, amplitude: 3)
+            .fill(.white.opacity(0.16))
+            .frame(height: liquidHeight + 5)
+            .blendMode(.softLight)
+
+          if !reduceMotion {
+            ReservoirBubbles(phase: phase, liquidHeight: liquidHeight)
+          }
+
           LinearGradient(
-            colors: [.white.opacity(0.16), .clear], startPoint: .top, endPoint: .bottom
+            colors: [.white.opacity(0.24), .clear, .white.opacity(0.06)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
           )
           .clipShape(.rect(cornerRadius: 30))
 
@@ -197,6 +222,28 @@ private struct LiquidReservoir: View {
         .shadow(color: JourneyTheme.energy.opacity(0.13), radius: 20, y: 9)
       }
     }
+  }
+}
+
+private struct ReservoirBubbles: View {
+  let phase: Double
+  let liquidHeight: Double
+
+  var body: some View {
+    GeometryReader { proxy in
+      ForEach(0..<5, id: \.self) { index in
+        let seed = Double(index) / 5
+        let travel = (phase * (0.7 + seed) + seed).truncatingRemainder(dividingBy: 1)
+        Circle()
+          .stroke(.white.opacity(0.22), lineWidth: 1)
+          .frame(width: 4 + seed * 5, height: 4 + seed * 5)
+          .position(
+            x: proxy.size.width * (0.14 + seed * 0.7),
+            y: proxy.size.height - min(liquidHeight - 8, 8 + travel * max(10, liquidHeight - 18))
+          )
+      }
+    }
+    .allowsHitTesting(false)
   }
 }
 
