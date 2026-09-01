@@ -5,6 +5,9 @@ struct AddTodaySheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var date = Date.now
     @State private var weight = ""
+    @State private var sliderWeight = 100.0
+    @State private var sliderBounds = 95.0...105.0
+    @State private var sliderTick = 0
     @State private var calories = ""
     @State private var note = ""
     @FocusState private var focused: Field?
@@ -27,6 +30,35 @@ struct AddTodaySheet: View {
                         Text("kg").font(.title3).foregroundStyle(.secondary)
                     }
                     .accessibilityElement(children: .contain)
+                    Slider(
+                        value: $sliderWeight,
+                        in: sliderBounds,
+                        step: 0.1
+                    ) {
+                        Text("Weight")
+                    } minimumValueLabel: {
+                        Image(systemName: "minus")
+                    } maximumValueLabel: {
+                        Image(systemName: "plus")
+                    } onEditingChanged: { editing in
+                        if !editing { UIImpactFeedbackGenerator(style: .soft).impactOccurred() }
+                    }
+                    .tint(JourneyTheme.accent)
+                    .onChange(of: sliderWeight) { _, newValue in
+                        weight = newValue.weightText
+                        sliderTick += 1
+                    }
+                    .sensoryFeedback(.selection, trigger: sliderTick)
+
+                    HStack {
+                        Text(sliderBounds.lowerBound.weightText)
+                        Spacer()
+                        Text("Slide in 0.1 kg steps")
+                        Spacer()
+                        Text(sliderBounds.upperBound.weightText)
+                    }
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
                 } header: { Text("Weight") } footer: { Text("This is the only essential field.") }
 
                 Section("Optional") {
@@ -56,6 +88,13 @@ struct AddTodaySheet: View {
                 }
             }
             .onAppear { seed(); focused = .weight }
+            .onChange(of: weight) { _, newValue in
+                guard let value = Double(newValue.replacingOccurrences(of: ",", with: ".")) else { return }
+                if !sliderBounds.contains(value) {
+                    sliderBounds = (value - 5)...(value + 5)
+                }
+                if abs(sliderWeight - value) >= 0.05 { sliderWeight = value }
+            }
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
@@ -69,6 +108,9 @@ struct AddTodaySheet: View {
             calories = existing.calories.map(String.init) ?? ""
             note = existing.note
         } else { weight = store.currentWeight.weightText }
+        let initial = parsedWeight ?? store.currentWeight
+        sliderWeight = initial
+        sliderBounds = (initial - 5)...(initial + 5)
     }
 
     private func save() {
