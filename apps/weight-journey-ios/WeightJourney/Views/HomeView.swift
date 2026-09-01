@@ -25,10 +25,12 @@ struct HomeView: View {
         Spacer()
         Button("Log weight", systemImage: "plus") { showingLog = true }
           .labelStyle(.iconOnly)
-          .font(.title2.weight(.semibold))
-          .frame(width: 56, height: 56)
-          .buttonStyle(.glassProminent)
-          .tint(JourneyTheme.accent)
+          .font(.title.weight(.medium))
+          .frame(width: 66, height: 66)
+          .buttonStyle(.glass)
+          .buttonBorderShape(.circle)
+          .foregroundStyle(.primary)
+          .shadow(color: JourneyTheme.accent.opacity(0.14), radius: 18, y: 8)
           .accessibilityHint("Opens today's weight picker")
       }
       .padding(.horizontal, 22)
