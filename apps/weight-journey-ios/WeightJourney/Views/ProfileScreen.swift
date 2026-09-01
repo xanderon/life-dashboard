@@ -1,0 +1,52 @@
+import SwiftUI
+
+struct ProfileScreen: View {
+    @Environment(JourneyStore.self) private var store
+
+    var body: some View {
+        @Bindable var store = store
+        Form {
+            Section("Goal") {
+                numericRow("Starting weight", value: $store.profile.startWeight, unit: "kg")
+                numericRow("Target weight", value: $store.profile.targetWeight, unit: "kg")
+                numericRow("Height", value: $store.profile.height, unit: "cm")
+                Stepper("Desired timeframe: \(store.profile.targetMonths) months", value: $store.profile.targetMonths, in: 3...18)
+            }
+
+            Section("Optional guidance") {
+                LabeledContent("Calorie target") {
+                    TextField("2350", value: $store.profile.calorieTarget, format: .number)
+                        .keyboardType(.numberPad).multilineTextAlignment(.trailing)
+                    Text("kcal").foregroundStyle(.secondary)
+                }
+                Toggle("Show calories", isOn: $store.profile.showCalories)
+                Toggle("Show energy visualization", isOn: $store.profile.showEnergy)
+            }
+
+            Section("Reminders") {
+                Toggle("Morning weigh-in", isOn: $store.profile.weighInReminder)
+                Toggle("Weekly review", isOn: $store.profile.reviewReminder)
+            }
+
+            Section("Appearance") {
+                Picker("Theme", selection: $store.profile.appearance) {
+                    ForEach(AppAppearance.allCases) { Text($0.title).tag($0) }
+                }
+            }
+
+            Section("About") {
+                NavigationLink("How the app works", destination: CodeScreen())
+                LabeledContent("Version", value: "1.0")
+            }
+        }
+        .navigationTitle("Profile")
+    }
+
+    private func numericRow(_ title: String, value: Binding<Double>, unit: String) -> some View {
+        LabeledContent(title) {
+            TextField(title, value: value, format: .number.precision(.fractionLength(1)))
+                .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
+            Text(unit).foregroundStyle(.secondary)
+        }
+    }
+}

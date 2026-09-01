@@ -1,0 +1,194 @@
+import SwiftUI
+
+struct HomeView: View {
+    @Environment(JourneyStore.self) private var store
+    @Binding var showingLog: Bool
+
+    var body: some View {
+        ZStack {
+            CutCoachBackground()
+            ScrollView {
+                VStack(spacing: 28) {
+                    WeightHero()
+                    JourneyTrack()
+                    if store.profile.showEnergy { EnergyReservoir() }
+                    calmSummary
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 40)
+            }
+        }
+        .navigationTitle("Journey")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Add today", systemImage: "plus") { showingLog = true }
+                    .buttonStyle(.glassProminent)
+            }
+        }
+    }
+
+    private var calmSummary: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "waveform.path.ecg")
+                .foregroundStyle(JourneyTheme.accent)
+            VStack(alignment: .leading, spacing: 5) {
+                Text("The direction matters")
+                    .font(.headline)
+                Text("Morning changes are noisy. Your longer trend is the signal worth following.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+private struct WeightHero: View {
+    @Environment(JourneyStore.self) private var store
+
+    var body: some View {
+        VStack(spacing: 10) {
+            ScaleFigure(weight: store.currentWeight)
+                .frame(height: 260)
+                .accessibilityHidden(true)
+
+            Text(store.currentWeight.weightText)
+                .font(.system(size: 76, weight: .semibold, design: .rounded))
+                .tracking(-4)
+                .contentTransition(.numericText(value: store.currentWeight))
+                .animation(.smooth, value: store.currentWeight)
+                .accessibilityLabel("Current weight, \(store.currentWeight.weightText) kilograms")
+            Text("KG  ·  CURRENT")
+                .font(.caption.weight(.bold))
+                .tracking(2.4)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 24) {
+                metric("LOST", value: "\(store.lostWeight.weightText) kg")
+                Divider().frame(height: 34)
+                metric("REMAINING", value: "\(store.remainingWeight.weightText) kg")
+            }
+            .padding(.top, 8)
+        }
+        .padding(.top, 14)
+    }
+
+    private func metric(_ label: String, value: String) -> some View {
+        VStack(spacing: 3) {
+            Text(value).font(.headline.monospacedDigit())
+            Text(label).font(.caption2.weight(.bold)).tracking(1.2).foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct ScaleFigure: View {
+    let weight: Double
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Circle()
+                .fill(JourneyTheme.cyan.opacity(0.11))
+                .frame(width: 230, height: 230)
+                .blur(radius: 1)
+            Image(systemName: "figure.stand")
+                .font(.system(size: 148, weight: .ultraLight))
+                .foregroundStyle(
+                    LinearGradient(colors: [JourneyTheme.cyan, JourneyTheme.accent], startPoint: .top, endPoint: .bottom)
+                )
+                .symbolEffect(.breathe, options: .repeat(.continuous))
+                .padding(.bottom, 34)
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.ultraThinMaterial)
+                .stroke(JourneyTheme.accent.opacity(0.45), lineWidth: 1)
+                .frame(width: 176, height: 58)
+                .overlay {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(weight.weightText).font(.title2.bold().monospacedDigit())
+                        Text("KG").font(.caption2.bold()).foregroundStyle(.secondary)
+                    }
+                }
+                .shadow(color: JourneyTheme.accent.opacity(0.16), radius: 16, y: 8)
+        }
+    }
+}
+
+private struct JourneyTrack: View {
+    @Environment(JourneyStore.self) private var store
+    var body: some View {
+        VStack(spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("START").font(.caption2.bold()).foregroundStyle(.secondary)
+                    Text("\(store.profile.startWeight.weightText) kg").font(.subheadline.bold())
+                }
+                Spacer()
+                Text(store.progress, format: .percent.precision(.fractionLength(0)))
+                    .font(.title2.bold().monospacedDigit())
+                    .foregroundStyle(JourneyTheme.accent)
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("GOAL").font(.caption2.bold()).foregroundStyle(.secondary)
+                    Text("\(store.profile.targetWeight.weightText) kg").font(.subheadline.bold())
+                }
+            }
+            GeometryReader { proxy in
+                let x = proxy.size.width * store.progress
+                ZStack(alignment: .leading) {
+                    Capsule().fill(.tertiary).frame(height: 8)
+                    Capsule().fill(LinearGradient(colors: [JourneyTheme.accent, JourneyTheme.cyan], startPoint: .leading, endPoint: .trailing)).frame(width: max(8, x), height: 8)
+                    Circle().fill(JourneyTheme.accent).stroke(.background, lineWidth: 3).frame(width: 22, height: 22).offset(x: max(0, min(proxy.size.width - 22, x - 11)))
+                }
+            }
+            .frame(height: 22)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Journey \(store.progress.formatted(.percent)), from \(store.profile.startWeight.weightText) to \(store.profile.targetWeight.weightText) kilograms")
+    }
+}
+
+private struct EnergyReservoir: View {
+    @Environment(JourneyStore.self) private var store
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("ESTIMATED ENERGY REMAINING")
+                        .font(.caption2.bold()).tracking(1.2).foregroundStyle(.secondary)
+                    Text(store.energyRemaining, format: .number.precision(.fractionLength(0)))
+                        .font(.title.bold().monospacedDigit())
+                    Text("kcal equivalent").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                ReservoirShape(level: 1 - store.progress)
+                    .frame(width: 92, height: 120)
+            }
+            HStack {
+                Label("\(store.energyCompleted.formatted(.number.precision(.fractionLength(0)))) completed", systemImage: "checkmark.circle")
+                Spacer()
+                Text("Approximation").foregroundStyle(.secondary)
+            }
+            .font(.caption)
+        }
+        .padding(20)
+        .background(.regularMaterial, in: .rect(cornerRadius: 24))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct ReservoirShape: View {
+    let level: Double
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .bottom) {
+                UnevenRoundedRectangle(topLeadingRadius: 34, bottomLeadingRadius: 18, bottomTrailingRadius: 18, topTrailingRadius: 34)
+                    .fill(.quaternary)
+                UnevenRoundedRectangle(topLeadingRadius: 26, bottomLeadingRadius: 14, bottomTrailingRadius: 14, topTrailingRadius: 26)
+                    .fill(LinearGradient(colors: [JourneyTheme.warm, JourneyTheme.accent], startPoint: .top, endPoint: .bottom))
+                    .frame(height: max(8, proxy.size.height * level))
+                    .animation(.smooth(duration: 0.8), value: level)
+            }
+            .overlay { UnevenRoundedRectangle(topLeadingRadius: 34, bottomLeadingRadius: 18, bottomTrailingRadius: 18, topTrailingRadius: 34).stroke(.secondary.opacity(0.25)) }
+        }
+    }
+}
