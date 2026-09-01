@@ -20,14 +20,19 @@ struct HomeView: View {
     }
     .navigationTitle("Today")
     .navigationBarTitleDisplayMode(.large)
-    .toolbar {
-      ToolbarItem(placement: .topBarTrailing) {
-        Button("Add today", systemImage: "plus") { showingLog = true }
+    .safeAreaInset(edge: .bottom) {
+      HStack {
+        Spacer()
+        Button("Log weight", systemImage: "plus") { showingLog = true }
           .labelStyle(.iconOnly)
+          .font(.title2.weight(.semibold))
+          .frame(width: 56, height: 56)
           .buttonStyle(.glassProminent)
           .tint(JourneyTheme.accent)
-          .accessibilityHint("Log today's weight")
+          .accessibilityHint("Opens today's weight picker")
       }
+      .padding(.horizontal, 22)
+      .padding(.vertical, 8)
     }
     .alert("Estimated energy", isPresented: $showingEnergyInfo) {
       Button("OK", role: .cancel) {}
