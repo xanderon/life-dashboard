@@ -9,10 +9,10 @@ struct RootView: View {
             Tab("Home", systemImage: "house", value: 0) {
                 NavigationStack { HomeView(showingLog: $showingLog) }
             }
-            Tab("Progress", systemImage: "chart.xyaxis.line", value: 1) {
+            Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: 1) {
                 NavigationStack { ProgressScreen() }
             }
-            Tab("Review", systemImage: "sparkles.rectangle.stack", value: 2) {
+            Tab("Review", systemImage: "calendar.badge.checkmark", value: 2) {
                 NavigationStack { ReviewScreen() }
             }
             Tab("Profile", systemImage: "person.crop.circle", value: 3) {
