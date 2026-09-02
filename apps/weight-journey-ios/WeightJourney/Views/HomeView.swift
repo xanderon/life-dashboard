@@ -12,6 +12,26 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 30) {
           JourneyHero()
           if store.profile.showEnergy { EnergyReservoir(showingInfo: $showingEnergyInfo) }
+          NavigationLink {
+            FatMineScreen()
+          } label: {
+            HStack(spacing: 14) {
+              Image(systemName: "hammer.fill")
+                .font(.title2)
+                .foregroundStyle(JourneyTheme.energyHighlight)
+                .frame(width: 48, height: 48)
+                .background(JourneyTheme.ink.opacity(0.8), in: .circle)
+              VStack(alignment: .leading, spacing: 3) {
+                Text("Fat Mine").font(.headline)
+                Text("See the last seven mining shifts").font(.caption).foregroundStyle(.secondary)
+              }
+              Spacer()
+              Image(systemName: "chevron.right").font(.caption.bold()).foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .background(Color.primary.opacity(0.05), in: .rect(cornerRadius: 24))
+          }
+          .buttonStyle(.plain)
         }
         .padding(.horizontal, 22)
         .padding(.top, 6)
