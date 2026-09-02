@@ -15,7 +15,10 @@ struct RootView: View {
             Tab("Review", systemImage: "calendar.badge.checkmark", value: 2) {
                 NavigationStack { ReviewScreen() }
             }
-            Tab("Profile", systemImage: "person.crop.circle", value: 3) {
+            Tab("Health", systemImage: "heart.text.square", value: 3) {
+                NavigationStack { HealthScreen() }
+            }
+            Tab("Profile", systemImage: "person.crop.circle", value: 4) {
                 NavigationStack { ProfileScreen() }
             }
         }
