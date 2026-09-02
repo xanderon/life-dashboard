@@ -17,11 +17,30 @@ struct HealthMetric: Identifiable {
     }
 }
 
+struct HealthDay: Identifiable {
+    let date: Date
+    let energy: Double?
+    let protein: Double?
+    let carbohydrates: Double?
+    let fat: Double?
+    var id: Date { date }
+    var hasNutrition: Bool { energy != nil || protein != nil || carbohydrates != nil || fat != nil }
+}
+
+struct HealthWeightEntry: Identifiable {
+    let date: Date
+    let weight: Double
+    let source: String
+    var id: String { "\(date.timeIntervalSinceReferenceDate)-\(source)" }
+}
+
 @MainActor
 @Observable
 final class HealthKitManager {
     private let store = HKHealthStore()
     private(set) var metrics: [HealthMetric] = []
+    private(set) var dailyHistory: [HealthDay] = []
+    private(set) var weightHistory: [HealthWeightEntry] = []
     private(set) var isLoading = false
     private(set) var hasRequestedAccess = false
     var errorMessage: String?
@@ -52,6 +71,8 @@ final class HealthKitManager {
     }
 
     private func load() async throws {
+        async let history = loadDailyHistory()
+        async let weights = loadWeightHistory()
         async let weight = latestMetric(.bodyMass, title: "Weight", unit: .gramUnit(with: .kilo), unitLabel: "kg", icon: "scalemass")
         async let bmi = latestMetric(.bodyMassIndex, title: "Body mass index", unit: .count(), unitLabel: "BMI", icon: "figure")
         async let energy = todayTotal(.dietaryEnergyConsumed, title: "Energy", unit: .kilocalorie(), unitLabel: "kcal", icon: "flame")
@@ -66,6 +87,8 @@ final class HealthKitManager {
         async let potassium = todayTotal(.dietaryPotassium, title: "Potassium", unit: .gramUnit(with: .milli), unitLabel: "mg", icon: "bolt")
 
         metrics = try await [weight, bmi, energy, protein, carbs, fat, saturated, sugar, fibre, cholesterol, sodium, potassium]
+        dailyHistory = try await history
+        weightHistory = try await weights
     }
 
     private var readTypes: Set<HKObjectType> {
@@ -143,6 +166,70 @@ final class HealthKitManager {
             let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, error in
                 if let error { continuation.resume(throwing: error) }
                 else { continuation.resume(returning: result?.sumQuantity()) }
+            }
+            store.execute(query)
+        }
+    }
+
+    private func loadDailyHistory() async throws -> [HealthDay] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        let start = calendar.date(byAdding: .day, value: -29, to: today) ?? today
+
+        async let energy = dailyValues(.dietaryEnergyConsumed, unit: .kilocalorie(), start: start)
+        async let protein = dailyValues(.dietaryProtein, unit: .gram(), start: start)
+        async let carbs = dailyValues(.dietaryCarbohydrates, unit: .gram(), start: start)
+        async let fat = dailyValues(.dietaryFatTotal, unit: .gram(), start: start)
+        let maps = try await (energy, protein, carbs, fat)
+
+        return (0..<30).compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: -offset, to: today) else { return nil }
+            return HealthDay(
+                date: date,
+                energy: maps.0[date],
+                protein: maps.1[date],
+                carbohydrates: maps.2[date],
+                fat: maps.3[date]
+            )
+        }
+    }
+
+    private func loadWeightHistory() async throws -> [HealthWeightEntry] {
+        guard let type = HKQuantityType.quantityType(forIdentifier: .bodyMass) else { return [] }
+        let start = Calendar.current.date(byAdding: .day, value: -30, to: .now) ?? .distantPast
+        return try await quantitySamples(type, start: start)
+            .map {
+                HealthWeightEntry(
+                    date: $0.endDate,
+                    weight: $0.quantity.doubleValue(for: .gramUnit(with: .kilo)),
+                    source: $0.sourceRevision.source.name
+                )
+            }
+            .sorted { $0.date > $1.date }
+    }
+
+    private func dailyValues(
+        _ identifier: HKQuantityTypeIdentifier,
+        unit: HKUnit,
+        start: Date
+    ) async throws -> [Date: Double] {
+        guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else { return [:] }
+        let samples = try await quantitySamples(type, start: start)
+        return Dictionary(grouping: samples, by: { Calendar.current.startOfDay(for: $0.endDate) })
+            .mapValues { $0.reduce(0) { $0 + $1.quantity.doubleValue(for: unit) } }
+    }
+
+    private func quantitySamples(_ type: HKQuantityType, start: Date) async throws -> [HKQuantitySample] {
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: .now)
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: type,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
+            ) { _, samples, error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: samples as? [HKQuantitySample] ?? []) }
             }
             store.execute(query)
         }
