@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HealthScreen: View {
-    @State private var health = HealthKitManager()
+    @Environment(HealthKitManager.self) private var health
     @State private var historyDays = 14
 
     var body: some View {

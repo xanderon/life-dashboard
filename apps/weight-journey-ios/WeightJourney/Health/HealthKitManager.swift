@@ -64,10 +64,16 @@ final class HealthKitManager {
     }
 
     func refresh() async {
-        guard hasRequestedAccess else { return }
+        guard isAvailable, !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
-        do { try await load() } catch { errorMessage = error.localizedDescription }
+        do {
+            try await load()
+            hasRequestedAccess = true
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func load() async throws {
