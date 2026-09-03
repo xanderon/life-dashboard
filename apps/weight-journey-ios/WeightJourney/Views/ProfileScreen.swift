@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileScreen: View {
     @Environment(JourneyStore.self) private var store
+    @State private var confirmingRestart = false
 
     var body: some View {
         @Bindable var store = store
@@ -52,10 +53,30 @@ struct ProfileScreen: View {
                 NavigationLink("How the app works", destination: CodeScreen())
                 LabeledContent("Version", value: "1.0")
             }
+
+            Section {
+                Button("Restart journey", systemImage: "arrow.counterclockwise", role: .destructive) {
+                    confirmingRestart = true
+                }
+            } header: {
+                Text("Journey")
+            } footer: {
+                Text("Starts again from your current weight. Existing entries stay in your history.")
+            }
         }
         .scrollContentBackground(.hidden)
         .background { CutCoachBackground() }
         .navigationTitle("Profile")
+        .confirmationDialog(
+            "Restart from \(store.currentWeight.weightText) kg?",
+            isPresented: $confirmingRestart,
+            titleVisibility: .visible
+        ) {
+            Button("Restart journey", role: .destructive) { store.restartJourney() }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Progress returns to zero and today becomes the new start date. Your history is preserved.")
+        }
     }
 
     private func numericRow(_ title: String, value: Binding<Double>, unit: String) -> some View {

@@ -5,103 +5,122 @@ struct FatMineScreen: View {
 
     var body: some View {
         ZStack {
-            mineBackground
+            LinearGradient(
+                colors: [Color(red: 0.025, green: 0.035, blue: 0.07), Color(red: 0.07, green: 0.055, blue: 0.055)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    summary
-                    IcebergMineScene(progress: store.progress, remaining: store.remainingWeight)
-                        .frame(height: 390)
-                    recentShifts
-                    explanation
+                VStack(alignment: .leading, spacing: 28) {
+                    intro
+                    DepositCoreScene(progress: store.progress)
+                        .frame(height: 360)
+                    balance
+                    recentWork
+                    note
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 36)
+                .padding(.bottom, 40)
             }
         }
-        .navigationTitle("Fat Mine")
+        .navigationTitle("The Deposit")
         .navigationBarTitleDisplayMode(.large)
+        .toolbarColorScheme(.dark, for: .navigationBar)
     }
 
-    private var mineBackground: some View {
-        LinearGradient(
-            colors: [Color(red: 0.025, green: 0.08, blue: 0.14), Color(red: 0.04, green: 0.19, blue: 0.24), JourneyTheme.ink],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea()
-    }
-
-    private var summary: some View {
-        HStack(spacing: 12) {
-            mineMetric("MINED", value: "\(store.lostWeight.weightText) kg", color: JourneyTheme.cyan)
-            mineMetric("REMAINING", value: "\(store.remainingWeight.weightText) kg", color: JourneyTheme.energyHighlight)
+    private var intro: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("ORIGINAL MASS")
+                .font(.caption2.bold())
+                .tracking(1.5)
+                .foregroundStyle(.white.opacity(0.48))
+            Text("\(store.totalWeight.weightText) kg")
+                .font(.system(size: 46, weight: .light, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+            Text("One finite deposit. Every logged shift reveals the work already done.")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.58))
         }
     }
 
-    private func mineMetric(_ label: String, value: String, color: Color) -> some View {
+    private var balance: some View {
+        HStack(spacing: 0) {
+            balanceMetric("EXTRACTED", "\(store.lostWeight.weightText) kg", JourneyTheme.cyan)
+            Rectangle().fill(.white.opacity(0.12)).frame(width: 1, height: 48)
+            balanceMetric("IN THE VEIN", "\(store.remainingWeight.weightText) kg", JourneyTheme.energyHighlight)
+        }
+        .padding(.vertical, 18)
+        .background(.white.opacity(0.055), in: .rect(cornerRadius: 24))
+        .overlay { RoundedRectangle(cornerRadius: 24).stroke(.white.opacity(0.1)) }
+    }
+
+    private func balanceMetric(_ label: String, _ value: String, _ color: Color) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(label).font(.caption2.bold()).tracking(1.2).foregroundStyle(.white.opacity(0.58))
-            Text(value).font(.title2.bold().monospacedDigit()).foregroundStyle(color)
+            Text(label).font(.caption2.bold()).tracking(1.1).foregroundStyle(.white.opacity(0.45))
+            Text(value).font(.title3.bold().monospacedDigit()).foregroundStyle(color)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.white.opacity(0.07), in: .rect(cornerRadius: 22))
-        .overlay { RoundedRectangle(cornerRadius: 22).stroke(.white.opacity(0.1)) }
+        .padding(.horizontal, 18)
     }
 
-    private var recentShifts: some View {
-        VStack(alignment: .leading, spacing: 15) {
-            Text("Recent shifts").font(.title2.bold()).foregroundStyle(.white)
+    private var recentWork: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Last 7 shifts").font(.title2.bold())
+                Spacer()
+                Text("scale signal").font(.caption).foregroundStyle(.white.opacity(0.45))
+            }
+
             if shifts.isEmpty {
-                Text("Log a few weights to reveal daily mining shifts.")
-                    .foregroundStyle(.white.opacity(0.6))
+                Text("Log more weights to reveal recent extraction.")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.55))
             } else {
-                ForEach(shifts) { shift in
-                    HStack(spacing: 12) {
-                        Text(shift.date.formatted(.dateTime.weekday(.abbreviated)))
-                            .font(.caption.bold())
-                            .foregroundStyle(.white.opacity(0.6))
-                            .frame(width: 34, alignment: .leading)
-                        GeometryReader { proxy in
-                            Capsule()
-                                .fill(.white.opacity(0.08))
-                                .overlay(alignment: .leading) {
-                                    Capsule()
-                                        .fill(shift.grams > 0 ? JourneyTheme.cyan.gradient : Color.white.opacity(0.12).gradient)
-                                        .frame(width: max(4, proxy.size.width * min(1, shift.grams / maxShift)))
-                                }
+                HStack(alignment: .bottom, spacing: 10) {
+                    ForEach(shifts) { shift in
+                        VStack(spacing: 8) {
+                            Text(shift.grams > 0 ? "\(Int(shift.grams))" : "·")
+                                .font(.caption2.weight(.semibold).monospacedDigit())
+                                .foregroundStyle(shift.grams > 0 ? .white : .white.opacity(0.3))
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(
+                                    shift.grams > 0
+                                        ? AnyShapeStyle(LinearGradient(colors: [JourneyTheme.energyHighlight, JourneyTheme.energy], startPoint: .top, endPoint: .bottom))
+                                        : AnyShapeStyle(Color.white.opacity(0.08))
+                                )
+                                .frame(height: max(6, 74 * shift.grams / maxShift))
+                            Text(shift.date.formatted(.dateTime.weekday(.narrow)))
+                                .font(.caption2.bold())
+                                .foregroundStyle(.white.opacity(0.45))
                         }
-                        .frame(height: 9)
-                        Text(shift.grams > 0 ? "−\(Int(shift.grams)) g" : "—")
-                            .font(.caption.weight(.semibold).monospacedDigit())
-                            .foregroundStyle(shift.grams > 0 ? JourneyTheme.cyan : .white.opacity(0.42))
-                            .frame(width: 58, alignment: .trailing)
+                        .frame(maxWidth: .infinity)
                     }
                 }
+                .frame(height: 116, alignment: .bottom)
             }
         }
         .padding(20)
-        .background(.white.opacity(0.055), in: .rect(cornerRadius: 28))
-        .overlay { RoundedRectangle(cornerRadius: 28).stroke(.white.opacity(0.1)) }
+        .background(.white.opacity(0.045), in: .rect(cornerRadius: 26))
+        .overlay { RoundedRectangle(cornerRadius: 26).stroke(.white.opacity(0.09)) }
     }
 
-    private var explanation: some View {
-        Label(
-            "Mining is a playful estimate derived from scale changes. Water and daily fluctuations are not body-fat measurements; the longer trend remains the signal.",
-            systemImage: "info.circle"
-        )
-        .font(.caption)
-        .foregroundStyle(.white.opacity(0.55))
+    private var note: some View {
+        Text("A motivational model based on scale changes, not a body-fat measurement. Daily water shifts can move the estimate in either direction.")
+            .font(.caption)
+            .foregroundStyle(.white.opacity(0.42))
     }
 
     private var shifts: [MineShift] {
         let entries = store.weightEntries.suffix(8)
-        return zip(entries, entries.dropFirst()).map { previous, current in
+        return Array(zip(entries, entries.dropFirst()).map { previous, current in
             MineShift(
                 date: current.date,
                 grams: max(0, ((previous.weight ?? 0) - (current.weight ?? 0)) * 1000)
             )
-        }.suffix(7)
+        }.suffix(7))
     }
 
     private var maxShift: Double { max(100, shifts.map(\.grams).max() ?? 100) }
@@ -113,110 +132,112 @@ private struct MineShift: Identifiable {
     var id: Date { date }
 }
 
-private struct IcebergMineScene: View {
+private struct DepositCoreScene: View {
     let progress: Double
-    let remaining: Double
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         TimelineView(.animation(minimumInterval: reduceMotion ? 1 : 1 / 24, paused: reduceMotion)) { timeline in
             GeometryReader { proxy in
                 let phase = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
-                let mineX = proxy.size.width * (0.2 + progress * 0.55)
+                let inset: CGFloat = 18
+                let coreWidth = proxy.size.width - inset * 2
+                let frontX = inset + coreWidth * progress
+
                 ZStack {
-                    water(phase: phase)
-                    iceberg
-                    minedCavern(width: proxy.size.width)
-                    pickaxe(phase: phase)
-                        .position(x: mineX, y: proxy.size.height * 0.6)
-                    chips(phase: phase, originX: mineX, size: proxy.size)
-                    VStack(spacing: 3) {
-                        Text("\(remaining.weightText) KG")
-                            .font(.system(.title, design: .rounded, weight: .bold))
-                        Text("ICE LEFT")
-                            .font(.caption2.bold()).tracking(1.4)
-                    }
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.35), radius: 8)
-                    .position(x: proxy.size.width * 0.67, y: proxy.size.height * 0.62)
+                    RoundedRectangle(cornerRadius: 32)
+                        .fill(.black.opacity(0.24))
+
+                    NuggetShape()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(red: 1, green: 0.82, blue: 0.38), JourneyTheme.energy, Color(red: 0.47, green: 0.24, blue: 0.08)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay { mineralVeins }
+                        .padding(inset)
+                        .shadow(color: JourneyTheme.energy.opacity(0.28), radius: 30, y: 14)
+
+                    NuggetShape()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(red: 0.025, green: 0.12, blue: 0.15), Color(red: 0.015, green: 0.04, blue: 0.07)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .padding(inset)
+                        .mask(alignment: .leading) {
+                            Rectangle().frame(width: inset + coreWidth * progress)
+                        }
+
+                    Capsule()
+                        .fill(.white.opacity(0.82))
+                        .frame(width: 2, height: 206)
+                        .shadow(color: JourneyTheme.cyan, radius: reduceMotion ? 5 : 8 + sin(phase * 2.2) * 3)
+                        .position(x: frontX, y: proxy.size.height * 0.48)
+
+                    Circle()
+                        .fill(JourneyTheme.cyan)
+                        .frame(width: 16, height: 16)
+                        .overlay { Circle().stroke(.white.opacity(0.8), lineWidth: 2) }
+                        .shadow(color: JourneyTheme.cyan, radius: 12)
+                        .position(x: frontX, y: proxy.size.height * 0.78)
+
+                    milestones(width: coreWidth, inset: inset)
+                        .position(x: proxy.size.width / 2, y: proxy.size.height - 27)
                 }
-                .clipShape(.rect(cornerRadius: 30))
-                .overlay { RoundedRectangle(cornerRadius: 30).stroke(.white.opacity(0.14)) }
+                .clipShape(.rect(cornerRadius: 32))
+                .overlay { RoundedRectangle(cornerRadius: 32).stroke(.white.opacity(0.11)) }
             }
         }
+        .accessibilityLabel("Deposit \(progress.formatted(.percent)) extracted")
     }
 
-    private func water(phase: Double) -> some View {
+    private var mineralVeins: some View {
         ZStack {
-            LinearGradient(colors: [.cyan.opacity(0.08), .blue.opacity(0.3), .black.opacity(0.2)], startPoint: .top, endPoint: .bottom)
-            ForEach(0..<4, id: \.self) { line in
+            ForEach(0..<5, id: \.self) { index in
                 Capsule()
-                    .fill(.white.opacity(0.08 - Double(line) * 0.012))
-                    .frame(height: 2)
-                    .offset(x: sin(phase * 0.5 + Double(line)) * 18, y: CGFloat(line * 34 - 150))
+                    .stroke(.white.opacity(0.12), lineWidth: 1)
+                    .frame(width: 190 + CGFloat(index * 18), height: 62 + CGFloat(index * 24))
+                    .rotationEffect(.degrees(Double(index * 7 - 14)))
             }
         }
+        .clipShape(NuggetShape())
     }
 
-    private var iceberg: some View {
-        IcebergShape()
-            .fill(
-                LinearGradient(
-                    colors: [.white.opacity(0.9), JourneyTheme.cyan.opacity(0.78), Color.blue.opacity(0.42), Color.indigo.opacity(0.55)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay { IcebergShape().stroke(.white.opacity(0.45), lineWidth: 1.2) }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 25)
-            .shadow(color: JourneyTheme.cyan.opacity(0.24), radius: 28)
-    }
-
-    private func minedCavern(width: Double) -> some View {
-        UnevenRoundedRectangle(topLeadingRadius: 8, bottomLeadingRadius: 8, bottomTrailingRadius: 34, topTrailingRadius: 34)
-            .fill(Color.black.opacity(0.58))
-            .frame(width: max(20, width * progress * 0.56), height: 112)
-            .offset(x: -width * 0.28, y: 48)
-            .shadow(color: .cyan.opacity(0.16), radius: 12)
-    }
-
-    private func pickaxe(phase: Double) -> some View {
-        Image(systemName: "hammer.fill")
-            .font(.system(size: 31, weight: .bold))
-            .foregroundStyle(JourneyTheme.energyHighlight)
-            .shadow(color: .orange.opacity(0.5), radius: 8)
-            .rotationEffect(.degrees(reduceMotion ? -35 : -35 + sin(phase * 4.8) * 24), anchor: .bottomTrailing)
-    }
-
-    private func chips(phase: Double, originX: Double, size: CGSize) -> some View {
-        ForEach(0..<6, id: \.self) { index in
-            let seed = Double(index) / 6
-            let travel = (phase * 0.65 + seed).truncatingRemainder(dividingBy: 1)
-            Circle()
-                .fill(index.isMultiple(of: 2) ? JourneyTheme.cyan : .white)
-                .frame(width: 3 + seed * 4)
-                .position(
-                    x: originX + cos(seed * 12) * travel * 42,
-                    y: size.height * 0.6 + travel * 60
-                )
-                .opacity(1 - travel)
+    private func milestones(width: CGFloat, inset: CGFloat) -> some View {
+        HStack(spacing: 0) {
+            ForEach([0, 25, 50, 75, 100], id: \.self) { value in
+                VStack(spacing: 5) {
+                    Circle()
+                        .fill(progress * 100 >= Double(value) ? JourneyTheme.cyan : Color.white.opacity(0.16))
+                        .frame(width: 5, height: 5)
+                    Text("\(value)").font(.caption2.monospacedDigit()).foregroundStyle(.white.opacity(0.38))
+                }
+                if value != 100 { Spacer() }
+            }
         }
+        .frame(width: width - 20)
     }
 }
 
-private struct IcebergShape: Shape {
+private struct NuggetShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
-        path.move(to: CGPoint(x: rect.width * 0.1, y: rect.height * 0.42))
-        path.addLine(to: CGPoint(x: rect.width * 0.26, y: rect.height * 0.3))
-        path.addLine(to: CGPoint(x: rect.width * 0.38, y: rect.height * 0.08))
-        path.addLine(to: CGPoint(x: rect.width * 0.53, y: rect.height * 0.28))
-        path.addLine(to: CGPoint(x: rect.width * 0.72, y: rect.height * 0.36))
-        path.addLine(to: CGPoint(x: rect.width * 0.92, y: rect.height * 0.48))
-        path.addLine(to: CGPoint(x: rect.width * 0.8, y: rect.height * 0.9))
-        path.addLine(to: CGPoint(x: rect.width * 0.42, y: rect.height * 0.96))
-        path.addLine(to: CGPoint(x: rect.width * 0.14, y: rect.height * 0.74))
+        path.move(to: CGPoint(x: rect.width * 0.08, y: rect.height * 0.34))
+        path.addCurve(to: CGPoint(x: rect.width * 0.3, y: rect.height * 0.08), control1: CGPoint(x: rect.width * 0.1, y: rect.height * 0.13), control2: CGPoint(x: rect.width * 0.2, y: rect.height * 0.08))
+        path.addCurve(to: CGPoint(x: rect.width * 0.62, y: rect.height * 0.12), control1: CGPoint(x: rect.width * 0.42, y: 0), control2: CGPoint(x: rect.width * 0.52, y: rect.height * 0.15))
+        path.addCurve(to: CGPoint(x: rect.width * 0.94, y: rect.height * 0.4), control1: CGPoint(x: rect.width * 0.8, y: rect.height * 0.05), control2: CGPoint(x: rect.width * 0.94, y: rect.height * 0.2))
+        path.addCurve(to: CGPoint(x: rect.width * 0.78, y: rect.height * 0.88), control1: CGPoint(x: rect.width, y: rect.height * 0.62), control2: CGPoint(x: rect.width * 0.9, y: rect.height * 0.84))
+        path.addCurve(to: CGPoint(x: rect.width * 0.38, y: rect.height * 0.92), control1: CGPoint(x: rect.width * 0.62, y: rect.height), control2: CGPoint(x: rect.width * 0.5, y: rect.height * 0.86))
+        path.addCurve(
+            to: CGPoint(x: rect.width * 0.08, y: rect.height * 0.34),
+            control1: CGPoint(x: rect.width * 0.2, y: rect.height),
+            control2: CGPoint(x: 0, y: rect.height * 0.68)
+        )
         path.closeSubpath()
         return path
     }

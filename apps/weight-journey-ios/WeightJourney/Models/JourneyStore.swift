@@ -41,6 +41,13 @@ final class JourneyStore {
         entries.first { Calendar.current.isDate($0.date, inSameDayAs: date) }
     }
 
+    func restartJourney() {
+        var updated = profile
+        updated.startWeight = currentWeight
+        updated.startDate = Calendar.current.startOfDay(for: .now)
+        profile = updated
+    }
+
     func trendPoints(range: ChartRange) -> [TrendPoint] {
         let weighted = weightEntries
         let visible: [DailyEntry]
