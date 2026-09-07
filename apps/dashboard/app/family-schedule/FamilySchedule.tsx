@@ -120,10 +120,10 @@ export function FamilySchedule() {
 
       <section className={styles.calendar}>
         <div className={styles.corner}>Ora</div>
-        {DAYS.map((day, index) => <div key={day} className={styles.dayHead}><b>{SHORT_DAYS[index]}</b><span>{dateLabel(addDays(weekStart, index))}</span></div>)}
+        {DAYS.map((day, index) => <div key={day} className={`${styles.dayHead} ${index > 4 ? styles.weekendHead : ''}`}><div className={styles.dayTitle}><b>{SHORT_DAYS[index]}</b><span>{dateLabel(addDays(weekStart, index))}</span></div><div className={styles.laneNames}><span>Mina</span><span>Leon</span></div></div>)}
         <div className={styles.timeRail}>{Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => <span key={i} style={{ top: `${(i / (END_HOUR - START_HOUR)) * 100}%` }}>{String(START_HOUR + i).padStart(2, '0')}:00</span>)}</div>
         {DAYS.map((day, dayIndex) => (
-          (() => { const holiday = HOLIDAYS.find((item) => { const date = isoDate(addDays(weekStart, dayIndex)); return date >= item.start && date <= item.end; }); return <div key={day} className={`${styles.dayColumn} ${holiday ? styles[`holiday${holiday.tone}`] : ''}`} onDoubleClick={() => { openNew(dayIndex); showModal(); }}>
+          (() => { const holiday = HOLIDAYS.find((item) => { const date = isoDate(addDays(weekStart, dayIndex)); return date >= item.start && date <= item.end; }); return <div key={day} className={`${styles.dayColumn} ${dayIndex > 4 ? styles.weekendColumn : ''} ${holiday ? styles[`holiday${holiday.tone}`] : ''}`} onDoubleClick={() => { openNew(dayIndex); showModal(); }}>
             {holiday ? <div className={styles.holidayLabel}>{holiday.emoji} {holiday.name}</div> : null}
             <div className={styles.gridLines}>{Array.from({ length: END_HOUR - START_HOUR }, (_, i) => <i key={i} style={{ top: `${(i / (END_HOUR - START_HOUR)) * 100}%` }} />)}</div>
             <div className={styles.laneDivider} />
