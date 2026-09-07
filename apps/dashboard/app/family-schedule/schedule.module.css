@@ -11,13 +11,13 @@
   font-family: var(--font-hyperlegible), var(--font-geist-sans), sans-serif;
 }
 .text-normal {
-  --schedule-text-scale: 0.92;
+  --schedule-text-scale: 1.04;
 }
 .text-comfortable {
-  --schedule-text-scale: 1.08;
+  --schedule-text-scale: 1.22;
 }
 .text-large {
-  --schedule-text-scale: 1.24;
+  --schedule-text-scale: 1.42;
 }
 .header,
 .toolbar {
@@ -294,34 +294,33 @@
   gap: 7px;
 }
 .dayTitle b {
-  font-size: 15px;
+  font-size: calc(14px * var(--schedule-text-scale));
   font-weight: 700;
 }
 .dayTitle > span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: calc(10px * var(--schedule-text-scale));
   font-weight: 500;
-}
-.dayTitle > em {
-  padding: 2px 5px;
-  border-radius: 999px;
-  background: #e45454;
-  color: #fff;
-  font-size: 8px;
-  font-style: normal;
-  font-weight: 800;
-  letter-spacing: 0.05em;
 }
 .todayHead {
   background: color-mix(in srgb, var(--accent) 13%, var(--panel-strong));
   box-shadow: inset 0 -2px 0 var(--accent);
+}
+.todayHead .dayTitle::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 65%, transparent);
 }
 .laneNames {
   display: grid;
   grid-template-columns: 1fr 1fr;
   width: calc(100% + 2px);
   color: var(--muted);
-  font-size: 9.5px;
+  font-size: calc(8.5px * var(--schedule-text-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-align: center;
@@ -343,12 +342,16 @@
 }
 .timeRail span {
   position: absolute;
-  right: 8px;
+  right: 5px;
   color: var(--muted);
-  font-size: calc(11px * var(--schedule-text-scale));
+  font-size: calc(9px * var(--schedule-text-scale));
   font-weight: 600;
   line-height: 1;
   transform: translateY(-50%);
+}
+.timeRail span::after {
+  content: " —";
+  opacity: 0.55;
 }
 .timeRail .firstTime {
   transform: translateY(5px);
@@ -442,9 +445,11 @@
 }
 .event span {
   width: 100%;
+  display: -webkit-box;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
   font-size: clamp(
     11px,
     calc(0.72vw * var(--schedule-text-scale)),

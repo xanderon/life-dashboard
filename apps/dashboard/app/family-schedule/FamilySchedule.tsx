@@ -55,7 +55,7 @@ const MONTHS = [
 const START_HOUR = 8,
   END_HOUR = 19,
   STORAGE_KEY = "life-dashboard:family-schedule:v1",
-  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v1",
+  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v2",
   TEXT_SIZE_STORAGE_KEY = "life-dashboard:schedule-text-size:v1";
 const HOLIDAYS = [
   {
@@ -150,7 +150,7 @@ const DEFAULT_EVENTS: ScheduleEvent[] = [
     notes: "",
   },
 ];
-const SCHOOL_SUBJECTS = [
+const LEON_SUBJECTS = [
   "Română",
   "Matematică",
   "Engleză",
@@ -158,23 +158,47 @@ const SCHOOL_SUBJECTS = [
   "Arte",
   "Sport",
 ];
+const MINA_TIMETABLE = [
+  ["Limba română", "Matematică", "Limba engleză", "Joc și mișcare"],
+  ["Limba română", "Matematică", "Educație civică", "AVAP"],
+  ["Limba română", "Matematică", "Religie", "AVAP"],
+  ["Limba română", "Matematică", "Muzică și mișcare", "Educație fizică"],
+  ["Limba română", "Educație fizică", "Științe ale naturii", "Limba engleză"],
+];
+const PRIMARY_TIMES = [
+  ["08:00", "08:45"],
+  ["09:00", "09:45"],
+  ["10:05", "10:50"],
+  ["11:05", "11:50"],
+];
+const MIDDLE_SCHOOL_TIMES = [
+  ["08:00", "08:50"],
+  ["09:00", "09:50"],
+  ["10:00", "10:50"],
+  ["11:00", "11:50"],
+  ["12:00", "12:50"],
+];
 const SCHOOL_EVENTS: ScheduleEvent[] = (["Mina", "Leon"] as Child[]).flatMap(
-  (child, childIndex) =>
-    [0, 1, 2, 3, 4].flatMap((day) =>
-      Array.from({ length: child === "Leon" ? 5 : 4 }, (_, period) => ({
+  (child, childIndex) => {
+    const lessonTimes = child === "Mina" ? PRIMARY_TIMES : MIDDLE_SCHOOL_TIMES;
+    return [0, 1, 2, 3, 4].flatMap((day) =>
+      lessonTimes.map(([start, end], period) => ({
         id: `lesson-${child}-${day}-${period}`,
         child,
         day,
         title:
-          SCHOOL_SUBJECTS[
-            (day * 2 + period + childIndex) % SCHOOL_SUBJECTS.length
-          ],
-        start: `${String(8 + period).padStart(2, "0")}:00`,
-        end: `${String(9 + period).padStart(2, "0")}:00`,
+          child === "Mina"
+            ? MINA_TIMETABLE[day][period]
+            : LEON_SUBJECTS[
+                (day * 2 + period + childIndex) % LEON_SUBJECTS.length
+              ],
+        start,
+        end,
         kind: "school" as const,
         notes: day === 1 && period === childIndex ? "Prezentare proiect" : "",
       })),
-    ),
+    );
+  },
 );
 const EMPTY_FORM = {
   child: "Mina" as Child,
@@ -227,6 +251,12 @@ function emoji(e: ScheduleEvent) {
   if (t.includes("știin") || t.includes("stiin")) return "🔬";
   if (t.includes("arte")) return "🎨";
   if (t.includes("sport")) return "⚽";
+  if (t.includes("fizică") || t.includes("fizica")) return "🏃";
+  if (t.includes("muzică") || t.includes("muzica")) return "🎵";
+  if (t.includes("mișcare") || t.includes("miscare")) return "🤸";
+  if (t.includes("civică") || t.includes("civica")) return "🤝";
+  if (t.includes("religie")) return "🕊️";
+  if (t.includes("avap")) return "✂️";
   if (e.kind === "school") return "🎒";
   if (e.kind === "sds") return "📚";
   return "⭐";
@@ -569,7 +599,6 @@ export function FamilySchedule() {
               <div className={styles.dayTitle}>
                 <b>{SHORT_DAYS[dayIndex(d)]}</b>
                 <span>{label(d)}</span>
-                {iso(d) === iso(now) ? <em>AZI</em> : null}
               </div>
               <div className={styles.laneNames}>
                 <span>Mina</span>
@@ -590,7 +619,7 @@ export function FamilySchedule() {
                 }
                 style={{ top: `${(i / (END_HOUR - START_HOUR)) * 100}%` }}
               >
-                {START_HOUR + i}
+                {String(START_HOUR + i).padStart(2, "0")}:00
               </span>
             ))}
           </div>
