@@ -11,13 +11,13 @@ type Lesson = {
   subject: string;
   note: string;
 };
-const DAYS = ["Lun", "Mar", "Mie", "Joi", "Vin"],
-  DATES = ["7 sept", "8 sept", "9 sept", "10 sept", "11 sept"],
+const DAYS = ["Lun", "Mar", "Mie", "Joi", "Vin", "Sâm", "Dum"],
+  DATES = ["7 sept", "8 sept", "9 sept", "10 sept", "11 sept", "12 sept", "13 sept"],
   TIMES = ["08:00", "09:00", "10:00", "11:00"],
   SUBJECTS = ["Română", "Matematică", "Engleză", "Științe", "Arte", "Sport"],
   KEY = "life-dashboard:school-timetable:v1";
 const defaults: Lesson[] = (["Mina", "Leon"] as Child[]).flatMap((child, c) =>
-  DAYS.flatMap((_, day) =>
+  DAYS.slice(0, 5).flatMap((_, day) =>
     TIMES.map((__, period) => ({
       id: `${child}-${day}-${period}`,
       child,
@@ -93,8 +93,8 @@ export function SchoolTimetable() {
           </header>
         ))}
         <aside>
-          {TIMES.map((t) => (
-            <span key={t}>{t.slice(0, 2)}</span>
+          {Array.from({ length: 12 }, (_, i) => (
+            <span key={i} style={{ top: `${(i / 11) * 100}%` }}>{8 + i}</span>
           ))}
         </aside>
         {DAYS.map((_, day) => (
@@ -105,14 +105,15 @@ export function SchoolTimetable() {
                 const x = lessons.find(
                   (l) =>
                     l.child === child && l.day === day && l.period === period,
-                )!;
+                );
+                if (!x) return null;
                 return (
                   <button
                     key={x.id}
                     className={child === "Mina" ? s.mina : s.leon}
                     style={{
-                      top: `${period * 25 + 0.7}%`,
-                      height: "23.6%",
+                      top: `${(period / 11) * 100 + 0.5}%`,
+                      height: `${100 / 11 - 1}%`,
                       left: child === "Mina" ? "1.5%" : "50.75%",
                     }}
                     onClick={() => edit(x)}
