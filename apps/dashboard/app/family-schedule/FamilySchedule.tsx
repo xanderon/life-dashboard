@@ -17,6 +17,7 @@ import styles from "./schedule.module.css";
 
 type Child = "Mina" | "Leon";
 type View = "day" | "week" | "month" | "year";
+type TextSize = "normal" | "comfortable" | "large";
 type ScheduleEvent = {
   id: string;
   child: Child;
@@ -54,7 +55,8 @@ const MONTHS = [
 const START_HOUR = 8,
   END_HOUR = 19,
   STORAGE_KEY = "life-dashboard:family-schedule:v1",
-  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v1";
+  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v1",
+  TEXT_SIZE_STORAGE_KEY = "life-dashboard:schedule-text-size:v1";
 const HOLIDAYS = [
   {
     name: "Vacanța de toamnă",
@@ -261,6 +263,7 @@ function dbRow(e: ScheduleEvent) {
 
 export function FamilySchedule() {
   const [section, setSection] = useState<"calendar" | "school">("calendar");
+  const [textSize, setTextSize] = useState<TextSize>("comfortable");
   const [events, setEvents] = useState(DEFAULT_EVENTS),
     [schoolEvents, setSchoolEvents] = useState(SCHOOL_EVENTS),
     [view, setView] = useState<View>("week"),
@@ -288,6 +291,13 @@ export function FamilySchedule() {
               notes: e.notes ?? "",
             })),
           );
+        const savedTextSize = localStorage.getItem(TEXT_SIZE_STORAGE_KEY);
+        if (
+          savedTextSize === "normal" ||
+          savedTextSize === "comfortable" ||
+          savedTextSize === "large"
+        )
+          setTextSize(savedTextSize);
       } catch {}
       setReady(true);
     });
@@ -335,6 +345,9 @@ export function FamilySchedule() {
     if (ready)
       localStorage.setItem(SCHOOL_STORAGE_KEY, JSON.stringify(schoolEvents));
   }, [schoolEvents, ready]);
+  useEffect(() => {
+    if (ready) localStorage.setItem(TEXT_SIZE_STORAGE_KEY, textSize);
+  }, [textSize, ready]);
   const weekStart = useMemo(() => mondayOf(cursor), [cursor]);
   const visibleDates =
     view === "day"
@@ -445,7 +458,7 @@ export function FamilySchedule() {
     100;
   return (
     <main
-      className={`${styles.page} ${section === "school" ? styles.schoolMode : styles.calendarMode}`}
+      className={`${styles.page} ${styles[`text-${textSize}`]} ${section === "school" ? styles.schoolMode : styles.calendarMode}`}
     >
       <header className={styles.header}>
         <div className={styles.titleGroup}>
@@ -507,16 +520,37 @@ export function FamilySchedule() {
                 : "…"}
           </span>
         </strong>
-        <div className={styles.viewSwitch}>
-          {(["day", "week", "month", "year"] as View[]).map((v) => (
-            <button
-              key={v}
-              className={view === v ? styles.activeView : ""}
-              onClick={() => setView(v)}
-            >
-              {{ day: "Zi", week: "Săptămână", month: "Lună", year: "An" }[v]}
-            </button>
-          ))}
+        <div className={styles.toolbarOptions}>
+          <div className={styles.textSizeSwitch} aria-label="Mărimea textului">
+            {(
+              [
+                ["normal", "A", "Text normal"],
+                ["comfortable", "A+", "Text confortabil"],
+                ["large", "A++", "Text foarte mare"],
+              ] as const
+            ).map(([size, label, title]) => (
+              <button
+                key={size}
+                className={textSize === size ? styles.activeTextSize : ""}
+                onClick={() => setTextSize(size)}
+                title={title}
+                aria-label={title}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className={styles.viewSwitch}>
+            {(["day", "week", "month", "year"] as View[]).map((v) => (
+              <button
+                key={v}
+                className={view === v ? styles.activeView : ""}
+                onClick={() => setView(v)}
+              >
+                {{ day: "Zi", week: "Săptămână", month: "Lună", year: "An" }[v]}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
       {view === "day" || view === "week" ? (
@@ -530,11 +564,12 @@ export function FamilySchedule() {
           {visibleDates.map((d) => (
             <div
               key={iso(d)}
-              className={`${styles.dayHead} ${dayIndex(d) > 4 ? styles.weekendHead : ""}`}
+              className={`${styles.dayHead} ${iso(d) === iso(now) ? styles.todayHead : ""} ${dayIndex(d) > 4 ? styles.weekendHead : ""}`}
             >
               <div className={styles.dayTitle}>
                 <b>{SHORT_DAYS[dayIndex(d)]}</b>
                 <span>{label(d)}</span>
+                {iso(d) === iso(now) ? <em>AZI</em> : null}
               </div>
               <div className={styles.laneNames}>
                 <span>Mina</span>
@@ -566,7 +601,7 @@ export function FamilySchedule() {
             return (
               <div
                 key={iso(d)}
-                className={`${styles.dayColumn} ${di > 4 ? styles.weekendColumn : ""} ${holiday ? styles[`holiday${holiday.tone}`] : ""}`}
+                className={`${styles.dayColumn} ${today ? styles.todayColumn : ""} ${di > 4 ? styles.weekendColumn : ""} ${holiday ? styles[`holiday${holiday.tone}`] : ""}`}
                 onDoubleClick={() => openNew(di)}
               >
                 {holiday ? (
