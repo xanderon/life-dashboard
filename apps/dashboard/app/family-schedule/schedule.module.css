@@ -10,6 +10,7 @@
 .primaryButton:hover { transform: translateY(-1px); }
 .toolbar { min-height: 46px; padding: 5px 9px; border-radius: 16px; border: 1px solid var(--border); background: color-mix(in srgb, var(--panel) 88%, transparent); }
 .toolbar > strong { font-size: 14px; letter-spacing: -.01em; }
+.syncState { margin-left: 7px; color: var(--muted); font-size: 9px; font-weight: 650; }
 .legend { color: var(--muted); font-size: 12px; padding-right: 5px; }
 .legend span { display: flex; align-items: center; gap: 6px; }
 .legend i { width: 8px; height: 8px; border-radius: 50%; }
@@ -23,6 +24,8 @@
 .timeRail { position: relative; grid-column: 1; grid-row: 2; }
 .timeRail span { position: absolute; right: 8px; color: var(--muted); font-size: 9px; line-height: 1; transform: translateY(-50%); }
 .dayColumn { position: relative; grid-row: 2; border-left: 1px solid var(--border); min-width: 0; }
+.holiday0 { background: color-mix(in srgb, #d58a45 13%, transparent); }.holiday1 { background: color-mix(in srgb, #72b8e8 14%, transparent); }.holiday2 { background: color-mix(in srgb, #8077dc 14%, transparent); }.holiday3 { background: color-mix(in srgb, #dc78a2 13%, transparent); }.holiday4 { background: color-mix(in srgb, #e7b94f 13%, transparent); }
+.holidayLabel { position: absolute; z-index: 3; inset: 10px 5px auto; padding: 6px 3px; border: 1px solid color-mix(in srgb, var(--accent-warm) 25%, var(--border)); border-radius: 8px; background: color-mix(in srgb, var(--panel-strong) 78%, transparent); font-size: 9px; font-weight: 750; line-height: 1.25; text-align: center; }
 .gridLines, .gridLines i { position: absolute; inset: 0; pointer-events: none; }
 .gridLines i { inset-inline: 0; bottom: auto; height: 1px; background: var(--chart-grid); }
 .laneDivider { position: absolute; inset-block: 0; left: 50%; width: 1px; background: color-mix(in srgb, var(--border) 55%, transparent); }
