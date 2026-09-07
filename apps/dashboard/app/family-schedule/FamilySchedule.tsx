@@ -14,7 +14,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import styles from "./schedule.module.css";
-import { SchoolTimetable } from "./SchoolTimetable";
 
 type Child = "Mina" | "Leon";
 type View = "day" | "week" | "month" | "year";
@@ -54,7 +53,8 @@ const MONTHS = [
 ];
 const START_HOUR = 8,
   END_HOUR = 19,
-  STORAGE_KEY = "life-dashboard:family-schedule:v1";
+  STORAGE_KEY = "life-dashboard:family-schedule:v1",
+  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v1";
 const HOLIDAYS = [
   {
     name: "Vacanța de toamnă",
@@ -101,7 +101,7 @@ const DEFAULT_EVENTS: ScheduleEvent[] = [
         day,
         title: "Școală",
         start: "08:00",
-        end: "12:00",
+        end: child === "Leon" ? "13:00" : "12:00",
         kind: "school" as const,
         notes: "",
       },
@@ -110,7 +110,7 @@ const DEFAULT_EVENTS: ScheduleEvent[] = [
         child,
         day,
         title: "SDS",
-        start: "12:00",
+        start: child === "Leon" ? "13:00" : "12:00",
         end: "15:00",
         kind: "sds" as const,
         notes: "",
@@ -148,6 +148,32 @@ const DEFAULT_EVENTS: ScheduleEvent[] = [
     notes: "",
   },
 ];
+const SCHOOL_SUBJECTS = [
+  "Română",
+  "Matematică",
+  "Engleză",
+  "Științe",
+  "Arte",
+  "Sport",
+];
+const SCHOOL_EVENTS: ScheduleEvent[] = (["Mina", "Leon"] as Child[]).flatMap(
+  (child, childIndex) =>
+    [0, 1, 2, 3, 4].flatMap((day) =>
+      Array.from({ length: child === "Leon" ? 5 : 4 }, (_, period) => ({
+        id: `lesson-${child}-${day}-${period}`,
+        child,
+        day,
+        title:
+          SCHOOL_SUBJECTS[
+            (day * 2 + period + childIndex) % SCHOOL_SUBJECTS.length
+          ],
+        start: `${String(8 + period).padStart(2, "0")}:00`,
+        end: `${String(9 + period).padStart(2, "0")}:00`,
+        kind: "school" as const,
+        notes: day === 1 && period === childIndex ? "Prezentare proiect" : "",
+      })),
+    ),
+);
 const EMPTY_FORM = {
   child: "Mina" as Child,
   day: 0,
@@ -193,9 +219,32 @@ function emoji(e: ScheduleEvent) {
   if (t.includes("teatru")) return "🎭";
   if (t.includes("test")) return "📝";
   if (t.includes("înot") || t.includes("inot")) return "🏊";
+  if (t.includes("română") || t.includes("romana")) return "📖";
+  if (t.includes("matematic")) return "🔢";
+  if (t.includes("englez")) return "🇬🇧";
+  if (t.includes("știin") || t.includes("stiin")) return "🔬";
+  if (t.includes("arte")) return "🎨";
+  if (t.includes("sport")) return "⚽";
   if (e.kind === "school") return "🎒";
   if (e.kind === "sds") return "📚";
   return "⭐";
+}
+function normalizeEvents(items: ScheduleEvent[]) {
+  return items.map((event) => {
+    const isLeonSchool =
+      event.child === "Leon" &&
+      event.kind === "school" &&
+      event.start === "08:00" &&
+      event.end === "12:00";
+    const isLeonSds =
+      event.child === "Leon" && event.kind === "sds" && event.start === "12:00";
+    return {
+      ...event,
+      end: isLeonSchool ? "13:00" : event.end,
+      start: isLeonSds ? "13:00" : event.start,
+      notes: event.notes ?? "",
+    };
+  });
 }
 function dbRow(e: ScheduleEvent) {
   return {
@@ -213,6 +262,7 @@ function dbRow(e: ScheduleEvent) {
 export function FamilySchedule() {
   const [section, setSection] = useState<"calendar" | "school">("calendar");
   const [events, setEvents] = useState(DEFAULT_EVENTS),
+    [schoolEvents, setSchoolEvents] = useState(SCHOOL_EVENTS),
     [view, setView] = useState<View>("week"),
     [cursor, setCursor] = useState(new Date());
   const [editing, setEditing] = useState<ScheduleEvent | null>(null),
@@ -229,8 +279,11 @@ export function FamilySchedule() {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved)
-          setEvents(
-            (JSON.parse(saved) as ScheduleEvent[]).map((e) => ({
+          setEvents(normalizeEvents(JSON.parse(saved) as ScheduleEvent[]));
+        const savedSchool = localStorage.getItem(SCHOOL_STORAGE_KEY);
+        if (savedSchool)
+          setSchoolEvents(
+            (JSON.parse(savedSchool) as ScheduleEvent[]).map((e) => ({
               ...e,
               notes: e.notes ?? "",
             })),
@@ -249,16 +302,18 @@ export function FamilySchedule() {
       }
       if (data?.length)
         setEvents(
-          data.map((r) => ({
-            id: r.id,
-            child: r.child as Child,
-            day: r.day,
-            title: r.title,
-            start: r.start_time.slice(0, 5),
-            end: r.end_time.slice(0, 5),
-            kind: r.kind as ScheduleEvent["kind"],
-            notes: r.notes ?? "",
-          })),
+          normalizeEvents(
+            data.map((r) => ({
+              id: r.id,
+              child: r.child as Child,
+              day: r.day,
+              title: r.title,
+              start: r.start_time.slice(0, 5),
+              end: r.end_time.slice(0, 5),
+              kind: r.kind as ScheduleEvent["kind"],
+              notes: r.notes ?? "",
+            })),
+          ),
         );
       else {
         const seeded = await supabase
@@ -276,6 +331,10 @@ export function FamilySchedule() {
   useEffect(() => {
     if (ready) localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
   }, [events, ready]);
+  useEffect(() => {
+    if (ready)
+      localStorage.setItem(SCHOOL_STORAGE_KEY, JSON.stringify(schoolEvents));
+  }, [schoolEvents, ready]);
   const weekStart = useMemo(() => mondayOf(cursor), [cursor]);
   const visibleDates =
     view === "day"
@@ -336,6 +395,13 @@ export function FamilySchedule() {
       title: form.title.trim(),
       id: editing?.id ?? crypto.randomUUID(),
     };
+    if (section === "school") {
+      setSchoolEvents((x) =>
+        editing ? x.map((e) => (e.id === editing.id ? next : e)) : [...x, next],
+      );
+      close();
+      return;
+    }
     setEvents((x) =>
       editing ? x.map((e) => (e.id === editing.id ? next : e)) : [...x, next],
     );
@@ -348,12 +414,19 @@ export function FamilySchedule() {
     close();
   }
   function remove(id: string) {
+    if (section === "school") {
+      setSchoolEvents((x) => x.filter((e) => e.id !== id));
+      close();
+      return;
+    }
     setEvents((x) => x.filter((e) => e.id !== id));
     void supabase.from("family_schedule_events").delete().eq("id", id);
     close();
   }
   function reset() {
-    if (confirm("Revii la orarul inițial?")) setEvents(DEFAULT_EVENTS);
+    if (!confirm("Revii la orarul inițial?")) return;
+    if (section === "school") setSchoolEvents(SCHOOL_EVENTS);
+    else setEvents(DEFAULT_EVENTS);
   }
   function switchSection(next: "calendar" | "school") {
     if (next === section) return;
@@ -374,9 +447,6 @@ export function FamilySchedule() {
     <main
       className={`${styles.page} ${section === "school" ? styles.schoolMode : styles.calendarMode}`}
     >
-      <div className={styles.schoolTimetable}>
-        <SchoolTimetable weekStart={weekStart} />
-      </div>
       <header className={styles.header}>
         <div className={styles.titleGroup}>
           <Link href="/" className={styles.iconButton}>
@@ -398,7 +468,7 @@ export function FamilySchedule() {
             className={section === "school" ? styles.activeSection : ""}
             onClick={() => switchSection("school")}
           >
-            Ore școală
+            Orar
           </button>
         </div>
         <div className={styles.actions}>
@@ -524,7 +594,7 @@ export function FamilySchedule() {
                   </div>
                 ) : null}
                 {!holiday &&
-                  events
+                  (section === "school" ? schoolEvents : events)
                     .filter((e) => e.day === di)
                     .map((e) => {
                       const top =
@@ -546,6 +616,8 @@ export function FamilySchedule() {
                             top: `${top}%`,
                             height: `${height}%`,
                             left: e.child === "Mina" ? "1.5%" : "50.75%",
+                            viewTransitionName: `bubble-${e.child}-${e.day}-${e.start.replace(":", "")}`,
+                            viewTransitionClass: "schedule-bubble",
                           }}
                           onClick={() => openEdit(e)}
                         >
