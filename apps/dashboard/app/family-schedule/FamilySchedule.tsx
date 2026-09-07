@@ -355,6 +355,17 @@ export function FamilySchedule() {
   function reset() {
     if (confirm("Revii la orarul inițial?")) setEvents(DEFAULT_EVENTS);
   }
+  function switchSection(next: "calendar" | "school") {
+    if (next === section) return;
+    const root = document.documentElement;
+    root.dataset.scheduleDirection = next === "school" ? "forward" : "back";
+    const doc = document as Document & {
+      startViewTransition?: (update: () => void) => unknown;
+    };
+    if (doc.startViewTransition)
+      doc.startViewTransition(() => setSection(next));
+    else setSection(next);
+  }
   const nowTop =
     ((now.getHours() * 60 + now.getMinutes() - START_HOUR * 60) /
       ((END_HOUR - START_HOUR) * 60)) *
@@ -379,13 +390,13 @@ export function FamilySchedule() {
         <div className={styles.sectionSwitch}>
           <button
             className={section === "calendar" ? styles.activeSection : ""}
-            onClick={() => setSection("calendar")}
+            onClick={() => switchSection("calendar")}
           >
             Calendar
           </button>
           <button
             className={section === "school" ? styles.activeSection : ""}
-            onClick={() => setSection("school")}
+            onClick={() => switchSection("school")}
           >
             Ore școală
           </button>
