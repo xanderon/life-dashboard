@@ -60,6 +60,7 @@
   background: var(--panel-strong);
 }
 .corner {
+  view-transition-name: schedule-time-head;
   color: var(--muted);
   font-size: 9px;
   text-transform: uppercase;
@@ -93,6 +94,7 @@
 }
 .grid aside {
   position: relative;
+  view-transition-name: schedule-time-rail;
 }
 .grid aside span {
   position: absolute;
