@@ -11,8 +11,7 @@ type Lesson = {
   subject: string;
   note: string;
 };
-const DAYS = ["Lun", "Mar", "Mie", "Joi", "Vin", "Sâm", "Dum"],
-  DATES = ["7 sept", "8 sept", "9 sept", "10 sept", "11 sept", "12 sept", "13 sept"],
+const DAYS = ["Lun", "Mar", "Mie", "Joi", "Vin"],
   TIMES = ["08:00", "09:00", "10:00", "11:00"],
   SUBJECTS = ["Română", "Matematică", "Engleză", "Științe", "Arte", "Sport"],
   KEY = "life-dashboard:school-timetable:v1";
@@ -28,7 +27,7 @@ const defaults: Lesson[] = (["Mina", "Leon"] as Child[]).flatMap((child, c) =>
     })),
   ),
 );
-export function SchoolTimetable() {
+export function SchoolTimetable({ weekStart }: { weekStart: Date }) {
   const [lessons, setLessons] = useState(defaults),
     [editing, setEditing] = useState<Lesson | null>(null),
     [form, setForm] = useState({ subject: "", note: "" });
@@ -85,7 +84,7 @@ export function SchoolTimetable() {
         {DAYS.map((d, i) => (
           <header key={d}>
             <b>{d}</b>
-            <span>{DATES[i]}</span>
+            <span>{dateLabel(addDays(weekStart, i))}</span>
             <small>
               <i>Mina</i>
               <i>Leon</i>
@@ -93,8 +92,8 @@ export function SchoolTimetable() {
           </header>
         ))}
         <aside>
-          {Array.from({ length: 12 }, (_, i) => (
-            <span key={i} style={{ top: `${(i / 11) * 100}%` }}>{8 + i}</span>
+          {TIMES.map((_, i) => (
+            <span key={i} style={{ top: `${(i / 4) * 100}%` }}>{8 + i}</span>
           ))}
         </aside>
         {DAYS.map((_, day) => (
@@ -112,8 +111,8 @@ export function SchoolTimetable() {
                     key={x.id}
                     className={child === "Mina" ? s.mina : s.leon}
                     style={{
-                      top: `${(period / 11) * 100 + 0.5}%`,
-                      height: `${100 / 11 - 1}%`,
+                      top: `${period * 25 + 0.7}%`,
+                      height: "23.6%",
                       left: child === "Mina" ? "1.5%" : "50.75%",
                     }}
                     onClick={() => edit(x)}
@@ -187,3 +186,5 @@ function subjectEmoji(x: string) {
   if (x === "Sport") return "⚽";
   return "📚";
 }
+function addDays(date: Date, amount: number) { const next = new Date(date); next.setDate(next.getDate() + amount); return next; }
+function dateLabel(date: Date) { return new Intl.DateTimeFormat('ro-RO', { day: 'numeric', month: 'short' }).format(date).replace('.', ''); }
