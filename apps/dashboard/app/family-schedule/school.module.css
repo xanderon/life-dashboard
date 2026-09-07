@@ -104,7 +104,11 @@
 .day {
   position: relative;
   border-left: 1px solid var(--border);
-  background-image: linear-gradient(to bottom,transparent calc(25% - 1px),color-mix(in srgb,var(--chart-grid) 58%,transparent) 25%);
+  background-image: linear-gradient(
+    to bottom,
+    transparent calc(25% - 1px),
+    color-mix(in srgb, var(--chart-grid) 58%, transparent) 25%
+  );
   background-size: 100% 25%;
 }
 .divider {

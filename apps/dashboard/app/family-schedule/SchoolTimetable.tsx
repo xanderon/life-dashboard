@@ -67,18 +67,6 @@ export function SchoolTimetable({ weekStart }: { weekStart: Date }) {
   }
   return (
     <section className={s.wrap}>
-      <div className={s.bar}>
-        <div>
-          <b>Ore școală</b>
-          <span>orar provizoriu · click pe o materie pentru editare</span>
-        </div>
-        <div>
-          <i className={s.minaDot} />
-          Mina
-          <i className={s.leonDot} />
-          Leon
-        </div>
-      </div>
       <div className={s.grid}>
         <div className={s.corner}>Ora</div>
         {DAYS.map((d, i) => (
@@ -93,7 +81,9 @@ export function SchoolTimetable({ weekStart }: { weekStart: Date }) {
         ))}
         <aside>
           {TIMES.map((_, i) => (
-            <span key={i} style={{ top: `${(i / 4) * 100}%` }}>{8 + i}</span>
+            <span key={i} style={{ top: `${(i / 4) * 100}%` }}>
+              {8 + i}
+            </span>
           ))}
         </aside>
         {DAYS.map((_, day) => (
@@ -186,5 +176,13 @@ function subjectEmoji(x: string) {
   if (x === "Sport") return "⚽";
   return "📚";
 }
-function addDays(date: Date, amount: number) { const next = new Date(date); next.setDate(next.getDate() + amount); return next; }
-function dateLabel(date: Date) { return new Intl.DateTimeFormat('ro-RO', { day: 'numeric', month: 'short' }).format(date).replace('.', ''); }
+function addDays(date: Date, amount: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + amount);
+  return next;
+}
+function dateLabel(date: Date) {
+  return new Intl.DateTimeFormat("ro-RO", { day: "numeric", month: "short" })
+    .format(date)
+    .replace(".", "");
+}
