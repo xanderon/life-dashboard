@@ -7,6 +7,7 @@
   flex-direction: column;
   gap: 8px;
   overflow: hidden;
+  font-family: var(--font-hyperlegible), var(--font-geist-sans), sans-serif;
 }
 .header,
 .toolbar {
@@ -283,20 +284,22 @@
   gap: 7px;
 }
 .dayTitle b {
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 700;
 }
 .dayTitle > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 500;
 }
 .laneNames {
   display: grid;
   grid-template-columns: 1fr 1fr;
   width: calc(100% + 2px);
   color: var(--muted);
-  font-size: 8px;
-  font-weight: 750;
-  letter-spacing: 0.08em;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-align: center;
   text-transform: uppercase;
 }
@@ -318,7 +321,8 @@
   position: absolute;
   right: 8px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 11px;
+  font-weight: 600;
   line-height: 1;
   transform: translateY(-50%);
 }
@@ -391,7 +395,7 @@
   overflow: hidden;
   border: 1px solid transparent;
   border-radius: 8px;
-  padding: 5px 6px;
+  padding: 7px 8px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -414,15 +418,23 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
-  font-weight: 750;
-  line-height: 1.15;
+  font-size: clamp(11px, 0.72vw, 14px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.005em;
+}
+.eventEmoji {
+  display: inline-block;
+  margin-right: 5px;
+  font-size: 1.12em;
+  line-height: 1;
 }
 .event small {
-  margin-top: 3px;
-  font-size: 8px;
-  line-height: 1;
-  opacity: 0.82;
+  margin-top: 4px;
+  font-size: clamp(9px, 0.57vw, 11px);
+  font-weight: 500;
+  line-height: 1.1;
+  opacity: 0.9;
   white-space: nowrap;
 }
 .mina {
@@ -517,7 +529,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: color-mix(in srgb, var(--text) 82%, transparent);
-  font-size: 8px;
+  font-size: clamp(9px, 0.6vw, 11px);
+  font-weight: 600;
   font-style: normal;
 }
 .dialog {
@@ -733,7 +746,7 @@
     gap: 4px;
   }
   .event {
-    padding: 3px;
+    padding: 5px;
   }
   .event small {
     display: none;
@@ -747,6 +760,14 @@
   }
   .header h1 {
     font-size: 19px;
+  }
+  .event span {
+    font-size: 14px;
+  }
+  .event small,
+  .event em {
+    display: block;
+    font-size: 11px;
   }
   .eyebrow {
     font-size: 8px;

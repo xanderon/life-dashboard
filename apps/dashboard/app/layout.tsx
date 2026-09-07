@@ -1,5 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
+import {
+  Atkinson_Hyperlegible_Next,
+  Geist,
+  Geist_Mono,
+  Space_Grotesk,
+} from "next/font/google";
 import "./globals.css";
 import PwaRegister from "./pwa";
 
@@ -16,6 +21,11 @@ const geistMono = Geist_Mono({
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
   subsets: ["latin"],
+});
+
+const atkinson = Atkinson_Hyperlegible_Next({
+  variable: "--font-hyperlegible",
+  subsets: ["latin", "latin-ext"],
 });
 
 export const metadata: Metadata = {
@@ -48,7 +58,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${atkinson.variable} antialiased`}
       >
         <PwaRegister />
         {children}

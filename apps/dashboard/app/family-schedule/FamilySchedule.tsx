@@ -622,7 +622,10 @@ export function FamilySchedule() {
                           onClick={() => openEdit(e)}
                         >
                           <span>
-                            {emoji(e)} {e.title}
+                            <b className={styles.eventEmoji} aria-hidden="true">
+                              {emoji(e)}
+                            </b>
+                            {e.title}
                           </span>
                           <small>
                             {e.start}–{e.end}
