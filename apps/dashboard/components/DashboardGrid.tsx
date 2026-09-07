@@ -8,6 +8,7 @@ import { ClockCard } from './ClockCard';
 import { CutCoachCard } from './CutCoachCard';
 import { DevicesCard } from './DevicesCard';
 import { TricorderCard } from './TricorderCard';
+import { FamilyScheduleCard } from './FamilyScheduleCard';
 
 const DASHBOARD_CARD_ORDER_KEY = 'life-dashboard:dashboard-card-order:v1';
 const HIDDEN_APP_SLUGS = new Set(['sprintpulse', 'study-coach', 'cut-coach', 'tricorder']);
@@ -27,6 +28,7 @@ type DashboardOrderContextValue = {
 };
 
 const CUSTOM_TILE_ORDER = [
+  'widget:family-schedule',
   'widget:cut-coach',
   'widget:clock',
   'app:receipts',
@@ -177,6 +179,7 @@ export function DashboardGrid() {
       }));
 
     const staticTiles: DashboardTile[] = [
+      { id: 'widget:family-schedule', label: 'Orar copii', node: <FamilyScheduleCard /> },
       { id: 'widget:cut-coach', label: 'Cut Coach', node: <CutCoachCard /> },
       { id: 'widget:clock', label: 'Clock', node: <ClockCard /> },
       ...(appsBySlug.get('receipts')
