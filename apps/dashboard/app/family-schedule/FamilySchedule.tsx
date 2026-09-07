@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import styles from './schedule.module.css';
+import { SchoolTimetable } from './SchoolTimetable';
 
 type Child = 'Mina' | 'Leon';
 type View = 'day' | 'week' | 'month' | 'year';
@@ -41,6 +42,7 @@ function emoji(e: ScheduleEvent) { const t=e.title.toLowerCase(); if(t.includes(
 function dbRow(e: ScheduleEvent) { return {id:e.id,child:e.child,day:e.day,title:e.title,start_time:e.start,end_time:e.end,kind:e.kind,notes:e.notes}; }
 
 export function FamilySchedule() {
+  const [section,setSection]=useState<'calendar'|'school'>('calendar');
   const [events,setEvents]=useState(DEFAULT_EVENTS), [view,setView]=useState<View>('week'), [cursor,setCursor]=useState(new Date());
   const [editing,setEditing]=useState<ScheduleEvent|null>(null), [form,setForm]=useState<Omit<ScheduleEvent,'id'>>(EMPTY_FORM);
   const [ready,setReady]=useState(false), [storageMode,setStorageMode]=useState<'loading'|'cloud'|'local'>('loading'), [now,setNow]=useState(new Date());
@@ -58,8 +60,9 @@ export function FamilySchedule() {
   function remove(id:string){setEvents(x=>x.filter(e=>e.id!==id));void supabase.from('family_schedule_events').delete().eq('id',id);close();}
   function reset(){if(confirm('Revii la orarul inițial?'))setEvents(DEFAULT_EVENTS);}
   const nowTop=((now.getHours()*60+now.getMinutes()-START_HOUR*60)/((END_HOUR-START_HOUR)*60))*100;
-  return <main className={styles.page}>
-    <header className={styles.header}><div className={styles.titleGroup}><Link href="/" className={styles.iconButton}><ArrowLeft size={18}/></Link><div><div className={styles.eyebrow}>Familie · calendar</div><h1>Orar Mina & Leon</h1></div></div><div className={styles.actions}><button className={styles.ghostButton} onClick={reset}><RotateCcw size={16}/><span>Resetează</span></button><button className={styles.primaryButton} onClick={()=>openNew()}><CalendarPlus size={17}/>Adaugă</button></div></header>
+  return <main className={`${styles.page} ${styles[section]}`}>
+    <div className={styles.schoolTimetable}><SchoolTimetable/></div>
+    <header className={styles.header}><div className={styles.titleGroup}><Link href="/" className={styles.iconButton}><ArrowLeft size={18}/></Link><div><div className={styles.eyebrow}>Familie · calendar</div><h1>Orar Mina & Leon</h1></div></div><div className={styles.sectionSwitch}><button className={section==='calendar'?styles.activeSection:''} onClick={()=>setSection('calendar')}>Calendar</button><button className={section==='school'?styles.activeSection:''} onClick={()=>setSection('school')}>Ore școală</button></div><div className={styles.actions}>{section==='calendar'?<><button className={styles.ghostButton} onClick={reset}><RotateCcw size={16}/><span>Resetează</span></button><button className={styles.primaryButton} onClick={()=>openNew()}><CalendarPlus size={17}/>Adaugă</button></>:null}</div></header>
     <section className={styles.toolbar}><div className={styles.weekNav}><button className={styles.iconButton} onClick={()=>move(-1)}><ChevronLeft size={18}/></button><button className={styles.todayButton} onClick={()=>setCursor(new Date())}>Astăzi</button><button className={styles.iconButton} onClick={()=>move(1)}><ChevronRight size={18}/></button></div><strong className={styles.range}>{range}<span className={styles.syncState}>{storageMode==='cloud'?'☁️ salvat':storageMode==='local'?'📱 pe dispozitiv':'…'}</span></strong><div className={styles.viewSwitch}>{(['day','week','month','year'] as View[]).map(v=><button key={v} className={view===v?styles.activeView:''} onClick={()=>setView(v)}>{{day:'Zi',week:'Săptămână',month:'Lună',year:'An'}[v]}</button>)}</div></section>
     {(view==='day'||view==='week')?<section className={`${styles.calendar} ${view==='day'?styles.dayView:''}`} style={{gridTemplateColumns:`56px repeat(${visibleDates.length}, minmax(${view==='day'?'280px':'105px'}, 1fr))`}}>
       <div className={styles.corner}>Timp</div>{visibleDates.map(d=><div key={iso(d)} className={`${styles.dayHead} ${dayIndex(d)>4?styles.weekendHead:''}`}><div className={styles.dayTitle}><b>{SHORT_DAYS[dayIndex(d)]}</b><span>{label(d)}</span></div><div className={styles.laneNames}><span>Mina</span><span>Leon</span></div></div>)}
