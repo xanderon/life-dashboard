@@ -690,6 +690,27 @@
 .combinedMode .activity.leon {
   --activity-owner-accent: #68bdf4;
 }
+.event.specialMeeting {
+  border-color: color-mix(in srgb, #ffd166 88%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, #f08a3c 52%, var(--panel-strong)),
+    color-mix(in srgb, #c34f68 42%, var(--panel-strong))
+  );
+  box-shadow:
+    inset 4px 0 0 #ffe08a,
+    0 0 0 1px color-mix(in srgb, #ffd166 24%, transparent),
+    0 8px 22px -9px rgba(0, 0, 0, 0.72);
+}
+.event.specialMeeting::after {
+  width: 72%;
+  height: 3px;
+  background: #ffe08a;
+}
+.event.specialMeeting > span {
+  color: #fff8e7;
+  font-weight: 800;
+}
 .combinedMode .activity > span {
   z-index: 1;
   padding-right: 21px;

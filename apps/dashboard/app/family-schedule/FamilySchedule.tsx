@@ -122,6 +122,16 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     notes: "",
   },
   {
+    id: "leon-parent-meeting-2026-09-14",
+    child: "Leon",
+    day: 0,
+    title: "Ședință cu părinții",
+    start: "16:30",
+    end: "17:30",
+    kind: "activity",
+    notes: "",
+  },
+  {
     id: "leon-cello-tue",
     child: "Leon",
     day: 1,
@@ -349,6 +359,7 @@ function holidayFor(d: Date) {
 }
 function emoji(e: ScheduleEvent) {
   const t = e.title.toLowerCase();
+  if (t.includes("ședință") || t.includes("sedinta")) return "👥";
   if (t.includes("violoncel")) return "🎻";
   if (t.includes("teorie muzical")) return "🎼";
   if (t.includes("pian")) return "🎹";
@@ -1008,7 +1019,12 @@ export function FamilySchedule({
                         ]
                       : events
                   )
-                    .filter((e) => e.day === di)
+                    .filter(
+                      (e) =>
+                        e.day === di &&
+                        (e.id !== "leon-parent-meeting-2026-09-14" ||
+                          iso(d) === "2026-09-14"),
+                    )
                     .map((e) => {
                       const top =
                           ((Math.max(mins(e.start), START_HOUR * 60) -
@@ -1024,7 +1040,7 @@ export function FamilySchedule({
                       return (
                         <button
                           key={e.id}
-                          className={`${styles.event} ${e.notes ? styles.hasNote : ""} ${styles[e.child.toLowerCase()]} ${styles[e.kind]}`}
+                          className={`${styles.event} ${e.notes ? styles.hasNote : ""} ${e.id === "leon-parent-meeting-2026-09-14" ? styles.specialMeeting : ""} ${styles[e.child.toLowerCase()]} ${styles[e.kind]}`}
                           data-duration={mins(e.end) - mins(e.start)}
                           style={{
                             top: `${top}%`,
