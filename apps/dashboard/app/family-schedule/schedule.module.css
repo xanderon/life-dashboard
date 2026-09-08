@@ -985,11 +985,16 @@
   }
   .nowLine span {
     right: auto;
-    left: -65px;
+    left: -60px;
     top: -11px;
-    min-width: 54px;
-    padding: 3px 4px;
+    width: 52px;
+    min-width: 52px;
+    padding: 3px 2px;
+    font-size: 10px;
     text-align: center;
+  }
+  .nowLine {
+    z-index: 1;
   }
   .monthView {
     min-height: 0;
