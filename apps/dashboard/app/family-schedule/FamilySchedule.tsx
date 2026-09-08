@@ -55,7 +55,7 @@ const MONTHS = [
 const START_HOUR = 8,
   END_HOUR = 19,
   STORAGE_KEY = "life-dashboard:family-schedule:v1",
-  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v2",
+  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v3",
   TEXT_SIZE_STORAGE_KEY = "life-dashboard:schedule-text-size:v1";
 const HOLIDAYS = [
   {
@@ -103,7 +103,7 @@ const DEFAULT_EVENTS: ScheduleEvent[] = [
         day,
         title: "Școală",
         start: "08:00",
-        end: child === "Leon" ? "13:00" : "12:00",
+        end: child === "Leon" ? (day === 2 ? "14:00" : "13:00") : "12:00",
         kind: "school" as const,
         notes: "",
       },
@@ -112,7 +112,7 @@ const DEFAULT_EVENTS: ScheduleEvent[] = [
         child,
         day,
         title: "SDS",
-        start: child === "Leon" ? "13:00" : "12:00",
+        start: child === "Leon" ? (day === 2 ? "14:00" : "13:00") : "12:00",
         end: "15:00",
         kind: "sds" as const,
         notes: "",
@@ -165,6 +165,14 @@ const MINA_TIMETABLE = [
   ["Limba română", "Matematică", "Muzică și mișcare", "Educație fizică"],
   ["Limba română", "Educație fizică", "Științe ale naturii", "Limba engleză"],
 ];
+const LEON_WEDNESDAY = [
+  "Matematică",
+  "Educație muzicală",
+  "Franceză",
+  "Sport",
+  "TIC",
+  "Matematică",
+];
 const PRIMARY_TIMES = [
   ["08:00", "08:45"],
   ["09:00", "09:45"],
@@ -177,28 +185,33 @@ const MIDDLE_SCHOOL_TIMES = [
   ["10:00", "10:50"],
   ["11:00", "11:50"],
   ["12:00", "12:50"],
+  ["13:00", "13:50"],
 ];
 const SCHOOL_EVENTS: ScheduleEvent[] = (["Mina", "Leon"] as Child[]).flatMap(
-  (child, childIndex) => {
-    const lessonTimes = child === "Mina" ? PRIMARY_TIMES : MIDDLE_SCHOOL_TIMES;
-    return [0, 1, 2, 3, 4].flatMap((day) =>
-      lessonTimes.map(([start, end], period) => ({
+  (child, childIndex) =>
+    [0, 1, 2, 3, 4].flatMap((day) => {
+      const lessonTimes =
+        child === "Mina"
+          ? PRIMARY_TIMES
+          : MIDDLE_SCHOOL_TIMES.slice(0, day === 2 ? 6 : 5);
+      return lessonTimes.map(([start, end], period) => ({
         id: `lesson-${child}-${day}-${period}`,
         child,
         day,
         title:
           child === "Mina"
             ? MINA_TIMETABLE[day][period]
-            : LEON_SUBJECTS[
-                (day * 2 + period + childIndex) % LEON_SUBJECTS.length
-              ],
+            : day === 2
+              ? LEON_WEDNESDAY[period]
+              : LEON_SUBJECTS[
+                  (day * 2 + period + childIndex) % LEON_SUBJECTS.length
+                ],
         start,
         end,
         kind: "school" as const,
         notes: day === 1 && period === childIndex ? "Prezentare proiect" : "",
-      })),
-    );
-  },
+      }));
+    }),
 );
 const EMPTY_FORM = {
   child: "Mina" as Child,
@@ -257,23 +270,48 @@ function emoji(e: ScheduleEvent) {
   if (t.includes("civică") || t.includes("civica")) return "🤝";
   if (t.includes("religie")) return "🕊️";
   if (t.includes("avap")) return "✂️";
+  if (t.includes("francez")) return "🇫🇷";
+  if (t === "tic") return "💻";
   if (e.kind === "school") return "🎒";
   if (e.kind === "sds") return "📚";
   return "⭐";
 }
 function normalizeEvents(items: ScheduleEvent[]) {
   return items.map((event) => {
-    const isLeonSchool =
+    const isLegacyLeonSchool =
       event.child === "Leon" &&
       event.kind === "school" &&
       event.start === "08:00" &&
       event.end === "12:00";
-    const isLeonSds =
+    const isWednesdayLeonSchool =
+      event.child === "Leon" &&
+      event.day === 2 &&
+      event.kind === "school" &&
+      event.start === "08:00" &&
+      event.end === "13:00";
+    const isLegacyLeonSds =
       event.child === "Leon" && event.kind === "sds" && event.start === "12:00";
+    const isWednesdayLeonSds =
+      event.child === "Leon" &&
+      event.day === 2 &&
+      event.kind === "sds" &&
+      event.start === "13:00";
     return {
       ...event,
-      end: isLeonSchool ? "13:00" : event.end,
-      start: isLeonSds ? "13:00" : event.start,
+      end: isWednesdayLeonSchool
+        ? "14:00"
+        : isLegacyLeonSchool
+          ? event.day === 2
+            ? "14:00"
+            : "13:00"
+          : event.end,
+      start: isWednesdayLeonSds
+        ? "14:00"
+        : isLegacyLeonSds
+          ? event.day === 2
+            ? "14:00"
+            : "13:00"
+          : event.start,
       notes: event.notes ?? "",
     };
   });
