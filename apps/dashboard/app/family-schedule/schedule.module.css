@@ -61,8 +61,16 @@
 }
 .focusMode {
   min-height: 0;
-  padding: 6px;
+  padding: 0;
   gap: 0;
+}
+.focusMode .calendar {
+  --head: 50px;
+  border-radius: 14px;
+}
+.focusMode .dayHead {
+  gap: 3px;
+  padding-block: 4px 3px;
 }
 .focusMode > .header,
 .focusMode > .toolbar {
@@ -667,6 +675,24 @@
   box-shadow:
     inset 4px 0 0 #68bdf4,
     0 8px 20px -11px #000;
+}
+.combinedMode .activity::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  bottom: 0;
+  width: 58%;
+  height: 2px;
+  border-radius: 0 999px 999px 0;
+  background: var(--activity-owner-accent);
+  opacity: 0.92;
+}
+.combinedMode .activity.mina {
+  --activity-owner-accent: #ed82b7;
+}
+.combinedMode .activity.leon {
+  --activity-owner-accent: #68bdf4;
 }
 .combinedMode .activity > span {
   z-index: 1;
