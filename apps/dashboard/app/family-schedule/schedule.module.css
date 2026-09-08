@@ -486,27 +486,13 @@
 }
 .event > span {
   width: 100%;
-  display: -webkit-box;
   overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
   white-space: normal;
-  font-size: clamp(
-    11px,
-    calc(0.72vw * var(--schedule-text-scale)),
-    calc(14px * var(--schedule-text-scale))
-  );
+  font-size: clamp(13px, 4.2cqi, calc(14px * var(--schedule-text-scale)));
   font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: 0.005em;
-}
-.fullEventTitle,
-.compactEventTitle {
-  font: inherit;
-  font-style: normal;
-}
-.compactEventTitle {
-  display: none;
+  line-height: 1.08;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
 }
 .eventEmoji {
   display: inline-block;
@@ -656,14 +642,8 @@
   font-style: normal;
 }
 @container schedule-day (max-width: 340px) {
-  .fullEventTitle {
-    display: none;
-  }
-  .compactEventTitle {
-    display: inline;
-  }
   .event > span {
-    font-size: clamp(13px, 4.7cqi, 17px);
+    font-size: clamp(12px, 4.15cqi, 15px);
   }
   .event small {
     font-size: clamp(10px, 3.6cqi, 13px);
@@ -683,10 +663,11 @@
     padding: 5px 6px;
   }
   .event > span {
-    -webkit-line-clamp: 1;
+    font-size: clamp(11px, 5.7cqi, 13px);
+    letter-spacing: -0.025em;
   }
   .eventEmoji {
-    margin-right: 3px;
+    display: none;
   }
   .event em::before {
     content: "📝";
