@@ -3,6 +3,12 @@ import { createClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import { FamilySchedule, type ScheduleEvent } from "../../FamilySchedule";
 
+export const dynamic = "force-dynamic";
+export const metadata = {
+  robots: { index: false, follow: false },
+  referrer: "no-referrer" as const,
+};
+
 const SHARE_TOKEN_HASH =
   "a8728c803e339c76e1aed439ca71dbad49fbe1266d16585fd162c3f9a5766e55";
 
