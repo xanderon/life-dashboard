@@ -112,16 +112,6 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     notes: "",
   },
   {
-    id: "leon-cello-mon",
-    child: "Leon",
-    day: 0,
-    title: "Violoncel",
-    start: "17:00",
-    end: "18:00",
-    kind: "activity",
-    notes: "",
-  },
-  {
     id: "leon-parent-meeting-2026-09-14",
     child: "Leon",
     day: 0,
@@ -134,7 +124,7 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
   {
     id: "leon-cello-tue",
     child: "Leon",
-    day: 1,
+    day: 4,
     title: "Violoncel",
     start: "18:00",
     end: "19:00",
@@ -515,37 +505,39 @@ export function FamilySchedule({
       }
       if (data?.length) {
         const loadedEvents = normalizeEvents(
-          data.map((r) => ({
-            id: r.id,
-            child: r.child as Child,
-            day: r.day,
-            title: r.title,
-            start:
-              r.id === "leon-music-theory-mon" &&
-              r.start_time.slice(0, 5) === "17:00" &&
-              r.end_time.slice(0, 5) === "18:00"
-                ? "16:00"
-                : r.id === "leon-cello-wed"
-                  ? "14:30"
-                  : r.id === "leon-music-theory-wed"
-                    ? "16:00"
-                    : r.start_time.slice(0, 5),
-            end:
-              r.id === "leon-music-theory-mon" &&
-              r.start_time.slice(0, 5) === "17:00" &&
-              r.end_time.slice(0, 5) === "18:00"
-                ? "17:00"
-                : r.id === "leon-cello-wed"
+          data
+            .filter((r) => r.id !== "leon-cello-mon")
+            .map((r) => ({
+              id: r.id,
+              child: r.child as Child,
+              day: r.id === "leon-cello-tue" && r.day === 1 ? 4 : r.day,
+              title: r.title,
+              start:
+                r.id === "leon-music-theory-mon" &&
+                r.start_time.slice(0, 5) === "17:00" &&
+                r.end_time.slice(0, 5) === "18:00"
                   ? "16:00"
-                  : r.id === "leon-music-theory-wed"
-                    ? "17:00"
-                    : r.end_time.slice(0, 5),
-            kind: r.kind as ScheduleEvent["kind"],
-            notes:
-              r.id === "leon-cello-wed" && r.notes === "Instrument"
-                ? ""
-                : (r.notes ?? ""),
-          })),
+                  : r.id === "leon-cello-wed"
+                    ? "14:30"
+                    : r.id === "leon-music-theory-wed"
+                      ? "16:00"
+                      : r.start_time.slice(0, 5),
+              end:
+                r.id === "leon-music-theory-mon" &&
+                r.start_time.slice(0, 5) === "17:00" &&
+                r.end_time.slice(0, 5) === "18:00"
+                  ? "17:00"
+                  : r.id === "leon-cello-wed"
+                    ? "16:00"
+                    : r.id === "leon-music-theory-wed"
+                      ? "17:00"
+                      : r.end_time.slice(0, 5),
+              kind: r.kind as ScheduleEvent["kind"],
+              notes:
+                r.id === "leon-cello-wed" && r.notes === "Instrument"
+                  ? ""
+                  : (r.notes ?? ""),
+            })),
         );
         const missingLeonActivities = DEFAULT_EVENTS.filter(
           (event) =>
@@ -555,6 +547,8 @@ export function FamilySchedule({
         setEvents([...loadedEvents, ...missingLeonActivities]);
         const changedLeonActivities = loadedEvents.filter(
           (event) =>
+            (event.id === "leon-cello-tue" &&
+              data.find((row) => row.id === event.id)?.day !== event.day) ||
             (event.id === "leon-music-theory-mon" &&
               (data
                 .find((row) => row.id === event.id)
@@ -585,6 +579,11 @@ export function FamilySchedule({
             );
           if (seeded.error) setStorageMode("local");
         }
+        if (data.some((event) => event.id === "leon-cello-mon"))
+          await supabase
+            .from("family_schedule_events")
+            .delete()
+            .eq("id", "leon-cello-mon");
       } else {
         const seeded = await supabase
           .from("family_schedule_events")

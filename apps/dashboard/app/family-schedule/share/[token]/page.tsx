@@ -35,37 +35,39 @@ async function loadEvents(): Promise<ScheduleEvent[] | undefined> {
     .select("id,child,day,title,start_time,end_time,kind,notes")
     .order("day");
   if (error || !data?.length) return undefined;
-  const events = data.map((row) => ({
-    id: row.id,
-    child: row.child as ScheduleEvent["child"],
-    day: row.day,
-    title: row.title,
-    start:
-      row.id === "leon-music-theory-mon" &&
-      row.start_time.slice(0, 5) === "17:00" &&
-      row.end_time.slice(0, 5) === "18:00"
-        ? "16:00"
-        : row.id === "leon-cello-wed"
-          ? "14:30"
-          : row.id === "leon-music-theory-wed"
-            ? "16:00"
-            : row.start_time.slice(0, 5),
-    end:
-      row.id === "leon-music-theory-mon" &&
-      row.start_time.slice(0, 5) === "17:00" &&
-      row.end_time.slice(0, 5) === "18:00"
-        ? "17:00"
-        : row.id === "leon-cello-wed"
+  const events = data
+    .filter((row) => row.id !== "leon-cello-mon")
+    .map((row) => ({
+      id: row.id,
+      child: row.child as ScheduleEvent["child"],
+      day: row.id === "leon-cello-tue" && row.day === 1 ? 4 : row.day,
+      title: row.title,
+      start:
+        row.id === "leon-music-theory-mon" &&
+        row.start_time.slice(0, 5) === "17:00" &&
+        row.end_time.slice(0, 5) === "18:00"
           ? "16:00"
-          : row.id === "leon-music-theory-wed"
-            ? "17:00"
-            : row.end_time.slice(0, 5),
-    kind: row.kind as ScheduleEvent["kind"],
-    notes:
-      row.id === "leon-cello-wed" && row.notes === "Instrument"
-        ? ""
-        : (row.notes ?? ""),
-  }));
+          : row.id === "leon-cello-wed"
+            ? "14:30"
+            : row.id === "leon-music-theory-wed"
+              ? "16:00"
+              : row.start_time.slice(0, 5),
+      end:
+        row.id === "leon-music-theory-mon" &&
+        row.start_time.slice(0, 5) === "17:00" &&
+        row.end_time.slice(0, 5) === "18:00"
+          ? "17:00"
+          : row.id === "leon-cello-wed"
+            ? "16:00"
+            : row.id === "leon-music-theory-wed"
+              ? "17:00"
+              : row.end_time.slice(0, 5),
+      kind: row.kind as ScheduleEvent["kind"],
+      notes:
+        row.id === "leon-cello-wed" && row.notes === "Instrument"
+          ? ""
+          : (row.notes ?? ""),
+    }));
   return [
     ...events,
     ...NEW_LEON_ACTIVITIES.filter(
