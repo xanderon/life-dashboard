@@ -43,7 +43,10 @@ async function loadEvents(): Promise<ScheduleEvent[] | undefined> {
     start: row.start_time.slice(0, 5),
     end: row.end_time.slice(0, 5),
     kind: row.kind as ScheduleEvent["kind"],
-    notes: row.notes ?? "",
+    notes:
+      row.id === "leon-cello-wed" && row.notes === "Instrument"
+        ? ""
+        : (row.notes ?? ""),
   }));
   return [
     ...events,

@@ -9,6 +9,7 @@ import {
   Minimize2,
   SlidersHorizontal,
   Pencil,
+  RefreshCw,
   RotateCcw,
   Trash2,
   X,
@@ -61,6 +62,7 @@ const START_HOUR = 8,
   STORAGE_KEY = "life-dashboard:family-schedule:v1",
   SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v5",
   TEXT_SIZE_STORAGE_KEY = "life-dashboard:schedule-text-size:v1";
+const FOCUS_REFRESH_KEY = "life-dashboard:schedule-focus-refresh";
 const HOLIDAYS = [
   {
     name: "Vacanța de toamnă",
@@ -127,7 +129,7 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     start: "15:00",
     end: "17:00",
     kind: "activity",
-    notes: "Instrument",
+    notes: "",
   },
   {
     id: "leon-music-theory-wed",
@@ -443,6 +445,16 @@ export function FamilySchedule({
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     queueMicrotask(() => {
+      const refreshedSection = sessionStorage.getItem(FOCUS_REFRESH_KEY);
+      if (
+        refreshedSection === "calendar" ||
+        refreshedSection === "school" ||
+        refreshedSection === "combined"
+      ) {
+        sessionStorage.removeItem(FOCUS_REFRESH_KEY);
+        setSection(refreshedSection);
+        setFocusMode(true);
+      }
       if (matchMedia("(max-width: 650px)").matches) setView("day");
       if (readOnly) {
         setReady(true);
@@ -490,7 +502,10 @@ export function FamilySchedule({
             start: r.start_time.slice(0, 5),
             end: r.end_time.slice(0, 5),
             kind: r.kind as ScheduleEvent["kind"],
-            notes: r.notes ?? "",
+            notes:
+              r.id === "leon-cello-wed" && r.notes === "Instrument"
+                ? ""
+                : (r.notes ?? ""),
           })),
         );
         const missingLeonActivities = DEFAULT_EVENTS.filter(
@@ -685,6 +700,10 @@ export function FamilySchedule({
       // Focus mode still works when an embedded TV browser blocks native fullscreen.
     }
   }
+  function refreshInFocus() {
+    sessionStorage.setItem(FOCUS_REFRESH_KEY, section);
+    window.location.reload();
+  }
   const nowTop =
     ((now.getHours() * 60 + now.getMinutes() - START_HOUR * 60) /
       ((END_HOUR - START_HOUR) * 60)) *
@@ -717,6 +736,9 @@ export function FamilySchedule({
               ))}
               <button onClick={toggleFocusMode} title="Ieși din modul Focus">
                 <Minimize2 size={17} />
+              </button>
+              <button onClick={refreshInFocus} title="Reîncarcă pagina">
+                <RefreshCw size={17} />
               </button>
             </div>
           ) : null}
@@ -849,7 +871,7 @@ export function FamilySchedule({
         <section
           className={`${styles.calendar} ${view === "day" ? styles.dayView : ""}`}
           style={{
-            gridTemplateColumns: `56px repeat(${visibleDates.length}, minmax(${view === "day" ? "280px" : "180px"}, 1fr))`,
+            gridTemplateColumns: `${focusMode ? 42 : 56}px repeat(${visibleDates.length}, minmax(${view === "day" ? "280px" : "180px"}, 1fr))`,
           }}
         >
           <div className={styles.corner}>Timp</div>

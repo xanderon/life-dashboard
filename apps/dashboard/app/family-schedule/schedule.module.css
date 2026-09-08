@@ -77,7 +77,8 @@
 .focusControls {
   position: fixed;
   z-index: 30;
-  top: max(10px, env(safe-area-inset-top));
+  top: auto;
+  bottom: max(12px, env(safe-area-inset-bottom));
   right: max(10px, env(safe-area-inset-right));
   display: flex;
   align-items: center;
@@ -483,8 +484,7 @@
   transform: translateY(-50%);
 }
 .timeRail span::after {
-  content: " —";
-  opacity: 0.55;
+  content: "";
 }
 .timeRail .firstTime {
   transform: translateY(5px);
@@ -656,8 +656,16 @@
     color-mix(in srgb, #d99835 40%, var(--panel-strong)),
     color-mix(in srgb, #8b6bc5 32%, var(--panel-strong))
   );
+  box-shadow: 0 8px 20px -11px #000;
+}
+.combinedMode .activity.mina {
   box-shadow:
-    inset 3px 0 0 #f4bd54,
+    inset 4px 0 0 #ed82b7,
+    0 8px 20px -11px #000;
+}
+.combinedMode .activity.leon {
+  box-shadow:
+    inset 4px 0 0 #68bdf4,
     0 8px 20px -11px #000;
 }
 .combinedMode .activity > span {
@@ -701,6 +709,25 @@
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+.schoolMode .event,
+.combinedMode .event.school.school {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.schoolMode .event > span,
+.combinedMode .event.school > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding-inline: 2px;
+  text-align: center;
+}
+.schoolMode .event.hasNote > span,
+.combinedMode .event.school.hasNote > span {
+  padding-inline: 15px;
 }
 .nowLine {
   position: absolute;
