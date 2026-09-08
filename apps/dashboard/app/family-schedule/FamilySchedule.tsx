@@ -57,7 +57,7 @@ const MONTHS = [
 const START_HOUR = 8,
   END_HOUR = 19,
   STORAGE_KEY = "life-dashboard:family-schedule:v1",
-  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v4",
+  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v5",
   TEXT_SIZE_STORAGE_KEY = "life-dashboard:schedule-text-size:v1";
 const HOLIDAYS = [
   {
@@ -174,12 +174,12 @@ const MINA_TIMETABLE = [
   ["Limba română", "Matematică", "Limba engleză", "Joc și mișcare"],
   ["Limba română", "Matematică", "Educație civică", "AVAP"],
   ["Limba română", "Matematică", "Religie", "AVAP"],
-  ["Limba română", "Matematică", "Muzică și mișcare", "Educație fizică"],
-  ["Limba română", "Educație fizică", "Științe ale naturii", "Limba engleză"],
+  ["Limba română", "Matematică", "Muzică și mișcare", "Sport"],
+  ["Limba română", "Sport", "Științe ale naturii", "Limba engleză"],
 ];
 const LEON_WEDNESDAY = [
   "Matematică",
-  "Educație muzicală",
+  "Muzică",
   "Franceză",
   "Sport",
   "TIC",
@@ -384,6 +384,7 @@ export function FamilySchedule({
     [view, setView] = useState<View>("week"),
     [cursor, setCursor] = useState(new Date());
   const [editing, setEditing] = useState<ScheduleEvent | null>(null),
+    [previewing, setPreviewing] = useState<ScheduleEvent | null>(null),
     [form, setForm] = useState<Omit<ScheduleEvent, "id">>(EMPTY_FORM);
   const [ready, setReady] = useState(false),
     [storageMode, setStorageMode] = useState<
@@ -526,6 +527,20 @@ export function FamilySchedule({
       notes: e.notes,
     });
     show();
+  }
+  function openPreview(e: ScheduleEvent) {
+    setPreviewing(e);
+    requestAnimationFrame(() => {
+      (
+        document.getElementById("schedule-preview-dialog") as HTMLDialogElement
+      )?.showModal();
+    });
+  }
+  function closePreview() {
+    (
+      document.getElementById("schedule-preview-dialog") as HTMLDialogElement
+    )?.close();
+    setPreviewing(null);
   }
   function close() {
     setEditing(null);
@@ -831,7 +846,7 @@ export function FamilySchedule({
                       return (
                         <button
                           key={e.id}
-                          className={`${styles.event} ${styles[e.child.toLowerCase()]} ${styles[e.kind]}`}
+                          className={`${styles.event} ${e.notes ? styles.hasNote : ""} ${styles[e.child.toLowerCase()]} ${styles[e.kind]}`}
                           style={{
                             top: `${top}%`,
                             height: `${height}%`,
@@ -839,8 +854,9 @@ export function FamilySchedule({
                             viewTransitionName: `bubble-${e.child}-${e.day}-${e.start.replace(":", "")}`,
                             viewTransitionClass: "schedule-bubble",
                           }}
-                          onClick={() => !readOnly && openEdit(e)}
-                          disabled={readOnly}
+                          onClick={() =>
+                            readOnly ? openPreview(e) : openEdit(e)
+                          }
                         >
                           <span title={e.title}>
                             <b className={styles.eventEmoji} aria-hidden="true">
@@ -852,7 +868,12 @@ export function FamilySchedule({
                             {e.start}–{e.end}
                           </small>
                           {e.notes ? (
-                            <em title={e.notes}>📝 {e.notes}</em>
+                            <em
+                              title={e.notes}
+                              aria-label={`Notiță: ${e.notes}`}
+                            >
+                              📌
+                            </em>
                           ) : null}
                         </button>
                       );
@@ -978,6 +999,34 @@ export function FamilySchedule({
                 Salvează
               </button>
             </div>
+          </div>
+        </dialog>
+      ) : null}
+      {readOnly ? (
+        <dialog id="schedule-preview-dialog" className={styles.dialog}>
+          <div className={styles.dialogHead}>
+            <div>
+              <span>{previewing?.child} · detalii</span>
+              <h2>
+                {previewing ? `${emoji(previewing)} ${previewing.title}` : ""}
+              </h2>
+            </div>
+            <button className={styles.iconButton} onClick={closePreview}>
+              <X size={18} />
+            </button>
+          </div>
+          {previewing ? (
+            <div className={styles.previewDetails}>
+              <strong>
+                {DAYS[previewing.day]} · {previewing.start}–{previewing.end}
+              </strong>
+              {previewing.notes ? <p>📌 {previewing.notes}</p> : null}
+            </div>
+          ) : null}
+          <div className={styles.previewActions}>
+            <button className={styles.primaryButton} onClick={closePreview}>
+              Închide
+            </button>
           </div>
         </dialog>
       ) : null}
