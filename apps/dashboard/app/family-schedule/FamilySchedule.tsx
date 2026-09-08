@@ -613,6 +613,7 @@ export function FamilySchedule({
             <div
               key={iso(d)}
               className={`${styles.dayHead} ${iso(d) === iso(now) ? styles.todayHead : ""} ${dayIndex(d) > 4 ? styles.weekendHead : ""}`}
+              aria-current={iso(d) === iso(now) ? "date" : undefined}
             >
               <div className={styles.dayTitle}>
                 <b>{SHORT_DAYS[dayIndex(d)]}</b>
