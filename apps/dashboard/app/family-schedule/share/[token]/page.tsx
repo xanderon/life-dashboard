@@ -41,17 +41,25 @@ async function loadEvents(): Promise<ScheduleEvent[] | undefined> {
     day: row.day,
     title: row.title,
     start:
-      row.id === "leon-cello-wed"
-        ? "14:30"
-        : row.id === "leon-music-theory-wed"
-          ? "16:00"
-          : row.start_time.slice(0, 5),
-    end:
-      row.id === "leon-cello-wed"
+      row.id === "leon-music-theory-mon" &&
+      row.start_time.slice(0, 5) === "17:00" &&
+      row.end_time.slice(0, 5) === "18:00"
         ? "16:00"
-        : row.id === "leon-music-theory-wed"
-          ? "17:00"
-          : row.end_time.slice(0, 5),
+        : row.id === "leon-cello-wed"
+          ? "14:30"
+          : row.id === "leon-music-theory-wed"
+            ? "16:00"
+            : row.start_time.slice(0, 5),
+    end:
+      row.id === "leon-music-theory-mon" &&
+      row.start_time.slice(0, 5) === "17:00" &&
+      row.end_time.slice(0, 5) === "18:00"
+        ? "17:00"
+        : row.id === "leon-cello-wed"
+          ? "16:00"
+          : row.id === "leon-music-theory-wed"
+            ? "17:00"
+            : row.end_time.slice(0, 5),
     kind: row.kind as ScheduleEvent["kind"],
     notes:
       row.id === "leon-cello-wed" && row.notes === "Instrument"

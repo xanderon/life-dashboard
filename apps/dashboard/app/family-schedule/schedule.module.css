@@ -65,12 +65,8 @@
   gap: 0;
 }
 .focusMode .calendar {
-  --head: 50px;
+  --head: 62px;
   border-radius: 14px;
-}
-.focusMode .dayHead {
-  gap: 3px;
-  padding-block: 4px 3px;
 }
 .focusMode > .header,
 .focusMode > .toolbar {

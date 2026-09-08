@@ -106,6 +106,16 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     child: "Leon",
     day: 0,
     title: "Teorie muzicală",
+    start: "16:00",
+    end: "17:00",
+    kind: "activity",
+    notes: "",
+  },
+  {
+    id: "leon-cello-mon",
+    child: "Leon",
+    day: 0,
+    title: "Violoncel",
     start: "17:00",
     end: "18:00",
     kind: "activity",
@@ -500,17 +510,25 @@ export function FamilySchedule({
             day: r.day,
             title: r.title,
             start:
-              r.id === "leon-cello-wed"
-                ? "14:30"
-                : r.id === "leon-music-theory-wed"
-                  ? "16:00"
-                  : r.start_time.slice(0, 5),
-            end:
-              r.id === "leon-cello-wed"
+              r.id === "leon-music-theory-mon" &&
+              r.start_time.slice(0, 5) === "17:00" &&
+              r.end_time.slice(0, 5) === "18:00"
                 ? "16:00"
-                : r.id === "leon-music-theory-wed"
-                  ? "17:00"
-                  : r.end_time.slice(0, 5),
+                : r.id === "leon-cello-wed"
+                  ? "14:30"
+                  : r.id === "leon-music-theory-wed"
+                    ? "16:00"
+                    : r.start_time.slice(0, 5),
+            end:
+              r.id === "leon-music-theory-mon" &&
+              r.start_time.slice(0, 5) === "17:00" &&
+              r.end_time.slice(0, 5) === "18:00"
+                ? "17:00"
+                : r.id === "leon-cello-wed"
+                  ? "16:00"
+                  : r.id === "leon-music-theory-wed"
+                    ? "17:00"
+                    : r.end_time.slice(0, 5),
             kind: r.kind as ScheduleEvent["kind"],
             notes:
               r.id === "leon-cello-wed" && r.notes === "Instrument"
@@ -524,8 +542,15 @@ export function FamilySchedule({
             !loadedEvents.some((loaded) => loaded.id === event.id),
         );
         setEvents([...loadedEvents, ...missingLeonActivities]);
-        const changedWednesdayActivities = loadedEvents.filter(
+        const changedLeonActivities = loadedEvents.filter(
           (event) =>
+            (event.id === "leon-music-theory-mon" &&
+              (data
+                .find((row) => row.id === event.id)
+                ?.start_time.slice(0, 5) !== event.start ||
+                data
+                  .find((row) => row.id === event.id)
+                  ?.end_time.slice(0, 5) !== event.end)) ||
             (event.id === "leon-cello-wed" &&
               (data
                 .find((row) => row.id === event.id)
@@ -541,13 +566,11 @@ export function FamilySchedule({
                   .find((row) => row.id === event.id)
                   ?.end_time.slice(0, 5) !== "17:00")),
         );
-        if (missingLeonActivities.length || changedWednesdayActivities.length) {
+        if (missingLeonActivities.length || changedLeonActivities.length) {
           const seeded = await supabase
             .from("family_schedule_events")
             .upsert(
-              [...missingLeonActivities, ...changedWednesdayActivities].map(
-                dbRow,
-              ),
+              [...missingLeonActivities, ...changedLeonActivities].map(dbRow),
             );
           if (seeded.error) setStorageMode("local");
         }
