@@ -261,6 +261,17 @@ function emoji(e: ScheduleEvent) {
   if (e.kind === "sds") return "📚";
   return "⭐";
 }
+function compactTitle(title: string) {
+  const normalized = title.toLocaleLowerCase("ro-RO");
+  if (normalized === "limba română") return "Română";
+  if (normalized === "limba engleză") return "Engleză";
+  if (normalized === "educație fizică") return "Ed. fizică";
+  if (normalized === "educație civică") return "Ed. civică";
+  if (normalized === "științe ale naturii") return "Științe";
+  if (normalized === "muzică și mișcare") return "Muzică";
+  if (normalized === "joc și mișcare") return "Mișcare";
+  return title;
+}
 function normalizeEvents(items: ScheduleEvent[]) {
   return items.map((event) => {
     const isLeonSchool =
@@ -705,16 +716,21 @@ export function FamilySchedule({
                           onClick={() => !readOnly && openEdit(e)}
                           disabled={readOnly}
                         >
-                          <span>
+                          <span title={e.title}>
                             <b className={styles.eventEmoji} aria-hidden="true">
                               {emoji(e)}
                             </b>
-                            {e.title}
+                            <i className={styles.fullEventTitle}>{e.title}</i>
+                            <i className={styles.compactEventTitle}>
+                              {compactTitle(e.title)}
+                            </i>
                           </span>
                           <small>
                             {e.start}–{e.end}
                           </small>
-                          {e.notes ? <em>📝 {e.notes}</em> : null}
+                          {e.notes ? (
+                            <em title={e.notes}>📝 {e.notes}</em>
+                          ) : null}
                         </button>
                       );
                     })}

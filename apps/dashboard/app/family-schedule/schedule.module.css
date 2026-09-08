@@ -393,6 +393,8 @@
 }
 .dayColumn {
   position: relative;
+  container-type: inline-size;
+  container-name: schedule-day;
   grid-row: 2;
   border-left: 1px solid var(--border);
   min-width: 0;
@@ -482,7 +484,7 @@
   filter: none;
   transform: none;
 }
-.event span {
+.event > span {
   width: 100%;
   display: -webkit-box;
   overflow: hidden;
@@ -497,6 +499,14 @@
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0.005em;
+}
+.fullEventTitle,
+.compactEventTitle {
+  font: inherit;
+  font-style: normal;
+}
+.compactEventTitle {
+  display: none;
 }
 .eventEmoji {
   display: inline-block;
@@ -644,6 +654,43 @@
   );
   font-weight: 600;
   font-style: normal;
+}
+@container schedule-day (max-width: 340px) {
+  .fullEventTitle {
+    display: none;
+  }
+  .compactEventTitle {
+    display: inline;
+  }
+  .event > span {
+    font-size: clamp(13px, 4.7cqi, 17px);
+  }
+  .event small {
+    font-size: clamp(10px, 3.6cqi, 13px);
+  }
+  .event em {
+    width: auto;
+    max-width: 100%;
+    font-size: 0;
+  }
+  .event em::before {
+    content: "📝 Notiță";
+    font-size: clamp(10px, 3.4cqi, 12px);
+  }
+}
+@container schedule-day (max-width: 220px) {
+  .event {
+    padding: 5px 6px;
+  }
+  .event > span {
+    -webkit-line-clamp: 1;
+  }
+  .eventEmoji {
+    margin-right: 3px;
+  }
+  .event em::before {
+    content: "📝";
+  }
 }
 .dialog {
   width: min(92vw, 510px);
@@ -859,9 +906,6 @@
   }
   .event {
     padding: 5px;
-  }
-  .event small {
-    display: none;
   }
 }
 @media (max-width: 650px) {
