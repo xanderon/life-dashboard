@@ -18,7 +18,7 @@ import styles from "./schedule.module.css";
 type Child = "Mina" | "Leon";
 type View = "day" | "week" | "month" | "year";
 type TextSize = "normal" | "comfortable" | "large";
-type ScheduleEvent = {
+export type ScheduleEvent = {
   id: string;
   child: Child;
   day: number;
@@ -291,24 +291,34 @@ function dbRow(e: ScheduleEvent) {
   };
 }
 
-export function FamilySchedule() {
+export function FamilySchedule({
+  readOnly = false,
+  initialEvents,
+}: {
+  readOnly?: boolean;
+  initialEvents?: ScheduleEvent[];
+} = {}) {
   const [section, setSection] = useState<"calendar" | "school">("calendar");
   const [textSize, setTextSize] = useState<TextSize>("comfortable");
-  const [events, setEvents] = useState(DEFAULT_EVENTS),
+  const [events, setEvents] = useState(initialEvents ?? DEFAULT_EVENTS),
     [schoolEvents, setSchoolEvents] = useState(SCHOOL_EVENTS),
     [view, setView] = useState<View>("week"),
     [cursor, setCursor] = useState(new Date());
   const [editing, setEditing] = useState<ScheduleEvent | null>(null),
     [form, setForm] = useState<Omit<ScheduleEvent, "id">>(EMPTY_FORM);
   const [ready, setReady] = useState(false),
-    [storageMode, setStorageMode] = useState<"loading" | "cloud" | "local">(
-      "loading",
-    ),
+    [storageMode, setStorageMode] = useState<
+      "loading" | "cloud" | "local" | "shared"
+    >(readOnly ? "shared" : "loading"),
     [now, setNow] = useState(new Date());
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     queueMicrotask(() => {
       if (matchMedia("(max-width: 650px)").matches) setView("day");
+      if (readOnly) {
+        setReady(true);
+        return;
+      }
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved)
@@ -331,6 +341,7 @@ export function FamilySchedule() {
       } catch {}
       setReady(true);
     });
+    if (readOnly) return () => clearInterval(timer);
     void (async () => {
       const { data, error } = await supabase
         .from("family_schedule_events")
@@ -367,14 +378,15 @@ export function FamilySchedule() {
       setStorageMode("cloud");
     })();
     return () => clearInterval(timer);
-  }, []);
+  }, [readOnly]);
   useEffect(() => {
-    if (ready) localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
-  }, [events, ready]);
+    if (ready && !readOnly)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+  }, [events, readOnly, ready]);
   useEffect(() => {
-    if (ready)
+    if (ready && !readOnly)
       localStorage.setItem(SCHOOL_STORAGE_KEY, JSON.stringify(schoolEvents));
-  }, [schoolEvents, ready]);
+  }, [readOnly, schoolEvents, ready]);
   useEffect(() => {
     if (ready) localStorage.setItem(TEXT_SIZE_STORAGE_KEY, textSize);
   }, [textSize, ready]);
@@ -514,16 +526,20 @@ export function FamilySchedule() {
             Orar
           </button>
         </div>
-        <div className={styles.actions}>
-          <button className={styles.ghostButton} onClick={reset}>
-            <RotateCcw size={16} />
-            <span>Resetează</span>
-          </button>
-          <button className={styles.primaryButton} onClick={() => openNew()}>
-            <CalendarPlus size={17} />
-            Adaugă
-          </button>
-        </div>
+        {readOnly ? (
+          <div className={styles.readOnlyBadge}>🔒 Doar vizualizare</div>
+        ) : (
+          <div className={styles.actions}>
+            <button className={styles.ghostButton} onClick={reset}>
+              <RotateCcw size={16} />
+              <span>Resetează</span>
+            </button>
+            <button className={styles.primaryButton} onClick={() => openNew()}>
+              <CalendarPlus size={17} />
+              Adaugă
+            </button>
+          </div>
+        )}
       </header>
       <section className={styles.toolbar}>
         <div className={styles.weekNav}>
@@ -545,9 +561,11 @@ export function FamilySchedule() {
           <span className={styles.syncState}>
             {storageMode === "cloud"
               ? "☁️ salvat"
-              : storageMode === "local"
-                ? "📱 pe dispozitiv"
-                : "…"}
+              : storageMode === "shared"
+                ? "🔒 link privat"
+                : storageMode === "local"
+                  ? "📱 pe dispozitiv"
+                  : "…"}
           </span>
         </strong>
         <div className={styles.toolbarOptions}>
@@ -631,7 +649,7 @@ export function FamilySchedule() {
               <div
                 key={iso(d)}
                 className={`${styles.dayColumn} ${today ? styles.todayColumn : ""} ${di > 4 ? styles.weekendColumn : ""} ${holiday ? styles[`holiday${holiday.tone}`] : ""}`}
-                onDoubleClick={() => openNew(di)}
+                onDoubleClick={() => !readOnly && openNew(di)}
               >
                 {holiday ? (
                   <div className={styles.holidayLabel}>
@@ -683,7 +701,8 @@ export function FamilySchedule() {
                             viewTransitionName: `bubble-${e.child}-${e.day}-${e.start.replace(":", "")}`,
                             viewTransitionClass: "schedule-bubble",
                           }}
-                          onClick={() => openEdit(e)}
+                          onClick={() => !readOnly && openEdit(e)}
+                          disabled={readOnly}
                         >
                           <span>
                             <b className={styles.eventEmoji} aria-hidden="true">
@@ -722,102 +741,106 @@ export function FamilySchedule() {
           }}
         />
       )}
-      <dialog id="schedule-dialog" className={styles.dialog}>
-        <div className={styles.dialogHead}>
-          <div>
-            <span>{editing ? "Modifică activitatea" : "Activitate nouă"}</span>
-            <h2>{form.title || "Detalii program"}</h2>
-          </div>
-          <button className={styles.iconButton} onClick={close}>
-            <X size={18} />
-          </button>
-        </div>
-        <div className={styles.formGrid}>
-          <label className={styles.full}>
-            Activitate
-            <input
-              autoFocus
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="ex. Pian, test la matematică"
-            />
-          </label>
-          <label>
-            Copil
-            <select
-              value={form.child}
-              onChange={(e) =>
-                setForm({ ...form, child: e.target.value as Child })
-              }
-            >
-              <option>Mina</option>
-              <option>Leon</option>
-            </select>
-          </label>
-          <label>
-            Zi
-            <select
-              value={form.day}
-              onChange={(e) =>
-                setForm({ ...form, day: Number(e.target.value) })
-              }
-            >
-              {DAYS.map((d, i) => (
-                <option key={d} value={i}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            De la
-            <input
-              type="time"
-              value={form.start}
-              onChange={(e) => setForm({ ...form, start: e.target.value })}
-            />
-          </label>
-          <label>
-            Până la
-            <input
-              type="time"
-              value={form.end}
-              onChange={(e) => setForm({ ...form, end: e.target.value })}
-            />
-          </label>
-          <label className={styles.full}>
-            Notiță
-            <textarea
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              placeholder="ex. Test la matematică · capitolul 3"
-              rows={3}
-            />
-          </label>
-        </div>
-        <div className={styles.dialogActions}>
-          {editing ? (
-            <button
-              className={styles.deleteButton}
-              onClick={() => remove(editing.id)}
-            >
-              <Trash2 size={16} />
-              Șterge
-            </button>
-          ) : (
-            <span />
-          )}
-          <div>
-            <button className={styles.ghostButton} onClick={close}>
-              Renunță
-            </button>
-            <button className={styles.primaryButton} onClick={save}>
-              <Pencil size={16} />
-              Salvează
+      {!readOnly ? (
+        <dialog id="schedule-dialog" className={styles.dialog}>
+          <div className={styles.dialogHead}>
+            <div>
+              <span>
+                {editing ? "Modifică activitatea" : "Activitate nouă"}
+              </span>
+              <h2>{form.title || "Detalii program"}</h2>
+            </div>
+            <button className={styles.iconButton} onClick={close}>
+              <X size={18} />
             </button>
           </div>
-        </div>
-      </dialog>
+          <div className={styles.formGrid}>
+            <label className={styles.full}>
+              Activitate
+              <input
+                autoFocus
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="ex. Pian, test la matematică"
+              />
+            </label>
+            <label>
+              Copil
+              <select
+                value={form.child}
+                onChange={(e) =>
+                  setForm({ ...form, child: e.target.value as Child })
+                }
+              >
+                <option>Mina</option>
+                <option>Leon</option>
+              </select>
+            </label>
+            <label>
+              Zi
+              <select
+                value={form.day}
+                onChange={(e) =>
+                  setForm({ ...form, day: Number(e.target.value) })
+                }
+              >
+                {DAYS.map((d, i) => (
+                  <option key={d} value={i}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              De la
+              <input
+                type="time"
+                value={form.start}
+                onChange={(e) => setForm({ ...form, start: e.target.value })}
+              />
+            </label>
+            <label>
+              Până la
+              <input
+                type="time"
+                value={form.end}
+                onChange={(e) => setForm({ ...form, end: e.target.value })}
+              />
+            </label>
+            <label className={styles.full}>
+              Notiță
+              <textarea
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder="ex. Test la matematică · capitolul 3"
+                rows={3}
+              />
+            </label>
+          </div>
+          <div className={styles.dialogActions}>
+            {editing ? (
+              <button
+                className={styles.deleteButton}
+                onClick={() => remove(editing.id)}
+              >
+                <Trash2 size={16} />
+                Șterge
+              </button>
+            ) : (
+              <span />
+            )}
+            <div>
+              <button className={styles.ghostButton} onClick={close}>
+                Renunță
+              </button>
+              <button className={styles.primaryButton} onClick={save}>
+                <Pencil size={16} />
+                Salvează
+              </button>
+            </div>
+          </div>
+        </dialog>
+      ) : null}
     </main>
   );
 }

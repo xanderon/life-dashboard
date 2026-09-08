@@ -1,0 +1,48 @@
+import { createHash, timingSafeEqual } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
+import { notFound } from "next/navigation";
+import { FamilySchedule, type ScheduleEvent } from "../../FamilySchedule";
+
+const SHARE_TOKEN_HASH =
+  "a8728c803e339c76e1aed439ca71dbad49fbe1266d16585fd162c3f9a5766e55";
+
+function validToken(token: string) {
+  if (token.length < 32 || token.length > 128) return false;
+  const actual = Buffer.from(createHash("sha256").update(token).digest("hex"));
+  const expected = Buffer.from(SHARE_TOKEN_HASH);
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
+async function loadEvents(): Promise<ScheduleEvent[] | undefined> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) return undefined;
+  const supabase = createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await supabase
+    .from("family_schedule_events")
+    .select("id,child,day,title,start_time,end_time,kind,notes")
+    .order("day");
+  if (error || !data?.length) return undefined;
+  return data.map((row) => ({
+    id: row.id,
+    child: row.child as ScheduleEvent["child"],
+    day: row.day,
+    title: row.title,
+    start: row.start_time.slice(0, 5),
+    end: row.end_time.slice(0, 5),
+    kind: row.kind as ScheduleEvent["kind"],
+    notes: row.notes ?? "",
+  }));
+}
+
+export default async function SharedFamilySchedulePage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const { token } = await params;
+  if (!validToken(token)) notFound();
+  return <FamilySchedule readOnly initialEvents={await loadEvents()} />;
+}

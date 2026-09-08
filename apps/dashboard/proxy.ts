@@ -1,13 +1,18 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
-const PUBLIC_PATHS = ['/login', '/auth/callback', '/auth/hash'];
+const PUBLIC_PATHS = [
+  "/login",
+  "/auth/callback",
+  "/auth/hash",
+  "/family-schedule/share",
+];
 
 function isAsset(pathname: string) {
   return (
-    pathname.startsWith('/_next') ||
-    pathname === '/favicon.ico' ||
-    pathname.startsWith('/favicon') ||
+    pathname.startsWith("/_next") ||
+    pathname === "/favicon.ico" ||
+    pathname.startsWith("/favicon") ||
     pathname.match(/\.(.*)$/) // .css .js .png .svg etc.
   );
 }
@@ -41,10 +46,12 @@ export async function proxy(req: NextRequest) {
           });
         },
       },
-    }
+    },
   );
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p));
+  const isPublic = PUBLIC_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p),
+  );
 
   const {
     data: { user },
@@ -52,14 +59,14 @@ export async function proxy(req: NextRequest) {
 
   if (!user && !isPublic) {
     const url = req.nextUrl.clone();
-    url.pathname = '/login';
+    url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
   // Dacă e user și intră pe /login => redirect la home
-  if (user && pathname === '/login') {
+  if (user && pathname === "/login") {
     const url = req.nextUrl.clone();
-    url.pathname = '/';
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 
@@ -67,5 +74,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api).*)'],
+  matcher: ["/((?!api).*)"],
 };
