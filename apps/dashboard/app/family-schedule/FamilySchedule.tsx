@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Maximize2,
   Minimize2,
+  SlidersHorizontal,
   Pencil,
   RotateCcw,
   Trash2,
@@ -19,6 +20,7 @@ import styles from "./schedule.module.css";
 
 type Child = "Mina" | "Leon";
 type View = "day" | "week" | "month" | "year";
+type Section = "calendar" | "school" | "combined";
 type TextSize = "normal" | "comfortable" | "large";
 export type ScheduleEvent = {
   id: string;
@@ -96,6 +98,48 @@ const HOLIDAYS = [
     tone: 4,
   },
 ];
+export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
+  {
+    id: "leon-music-theory-mon",
+    child: "Leon",
+    day: 0,
+    title: "Teorie muzicală",
+    start: "17:00",
+    end: "18:00",
+    kind: "activity",
+    notes: "",
+  },
+  {
+    id: "leon-cello-tue",
+    child: "Leon",
+    day: 1,
+    title: "Violoncel",
+    start: "18:00",
+    end: "19:00",
+    kind: "activity",
+    notes: "Instrument",
+  },
+  {
+    id: "leon-cello-wed",
+    child: "Leon",
+    day: 2,
+    title: "Violoncel",
+    start: "15:00",
+    end: "17:00",
+    kind: "activity",
+    notes: "Instrument",
+  },
+  {
+    id: "leon-music-theory-wed",
+    child: "Leon",
+    day: 2,
+    title: "Teorie muzicală",
+    start: "17:00",
+    end: "18:00",
+    kind: "activity",
+    notes: "",
+  },
+];
 const DEFAULT_EVENTS: ScheduleEvent[] = [
   ...(["Mina", "Leon"] as Child[]).flatMap((child) =>
     [0, 1, 2, 3, 4].flatMap((day) => [
@@ -161,6 +205,7 @@ const DEFAULT_EVENTS: ScheduleEvent[] = [
     kind: "activity",
     notes: "",
   },
+  ...NEW_LEON_ACTIVITIES,
 ];
 const LEON_SUBJECTS = [
   "Română",
@@ -240,6 +285,7 @@ const SCHOOL_EVENTS: ScheduleEvent[] = (["Mina", "Leon"] as Child[]).flatMap(
       }));
     }),
 );
+const LEON_ACTIVITY_IDS = new Set(NEW_LEON_ACTIVITIES.map((event) => event.id));
 const EMPTY_FORM = {
   child: "Mina" as Child,
   day: 0,
@@ -291,6 +337,8 @@ function holidayFor(d: Date) {
 }
 function emoji(e: ScheduleEvent) {
   const t = e.title.toLowerCase();
+  if (t.includes("violoncel")) return "🎻";
+  if (t.includes("teorie muzical")) return "🎼";
   if (t.includes("pian")) return "🎹";
   if (t.includes("teatru")) return "🎭";
   if (t.includes("test")) return "📝";
@@ -376,9 +424,10 @@ export function FamilySchedule({
   readOnly?: boolean;
   initialEvents?: ScheduleEvent[];
 } = {}) {
-  const [section, setSection] = useState<"calendar" | "school">("calendar");
+  const [section, setSection] = useState<Section>("calendar");
   const [textSize, setTextSize] = useState<TextSize>("comfortable");
   const [focusMode, setFocusMode] = useState(false);
+  const [focusMenuOpen, setFocusMenuOpen] = useState(false);
   const [events, setEvents] = useState(initialEvents ?? DEFAULT_EVENTS),
     [schoolEvents, setSchoolEvents] = useState(SCHOOL_EVENTS),
     [view, setView] = useState<View>("week"),
@@ -431,22 +480,32 @@ export function FamilySchedule({
         setStorageMode("local");
         return;
       }
-      if (data?.length)
-        setEvents(
-          normalizeEvents(
-            data.map((r) => ({
-              id: r.id,
-              child: r.child as Child,
-              day: r.day,
-              title: r.title,
-              start: r.start_time.slice(0, 5),
-              end: r.end_time.slice(0, 5),
-              kind: r.kind as ScheduleEvent["kind"],
-              notes: r.notes ?? "",
-            })),
-          ),
+      if (data?.length) {
+        const loadedEvents = normalizeEvents(
+          data.map((r) => ({
+            id: r.id,
+            child: r.child as Child,
+            day: r.day,
+            title: r.title,
+            start: r.start_time.slice(0, 5),
+            end: r.end_time.slice(0, 5),
+            kind: r.kind as ScheduleEvent["kind"],
+            notes: r.notes ?? "",
+          })),
         );
-      else {
+        const missingLeonActivities = DEFAULT_EVENTS.filter(
+          (event) =>
+            LEON_ACTIVITY_IDS.has(event.id) &&
+            !loadedEvents.some((loaded) => loaded.id === event.id),
+        );
+        setEvents([...loadedEvents, ...missingLeonActivities]);
+        if (missingLeonActivities.length) {
+          const seeded = await supabase
+            .from("family_schedule_events")
+            .upsert(missingLeonActivities.map(dbRow));
+          if (seeded.error) setStorageMode("local");
+        }
+      } else {
         const seeded = await supabase
           .from("family_schedule_events")
           .insert(DEFAULT_EVENTS.map(dbRow));
@@ -554,7 +613,12 @@ export function FamilySchedule({
       title: form.title.trim(),
       id: editing?.id ?? crypto.randomUUID(),
     };
-    if (section === "school") {
+    const editsSchoolSchedule =
+      section === "school" ||
+      (section === "combined" &&
+        editing !== null &&
+        schoolEvents.some((event) => event.id === editing.id));
+    if (editsSchoolSchedule) {
       setSchoolEvents((x) =>
         editing ? x.map((e) => (e.id === editing.id ? next : e)) : [...x, next],
       );
@@ -573,7 +637,10 @@ export function FamilySchedule({
     close();
   }
   function remove(id: string) {
-    if (section === "school") {
+    if (
+      section === "school" ||
+      (section === "combined" && schoolEvents.some((event) => event.id === id))
+    ) {
       setSchoolEvents((x) => x.filter((e) => e.id !== id));
       close();
       return;
@@ -585,12 +652,13 @@ export function FamilySchedule({
   function reset() {
     if (!confirm("Revii la orarul inițial?")) return;
     if (section === "school") setSchoolEvents(SCHOOL_EVENTS);
-    else setEvents(DEFAULT_EVENTS);
+    else if (section === "combined") {
+      setSchoolEvents(SCHOOL_EVENTS);
+      setEvents(DEFAULT_EVENTS);
+    } else setEvents(DEFAULT_EVENTS);
   }
-  function switchSection(next: "calendar" | "school") {
+  function switchSection(next: Section) {
     if (next === section) return;
-    const root = document.documentElement;
-    root.dataset.scheduleDirection = next === "school" ? "forward" : "back";
     const doc = document as Document & {
       startViewTransition?: (update: () => void) => unknown;
     };
@@ -623,24 +691,42 @@ export function FamilySchedule({
     100;
   return (
     <main
-      className={`${styles.page} ${focusMode ? styles.focusMode : ""} ${styles[`text-${textSize}`]} ${section === "school" ? styles.schoolMode : styles.calendarMode}`}
+      className={`${styles.page} ${focusMode ? styles.focusMode : ""} ${styles[`text-${textSize}`]} ${section === "school" ? styles.schoolMode : section === "combined" ? styles.combinedMode : styles.calendarMode}`}
     >
       {focusMode ? (
-        <div className={styles.focusControls}>
+        <div
+          className={`${styles.focusControls} ${focusMenuOpen ? styles.focusControlsOpen : ""}`}
+        >
+          {focusMenuOpen ? (
+            <div className={styles.focusMenu}>
+              {(["calendar", "school", "combined"] as Section[]).map((item) => (
+                <button
+                  key={item}
+                  className={section === item ? styles.focusActive : ""}
+                  onClick={() => {
+                    switchSection(item);
+                    setFocusMenuOpen(false);
+                  }}
+                >
+                  {
+                    { calendar: "Calendar", school: "Orar", combined: "Tot" }[
+                      item
+                    ]
+                  }
+                </button>
+              ))}
+              <button onClick={toggleFocusMode} title="Ieși din modul Focus">
+                <Minimize2 size={17} />
+              </button>
+            </div>
+          ) : null}
           <button
-            className={section === "calendar" ? styles.focusActive : ""}
-            onClick={() => switchSection("calendar")}
+            className={styles.focusMenuTrigger}
+            onClick={() => setFocusMenuOpen((open) => !open)}
+            title="Opțiuni vizualizare"
+            aria-label="Deschide opțiunile de vizualizare"
           >
-            Calendar
-          </button>
-          <button
-            className={section === "school" ? styles.focusActive : ""}
-            onClick={() => switchSection("school")}
-          >
-            Orar
-          </button>
-          <button onClick={toggleFocusMode} title="Ieși din modul Focus">
-            <Minimize2 size={17} />
+            <SlidersHorizontal size={17} />
           </button>
         </div>
       ) : null}
@@ -666,6 +752,12 @@ export function FamilySchedule({
             onClick={() => switchSection("school")}
           >
             Orar
+          </button>
+          <button
+            className={section === "combined" ? styles.activeSection : ""}
+            onClick={() => switchSection("combined")}
+          >
+            Tot
           </button>
         </div>
         {readOnly ? (
@@ -829,7 +921,17 @@ export function FamilySchedule({
                   </div>
                 ) : null}
                 {!holiday &&
-                  (section === "school" ? schoolEvents : events)
+                  (section === "school"
+                    ? schoolEvents
+                    : section === "combined"
+                      ? [
+                          ...schoolEvents,
+                          ...events.filter(
+                            (event) => event.kind === "activity",
+                          ),
+                        ]
+                      : events
+                  )
                     .filter((e) => e.day === di)
                     .map((e) => {
                       const top =

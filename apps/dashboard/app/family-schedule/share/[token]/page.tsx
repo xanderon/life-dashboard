@@ -1,7 +1,11 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
-import { FamilySchedule, type ScheduleEvent } from "../../FamilySchedule";
+import {
+  FamilySchedule,
+  NEW_LEON_ACTIVITIES,
+  type ScheduleEvent,
+} from "../../FamilySchedule";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -31,7 +35,7 @@ async function loadEvents(): Promise<ScheduleEvent[] | undefined> {
     .select("id,child,day,title,start_time,end_time,kind,notes")
     .order("day");
   if (error || !data?.length) return undefined;
-  return data.map((row) => ({
+  const events = data.map((row) => ({
     id: row.id,
     child: row.child as ScheduleEvent["child"],
     day: row.day,
@@ -41,6 +45,12 @@ async function loadEvents(): Promise<ScheduleEvent[] | undefined> {
     kind: row.kind as ScheduleEvent["kind"],
     notes: row.notes ?? "",
   }));
+  return [
+    ...events,
+    ...NEW_LEON_ACTIVITIES.filter(
+      (addition) => !events.some((event) => event.id === addition.id),
+    ),
+  ];
 }
 
 export default async function SharedFamilySchedulePage({

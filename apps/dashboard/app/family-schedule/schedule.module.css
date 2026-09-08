@@ -60,6 +60,7 @@
     border-width 260ms ease;
 }
 .focusMode {
+  min-height: 0;
   padding: 6px;
   gap: 0;
 }
@@ -79,14 +80,21 @@
   top: max(10px, env(safe-area-inset-top));
   right: max(10px, env(safe-area-inset-right));
   display: flex;
+  align-items: center;
+  gap: 5px;
+  animation: focus-controls-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.focusMenu {
+  display: flex;
   gap: 3px;
   padding: 4px;
   border: 1px solid var(--border-strong);
   border-radius: 13px;
-  background: color-mix(in srgb, var(--panel-strong) 90%, transparent);
+  background: color-mix(in srgb, var(--panel-strong) 92%, transparent);
   box-shadow: 0 12px 35px -20px #000;
   backdrop-filter: blur(10px);
-  animation: focus-controls-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: focus-menu-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: right center;
 }
 .focusControls button,
 .focusButton {
@@ -106,6 +114,19 @@
   place-items: center;
   padding-inline: 9px;
 }
+.focusControls .focusMenuTrigger {
+  width: 38px;
+  min-height: 38px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--text);
+  background: color-mix(in srgb, var(--panel-strong) 92%, transparent);
+  box-shadow: 0 8px 24px -13px #000;
+  backdrop-filter: blur(10px);
+}
 .focusControls .focusActive {
   background: var(--panel-2);
   color: var(--text);
@@ -122,6 +143,12 @@
   from {
     opacity: 0;
     transform: translateY(-8px) scale(0.94);
+  }
+}
+@keyframes focus-menu-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px) scaleX(0.92);
   }
 }
 .titleGroup,
@@ -589,6 +616,9 @@
   flex: 0 0 auto;
 }
 .schoolMode .event small {
+  display: none;
+}
+.combinedMode .event.school small {
   display: none;
 }
 .hasNote > span {
