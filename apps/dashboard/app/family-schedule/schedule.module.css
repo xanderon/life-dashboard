@@ -493,6 +493,7 @@
   line-height: 1.08;
   letter-spacing: -0.012em;
   text-wrap: balance;
+  flex: 0 0 auto;
 }
 .eventEmoji {
   display: inline-block;
@@ -511,6 +512,7 @@
   line-height: 1.1;
   opacity: 0.9;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 .mina {
   background: color-mix(in srgb, #d86fa6 28%, var(--panel-strong));
@@ -898,7 +900,8 @@
 @media (max-width: 650px) {
   .page {
     min-height: 540px;
-    padding: 8px;
+    padding: calc(8px + env(safe-area-inset-top)) 8px
+      calc(8px + env(safe-area-inset-bottom));
     gap: 6px;
   }
   .header h1 {
@@ -960,10 +963,15 @@
     display: block;
     margin-top: 3px;
     font-size: 11px;
+    line-height: 1.25;
   }
   .event > span {
     font-size: clamp(14px, 4vw, 17px);
-    line-height: 1.05;
+    min-height: 1.25em;
+    overflow: visible;
+    line-height: 1.25;
+    white-space: nowrap;
+    text-wrap: nowrap;
   }
   .event em {
     position: absolute;
