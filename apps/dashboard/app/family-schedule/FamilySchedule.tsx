@@ -949,6 +949,7 @@ export function FamilySchedule({
                         <button
                           key={e.id}
                           className={`${styles.event} ${e.notes ? styles.hasNote : ""} ${styles[e.child.toLowerCase()]} ${styles[e.kind]}`}
+                          data-duration={mins(e.end) - mins(e.start)}
                           style={{
                             top: `${top}%`,
                             height: `${height}%`,

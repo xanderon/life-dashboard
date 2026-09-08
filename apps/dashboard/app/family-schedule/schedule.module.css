@@ -649,6 +649,59 @@
     inset 3px 0 0 var(--accent-warm),
     0 8px 20px -11px #000;
 }
+.combinedMode .activity {
+  border-color: color-mix(in srgb, #f2b84b 78%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, #d99835 40%, var(--panel-strong)),
+    color-mix(in srgb, #8b6bc5 32%, var(--panel-strong))
+  );
+  box-shadow:
+    inset 3px 0 0 #f4bd54,
+    0 8px 20px -11px #000;
+}
+.combinedMode .activity > span {
+  z-index: 1;
+  padding-right: 21px;
+  font-size: clamp(10px, 4.1cqi, calc(13px * var(--schedule-text-scale)));
+  line-height: 1.02;
+  text-wrap: pretty;
+}
+.combinedMode .activity .eventEmoji {
+  position: absolute;
+  z-index: 0;
+  right: 5px;
+  bottom: 4px;
+  display: block;
+  margin: 0;
+  font-size: clamp(18px, 9cqi, 30px);
+  opacity: 0.72;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.24));
+}
+.combinedMode .activity small {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: auto;
+  font-size: clamp(8px, 3.25cqi, calc(10px * var(--schedule-text-scale)));
+}
+.combinedMode .activity.hasNote > span {
+  padding-right: 24px;
+}
+.combinedMode .activity em {
+  z-index: 3;
+  top: 3px;
+  right: 3px;
+}
+.combinedMode .activity[data-duration="60"] {
+  padding-block: 4px;
+}
+.combinedMode .activity[data-duration="60"] > span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 .nowLine {
   position: absolute;
   z-index: 8;
@@ -768,6 +821,9 @@
   }
   .eventEmoji {
     display: none;
+  }
+  .combinedMode .activity .eventEmoji {
+    display: block;
   }
 }
 .dialog {
