@@ -126,8 +126,8 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     child: "Leon",
     day: 2,
     title: "Violoncel",
-    start: "15:00",
-    end: "17:00",
+    start: "14:30",
+    end: "16:00",
     kind: "activity",
     notes: "",
   },
@@ -136,8 +136,8 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     child: "Leon",
     day: 2,
     title: "Teorie muzicală",
-    start: "17:00",
-    end: "18:00",
+    start: "16:00",
+    end: "17:00",
     kind: "activity",
     notes: "",
   },
@@ -499,8 +499,18 @@ export function FamilySchedule({
             child: r.child as Child,
             day: r.day,
             title: r.title,
-            start: r.start_time.slice(0, 5),
-            end: r.end_time.slice(0, 5),
+            start:
+              r.id === "leon-cello-wed"
+                ? "14:30"
+                : r.id === "leon-music-theory-wed"
+                  ? "16:00"
+                  : r.start_time.slice(0, 5),
+            end:
+              r.id === "leon-cello-wed"
+                ? "16:00"
+                : r.id === "leon-music-theory-wed"
+                  ? "17:00"
+                  : r.end_time.slice(0, 5),
             kind: r.kind as ScheduleEvent["kind"],
             notes:
               r.id === "leon-cello-wed" && r.notes === "Instrument"
@@ -514,10 +524,31 @@ export function FamilySchedule({
             !loadedEvents.some((loaded) => loaded.id === event.id),
         );
         setEvents([...loadedEvents, ...missingLeonActivities]);
-        if (missingLeonActivities.length) {
+        const changedWednesdayActivities = loadedEvents.filter(
+          (event) =>
+            (event.id === "leon-cello-wed" &&
+              (data
+                .find((row) => row.id === event.id)
+                ?.start_time.slice(0, 5) !== "14:30" ||
+                data
+                  .find((row) => row.id === event.id)
+                  ?.end_time.slice(0, 5) !== "16:00")) ||
+            (event.id === "leon-music-theory-wed" &&
+              (data
+                .find((row) => row.id === event.id)
+                ?.start_time.slice(0, 5) !== "16:00" ||
+                data
+                  .find((row) => row.id === event.id)
+                  ?.end_time.slice(0, 5) !== "17:00")),
+        );
+        if (missingLeonActivities.length || changedWednesdayActivities.length) {
           const seeded = await supabase
             .from("family_schedule_events")
-            .upsert(missingLeonActivities.map(dbRow));
+            .upsert(
+              [...missingLeonActivities, ...changedWednesdayActivities].map(
+                dbRow,
+              ),
+            );
           if (seeded.error) setStorageMode("local");
         }
       } else {
