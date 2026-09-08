@@ -55,7 +55,7 @@ const MONTHS = [
 const START_HOUR = 8,
   END_HOUR = 19,
   STORAGE_KEY = "life-dashboard:family-schedule:v1",
-  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v3",
+  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v4",
   TEXT_SIZE_STORAGE_KEY = "life-dashboard:schedule-text-size:v1";
 const HOLIDAYS = [
   {
@@ -103,7 +103,12 @@ const DEFAULT_EVENTS: ScheduleEvent[] = [
         day,
         title: "Școală",
         start: "08:00",
-        end: child === "Leon" ? (day === 2 ? "14:00" : "13:00") : "12:00",
+        end:
+          child === "Leon"
+            ? day === 1 || day === 2
+              ? "14:00"
+              : "13:00"
+            : "12:00",
         kind: "school" as const,
         notes: "",
       },
@@ -112,7 +117,12 @@ const DEFAULT_EVENTS: ScheduleEvent[] = [
         child,
         day,
         title: "SDS",
-        start: child === "Leon" ? (day === 2 ? "14:00" : "13:00") : "12:00",
+        start:
+          child === "Leon"
+            ? day === 1 || day === 2
+              ? "14:00"
+              : "13:00"
+            : "12:00",
         end: "15:00",
         kind: "sds" as const,
         notes: "",
@@ -173,6 +183,14 @@ const LEON_WEDNESDAY = [
   "TIC",
   "Matematică",
 ];
+const LEON_TUESDAY = [
+  "Istorie",
+  "Desen",
+  "Franceză",
+  "Biologie",
+  "Matematică",
+  "Engleză",
+];
 const PRIMARY_TIMES = [
   ["08:00", "08:45"],
   ["09:00", "09:45"],
@@ -193,7 +211,7 @@ const SCHOOL_EVENTS: ScheduleEvent[] = (["Mina", "Leon"] as Child[]).flatMap(
       const lessonTimes =
         child === "Mina"
           ? PRIMARY_TIMES
-          : MIDDLE_SCHOOL_TIMES.slice(0, day === 2 ? 6 : 5);
+          : MIDDLE_SCHOOL_TIMES.slice(0, day === 1 || day === 2 ? 6 : 5);
       return lessonTimes.map(([start, end], period) => ({
         id: `lesson-${child}-${day}-${period}`,
         child,
@@ -201,15 +219,22 @@ const SCHOOL_EVENTS: ScheduleEvent[] = (["Mina", "Leon"] as Child[]).flatMap(
         title:
           child === "Mina"
             ? MINA_TIMETABLE[day][period]
-            : day === 2
-              ? LEON_WEDNESDAY[period]
-              : LEON_SUBJECTS[
-                  (day * 2 + period + childIndex) % LEON_SUBJECTS.length
-                ],
+            : day === 1
+              ? LEON_TUESDAY[period]
+              : day === 2
+                ? LEON_WEDNESDAY[period]
+                : LEON_SUBJECTS[
+                    (day * 2 + period + childIndex) % LEON_SUBJECTS.length
+                  ],
         start,
         end,
         kind: "school" as const,
-        notes: day === 1 && period === childIndex ? "Prezentare proiect" : "",
+        notes:
+          child === "Leon" && day === 1 && period === 2
+            ? "Vom face dirigenție"
+            : child === "Mina" && day === 1 && period === 0
+              ? "Prezentare proiect"
+              : "",
       }));
     }),
 );
@@ -272,6 +297,9 @@ function emoji(e: ScheduleEvent) {
   if (t.includes("avap")) return "✂️";
   if (t.includes("francez")) return "🇫🇷";
   if (t === "tic") return "💻";
+  if (t.includes("istorie")) return "🏛️";
+  if (t.includes("desen")) return "🎨";
+  if (t.includes("biologie")) return "🧬";
   if (e.kind === "school") return "🎒";
   if (e.kind === "sds") return "📚";
   return "⭐";
@@ -283,32 +311,32 @@ function normalizeEvents(items: ScheduleEvent[]) {
       event.kind === "school" &&
       event.start === "08:00" &&
       event.end === "12:00";
-    const isWednesdayLeonSchool =
+    const isSixHourLeonSchool =
       event.child === "Leon" &&
-      event.day === 2 &&
+      (event.day === 1 || event.day === 2) &&
       event.kind === "school" &&
       event.start === "08:00" &&
       event.end === "13:00";
     const isLegacyLeonSds =
       event.child === "Leon" && event.kind === "sds" && event.start === "12:00";
-    const isWednesdayLeonSds =
+    const isSixHourLeonSds =
       event.child === "Leon" &&
-      event.day === 2 &&
+      (event.day === 1 || event.day === 2) &&
       event.kind === "sds" &&
       event.start === "13:00";
     return {
       ...event,
-      end: isWednesdayLeonSchool
+      end: isSixHourLeonSchool
         ? "14:00"
         : isLegacyLeonSchool
-          ? event.day === 2
+          ? event.day === 1 || event.day === 2
             ? "14:00"
             : "13:00"
           : event.end,
-      start: isWednesdayLeonSds
+      start: isSixHourLeonSds
         ? "14:00"
         : isLegacyLeonSds
-          ? event.day === 2
+          ? event.day === 1 || event.day === 2
             ? "14:00"
             : "13:00"
           : event.start,
