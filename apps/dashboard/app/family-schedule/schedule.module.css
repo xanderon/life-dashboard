@@ -51,6 +51,78 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  max-height: 120px;
+  transition:
+    max-height 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 260ms ease,
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    padding 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-width 260ms ease;
+}
+.focusMode {
+  padding: 6px;
+  gap: 0;
+}
+.focusMode > .header,
+.focusMode > .toolbar {
+  max-height: 0;
+  padding-block: 0;
+  border-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateY(-14px) scale(0.99);
+}
+.focusControls {
+  position: fixed;
+  z-index: 30;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--panel-strong) 90%, transparent);
+  box-shadow: 0 12px 35px -20px #000;
+  backdrop-filter: blur(10px);
+  animation: focus-controls-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.focusControls button,
+.focusButton {
+  min-height: 34px;
+  border: 0;
+  border-radius: 9px;
+  padding: 0 11px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.focusControls button:last-child {
+  display: grid;
+  place-items: center;
+  padding-inline: 9px;
+}
+.focusControls .focusActive {
+  background: var(--panel-2);
+  color: var(--text);
+}
+.focusButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 35%, transparent);
+}
+@keyframes focus-controls-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.94);
+  }
 }
 .titleGroup,
 .actions,
@@ -947,6 +1019,14 @@
   }
   .viewSwitch button:nth-child(3),
   .viewSwitch button:nth-child(4) {
+    display: none;
+  }
+  .focusButton {
+    width: 32px;
+    min-height: 32px;
+    padding: 0;
+  }
+  .focusButton span {
     display: none;
   }
   .calendar {

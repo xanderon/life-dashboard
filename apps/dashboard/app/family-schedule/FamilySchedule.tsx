@@ -5,6 +5,8 @@ import {
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
+  Maximize2,
+  Minimize2,
   Pencil,
   RotateCcw,
   Trash2,
@@ -265,6 +267,16 @@ function mondayOf(d: Date) {
 function dayIndex(d: Date) {
   return (d.getDay() + 6) % 7;
 }
+function isoWeekNumber(date: Date) {
+  const value = new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+  );
+  value.setUTCDate(value.getUTCDate() + 4 - (value.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(value.getUTCFullYear(), 0, 1));
+  return Math.ceil(
+    ((value.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
+  );
+}
 function iso(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
@@ -366,6 +378,7 @@ export function FamilySchedule({
 } = {}) {
   const [section, setSection] = useState<"calendar" | "school">("calendar");
   const [textSize, setTextSize] = useState<TextSize>("comfortable");
+  const [focusMode, setFocusMode] = useState(false);
   const [events, setEvents] = useState(initialEvents ?? DEFAULT_EVENTS),
     [schoolEvents, setSchoolEvents] = useState(SCHOOL_EVENTS),
     [view, setView] = useState<View>("week"),
@@ -456,11 +469,21 @@ export function FamilySchedule({
   useEffect(() => {
     if (ready) localStorage.setItem(TEXT_SIZE_STORAGE_KEY, textSize);
   }, [textSize, ready]);
+  useEffect(() => {
+    const syncFullscreen = () => {
+      if (!document.fullscreenElement) setFocusMode(false);
+    };
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    return () =>
+      document.removeEventListener("fullscreenchange", syncFullscreen);
+  }, []);
   const weekStart = useMemo(() => mondayOf(cursor), [cursor]);
   const visibleDates =
     view === "day"
       ? [cursor]
-      : Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+      : Array.from({ length: focusMode ? 5 : 7 }, (_, i) =>
+          addDays(weekStart, i),
+        );
   const range =
     view === "day"
       ? new Intl.DateTimeFormat("ro-RO", {
@@ -469,7 +492,7 @@ export function FamilySchedule({
           month: "long",
         }).format(cursor)
       : view === "week"
-        ? `${label(weekStart)} — ${label(addDays(weekStart, 6))}`
+        ? `${label(weekStart)} — ${label(addDays(weekStart, focusMode ? 4 : 6))}`
         : view === "month"
           ? `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`
           : `${cursor.getFullYear()}`;
@@ -560,14 +583,52 @@ export function FamilySchedule({
       doc.startViewTransition(() => setSection(next));
     else setSection(next);
   }
+  async function toggleFocusMode() {
+    if (focusMode) {
+      setFocusMode(false);
+      if (document.fullscreenElement)
+        await document.exitFullscreen().catch(() => {});
+      return;
+    }
+    if (view === "month" || view === "year") setView("week");
+    setFocusMode(true);
+    const root = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void;
+    };
+    try {
+      if (root.requestFullscreen) await root.requestFullscreen();
+      else await root.webkitRequestFullscreen?.();
+    } catch {
+      // Focus mode still works when an embedded TV browser blocks native fullscreen.
+    }
+  }
   const nowTop =
     ((now.getHours() * 60 + now.getMinutes() - START_HOUR * 60) /
       ((END_HOUR - START_HOUR) * 60)) *
     100;
   return (
     <main
-      className={`${styles.page} ${styles[`text-${textSize}`]} ${section === "school" ? styles.schoolMode : styles.calendarMode}`}
+      className={`${styles.page} ${focusMode ? styles.focusMode : ""} ${styles[`text-${textSize}`]} ${section === "school" ? styles.schoolMode : styles.calendarMode}`}
     >
+      {focusMode ? (
+        <div className={styles.focusControls}>
+          <button
+            className={section === "calendar" ? styles.focusActive : ""}
+            onClick={() => switchSection("calendar")}
+          >
+            Calendar
+          </button>
+          <button
+            className={section === "school" ? styles.focusActive : ""}
+            onClick={() => switchSection("school")}
+          >
+            Orar
+          </button>
+          <button onClick={toggleFocusMode} title="Ieși din modul Focus">
+            <Minimize2 size={17} />
+          </button>
+        </div>
+      ) : null}
       <header className={styles.header}>
         <div className={styles.titleGroup}>
           <Link href="/" className={styles.iconButton}>
@@ -625,6 +686,7 @@ export function FamilySchedule({
         <strong className={styles.range}>
           {range}
           <span className={styles.syncState}>
+            Săpt. {isoWeekNumber(cursor)} ·{" "}
             {storageMode === "cloud"
               ? "☁️ salvat"
               : storageMode === "shared"
@@ -665,6 +727,15 @@ export function FamilySchedule({
               </button>
             ))}
           </div>
+          <button
+            className={styles.focusButton}
+            onClick={toggleFocusMode}
+            title="Mod Focus — fără bare și weekend"
+            aria-label="Activează modul Focus"
+          >
+            <Maximize2 size={15} />
+            <span>Focus</span>
+          </button>
         </div>
       </section>
       {view === "day" || view === "week" ? (
