@@ -9,6 +9,8 @@
   gap: 8px;
   overflow: hidden;
   font-family: var(--font-hyperlegible), var(--font-geist-sans), sans-serif;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 .page::before,
 .page::after {
@@ -957,19 +959,19 @@
     grid-template-columns: 48px minmax(0, 1fr) !important;
   }
   .event {
-    padding: 6px 8px;
+    padding: 4px 7px;
   }
   .event small {
     display: block;
-    margin-top: 3px;
-    font-size: 11px;
-    line-height: 1.25;
+    margin-top: 1px;
+    font-size: 10px;
+    line-height: 1;
   }
   .event > span {
-    font-size: clamp(14px, 4vw, 17px);
-    min-height: 1.25em;
+    font-size: clamp(13px, 3.8vw, 16px);
+    min-height: 1.15em;
     overflow: visible;
-    line-height: 1.25;
+    line-height: 1.15;
     white-space: nowrap;
     text-wrap: nowrap;
   }
