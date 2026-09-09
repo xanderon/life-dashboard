@@ -58,9 +58,9 @@ const MONTHS = [
   "Decembrie",
 ];
 const START_HOUR = 8,
-  END_HOUR = 19,
+  END_HOUR = 20,
   STORAGE_KEY = "life-dashboard:family-schedule:v1",
-  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v6",
+  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v7",
   TEXT_SIZE_STORAGE_KEY = "life-dashboard:schedule-text-size:v1";
 const FOCUS_REFRESH_KEY = "life-dashboard:schedule-focus-refresh";
 const HOLIDAYS = [
@@ -109,7 +109,7 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     start: "16:00",
     end: "17:00",
     kind: "activity",
-    notes: "",
+    notes: "Prof. Liliana Foday",
   },
   {
     id: "leon-parent-meeting-2026-09-14",
@@ -124,10 +124,10 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
   {
     id: "leon-cello-tue",
     child: "Leon",
-    day: 4,
+    day: 1,
     title: "Violoncel",
-    start: "18:00",
-    end: "19:00",
+    start: "18:45",
+    end: "19:30",
     kind: "activity",
     notes: "Instrument",
   },
@@ -205,9 +205,11 @@ const DEFAULT_EVENTS: ScheduleEvent[] = [
         start: "08:00",
         end:
           child === "Leon"
-            ? day === 1 || day === 2
-              ? "14:00"
-              : "13:00"
+            ? day === 4
+              ? "12:00"
+              : day === 0
+                ? "13:00"
+                : "14:00"
             : "12:00",
         kind: "school" as const,
         notes: "",
@@ -219,9 +221,11 @@ const DEFAULT_EVENTS: ScheduleEvent[] = [
         title: "SDS",
         start:
           child === "Leon"
-            ? day === 1 || day === 2
-              ? "14:00"
-              : "13:00"
+            ? day === 4
+              ? "12:00"
+              : day === 0
+                ? "13:00"
+                : "14:00"
             : "12:00",
         end: "15:00",
         kind: "sds" as const,
@@ -242,13 +246,12 @@ const DEFAULT_EVENTS: ScheduleEvent[] = [
   ...NEW_MINA_ACTIVITIES,
   ...NEW_LEON_ACTIVITIES,
 ];
-const LEON_SUBJECTS = [
-  "Română",
-  "Matematică",
-  "Engleză",
-  "Științe",
-  "Arte",
-  "Sport",
+const LEON_TIMETABLE = [
+  ["Istorie", "Educație tehnologică", "Română", "Dirigenție", "Engleză"],
+  ["Istorie", "Desen", "Franceză", "Biologie", "Matematică", "Engleză"],
+  ["Matematică", "Muzică", "Franceză", "Sport", "TIC", "Matematică"],
+  ["Geografie", "Religie", "Educație socială", "Română", "Română", "Sport"],
+  ["Română", "Matematică", "Engleză", "Biologie"],
 ];
 const MINA_TIMETABLE = [
   ["Limba română", "Matematică", "Limba engleză", "Joc și mișcare"],
@@ -256,22 +259,6 @@ const MINA_TIMETABLE = [
   ["Limba română", "Matematică", "Religie", "AVAP"],
   ["Limba română", "Matematică", "Muzică și mișcare", "Sport"],
   ["Limba română", "Sport", "Științe ale naturii", "Limba engleză"],
-];
-const LEON_WEDNESDAY = [
-  "Matematică",
-  "Muzică",
-  "Franceză",
-  "Sport",
-  "TIC",
-  "Matematică",
-];
-const LEON_TUESDAY = [
-  "Istorie",
-  "Desen",
-  "Franceză",
-  "Biologie",
-  "Matematică",
-  "Engleză",
 ];
 const PRIMARY_TIMES = [
   ["08:00", "08:45"],
@@ -288,12 +275,12 @@ const MIDDLE_SCHOOL_TIMES = [
   ["13:00", "13:50"],
 ];
 const SCHOOL_EVENTS: ScheduleEvent[] = (["Mina", "Leon"] as Child[]).flatMap(
-  (child, childIndex) =>
+  (child) =>
     [0, 1, 2, 3, 4].flatMap((day) => {
       const lessonTimes =
         child === "Mina"
           ? PRIMARY_TIMES
-          : MIDDLE_SCHOOL_TIMES.slice(0, day === 1 || day === 2 ? 6 : 5);
+          : MIDDLE_SCHOOL_TIMES.slice(0, LEON_TIMETABLE[day].length);
       return lessonTimes.map(([start, end], period) => ({
         id: `lesson-${child}-${day}-${period}`,
         child,
@@ -301,15 +288,7 @@ const SCHOOL_EVENTS: ScheduleEvent[] = (["Mina", "Leon"] as Child[]).flatMap(
         title:
           child === "Mina"
             ? MINA_TIMETABLE[day][period]
-            : day === 0 || day === 4
-              ? "?"
-              : day === 1
-                ? LEON_TUESDAY[period]
-                : day === 2
-                  ? LEON_WEDNESDAY[period]
-                  : LEON_SUBJECTS[
-                      (day * 2 + period + childIndex) % LEON_SUBJECTS.length
-                    ],
+            : LEON_TIMETABLE[day][period],
         start,
         end,
         kind: "school" as const,
@@ -399,6 +378,10 @@ function emoji(e: ScheduleEvent) {
   if (t.includes("francez")) return "🇫🇷";
   if (t === "tic") return "💻";
   if (t.includes("istorie")) return "🏛️";
+  if (t.includes("geografie")) return "🌍";
+  if (t.includes("tehnologic")) return "🛠️";
+  if (t.includes("dirigen")) return "🧭";
+  if (t.includes("social")) return "🤝";
   if (t.includes("desen")) return "🎨";
   if (t.includes("biologie")) return "🧬";
   if (e.kind === "school") return "🎒";
@@ -407,40 +390,17 @@ function emoji(e: ScheduleEvent) {
 }
 function normalizeEvents(items: ScheduleEvent[]) {
   return items.map((event) => {
-    const isLegacyLeonSchool =
+    const isLeonSchool =
       event.child === "Leon" &&
       event.kind === "school" &&
-      event.start === "08:00" &&
-      event.end === "12:00";
-    const isSixHourLeonSchool =
-      event.child === "Leon" &&
-      (event.day === 1 || event.day === 2) &&
-      event.kind === "school" &&
-      event.start === "08:00" &&
-      event.end === "13:00";
-    const isLegacyLeonSds =
-      event.child === "Leon" && event.kind === "sds" && event.start === "12:00";
-    const isSixHourLeonSds =
-      event.child === "Leon" &&
-      (event.day === 1 || event.day === 2) &&
-      event.kind === "sds" &&
-      event.start === "13:00";
+      event.start === "08:00";
+    const isLeonSds = event.child === "Leon" && event.kind === "sds";
+    const leonSchoolEnd =
+      event.day === 4 ? "12:00" : event.day === 0 ? "13:00" : "14:00";
     return {
       ...event,
-      end: isSixHourLeonSchool
-        ? "14:00"
-        : isLegacyLeonSchool
-          ? event.day === 1 || event.day === 2
-            ? "14:00"
-            : "13:00"
-          : event.end,
-      start: isSixHourLeonSds
-        ? "14:00"
-        : isLegacyLeonSds
-          ? event.day === 1 || event.day === 2
-            ? "14:00"
-            : "13:00"
-          : event.start,
+      end: isLeonSchool ? leonSchoolEnd : event.end,
+      start: isLeonSds ? leonSchoolEnd : event.start,
       notes: event.notes ?? "",
     };
   });
@@ -538,41 +498,47 @@ export function FamilySchedule({
             .map((r) => ({
               id: r.id,
               child: r.child as Child,
-              day: r.id === "leon-cello-tue" && r.day === 1 ? 4 : r.day,
+              day: r.id === "leon-cello-tue" ? 1 : r.day,
               title: r.title,
               start:
                 (r.id === "mina-piano-mon" || r.id === "mina-piano-thu") &&
                 r.start_time.slice(0, 5) === "13:00" &&
                 r.end_time.slice(0, 5) === "14:00"
                   ? "14:00"
-                  : r.id === "leon-music-theory-mon" &&
-                      r.start_time.slice(0, 5) === "17:00" &&
-                      r.end_time.slice(0, 5) === "18:00"
-                    ? "16:00"
-                    : r.id === "leon-cello-wed"
-                      ? "14:30"
-                      : r.id === "leon-music-theory-wed"
-                        ? "16:00"
-                        : r.start_time.slice(0, 5),
+                  : r.id === "leon-cello-tue"
+                    ? "18:45"
+                    : r.id === "leon-music-theory-mon" &&
+                        r.start_time.slice(0, 5) === "17:00" &&
+                        r.end_time.slice(0, 5) === "18:00"
+                      ? "16:00"
+                      : r.id === "leon-cello-wed"
+                        ? "14:30"
+                        : r.id === "leon-music-theory-wed"
+                          ? "16:00"
+                          : r.start_time.slice(0, 5),
               end:
                 (r.id === "mina-piano-mon" || r.id === "mina-piano-thu") &&
                 r.start_time.slice(0, 5) === "13:00" &&
                 r.end_time.slice(0, 5) === "14:00"
                   ? "14:50"
-                  : r.id === "leon-music-theory-mon" &&
-                      r.start_time.slice(0, 5) === "17:00" &&
-                      r.end_time.slice(0, 5) === "18:00"
-                    ? "17:00"
-                    : r.id === "leon-cello-wed"
-                      ? "16:00"
-                      : r.id === "leon-music-theory-wed"
-                        ? "17:00"
-                        : r.end_time.slice(0, 5),
+                  : r.id === "leon-cello-tue"
+                    ? "19:30"
+                    : r.id === "leon-music-theory-mon" &&
+                        r.start_time.slice(0, 5) === "17:00" &&
+                        r.end_time.slice(0, 5) === "18:00"
+                      ? "17:00"
+                      : r.id === "leon-cello-wed"
+                        ? "16:00"
+                        : r.id === "leon-music-theory-wed"
+                          ? "17:00"
+                          : r.end_time.slice(0, 5),
               kind: r.kind as ScheduleEvent["kind"],
               notes:
-                r.id === "leon-cello-wed" && r.notes === "Instrument"
-                  ? ""
-                  : (r.notes ?? ""),
+                r.id === "leon-music-theory-mon" && !r.notes
+                  ? "Prof. Liliana Foday"
+                  : r.id === "leon-cello-wed" && r.notes === "Instrument"
+                    ? ""
+                    : (r.notes ?? ""),
             })),
         );
         const missingActivities = DEFAULT_EVENTS.filter(
@@ -591,14 +557,22 @@ export function FamilySchedule({
                   .find((row) => row.id === event.id)
                   ?.end_time.slice(0, 5) !== event.end)) ||
             (event.id === "leon-cello-tue" &&
-              data.find((row) => row.id === event.id)?.day !== event.day) ||
+              (data.find((row) => row.id === event.id)?.day !== event.day ||
+                data
+                  .find((row) => row.id === event.id)
+                  ?.start_time.slice(0, 5) !== event.start ||
+                data
+                  .find((row) => row.id === event.id)
+                  ?.end_time.slice(0, 5) !== event.end)) ||
             (event.id === "leon-music-theory-mon" &&
               (data
                 .find((row) => row.id === event.id)
                 ?.start_time.slice(0, 5) !== event.start ||
                 data
                   .find((row) => row.id === event.id)
-                  ?.end_time.slice(0, 5) !== event.end)) ||
+                  ?.end_time.slice(0, 5) !== event.end ||
+                (data.find((row) => row.id === event.id)?.notes ?? "") !==
+                  event.notes)) ||
             (event.id === "leon-cello-wed" &&
               (data
                 .find((row) => row.id === event.id)
