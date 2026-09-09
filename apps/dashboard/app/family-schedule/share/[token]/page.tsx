@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import {
   FamilySchedule,
   NEW_LEON_ACTIVITIES,
+  NEW_MINA_ACTIVITIES,
   type ScheduleEvent,
 } from "../../FamilySchedule";
 
@@ -43,25 +44,33 @@ async function loadEvents(): Promise<ScheduleEvent[] | undefined> {
       day: row.id === "leon-cello-tue" && row.day === 1 ? 4 : row.day,
       title: row.title,
       start:
-        row.id === "leon-music-theory-mon" &&
-        row.start_time.slice(0, 5) === "17:00" &&
-        row.end_time.slice(0, 5) === "18:00"
-          ? "16:00"
-          : row.id === "leon-cello-wed"
-            ? "14:30"
-            : row.id === "leon-music-theory-wed"
-              ? "16:00"
-              : row.start_time.slice(0, 5),
-      end:
-        row.id === "leon-music-theory-mon" &&
-        row.start_time.slice(0, 5) === "17:00" &&
-        row.end_time.slice(0, 5) === "18:00"
-          ? "17:00"
-          : row.id === "leon-cello-wed"
+        (row.id === "mina-piano-mon" || row.id === "mina-piano-thu") &&
+        row.start_time.slice(0, 5) === "13:00" &&
+        row.end_time.slice(0, 5) === "14:00"
+          ? "14:00"
+          : row.id === "leon-music-theory-mon" &&
+              row.start_time.slice(0, 5) === "17:00" &&
+              row.end_time.slice(0, 5) === "18:00"
             ? "16:00"
-            : row.id === "leon-music-theory-wed"
-              ? "17:00"
-              : row.end_time.slice(0, 5),
+            : row.id === "leon-cello-wed"
+              ? "14:30"
+              : row.id === "leon-music-theory-wed"
+                ? "16:00"
+                : row.start_time.slice(0, 5),
+      end:
+        (row.id === "mina-piano-mon" || row.id === "mina-piano-thu") &&
+        row.start_time.slice(0, 5) === "13:00" &&
+        row.end_time.slice(0, 5) === "14:00"
+          ? "14:50"
+          : row.id === "leon-music-theory-mon" &&
+              row.start_time.slice(0, 5) === "17:00" &&
+              row.end_time.slice(0, 5) === "18:00"
+            ? "17:00"
+            : row.id === "leon-cello-wed"
+              ? "16:00"
+              : row.id === "leon-music-theory-wed"
+                ? "17:00"
+                : row.end_time.slice(0, 5),
       kind: row.kind as ScheduleEvent["kind"],
       notes:
         row.id === "leon-cello-wed" && row.notes === "Instrument"
@@ -70,7 +79,7 @@ async function loadEvents(): Promise<ScheduleEvent[] | undefined> {
     }));
   return [
     ...events,
-    ...NEW_LEON_ACTIVITIES.filter(
+    ...[...NEW_LEON_ACTIVITIES, ...NEW_MINA_ACTIVITIES].filter(
       (addition) => !events.some((event) => event.id === addition.id),
     ),
   ];

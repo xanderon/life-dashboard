@@ -60,7 +60,7 @@ const MONTHS = [
 const START_HOUR = 8,
   END_HOUR = 19,
   STORAGE_KEY = "life-dashboard:family-schedule:v1",
-  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v5",
+  SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v6",
   TEXT_SIZE_STORAGE_KEY = "life-dashboard:schedule-text-size:v1";
 const FOCUS_REFRESH_KEY = "life-dashboard:schedule-focus-refresh";
 const HOLIDAYS = [
@@ -152,6 +152,48 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     notes: "",
   },
 ];
+export const NEW_MINA_ACTIVITIES: ScheduleEvent[] = [
+  {
+    id: "mina-piano-mon",
+    child: "Mina",
+    day: 0,
+    title: "Pian",
+    start: "14:00",
+    end: "14:50",
+    kind: "activity",
+    notes: "",
+  },
+  {
+    id: "mina-theory-mon",
+    child: "Mina",
+    day: 0,
+    title: "Teorie muzicală",
+    start: "15:00",
+    end: "15:50",
+    kind: "activity",
+    notes: "Prof. Ionescu",
+  },
+  {
+    id: "mina-piano-thu",
+    child: "Mina",
+    day: 3,
+    title: "Pian",
+    start: "14:00",
+    end: "14:50",
+    kind: "activity",
+    notes: "",
+  },
+  {
+    id: "mina-theory-thu",
+    child: "Mina",
+    day: 3,
+    title: "Teorie muzicală",
+    start: "15:00",
+    end: "15:50",
+    kind: "activity",
+    notes: "Prof. Ionescu",
+  },
+];
 const DEFAULT_EVENTS: ScheduleEvent[] = [
   ...(["Mina", "Leon"] as Child[]).flatMap((child) =>
     [0, 1, 2, 3, 4].flatMap((day) => [
@@ -197,26 +239,7 @@ const DEFAULT_EVENTS: ScheduleEvent[] = [
     kind: "activity",
     notes: "",
   },
-  {
-    id: "mina-piano-mon",
-    child: "Mina",
-    day: 0,
-    title: "Pian",
-    start: "13:00",
-    end: "14:00",
-    kind: "activity",
-    notes: "",
-  },
-  {
-    id: "mina-piano-thu",
-    child: "Mina",
-    day: 3,
-    title: "Pian",
-    start: "13:00",
-    end: "14:00",
-    kind: "activity",
-    notes: "",
-  },
+  ...NEW_MINA_ACTIVITIES,
   ...NEW_LEON_ACTIVITIES,
 ];
 const LEON_SUBJECTS = [
@@ -278,13 +301,15 @@ const SCHOOL_EVENTS: ScheduleEvent[] = (["Mina", "Leon"] as Child[]).flatMap(
         title:
           child === "Mina"
             ? MINA_TIMETABLE[day][period]
-            : day === 1
-              ? LEON_TUESDAY[period]
-              : day === 2
-                ? LEON_WEDNESDAY[period]
-                : LEON_SUBJECTS[
-                    (day * 2 + period + childIndex) % LEON_SUBJECTS.length
-                  ],
+            : day === 0 || day === 4
+              ? "?"
+              : day === 1
+                ? LEON_TUESDAY[period]
+                : day === 2
+                  ? LEON_WEDNESDAY[period]
+                  : LEON_SUBJECTS[
+                      (day * 2 + period + childIndex) % LEON_SUBJECTS.length
+                    ],
         start,
         end,
         kind: "school" as const,
@@ -297,7 +322,9 @@ const SCHOOL_EVENTS: ScheduleEvent[] = (["Mina", "Leon"] as Child[]).flatMap(
       }));
     }),
 );
-const LEON_ACTIVITY_IDS = new Set(NEW_LEON_ACTIVITIES.map((event) => event.id));
+const ACTIVITY_MIGRATION_IDS = new Set(
+  [...NEW_LEON_ACTIVITIES, ...NEW_MINA_ACTIVITIES].map((event) => event.id),
+);
 const EMPTY_FORM = {
   child: "Mina" as Child,
   day: 0,
@@ -349,6 +376,7 @@ function holidayFor(d: Date) {
 }
 function emoji(e: ScheduleEvent) {
   const t = e.title.toLowerCase();
+  if (t === "?") return "❔";
   if (t.includes("ședință") || t.includes("sedinta")) return "👥";
   if (t.includes("violoncel")) return "🎻";
   if (t.includes("teorie muzical")) return "🎼";
@@ -513,25 +541,33 @@ export function FamilySchedule({
               day: r.id === "leon-cello-tue" && r.day === 1 ? 4 : r.day,
               title: r.title,
               start:
-                r.id === "leon-music-theory-mon" &&
-                r.start_time.slice(0, 5) === "17:00" &&
-                r.end_time.slice(0, 5) === "18:00"
-                  ? "16:00"
-                  : r.id === "leon-cello-wed"
-                    ? "14:30"
-                    : r.id === "leon-music-theory-wed"
-                      ? "16:00"
-                      : r.start_time.slice(0, 5),
-              end:
-                r.id === "leon-music-theory-mon" &&
-                r.start_time.slice(0, 5) === "17:00" &&
-                r.end_time.slice(0, 5) === "18:00"
-                  ? "17:00"
-                  : r.id === "leon-cello-wed"
+                (r.id === "mina-piano-mon" || r.id === "mina-piano-thu") &&
+                r.start_time.slice(0, 5) === "13:00" &&
+                r.end_time.slice(0, 5) === "14:00"
+                  ? "14:00"
+                  : r.id === "leon-music-theory-mon" &&
+                      r.start_time.slice(0, 5) === "17:00" &&
+                      r.end_time.slice(0, 5) === "18:00"
                     ? "16:00"
-                    : r.id === "leon-music-theory-wed"
-                      ? "17:00"
-                      : r.end_time.slice(0, 5),
+                    : r.id === "leon-cello-wed"
+                      ? "14:30"
+                      : r.id === "leon-music-theory-wed"
+                        ? "16:00"
+                        : r.start_time.slice(0, 5),
+              end:
+                (r.id === "mina-piano-mon" || r.id === "mina-piano-thu") &&
+                r.start_time.slice(0, 5) === "13:00" &&
+                r.end_time.slice(0, 5) === "14:00"
+                  ? "14:50"
+                  : r.id === "leon-music-theory-mon" &&
+                      r.start_time.slice(0, 5) === "17:00" &&
+                      r.end_time.slice(0, 5) === "18:00"
+                    ? "17:00"
+                    : r.id === "leon-cello-wed"
+                      ? "16:00"
+                      : r.id === "leon-music-theory-wed"
+                        ? "17:00"
+                        : r.end_time.slice(0, 5),
               kind: r.kind as ScheduleEvent["kind"],
               notes:
                 r.id === "leon-cello-wed" && r.notes === "Instrument"
@@ -539,14 +575,21 @@ export function FamilySchedule({
                   : (r.notes ?? ""),
             })),
         );
-        const missingLeonActivities = DEFAULT_EVENTS.filter(
+        const missingActivities = DEFAULT_EVENTS.filter(
           (event) =>
-            LEON_ACTIVITY_IDS.has(event.id) &&
+            ACTIVITY_MIGRATION_IDS.has(event.id) &&
             !loadedEvents.some((loaded) => loaded.id === event.id),
         );
-        setEvents([...loadedEvents, ...missingLeonActivities]);
-        const changedLeonActivities = loadedEvents.filter(
+        setEvents([...loadedEvents, ...missingActivities]);
+        const changedActivities = loadedEvents.filter(
           (event) =>
+            ((event.id === "mina-piano-mon" || event.id === "mina-piano-thu") &&
+              (data
+                .find((row) => row.id === event.id)
+                ?.start_time.slice(0, 5) !== event.start ||
+                data
+                  .find((row) => row.id === event.id)
+                  ?.end_time.slice(0, 5) !== event.end)) ||
             (event.id === "leon-cello-tue" &&
               data.find((row) => row.id === event.id)?.day !== event.day) ||
             (event.id === "leon-music-theory-mon" &&
@@ -571,12 +614,10 @@ export function FamilySchedule({
                   .find((row) => row.id === event.id)
                   ?.end_time.slice(0, 5) !== "17:00")),
         );
-        if (missingLeonActivities.length || changedLeonActivities.length) {
+        if (missingActivities.length || changedActivities.length) {
           const seeded = await supabase
             .from("family_schedule_events")
-            .upsert(
-              [...missingLeonActivities, ...changedLeonActivities].map(dbRow),
-            );
+            .upsert([...missingActivities, ...changedActivities].map(dbRow));
           if (seeded.error) setStorageMode("local");
         }
         if (data.some((event) => event.id === "leon-cello-mon"))
