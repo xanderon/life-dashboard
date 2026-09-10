@@ -1,12 +1,8 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
-import {
-  FamilySchedule,
-  NEW_LEON_ACTIVITIES,
-  NEW_MINA_ACTIVITIES,
-  type ScheduleEvent,
-} from "../../FamilySchedule";
+import { FamilySchedule, type ScheduleEvent } from "../../FamilySchedule";
+import { NEW_LEON_ACTIVITIES, NEW_MINA_ACTIVITIES } from "../../schedule-data";
 
 export const dynamic = "force-dynamic";
 export const metadata = {

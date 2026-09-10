@@ -585,6 +585,14 @@
   filter: brightness(1.12);
   transform: scale(1.015);
 }
+.event:focus-visible {
+  z-index: 20;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.event:hover {
+  z-index: 20;
+}
 .event:disabled {
   cursor: default;
 }
@@ -1218,8 +1226,8 @@
     min-height: 1.15em;
     overflow: visible;
     line-height: 1.15;
-    white-space: nowrap;
-    text-wrap: nowrap;
+    white-space: normal;
+    text-wrap: balance;
   }
   .nowLine span {
     right: auto;
@@ -1256,5 +1264,51 @@
   }
   .actions {
     margin-left: auto;
+  }
+}
+
+/* Keep titles readable on short mobile cards; tap always reveals full details. */
+@media (max-width: 650px) {
+  .schoolMode .event > span,
+  .combinedMode .event.school > span {
+    display: block;
+    min-height: 0;
+    font-size: clamp(11px, 3.1vw, 14px);
+    line-height: 1.12;
+    padding-inline: 0;
+    overflow-wrap: anywhere;
+  }
+  .schoolMode .event.hasNote > span,
+  .combinedMode .event.school.hasNote > span {
+    padding-inline: 10px;
+  }
+  .schoolMode .event .eventEmoji,
+  .combinedMode .event.school .eventEmoji {
+    display: none;
+  }
+  .combinedMode .activity > span {
+    font-size: clamp(11px, 3vw, 14px);
+    line-height: 1.12;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .combinedMode .activity .eventEmoji {
+    font-size: 19px;
+  }
+  .combinedMode .activity[data-duration="45"] small,
+  .combinedMode .activity[data-duration="50"] small {
+    display: none;
+  }
+  .page.focusMode {
+    min-height: 0;
+    padding: 0;
+    gap: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page *,
+  .page *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

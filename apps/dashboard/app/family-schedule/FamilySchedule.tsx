@@ -19,20 +19,17 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import styles from "./schedule.module.css";
 
-type Child = "Mina" | "Leon";
+import type { Child, ScheduleEvent } from "./schedule-model";
+import { occursOn, overlapLayout } from "./schedule-model";
+import {
+  DEFAULT_EVENTS,
+  SCHOOL_EVENTS,
+  ACTIVITY_MIGRATION_IDS,
+} from "./schedule-data";
 type View = "day" | "week" | "month" | "year";
 type Section = "calendar" | "school" | "combined";
 type TextSize = "normal" | "comfortable" | "large";
-export type ScheduleEvent = {
-  id: string;
-  child: Child;
-  day: number;
-  title: string;
-  start: string;
-  end: string;
-  kind: "school" | "sds" | "activity";
-  notes: string;
-};
+export type { ScheduleEvent } from "./schedule-model";
 const DAYS = [
   "Luni",
   "Marți",
@@ -100,210 +97,6 @@ const HOLIDAYS = [
     tone: 4,
   },
 ];
-export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
-  {
-    id: "leon-music-theory-mon",
-    child: "Leon",
-    day: 0,
-    title: "Teorie muzicală",
-    start: "16:00",
-    end: "17:00",
-    kind: "activity",
-    notes: "Prof. Liliana Foday",
-  },
-  {
-    id: "leon-parent-meeting-2026-09-14",
-    child: "Leon",
-    day: 0,
-    title: "Ședință cu părinții",
-    start: "16:30",
-    end: "17:30",
-    kind: "activity",
-    notes: "",
-  },
-  {
-    id: "leon-cello-tue",
-    child: "Leon",
-    day: 1,
-    title: "Violoncel",
-    start: "18:45",
-    end: "19:30",
-    kind: "activity",
-    notes: "Instrument",
-  },
-  {
-    id: "leon-cello-wed",
-    child: "Leon",
-    day: 2,
-    title: "Violoncel",
-    start: "14:30",
-    end: "16:00",
-    kind: "activity",
-    notes: "",
-  },
-  {
-    id: "leon-music-theory-wed",
-    child: "Leon",
-    day: 2,
-    title: "Teorie muzicală",
-    start: "16:00",
-    end: "17:00",
-    kind: "activity",
-    notes: "",
-  },
-];
-export const NEW_MINA_ACTIVITIES: ScheduleEvent[] = [
-  {
-    id: "mina-piano-mon",
-    child: "Mina",
-    day: 0,
-    title: "Pian",
-    start: "14:00",
-    end: "14:50",
-    kind: "activity",
-    notes: "",
-  },
-  {
-    id: "mina-theory-mon",
-    child: "Mina",
-    day: 0,
-    title: "Teorie muzicală",
-    start: "15:00",
-    end: "15:50",
-    kind: "activity",
-    notes: "Prof. Ionescu",
-  },
-  {
-    id: "mina-piano-thu",
-    child: "Mina",
-    day: 3,
-    title: "Pian",
-    start: "14:00",
-    end: "14:50",
-    kind: "activity",
-    notes: "",
-  },
-  {
-    id: "mina-theory-thu",
-    child: "Mina",
-    day: 3,
-    title: "Teorie muzicală",
-    start: "15:00",
-    end: "15:50",
-    kind: "activity",
-    notes: "Prof. Ionescu",
-  },
-];
-const DEFAULT_EVENTS: ScheduleEvent[] = [
-  ...(["Mina", "Leon"] as Child[]).flatMap((child) =>
-    [0, 1, 2, 3, 4].flatMap((day) => [
-      {
-        id: `${child}-${day}-school`,
-        child,
-        day,
-        title: "Școală",
-        start: "08:00",
-        end:
-          child === "Leon"
-            ? day === 4
-              ? "12:00"
-              : day === 0
-                ? "13:00"
-                : "14:00"
-            : "12:00",
-        kind: "school" as const,
-        notes: "",
-      },
-      {
-        id: `${child}-${day}-sds`,
-        child,
-        day,
-        title: "SDS",
-        start:
-          child === "Leon"
-            ? day === 4
-              ? "12:00"
-              : day === 0
-                ? "13:00"
-                : "14:00"
-            : "12:00",
-        end: "15:00",
-        kind: "sds" as const,
-        notes: "",
-      },
-    ]),
-  ),
-  {
-    id: "mina-theatre",
-    child: "Mina",
-    day: 1,
-    title: "Teatru",
-    start: "17:30",
-    end: "18:30",
-    kind: "activity",
-    notes: "",
-  },
-  ...NEW_MINA_ACTIVITIES,
-  ...NEW_LEON_ACTIVITIES,
-];
-const LEON_TIMETABLE = [
-  ["Istorie", "Educație tehnologică", "Română", "Dirigenție", "Engleză"],
-  ["Istorie", "Desen", "Franceză", "Biologie", "Matematică", "Engleză"],
-  ["Matematică", "Muzică", "Franceză", "Sport", "TIC", "Matematică"],
-  ["Geografie", "Religie", "Educație socială", "Română", "Română", "Sport"],
-  ["Română", "Matematică", "Engleză", "Biologie"],
-];
-const MINA_TIMETABLE = [
-  ["Limba română", "Matematică", "Limba engleză", "Joc și mișcare"],
-  ["Limba română", "Matematică", "Educație civică", "AVAP"],
-  ["Limba română", "Matematică", "Religie", "AVAP"],
-  ["Limba română", "Matematică", "Muzică și mișcare", "Sport"],
-  ["Limba română", "Sport", "Științe ale naturii", "Limba engleză"],
-];
-const PRIMARY_TIMES = [
-  ["08:00", "08:45"],
-  ["09:00", "09:45"],
-  ["10:05", "10:50"],
-  ["11:05", "11:50"],
-];
-const MIDDLE_SCHOOL_TIMES = [
-  ["08:00", "08:50"],
-  ["09:00", "09:50"],
-  ["10:00", "10:50"],
-  ["11:00", "11:50"],
-  ["12:00", "12:50"],
-  ["13:00", "13:50"],
-];
-const SCHOOL_EVENTS: ScheduleEvent[] = (["Mina", "Leon"] as Child[]).flatMap(
-  (child) =>
-    [0, 1, 2, 3, 4].flatMap((day) => {
-      const lessonTimes =
-        child === "Mina"
-          ? PRIMARY_TIMES
-          : MIDDLE_SCHOOL_TIMES.slice(0, LEON_TIMETABLE[day].length);
-      return lessonTimes.map(([start, end], period) => ({
-        id: `lesson-${child}-${day}-${period}`,
-        child,
-        day,
-        title:
-          child === "Mina"
-            ? MINA_TIMETABLE[day][period]
-            : LEON_TIMETABLE[day][period],
-        start,
-        end,
-        kind: "school" as const,
-        notes:
-          child === "Leon" && day === 1 && period === 2
-            ? "Vom face dirigenție"
-            : child === "Mina" && day === 1 && period === 0
-              ? "Prezentare proiect"
-              : "",
-      }));
-    }),
-);
-const ACTIVITY_MIGRATION_IDS = new Set(
-  [...NEW_LEON_ACTIVITIES, ...NEW_MINA_ACTIVITIES].map((event) => event.id),
-);
 const EMPTY_FORM = {
   child: "Mina" as Child,
   day: 0,
@@ -428,6 +221,7 @@ export function FamilySchedule({
   const [section, setSection] = useState<Section>("combined");
   const [textSize, setTextSize] = useState<TextSize>("comfortable");
   const [focusMode, setFocusMode] = useState(false);
+  const [viewBeforeFocus, setViewBeforeFocus] = useState<View>("week");
   const [focusMenuOpen, setFocusMenuOpen] = useState(false);
   const [events, setEvents] = useState(initialEvents ?? DEFAULT_EVENTS),
     [schoolEvents, setSchoolEvents] = useState(SCHOOL_EVENTS),
@@ -625,12 +419,29 @@ export function FamilySchedule({
   }, [textSize, ready]);
   useEffect(() => {
     const syncFullscreen = () => {
-      if (!document.fullscreenElement) setFocusMode(false);
+      if (!document.fullscreenElement) {
+        setFocusMode(false);
+        setView(viewBeforeFocus);
+      }
+    };
+    const onEscape = (event: KeyboardEvent) => {
+      if (
+        focusMode &&
+        event.key === "Escape" &&
+        !document.querySelector("dialog[open]")
+      ) {
+        setFocusMode(false);
+        setFocusMenuOpen(false);
+        setView(viewBeforeFocus);
+      }
     };
     document.addEventListener("fullscreenchange", syncFullscreen);
-    return () =>
+    document.addEventListener("keydown", onEscape);
+    return () => {
       document.removeEventListener("fullscreenchange", syncFullscreen);
-  }, []);
+      document.removeEventListener("keydown", onEscape);
+    };
+  }, [viewBeforeFocus, focusMode]);
   const weekStart = useMemo(() => mondayOf(cursor), [cursor]);
   const visibleDates =
     view === "day"
@@ -763,10 +574,13 @@ export function FamilySchedule({
   async function toggleFocusMode() {
     if (focusMode) {
       setFocusMode(false);
+      setFocusMenuOpen(false);
+      setView(viewBeforeFocus);
       if (document.fullscreenElement)
         await document.exitFullscreen().catch(() => {});
       return;
     }
+    setViewBeforeFocus(view);
     if (view === "month" || view === "year") setView("week");
     setFocusMode(true);
     const root = document.documentElement as HTMLElement & {
@@ -787,6 +601,15 @@ export function FamilySchedule({
     ((now.getHours() * 60 + now.getMinutes() - START_HOUR * 60) /
       ((END_HOUR - START_HOUR) * 60)) *
     100;
+  const displayedEvents =
+    section === "school"
+      ? schoolEvents
+      : section === "combined"
+        ? [
+            ...schoolEvents,
+            ...events.filter((event) => event.kind === "activity"),
+          ]
+        : events;
   return (
     <main
       className={`${styles.page} ${focusMode ? styles.focusMode : ""} ${styles[`text-${textSize}`]} ${section === "school" ? styles.schoolMode : section === "combined" ? styles.combinedMode : styles.calendarMode}`}
@@ -795,6 +618,14 @@ export function FamilySchedule({
         <div
           className={`${styles.focusControls} ${focusMenuOpen ? styles.focusControlsOpen : ""}`}
         >
+          <button
+            className={styles.focusMenuTrigger}
+            onClick={toggleFocusMode}
+            aria-label="Ieși din modul Focus"
+            title="Ieși din modul Focus"
+          >
+            <Minimize2 size={17} />
+          </button>
           {focusMenuOpen ? (
             <div className={styles.focusMenu}>
               {(["calendar", "school", "combined"] as Section[]).map((item) => (
@@ -813,9 +644,6 @@ export function FamilySchedule({
                   }
                 </button>
               ))}
-              <button onClick={toggleFocusMode} title="Ieși din modul Focus">
-                <Minimize2 size={17} />
-              </button>
               <button onClick={refreshInFocus} title="Reîncarcă pagina">
                 <RefreshCw size={17} />
               </button>
@@ -826,6 +654,7 @@ export function FamilySchedule({
             onClick={() => setFocusMenuOpen((open) => !open)}
             title="Opțiuni vizualizare"
             aria-label="Deschide opțiunile de vizualizare"
+            aria-expanded={focusMenuOpen}
           >
             <SlidersHorizontal size={17} />
           </button>
@@ -991,6 +820,12 @@ export function FamilySchedule({
             const di = dayIndex(d),
               holiday = holidayFor(d),
               today = iso(d) === iso(now);
+            const dayEvents = displayedEvents.filter(
+              (event) =>
+                occursOn(event, iso(d), di) &&
+                (!holiday || event.kind === "activity"),
+            );
+            const positions = overlapLayout(dayEvents);
             return (
               <div
                 key={iso(d)}
@@ -1021,72 +856,54 @@ export function FamilySchedule({
                     </span>
                   </div>
                 ) : null}
-                {!holiday &&
-                  (section === "school"
-                    ? schoolEvents
-                    : section === "combined"
-                      ? [
-                          ...schoolEvents,
-                          ...events.filter(
-                            (event) => event.kind === "activity",
-                          ),
-                        ]
-                      : events
-                  )
-                    .filter(
-                      (e) =>
-                        e.day === di &&
-                        (e.id !== "leon-parent-meeting-2026-09-14" ||
-                          iso(d) === "2026-09-14"),
-                    )
-                    .map((e) => {
-                      const top =
-                          ((Math.max(mins(e.start), START_HOUR * 60) -
-                            START_HOUR * 60) /
-                            ((END_HOUR - START_HOUR) * 60)) *
-                          100,
-                        height =
-                          ((Math.min(mins(e.end), END_HOUR * 60) -
-                            Math.max(mins(e.start), START_HOUR * 60)) /
-                            ((END_HOUR - START_HOUR) * 60)) *
-                          100;
-                      if (height <= 0) return null;
-                      return (
-                        <button
-                          key={e.id}
-                          className={`${styles.event} ${e.notes ? styles.hasNote : ""} ${e.id === "leon-parent-meeting-2026-09-14" ? styles.specialMeeting : ""} ${styles[e.child.toLowerCase()]} ${styles[e.kind]}`}
-                          data-duration={mins(e.end) - mins(e.start)}
-                          style={{
-                            top: `${top}%`,
-                            height: `${height}%`,
-                            left: e.child === "Mina" ? "1.5%" : "50.75%",
-                            viewTransitionName: `bubble-${e.child}-${e.day}-${e.start.replace(":", "")}`,
-                            viewTransitionClass: "schedule-bubble",
-                          }}
-                          onClick={() =>
-                            readOnly ? openPreview(e) : openEdit(e)
-                          }
-                        >
-                          <span title={e.title}>
-                            <b className={styles.eventEmoji} aria-hidden="true">
-                              {emoji(e)}
-                            </b>
-                            {e.title}
-                          </span>
-                          <small>
-                            {e.start}–{e.end}
-                          </small>
-                          {e.notes ? (
-                            <em
-                              title={e.notes}
-                              aria-label={`Notiță: ${e.notes}`}
-                            >
-                              📌
-                            </em>
-                          ) : null}
-                        </button>
-                      );
-                    })}
+                {dayEvents.map((e) => {
+                  const position = positions.get(e.id)!;
+                  const inset = Math.min(7, 30 / position.count);
+                  const offset = position.index * inset;
+                  const width = 47 - (position.count - 1) * inset;
+                  const top =
+                      ((Math.max(mins(e.start), START_HOUR * 60) -
+                        START_HOUR * 60) /
+                        ((END_HOUR - START_HOUR) * 60)) *
+                      100,
+                    height =
+                      ((Math.min(mins(e.end), END_HOUR * 60) -
+                        Math.max(mins(e.start), START_HOUR * 60)) /
+                        ((END_HOUR - START_HOUR) * 60)) *
+                      100;
+                  if (height <= 0) return null;
+                  return (
+                    <button
+                      key={e.id}
+                      className={`${styles.event} ${e.notes ? styles.hasNote : ""} ${e.id === "leon-parent-meeting-2026-09-14" ? styles.specialMeeting : ""} ${styles[e.child.toLowerCase()]} ${styles[e.kind]}`}
+                      data-duration={mins(e.end) - mins(e.start)}
+                      style={{
+                        top: `${top}%`,
+                        height: `${height}%`,
+                        left: `${(e.child === "Mina" ? 1.5 : 50.75) + offset}%`,
+                        width: `${width}%`,
+                        viewTransitionName: `bubble-${e.id}`,
+                        viewTransitionClass: "schedule-bubble",
+                      }}
+                      onClick={() => (readOnly ? openPreview(e) : openEdit(e))}
+                    >
+                      <span>
+                        <b className={styles.eventEmoji} aria-hidden="true">
+                          {emoji(e)}
+                        </b>
+                        {e.title}
+                      </span>
+                      <small>
+                        {e.start}–{e.end}
+                      </small>
+                      {e.notes ? (
+                        <em title={e.notes} aria-label={`Notiță: ${e.notes}`}>
+                          📌
+                        </em>
+                      ) : null}
+                    </button>
+                  );
+                })}
               </div>
             );
           })}
@@ -1094,7 +911,7 @@ export function FamilySchedule({
       ) : view === "month" ? (
         <MonthView
           cursor={cursor}
-          events={events}
+          events={displayedEvents}
           onDay={(d) => {
             setCursor(d);
             setView("day");
@@ -1265,7 +1082,11 @@ function MonthView({
         {Array.from({ length: 42 }, (_, i) => addDays(start, i)).map((d) => {
           const other = d.getMonth() !== cursor.getMonth(),
             holiday = holidayFor(d),
-            count = events.filter((e) => e.day === dayIndex(d)).length;
+            count = events.filter(
+              (e) =>
+                occursOn(e, iso(d), dayIndex(d)) &&
+                (!holiday || e.kind === "activity"),
+            ).length;
           return (
             <button
               key={iso(d)}
