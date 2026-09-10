@@ -425,7 +425,7 @@ export function FamilySchedule({
   readOnly?: boolean;
   initialEvents?: ScheduleEvent[];
 } = {}) {
-  const [section, setSection] = useState<Section>("calendar");
+  const [section, setSection] = useState<Section>("combined");
   const [textSize, setTextSize] = useState<TextSize>("comfortable");
   const [focusMode, setFocusMode] = useState(false);
   const [focusMenuOpen, setFocusMenuOpen] = useState(false);
