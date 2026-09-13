@@ -6,10 +6,20 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     child: "Leon",
     day: 0,
     title: "Teorie muzicală",
-    start: "16:00",
-    end: "17:00",
+    start: "17:00",
+    end: "18:00",
     kind: "activity",
     notes: "Prof. Liliana Foday",
+  },
+  {
+    id: "leon-piano-mon",
+    child: "Leon",
+    day: 0,
+    title: "Pian",
+    start: "18:00",
+    end: "19:00",
+    kind: "activity",
+    notes: "",
   },
   {
     id: "leon-parent-meeting-2026-09-14",
@@ -37,8 +47,8 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     child: "Leon",
     day: 2,
     title: "Violoncel",
-    start: "14:30",
-    end: "16:00",
+    start: "15:00",
+    end: "17:00",
     kind: "activity",
     notes: "",
   },
@@ -47,12 +57,34 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     child: "Leon",
     day: 2,
     title: "Teorie muzicală",
-    start: "16:00",
-    end: "17:00",
+    start: "17:00",
+    end: "18:00",
     kind: "activity",
     notes: "",
   },
 ];
+/** Apply the confirmed September music update to previously saved schedules. */
+export function updateLeonMusic(events: ScheduleEvent[]): ScheduleEvent[] {
+  const ids = new Set([
+    "leon-music-theory-mon",
+    "leon-cello-wed",
+    "leon-music-theory-wed",
+  ]);
+  const updated = events.map((event) => {
+    const current = ids.has(event.id)
+      ? NEW_LEON_ACTIVITIES.find((seed) => seed.id === event.id)
+      : undefined;
+    return current
+      ? { ...event, start: current.start, end: current.end }
+      : event;
+  });
+  if (!updated.some((event) => event.id === "leon-piano-mon")) {
+    updated.push({
+      ...NEW_LEON_ACTIVITIES.find((event) => event.id === "leon-piano-mon")!,
+    });
+  }
+  return updated;
+}
 export const NEW_MINA_ACTIVITIES: ScheduleEvent[] = [
   {
     id: "mina-piano-mon",

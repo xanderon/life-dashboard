@@ -25,6 +25,7 @@ import {
   DEFAULT_EVENTS,
   SCHOOL_EVENTS,
   ACTIVITY_MIGRATION_IDS,
+  updateLeonMusic,
 } from "./schedule-data";
 type View = "day" | "week" | "month" | "year";
 type Section = "calendar" | "school" | "combined";
@@ -182,7 +183,7 @@ function emoji(e: ScheduleEvent) {
   return "⭐";
 }
 function normalizeEvents(items: ScheduleEvent[]) {
-  return items.map((event) => {
+  return updateLeonMusic(items).map((event) => {
     const isLeonSchool =
       event.child === "Leon" &&
       event.kind === "school" &&
@@ -338,9 +339,14 @@ export function FamilySchedule({
         const missingActivities = DEFAULT_EVENTS.filter(
           (event) =>
             ACTIVITY_MIGRATION_IDS.has(event.id) &&
-            !loadedEvents.some((loaded) => loaded.id === event.id),
+            !data.some((loaded) => loaded.id === event.id),
         );
-        setEvents([...loadedEvents, ...missingActivities]);
+        setEvents([
+          ...loadedEvents,
+          ...missingActivities.filter(
+            (event) => !loadedEvents.some((loaded) => loaded.id === event.id),
+          ),
+        ]);
         const changedActivities = loadedEvents.filter(
           (event) =>
             ((event.id === "mina-piano-mon" || event.id === "mina-piano-thu") &&
@@ -370,17 +376,17 @@ export function FamilySchedule({
             (event.id === "leon-cello-wed" &&
               (data
                 .find((row) => row.id === event.id)
-                ?.start_time.slice(0, 5) !== "14:30" ||
+                ?.start_time.slice(0, 5) !== event.start ||
                 data
                   .find((row) => row.id === event.id)
-                  ?.end_time.slice(0, 5) !== "16:00")) ||
+                  ?.end_time.slice(0, 5) !== event.end)) ||
             (event.id === "leon-music-theory-wed" &&
               (data
                 .find((row) => row.id === event.id)
-                ?.start_time.slice(0, 5) !== "16:00" ||
+                ?.start_time.slice(0, 5) !== event.start ||
                 data
                   .find((row) => row.id === event.id)
-                  ?.end_time.slice(0, 5) !== "17:00")),
+                  ?.end_time.slice(0, 5) !== event.end)),
         );
         if (missingActivities.length || changedActivities.length) {
           const seeded = await supabase

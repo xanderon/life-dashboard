@@ -2,7 +2,11 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import { FamilySchedule, type ScheduleEvent } from "../../FamilySchedule";
-import { NEW_LEON_ACTIVITIES, NEW_MINA_ACTIVITIES } from "../../schedule-data";
+import {
+  NEW_LEON_ACTIVITIES,
+  NEW_MINA_ACTIVITIES,
+  updateLeonMusic,
+} from "../../schedule-data";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -79,12 +83,12 @@ async function loadEvents(): Promise<ScheduleEvent[] | undefined> {
             ? ""
             : (row.notes ?? ""),
     }));
-  return [
+  return updateLeonMusic([
     ...events,
     ...[...NEW_LEON_ACTIVITIES, ...NEW_MINA_ACTIVITIES].filter(
       (addition) => !events.some((event) => event.id === addition.id),
     ),
-  ];
+  ]);
 }
 
 export default async function SharedFamilySchedulePage({
