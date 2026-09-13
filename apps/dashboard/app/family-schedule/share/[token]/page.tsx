@@ -49,7 +49,7 @@ async function loadEvents(): Promise<ScheduleEvent[] | undefined> {
         row.end_time.slice(0, 5) === "14:00"
           ? "14:00"
           : row.id === "leon-cello-tue"
-            ? "18:45"
+            ? "18:00"
             : row.id === "leon-music-theory-mon" &&
                 row.start_time.slice(0, 5) === "17:00" &&
                 row.end_time.slice(0, 5) === "18:00"
@@ -65,7 +65,7 @@ async function loadEvents(): Promise<ScheduleEvent[] | undefined> {
         row.end_time.slice(0, 5) === "14:00"
           ? "14:50"
           : row.id === "leon-cello-tue"
-            ? "19:30"
+            ? "19:00"
             : row.id === "leon-music-theory-mon" &&
                 row.start_time.slice(0, 5) === "17:00" &&
                 row.end_time.slice(0, 5) === "18:00"

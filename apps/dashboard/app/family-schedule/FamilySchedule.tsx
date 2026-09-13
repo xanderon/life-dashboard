@@ -301,7 +301,7 @@ export function FamilySchedule({
                 r.end_time.slice(0, 5) === "14:00"
                   ? "14:00"
                   : r.id === "leon-cello-tue"
-                    ? "18:45"
+                    ? "18:00"
                     : r.id === "leon-music-theory-mon" &&
                         r.start_time.slice(0, 5) === "17:00" &&
                         r.end_time.slice(0, 5) === "18:00"
@@ -317,7 +317,7 @@ export function FamilySchedule({
                 r.end_time.slice(0, 5) === "14:00"
                   ? "14:50"
                   : r.id === "leon-cello-tue"
-                    ? "19:30"
+                    ? "19:00"
                     : r.id === "leon-music-theory-mon" &&
                         r.start_time.slice(0, 5) === "17:00" &&
                         r.end_time.slice(0, 5) === "18:00"

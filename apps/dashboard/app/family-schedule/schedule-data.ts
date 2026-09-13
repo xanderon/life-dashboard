@@ -37,8 +37,8 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     child: "Leon",
     day: 1,
     title: "Violoncel",
-    start: "18:45",
-    end: "19:30",
+    start: "18:00",
+    end: "19:00",
     kind: "activity",
     notes: "Instrument",
   },
@@ -66,6 +66,7 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
 /** Apply the confirmed September music update to previously saved schedules. */
 export function updateLeonMusic(events: ScheduleEvent[]): ScheduleEvent[] {
   const ids = new Set([
+    "leon-cello-tue",
     "leon-music-theory-mon",
     "leon-cello-wed",
     "leon-music-theory-wed",
