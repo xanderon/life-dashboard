@@ -47,7 +47,7 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     child: "Leon",
     day: 2,
     title: "Violoncel",
-    start: "15:00",
+    start: "15:15",
     end: "17:00",
     kind: "activity",
     notes: "",
