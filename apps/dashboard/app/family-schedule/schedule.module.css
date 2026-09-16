@@ -139,116 +139,6 @@
   background: var(--panel-2);
   color: var(--text);
 }
-.weatherDock {
-  position: fixed;
-  z-index: 29;
-  right: max(12px, env(safe-area-inset-right));
-  bottom: max(12px, env(safe-area-inset-bottom));
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 7px;
-}
-.focusMode .weatherDock {
-  bottom: max(62px, calc(12px + env(safe-area-inset-bottom)));
-}
-.weatherTrigger {
-  min-width: 43px;
-  min-height: 43px;
-  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border-strong));
-  border-radius: 50%;
-  padding: 4px;
-  display: grid;
-  place-items: center;
-  gap: 0;
-  color: var(--text);
-  background: color-mix(in srgb, var(--panel-strong) 94%, transparent);
-  box-shadow: 0 8px 25px -14px #000;
-  backdrop-filter: blur(10px);
-  cursor: pointer;
-  font: inherit;
-  line-height: 1;
-}
-.weatherTrigger span {
-  font-size: 18px;
-}
-.weatherTrigger b {
-  margin-top: -2px;
-  font-size: 10px;
-}
-.weatherTray {
-  width: min(286px, calc(100vw - 28px));
-  padding: 10px;
-  border: 1px solid var(--border-strong);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--panel-strong) 96%, transparent);
-  box-shadow: 0 18px 44px -24px #000;
-  backdrop-filter: blur(14px);
-  animation: weather-tray-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-@keyframes weather-tray-in {
-  from {
-    opacity: 0;
-    transform: translateY(7px) scale(0.96);
-  }
-}
-.weatherTrayTitle {
-  margin: 0 2px 8px;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 11px;
-  font-weight: 760;
-}
-.weatherTrayTitle small {
-  color: var(--muted);
-  font-size: 9px;
-  font-weight: 550;
-}
-.weatherDays {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 7px;
-}
-.weatherDay {
-  min-width: 0;
-  padding: 7px;
-  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--panel-2) 74%, transparent);
-}
-.weatherDay > strong {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--muted);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.weatherDay > div {
-  min-height: 27px;
-  display: grid;
-  grid-template-columns: 34px 20px 26px minmax(0, 1fr);
-  align-items: center;
-  font-size: 11px;
-}
-.weatherDay time {
-  color: var(--muted);
-  font-size: 10px;
-}
-.weatherDay > div > span {
-  font-size: 15px;
-}
-.weatherDay b {
-  font-size: 11px;
-}
-.weatherDay em {
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 8px;
-  font-style: normal;
-  white-space: nowrap;
-}
 .focusButton {
   display: inline-flex;
   align-items: center;
@@ -530,6 +420,7 @@
   letter-spacing: 0.1em;
 }
 .dayHead {
+  position: relative;
   flex-direction: column;
   gap: 6px;
   padding: 7px 6px 5px;
@@ -565,6 +456,29 @@
 .todayHead .dayTitle b,
 .todayHead .dayTitle > span {
   color: color-mix(in srgb, var(--accent) 78%, var(--text));
+}
+.weatherHeadBadge {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  min-width: 35px;
+  padding: 2px 4px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  box-shadow: 0 4px 12px -10px #000;
+  font-size: 9px;
+  line-height: 1;
+}
+.weatherHeadBadge span {
+  font-size: 12px;
+}
+.weatherHeadBadge b {
+  font-size: 9px;
 }
 .laneNames {
   display: grid;
@@ -669,6 +583,37 @@
   left: 50%;
   width: 1px;
   background: color-mix(in srgb, var(--border) 55%, transparent);
+}
+.weatherMarkers {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  pointer-events: none;
+}
+.weatherMarker {
+  position: absolute;
+  right: 4px;
+  min-width: 39px;
+  padding: 2px 4px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--panel-strong) 82%, transparent);
+  box-shadow: 0 4px 12px -9px #000;
+  backdrop-filter: blur(5px);
+  font-size: 10px;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+.weatherMarker span {
+  font-size: 13px;
+}
+.weatherMarker b {
+  font-size: 10px;
 }
 .event {
   position: absolute;

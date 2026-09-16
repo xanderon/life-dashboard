@@ -265,8 +265,7 @@ export function FamilySchedule({
       "loading" | "cloud" | "local" | "shared"
     >(readOnly ? "shared" : "loading"),
     [now, setNow] = useState(new Date()),
-    [weather, setWeather] = useState<WeatherForecast | null>(null),
-    [weatherOpen, setWeatherOpen] = useState(false);
+    [weather, setWeather] = useState<WeatherForecast | null>(null);
   useEffect(() => {
     let active = true;
     const loadWeather = async () => {
@@ -715,55 +714,6 @@ export function FamilySchedule({
           </button>
         </div>
       ) : null}
-      {weather?.current ? (
-        <aside
-          className={`${styles.weatherDock} ${weatherOpen ? styles.weatherOpen : ""}`}
-          aria-label={`Vreme în ${weather.location}`}
-        >
-          {weatherOpen ? (
-            <div className={styles.weatherTray}>
-              <div className={styles.weatherTrayTitle}>
-                <span>Vreme · {weather.location}</span>
-                <small>
-                  actualizată la {weather.current.time.slice(11, 16)}
-                </small>
-              </div>
-              <div className={styles.weatherDays}>
-                {weather.days.map((day, index) => (
-                  <div key={day.date} className={styles.weatherDay}>
-                    <strong>{index === 0 ? "Azi" : "Mâine"}</strong>
-                    {day.moments.map((moment) => (
-                      <div
-                        key={moment.time}
-                        title={`${weatherLabel(moment.code)}, ${moment.temperature}°C${moment.precipitationProbability ? ` · ${moment.precipitationProbability}% șanse de ploaie` : ""}`}
-                      >
-                        <time>{moment.time}</time>
-                        <span aria-hidden="true">
-                          {weatherEmoji(moment.code)}
-                        </span>
-                        <b>{moment.temperature}°</b>
-                        {moment.precipitationProbability >= 25 ? (
-                          <em>☔ {moment.precipitationProbability}%</em>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          <button
-            type="button"
-            className={styles.weatherTrigger}
-            onClick={() => setWeatherOpen((open) => !open)}
-            aria-expanded={weatherOpen}
-            title={`Vreme acum în ${weather.location}: ${weatherLabel(weather.current.code)}, ${weather.current.temperature}°C`}
-          >
-            <span aria-hidden="true">{weatherEmoji(weather.current.code)}</span>
-            <b>{weather.current.temperature}°</b>
-          </button>
-        </aside>
-      ) : null}
       <header className={styles.header}>
         <div className={styles.titleGroup}>
           <Link href="/" className={styles.iconButton}>
@@ -887,22 +837,37 @@ export function FamilySchedule({
           }}
         >
           <div className={styles.corner}>Timp</div>
-          {visibleDates.map((d) => (
-            <div
-              key={iso(d)}
-              className={`${styles.dayHead} ${iso(d) === iso(now) ? styles.todayHead : ""} ${dayIndex(d) > 4 ? styles.weekendHead : ""}`}
-              aria-current={iso(d) === iso(now) ? "date" : undefined}
-            >
-              <div className={styles.dayTitle}>
-                <b>{SHORT_DAYS[dayIndex(d)]}</b>
-                <span>{label(d)}</span>
+          {visibleDates.map((d) => {
+            const date = iso(d);
+            const today = date === iso(now);
+            return (
+              <div
+                key={date}
+                className={`${styles.dayHead} ${today ? styles.todayHead : ""} ${dayIndex(d) > 4 ? styles.weekendHead : ""}`}
+                aria-current={today ? "date" : undefined}
+              >
+                <div className={styles.dayTitle}>
+                  <b>{SHORT_DAYS[dayIndex(d)]}</b>
+                  <span>{label(d)}</span>
+                </div>
+                {today && weather?.current ? (
+                  <div
+                    className={styles.weatherHeadBadge}
+                    title={`Vreme acum în ${weather.location}: ${weatherLabel(weather.current.code)}, ${weather.current.temperature}°C`}
+                  >
+                    <span aria-hidden="true">
+                      {weatherEmoji(weather.current.code)}
+                    </span>
+                    <b>{weather.current.temperature}°</b>
+                  </div>
+                ) : null}
+                <div className={styles.laneNames}>
+                  <span>Mina</span>
+                  <span>Leon</span>
+                </div>
               </div>
-              <div className={styles.laneNames}>
-                <span>Mina</span>
-                <span>Leon</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
           <div className={styles.timeRail}>
             {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => (
               <span
@@ -923,7 +888,8 @@ export function FamilySchedule({
           {visibleDates.map((d) => {
             const di = dayIndex(d),
               holiday = holidayFor(d),
-              today = iso(d) === iso(now);
+              today = iso(d) === iso(now),
+              weatherDay = weather?.days.find((day) => day.date === iso(d));
             const dayEvents = displayedEvents.filter(
               (event) =>
                 occursOn(event, iso(d), di) &&
@@ -950,6 +916,23 @@ export function FamilySchedule({
                   ))}
                 </div>
                 <div className={styles.laneDivider} />
+                {weatherDay?.moments.length ? (
+                  <div className={styles.weatherMarkers} aria-hidden="true">
+                    {weatherDay.moments.map((moment) => (
+                      <div
+                        key={moment.time}
+                        className={styles.weatherMarker}
+                        style={{
+                          top: `${((mins(moment.time) - START_HOUR * 60) / ((END_HOUR - START_HOUR) * 60)) * 100}%`,
+                        }}
+                        title={`${moment.time} · ${weatherLabel(moment.code)}, ${moment.temperature}°C${moment.precipitationProbability ? ` · ${moment.precipitationProbability}% șanse de ploaie` : ""}`}
+                      >
+                        <span>{weatherEmoji(moment.code)}</span>
+                        <b>{moment.temperature}°</b>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 {today && nowTop >= 0 && nowTop <= 100 ? (
                   <div className={styles.nowLine} style={{ top: `${nowTop}%` }}>
                     <span>
