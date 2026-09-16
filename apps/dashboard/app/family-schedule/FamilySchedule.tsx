@@ -30,6 +30,17 @@ import {
 type View = "day" | "week" | "month" | "year";
 type Section = "calendar" | "school" | "combined";
 type TextSize = "normal" | "comfortable" | "large";
+type WeatherMoment = {
+  time: string;
+  temperature: number;
+  code: number;
+  precipitationProbability: number;
+};
+type WeatherForecast = {
+  location: string;
+  current: { time: string; temperature: number; code: number } | null;
+  days: { date: string; moments: WeatherMoment[] }[];
+};
 export type { ScheduleEvent } from "./schedule-model";
 const DAYS = [
   "Luni",
@@ -147,6 +158,24 @@ function holidayFor(d: Date) {
   const value = iso(d);
   return HOLIDAYS.find((h) => value >= h.start && value <= h.end);
 }
+function weatherEmoji(code: number) {
+  if (code === 0) return "☀️";
+  if (code <= 2) return "🌤️";
+  if (code === 3) return "☁️";
+  if (code <= 48) return "🌫️";
+  if (code <= 67 || (code >= 80 && code <= 82)) return "🌧️";
+  if (code <= 86) return "🌨️";
+  return "⛈️";
+}
+function weatherLabel(code: number) {
+  if (code === 0) return "Senin";
+  if (code <= 2) return "Parțial noros";
+  if (code === 3) return "Noros";
+  if (code <= 48) return "Ceață";
+  if (code <= 67 || (code >= 80 && code <= 82)) return "Ploaie";
+  if (code <= 86) return "Ninsoare";
+  return "Furtună";
+}
 function emoji(e: ScheduleEvent) {
   const t = e.title.toLowerCase();
   if (t === "?") return "❔";
@@ -235,7 +264,27 @@ export function FamilySchedule({
     [storageMode, setStorageMode] = useState<
       "loading" | "cloud" | "local" | "shared"
     >(readOnly ? "shared" : "loading"),
-    [now, setNow] = useState(new Date());
+    [now, setNow] = useState(new Date()),
+    [weather, setWeather] = useState<WeatherForecast | null>(null),
+    [weatherOpen, setWeatherOpen] = useState(false);
+  useEffect(() => {
+    let active = true;
+    const loadWeather = async () => {
+      try {
+        const response = await fetch("/api/family-weather");
+        if (!response.ok) return;
+        const data = (await response.json()) as WeatherForecast;
+        if (active && data.current && Array.isArray(data.days))
+          setWeather(data);
+      } catch {}
+    };
+    void loadWeather();
+    const timer = window.setInterval(loadWeather, 15 * 60 * 1000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, []);
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     queueMicrotask(() => {
@@ -665,6 +714,55 @@ export function FamilySchedule({
             <SlidersHorizontal size={17} />
           </button>
         </div>
+      ) : null}
+      {weather?.current ? (
+        <aside
+          className={`${styles.weatherDock} ${weatherOpen ? styles.weatherOpen : ""}`}
+          aria-label={`Vreme în ${weather.location}`}
+        >
+          {weatherOpen ? (
+            <div className={styles.weatherTray}>
+              <div className={styles.weatherTrayTitle}>
+                <span>Vreme · {weather.location}</span>
+                <small>
+                  actualizată la {weather.current.time.slice(11, 16)}
+                </small>
+              </div>
+              <div className={styles.weatherDays}>
+                {weather.days.map((day, index) => (
+                  <div key={day.date} className={styles.weatherDay}>
+                    <strong>{index === 0 ? "Azi" : "Mâine"}</strong>
+                    {day.moments.map((moment) => (
+                      <div
+                        key={moment.time}
+                        title={`${weatherLabel(moment.code)}, ${moment.temperature}°C${moment.precipitationProbability ? ` · ${moment.precipitationProbability}% șanse de ploaie` : ""}`}
+                      >
+                        <time>{moment.time}</time>
+                        <span aria-hidden="true">
+                          {weatherEmoji(moment.code)}
+                        </span>
+                        <b>{moment.temperature}°</b>
+                        {moment.precipitationProbability >= 25 ? (
+                          <em>☔ {moment.precipitationProbability}%</em>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className={styles.weatherTrigger}
+            onClick={() => setWeatherOpen((open) => !open)}
+            aria-expanded={weatherOpen}
+            title={`Vreme acum în ${weather.location}: ${weatherLabel(weather.current.code)}, ${weather.current.temperature}°C`}
+          >
+            <span aria-hidden="true">{weatherEmoji(weather.current.code)}</span>
+            <b>{weather.current.temperature}°</b>
+          </button>
+        </aside>
       ) : null}
       <header className={styles.header}>
         <div className={styles.titleGroup}>
