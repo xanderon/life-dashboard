@@ -64,6 +64,12 @@
   padding: 0;
   gap: 0;
 }
+.focusMode::before,
+.focusMode::after {
+  /* Large blurred layers are expensive on low-power TV browsers. */
+  opacity: 0.06;
+  filter: none;
+}
 .focusMode .calendar {
   --head: 62px;
   border-radius: 14px;
@@ -593,7 +599,7 @@
 .weatherMarker {
   position: absolute;
   right: 4px;
-  min-width: 39px;
+  min-width: 43px;
   padding: 2px 4px;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
   border-radius: 999px;
@@ -605,15 +611,18 @@
   background: color-mix(in srgb, var(--panel-strong) 82%, transparent);
   box-shadow: 0 4px 12px -9px #000;
   backdrop-filter: blur(5px);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1;
   transform: translateY(-50%);
 }
 .weatherMarker span {
-  font-size: 13px;
+  font-size: 14px;
 }
 .weatherMarker b {
-  font-size: 10px;
+  font-size: 11px;
+}
+.focusMode .weatherMarker {
+  backdrop-filter: none;
 }
 .event {
   position: absolute;
@@ -706,11 +715,20 @@
   opacity: 0.82;
 }
 .sds {
+  opacity: 0.72;
   background-image: repeating-linear-gradient(
     135deg,
     transparent 0 6px,
     rgba(255, 255, 255, 0.035) 6px 9px
   );
+}
+.mina.sds {
+  background-color: color-mix(in srgb, #d86fa6 13%, var(--panel-strong));
+  border-color: color-mix(in srgb, #eb8cba 28%, transparent);
+}
+.leon.sds {
+  background-color: color-mix(in srgb, #55a9e4 13%, var(--panel-strong));
+  border-color: color-mix(in srgb, #70baf0 28%, transparent);
 }
 .activity {
   z-index: 4;

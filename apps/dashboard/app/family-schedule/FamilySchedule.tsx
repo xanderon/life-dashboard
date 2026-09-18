@@ -180,8 +180,11 @@ function sdsForDate(
     const schoolEndsAt = Math.max(
       ...childLessons.map((event) => mins(event.end)),
     );
-    // Mina's programme starts at noon; Leon continues directly after his last lesson.
-    const startsAt = child === "Mina" ? 12 * 60 : schoolEndsAt;
+    // A ten-minute handover separates the final lesson from SDS.
+    const startsAt = Math.max(
+      child === "Mina" ? 12 * 60 : 0,
+      schoolEndsAt + 10,
+    );
     const usualEnd = child === "Mina" ? 15 * 60 : 16 * 60;
     const nextActivity = activities
       .filter(
