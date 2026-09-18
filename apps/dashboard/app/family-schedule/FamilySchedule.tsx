@@ -555,11 +555,33 @@ export function FamilySchedule({
       document.removeEventListener("keydown", onEscape);
     };
   }, [viewBeforeFocus, focusMode]);
+  const displayedEvents =
+    section === "school"
+      ? schoolEvents
+      : section === "combined"
+        ? [
+            ...schoolEvents,
+            ...events.filter((event) => event.kind === "activity"),
+          ]
+        : events.filter((event) => event.kind !== "sds");
   const weekStart = useMemo(() => mondayOf(cursor), [cursor]);
+  // Focus keeps the inexpensive five-day layout unless this actual week has a
+  // Saturday/Sunday event. This preserves the extra space on the TV without
+  // ever hiding a weekend plan.
+  const focusShowsWeekend =
+    focusMode &&
+    view === "week" &&
+    [5, 6].some((day) => {
+      const date = addDays(weekStart, day);
+      return displayedEvents.some((event) =>
+        occursOn(event, iso(date), day),
+      );
+    });
+  const visibleWeekDays = focusMode && !focusShowsWeekend ? 5 : 7;
   const visibleDates =
     view === "day"
       ? [cursor]
-      : Array.from({ length: focusMode ? 5 : 7 }, (_, i) =>
+      : Array.from({ length: visibleWeekDays }, (_, i) =>
           addDays(weekStart, i),
         );
   const range =
@@ -570,7 +592,7 @@ export function FamilySchedule({
           month: "long",
         }).format(cursor)
       : view === "week"
-        ? `${label(weekStart)} — ${label(addDays(weekStart, focusMode ? 4 : 6))}`
+        ? `${label(weekStart)} — ${label(addDays(weekStart, visibleWeekDays - 1))}`
         : view === "month"
           ? `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`
           : `${cursor.getFullYear()}`;
@@ -714,15 +736,6 @@ export function FamilySchedule({
     ((now.getHours() * 60 + now.getMinutes() - START_HOUR * 60) /
       ((END_HOUR - START_HOUR) * 60)) *
     100;
-  const displayedEvents =
-    section === "school"
-      ? schoolEvents
-      : section === "combined"
-        ? [
-            ...schoolEvents,
-            ...events.filter((event) => event.kind === "activity"),
-          ]
-        : events.filter((event) => event.kind !== "sds");
   return (
     <main
       className={`${styles.page} ${focusMode ? styles.focusMode : ""} ${styles[`text-${textSize}`]} ${section === "school" ? styles.schoolMode : section === "combined" ? styles.combinedMode : styles.calendarMode}`}
