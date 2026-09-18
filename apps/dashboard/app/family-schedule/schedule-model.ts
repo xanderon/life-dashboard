@@ -20,11 +20,15 @@ export interface ScheduleRepository {
   remove(id: string): Promise<void>;
 }
 
+const legacyOneOffDates: Record<string, string> = {
+  "leon-parent-meeting-2026-09-14": "2026-09-14",
+  "leon-arena-elevilor-2026-09-19": "2026-09-19",
+  "leon-arena-elevilor-2026-09-20": "2026-09-20",
+};
+
 export function occursOn(event: ScheduleEvent, date: string, day: number) {
   // Compatibility for saved rows predating the date field.
-  const once =
-    event.date ??
-    (event.id === "leon-parent-meeting-2026-09-14" ? "2026-09-14" : undefined);
+  const once = event.date ?? legacyOneOffDates[event.id];
   return once ? once === date : event.day === day;
 }
 

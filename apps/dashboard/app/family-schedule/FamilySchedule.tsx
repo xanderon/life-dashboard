@@ -237,9 +237,11 @@ function emoji(e: ScheduleEvent) {
   const t = e.title.toLowerCase();
   if (t === "?") return "❔";
   if (t.includes("ședință") || t.includes("sedinta")) return "👥";
+  if (t.includes("arena elevilor")) return "🎪";
   if (t.includes("violoncel")) return "🎻";
   if (t.includes("teorie muzical")) return "🎼";
   if (t.includes("pian")) return "🎹";
+  if (t.includes("dans")) return "💃";
   if (t.includes("teatru")) return "🎭";
   if (t.includes("test")) return "📝";
   if (t.includes("înot") || t.includes("inot")) return "🏊";
@@ -1029,7 +1031,7 @@ export function FamilySchedule({
                   return (
                     <button
                       key={e.id}
-                      className={`${styles.event} ${e.notes ? styles.hasNote : ""} ${e.id === "leon-parent-meeting-2026-09-14" ? styles.specialMeeting : ""} ${styles[e.child.toLowerCase()]} ${styles[e.kind]}`}
+                      className={`${styles.event} ${e.notes ? styles.hasNote : ""} ${e.id === "leon-parent-meeting-2026-09-14" || e.id.startsWith("leon-arena-elevilor-") ? styles.specialMeeting : ""} ${styles[e.child.toLowerCase()]} ${styles[e.kind]}`}
                       data-duration={mins(e.end) - mins(e.start)}
                       style={{
                         top: `${top}%`,

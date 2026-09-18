@@ -33,6 +33,28 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     notes: "",
   },
   {
+    id: "leon-arena-elevilor-2026-09-19",
+    date: "2026-09-19",
+    child: "Leon",
+    day: 5,
+    title: "Arena Elevilor 2026",
+    start: "10:00",
+    end: "15:00",
+    kind: "activity",
+    notes: "Circul Metropolitan București",
+  },
+  {
+    id: "leon-arena-elevilor-2026-09-20",
+    date: "2026-09-20",
+    child: "Leon",
+    day: 6,
+    title: "Arena Elevilor 2026",
+    start: "10:00",
+    end: "15:00",
+    kind: "activity",
+    notes: "Circul Metropolitan București",
+  },
+  {
     id: "leon-cello-tue",
     child: "Leon",
     day: 1,
@@ -63,7 +85,7 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     notes: "",
   },
 ];
-/** Apply the confirmed September music update to previously saved schedules. */
+/** Apply confirmed activity updates and seed anything saved before it existed. */
 export function updateLeonMusic(events: ScheduleEvent[]): ScheduleEvent[] {
   const ids = new Set([
     "leon-cello-tue",
@@ -79,11 +101,13 @@ export function updateLeonMusic(events: ScheduleEvent[]): ScheduleEvent[] {
       ? { ...event, start: current.start, end: current.end }
       : event;
   });
-  if (!updated.some((event) => event.id === "leon-piano-mon")) {
-    updated.push({
-      ...NEW_LEON_ACTIVITIES.find((event) => event.id === "leon-piano-mon")!,
-    });
-  }
+  const allActivitySeeds = [...NEW_LEON_ACTIVITIES, ...NEW_MINA_ACTIVITIES];
+  const existingIds = new Set(updated.map((event) => event.id));
+  updated.push(
+    ...allActivitySeeds
+      .filter((event) => !existingIds.has(event.id))
+      .map((event) => ({ ...event })),
+  );
   return updated;
 }
 export const NEW_MINA_ACTIVITIES: ScheduleEvent[] = [
@@ -126,6 +150,16 @@ export const NEW_MINA_ACTIVITIES: ScheduleEvent[] = [
     end: "15:50",
     kind: "activity",
     notes: "Prof. Ionescu",
+  },
+  {
+    id: "mina-dance-fri",
+    child: "Mina",
+    day: 4,
+    title: "Dans",
+    start: "15:00",
+    end: "16:00",
+    kind: "activity",
+    notes: "",
   },
 ];
 export const DEFAULT_EVENTS: ScheduleEvent[] = [
