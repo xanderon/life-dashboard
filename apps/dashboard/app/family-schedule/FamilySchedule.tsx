@@ -1029,12 +1029,9 @@ export function FamilySchedule({
                 ) : null}
                 {eventsForDay.map((e) => {
                   const position = positions.get(e.id)!;
-                  const laneWidth = 47;
-                  const gap = position.count > 1 ? 1.25 : 0;
-                  const width =
-                    (laneWidth - gap * (position.count - 1)) /
-                    position.count;
-                  const offset = position.index * (width + gap);
+                  const inset = Math.min(7, 30 / position.count);
+                  const offset = position.index * inset;
+                  const width = 47 - (position.count - 1) * inset;
                   const top =
                       ((Math.max(mins(e.start), START_HOUR * 60) -
                         START_HOUR * 60) /
@@ -1050,7 +1047,13 @@ export function FamilySchedule({
                     <button
                       key={e.id}
                       className={`${styles.event} ${e.notes ? styles.hasNote : ""} ${e.id === "leon-parent-meeting-2026-09-14" || e.id.startsWith("leon-arena-elevilor-") ? styles.specialMeeting : ""} ${styles[e.child.toLowerCase()]} ${styles[e.kind]}`}
+                      data-overlap={position.count > 1 || undefined}
                       data-duration={mins(e.end) - mins(e.start)}
+                      title={
+                        position.count > 1
+                          ? "Eveniment suprapus — treci cu mouse-ul peste el pentru a-l aduce în față"
+                          : undefined
+                      }
                       style={{
                         top: `${top}%`,
                         height: `${height}%`,

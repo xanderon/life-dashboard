@@ -649,6 +649,20 @@
   filter: brightness(1.12);
   transform: scale(1.015);
 }
+.event[data-overlap="true"] {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, currentColor 12%, transparent),
+    0 7px 16px -11px #000;
+}
+.event[data-overlap="true"]:hover,
+.event[data-overlap="true"]:focus-visible {
+  z-index: 30;
+  filter: brightness(1.16) saturate(1.08);
+  transform: translateY(-3px) scale(1.025);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--accent) 75%, transparent),
+    0 14px 28px -13px rgba(0, 0, 0, 0.9);
+}
 .event:focus-visible {
   z-index: 20;
   outline: 2px solid var(--accent);
