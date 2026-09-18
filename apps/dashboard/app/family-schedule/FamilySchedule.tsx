@@ -1029,9 +1029,12 @@ export function FamilySchedule({
                 ) : null}
                 {eventsForDay.map((e) => {
                   const position = positions.get(e.id)!;
-                  const inset = Math.min(7, 30 / position.count);
-                  const offset = position.index * inset;
-                  const width = 47 - (position.count - 1) * inset;
+                  const laneWidth = 47;
+                  const gap = position.count > 1 ? 1.25 : 0;
+                  const width =
+                    (laneWidth - gap * (position.count - 1)) /
+                    position.count;
+                  const offset = position.index * (width + gap);
                   const top =
                       ((Math.max(mins(e.start), START_HOUR * 60) -
                         START_HOUR * 60) /

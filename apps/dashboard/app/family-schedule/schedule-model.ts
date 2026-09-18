@@ -37,7 +37,7 @@ const minutes = (time: string) => {
   return h * 60 + m;
 };
 
-/** Stagger overlapping cards, leaving a reachable strip for every event. */
+/** Assign overlapping events to separate, non-overlapping visual columns. */
 export function overlapLayout(events: ScheduleEvent[]) {
   const result = new Map<string, { index: number; count: number }>();
   for (const child of ["Mina", "Leon"] as const) {
@@ -52,9 +52,23 @@ export function overlapLayout(events: ScheduleEvent[]) {
     let group: ScheduleEvent[] = [];
     let end = -1;
     const flush = () => {
-      group.forEach((e, index) =>
-        result.set(e.id, { index, count: group.length }),
-      );
+      if (!group.length) return;
+      const columns: { end: number; events: ScheduleEvent[] }[] = [];
+      for (const event of group) {
+        const starts = minutes(event.start);
+        let column = columns.findIndex((item) => starts >= item.end);
+        if (column === -1) {
+          column = columns.length;
+          columns.push({ end: minutes(event.end), events: [] });
+        }
+        columns[column].events.push(event);
+        columns[column].end = minutes(event.end);
+      }
+      columns.forEach((column, index) => {
+        column.events.forEach((event) =>
+          result.set(event.id, { index, count: columns.length }),
+        );
+      });
     };
     for (const event of ordered) {
       if (minutes(event.start) >= end) {
