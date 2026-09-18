@@ -905,7 +905,9 @@ export function FamilySchedule({
         <section
           className={`${styles.calendar} ${view === "day" ? styles.dayView : ""}`}
           style={{
-            gridTemplateColumns: `${focusMode ? 42 : 56}px repeat(${visibleDates.length}, minmax(${view === "day" ? "280px" : "180px"}, 1fr))`,
+            // Seven days must fit on common laptop/TV widths when weekend
+            // plans are present; cards can still grow freely on larger screens.
+            gridTemplateColumns: `${focusMode ? 42 : 56}px repeat(${visibleDates.length}, minmax(${view === "day" ? "280px" : "145px"}, 1fr))`,
           }}
         >
           <div className={styles.corner}>Timp</div>
