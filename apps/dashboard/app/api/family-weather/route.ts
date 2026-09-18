@@ -20,7 +20,7 @@ export async function GET() {
     longitude: String(BUCHAREST.longitude),
     current: "temperature_2m,weather_code",
     hourly: "temperature_2m,weather_code,precipitation_probability",
-    forecast_days: "2",
+    forecast_days: "3",
     timezone: "Europe/Bucharest",
   });
 
@@ -38,7 +38,7 @@ export async function GET() {
 
     const dates = [
       ...new Set(hourly.time.map((time) => time.slice(0, 10))),
-    ].slice(0, 2);
+    ].slice(0, 3);
     const days = dates.map((date) => ({
       date,
       moments: HOURS.flatMap((time) => {

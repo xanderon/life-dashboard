@@ -910,7 +910,19 @@ export function FamilySchedule({
             gridTemplateColumns: `${focusMode ? 42 : 56}px repeat(${visibleDates.length}, minmax(${view === "day" ? "280px" : "145px"}, 1fr))`,
           }}
         >
-          <div className={styles.corner}>Timp</div>
+          <div className={styles.corner}>
+            <span>Timp</span>
+            {weather?.current ? (
+              <div
+                className={styles.weatherNowBadge}
+                title={`Acum în ${weather.location}: ${weatherLabel(weather.current.code)}, ${weather.current.temperature}°C`}
+                aria-label={`Vreme acum: ${weatherLabel(weather.current.code)}, ${weather.current.temperature} grade Celsius`}
+              >
+                <span aria-hidden="true">{weatherEmoji(weather.current.code)}</span>
+                <b>{weather.current.temperature}°</b>
+              </div>
+            ) : null}
+          </div>
           {visibleDates.map((d) => {
             const date = iso(d);
             const today = date === iso(now);
@@ -924,17 +936,6 @@ export function FamilySchedule({
                   <b>{SHORT_DAYS[dayIndex(d)]}</b>
                   <span>{label(d)}</span>
                 </div>
-                {today && weather?.current ? (
-                  <div
-                    className={styles.weatherHeadBadge}
-                    title={`Vreme acum în ${weather.location}: ${weatherLabel(weather.current.code)}, ${weather.current.temperature}°C`}
-                  >
-                    <span aria-hidden="true">
-                      {weatherEmoji(weather.current.code)}
-                    </span>
-                    <b>{weather.current.temperature}°</b>
-                  </div>
-                ) : null}
                 <div className={styles.laneNames}>
                   <span>Mina</span>
                   <span>Leon</span>
@@ -1005,7 +1006,7 @@ export function FamilySchedule({
                     {weatherDay.moments.map((moment) => (
                       <div
                         key={moment.time}
-                        className={styles.weatherMarker}
+                        className={`${styles.weatherMarker} ${moment.time === "08:00" ? styles.firstWeatherMarker : ""}`}
                         style={{
                           top: `${((mins(moment.time) - START_HOUR * 60) / ((END_HOUR - START_HOUR) * 60)) * 100}%`,
                         }}

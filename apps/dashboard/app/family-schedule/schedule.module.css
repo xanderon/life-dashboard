@@ -420,10 +420,31 @@
   background: color-mix(in srgb, var(--panel-strong) 92%, transparent);
 }
 .corner {
+  position: relative;
+  flex-direction: column;
+  gap: 2px;
   color: var(--muted);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
+}
+.weatherNowBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  color: var(--text);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: none;
+}
+.weatherNowBadge span {
+  font-size: 12px;
+}
+.weatherNowBadge b {
+  font-size: 9px;
 }
 .dayHead {
   position: relative;
@@ -620,6 +641,10 @@
 }
 .weatherMarker b {
   font-size: 11px;
+}
+.firstWeatherMarker {
+  /* The 08:00 forecast begins inside the grid, never over the lane labels. */
+  transform: translateY(7px);
 }
 .focusMode .weatherMarker {
   backdrop-filter: none;
