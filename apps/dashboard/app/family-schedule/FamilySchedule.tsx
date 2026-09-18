@@ -122,6 +122,9 @@ function mins(v: string) {
   const [h, m] = v.split(":").map(Number);
   return h * 60 + m;
 }
+function time(minutes: number) {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
 function addDays(d: Date, n: number) {
   const x = new Date(d);
   x.setDate(x.getDate() + n);
@@ -157,6 +160,57 @@ function label(d: Date) {
 function holidayFor(d: Date) {
   const value = iso(d);
   return HOLIDAYS.find((h) => value >= h.start && value <= h.end);
+}
+function sdsForDate(
+  date: Date,
+  day: number,
+  lessons: ScheduleEvent[],
+  activities: ScheduleEvent[],
+) {
+  if (day > 4 || holidayFor(date)) return [];
+  const dateString = iso(date);
+  return (["Mina", "Leon"] as Child[]).flatMap((child) => {
+    const childLessons = lessons.filter(
+      (event) =>
+        event.child === child &&
+        event.kind === "school" &&
+        occursOn(event, dateString, day),
+    );
+    if (!childLessons.length) return [];
+    const schoolEndsAt = Math.max(
+      ...childLessons.map((event) => mins(event.end)),
+    );
+    // Mina's programme starts at noon; Leon continues directly after his last lesson.
+    const startsAt = child === "Mina" ? 12 * 60 : schoolEndsAt;
+    const usualEnd = child === "Mina" ? 15 * 60 : 16 * 60;
+    const nextActivity = activities
+      .filter(
+        (event) =>
+          event.child === child &&
+          event.kind === "activity" &&
+          occursOn(event, dateString, day) &&
+          mins(event.start) > startsAt,
+      )
+      .sort((a, b) => mins(a.start) - mins(b.start))[0];
+    const endsAt = Math.min(
+      usualEnd,
+      nextActivity ? mins(nextActivity.start) - 20 : usualEnd,
+    );
+    if (endsAt <= startsAt) return [];
+    return [
+      {
+        id: `sds-${child.toLowerCase()}-${dateString}`,
+        date: dateString,
+        child,
+        day,
+        title: "SDS",
+        start: time(startsAt),
+        end: time(endsAt),
+        kind: "sds" as const,
+        notes: "",
+      },
+    ];
+  });
 }
 function weatherEmoji(code: number) {
   if (code === 0) return "☀️";
@@ -663,7 +717,7 @@ export function FamilySchedule({
             ...schoolEvents,
             ...events.filter((event) => event.kind === "activity"),
           ]
-        : events;
+        : events.filter((event) => event.kind !== "sds");
   return (
     <main
       className={`${styles.page} ${focusMode ? styles.focusMode : ""} ${styles[`text-${textSize}`]} ${section === "school" ? styles.schoolMode : section === "combined" ? styles.combinedMode : styles.calendarMode}`}
@@ -895,7 +949,17 @@ export function FamilySchedule({
                 occursOn(event, iso(d), di) &&
                 (!holiday || event.kind === "activity"),
             );
-            const positions = overlapLayout(dayEvents);
+            const sdsEvents =
+              section === "school"
+                ? []
+                : sdsForDate(
+                    d,
+                    di,
+                    schoolEvents,
+                    events.filter((event) => event.kind === "activity"),
+                  );
+            const eventsForDay = [...dayEvents, ...sdsEvents];
+            const positions = overlapLayout(eventsForDay);
             return (
               <div
                 key={iso(d)}
@@ -943,7 +1007,7 @@ export function FamilySchedule({
                     </span>
                   </div>
                 ) : null}
-                {dayEvents.map((e) => {
+                {eventsForDay.map((e) => {
                   const position = positions.get(e.id)!;
                   const inset = Math.min(7, 30 / position.count);
                   const offset = position.index * inset;
@@ -972,7 +1036,11 @@ export function FamilySchedule({
                         viewTransitionName: `bubble-${e.id}`,
                         viewTransitionClass: "schedule-bubble",
                       }}
-                      onClick={() => (readOnly ? openPreview(e) : openEdit(e))}
+                      onClick={() =>
+                        readOnly || e.kind === "sds"
+                          ? openPreview(e)
+                          : openEdit(e)
+                      }
                     >
                       <span>
                         <b className={styles.eventEmoji} aria-hidden="true">
