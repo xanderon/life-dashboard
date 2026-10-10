@@ -157,7 +157,12 @@ export function CatalogClient() {
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{error}</p>
             <div className="mt-4 flex items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-sm leading-6 text-[var(--muted)]">
               <ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>Adaugă variabilele <code>SCOALA_NOUA_USERNAME</code> și <code>SCOALA_NOUA_PASSWORD</code> în <code>apps/dashboard/.env.local</code>, apoi repornește serverul local.</span>
+              <span>
+                În producție: verifică în Vercel → Settings → Environment Variables că
+                {' '}<code>SCOALA_NOUA_USERNAME</code> și <code>SCOALA_NOUA_PASSWORD</code>
+                {' '}sunt setate pentru <strong>Production</strong>, apoi redeploy. Pentru local,
+                ele se pun în <code>apps/dashboard/.env.local</code>.
+              </span>
             </div>
           </section>
         ) : null}
