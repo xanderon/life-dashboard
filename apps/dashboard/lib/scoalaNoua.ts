@@ -41,6 +41,11 @@ export class SchoolCatalogError extends Error {
 type CookieJar = Map<string, string>;
 
 const CATALOG_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
+const BROWSER_HEADERS = {
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'ro-RO,ro;q=0.9,en;q=0.8',
+  'User-Agent': 'Mozilla/5.0 (compatible; LifeDashboard/1.0; +https://github.com/xanderon/life-dashboard)',
+};
 
 /**
  * `SCOALA_NOUA_CATALOGS` is an optional server-only JSON list for future
@@ -166,6 +171,7 @@ function cookieHeader(jar: CookieJar) {
 
 function requestHeaders(jar: CookieJar, extra: HeadersInit = {}) {
   return {
+    ...BROWSER_HEADERS,
     ...extra,
     ...(jar.size ? { Cookie: cookieHeader(jar) } : {}),
   };
@@ -231,6 +237,7 @@ export async function fetchSchoolCatalogSummary(catalogId?: string): Promise<Sch
     loginPage = await fetch(`${SCOALA_NOUA_ORIGIN}/login`, {
       cache: 'no-store',
       redirect: 'manual',
+      headers: requestHeaders(jar),
       signal: AbortSignal.timeout(15_000),
     });
   } catch {
@@ -238,7 +245,7 @@ export async function fetchSchoolCatalogSummary(catalogId?: string): Promise<Sch
   }
 
   if (!loginPage.ok) {
-    throw new SchoolCatalogError('Pagina de autentificare a catalogului nu este disponibilă.');
+    throw new SchoolCatalogError(`Catalogul a refuzat cererea serverului (${loginPage.status}).`);
   }
   readResponseCookies(loginPage, jar);
   const loginHtml = await loginPage.text();
