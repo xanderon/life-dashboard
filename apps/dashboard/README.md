@@ -20,7 +20,7 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 ## Catalog virtual ȘcoalaNouă
 
-Dashboard-ul are card și pagină la `/catalog`. ȘcoalaNouă blochează IP-urile Vercel cu `403`, deci autentificarea se face de pe laptopul proprietarului, unde portalul acceptă conexiunea. Parola nu ajunge în browser, în Vercel sau în Supabase și nu se salvează în Git.
+Dashboard-ul are card și pagină la `/catalog`. Autentificarea și extragerea sumarului se fac numai în route-ul server-side `/api/scoala-noua/summary`: parola nu ajunge în browser, nu este trimisă în Supabase și nu se salvează în Git.
 
 Pentru dezvoltare locală, completează `apps/dashboard/.env.local` (fișier deja ignorat de Git), apoi repornește `npm run dev`:
 
@@ -29,43 +29,43 @@ SCOALA_NOUA_USERNAME=utilizatorul-din-catalog
 SCOALA_NOUA_PASSWORD=parola-din-catalog
 ```
 
-Un `302 Found` după `POST /login` spre `/elev` este răspunsul normal de succes al portalului.
+În producție, creează aceleași două variabile în zona de Environment Variables a platformei de deploy. Nu folosi prefixul `NEXT_PUBLIC_` pentru ele. Un `302 Found` după `POST /login` spre `/elev` este răspunsul normal de succes al portalului.
 
 ### Monitorizare + notificări
 
 1. Rulează [scoala_noua.sql](/Users/xan/Documents/Github repos/life-dashboard/apps/dashboard/supabase/scoala_noua.sql) o singură dată în Supabase SQL Editor. Creează stocarea privată pentru amprenta catalogului și permite o subscripție Web Push separată pentru catalog pe același dispozitiv.
-2. În Vercel adaugă, pentru **Production**, o singură variabilă nouă, cu o valoare aleatoare lungă:
+2. În Vercel adaugă, pentru **Production**, variabilele de mai jos. Valorile existente pentru Supabase/VAPID pot fi refolosite:
 
 ```dotenv
-CATALOG_SYNC_SECRET=un-secret-aleator-lung
+SCOALA_NOUA_USERNAME=
+SCOALA_NOUA_PASSWORD=
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_OWNER_ID=
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:you@example.com
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=
+CRON_SECRET=un-secret-aleator-lung
 ```
 
-3. În `apps/dashboard/.env.local` de pe laptop adaugă aceeași valoare și URL-ul aplicației live:
+3. Configurația Vercel este în `vercel.json`, atât la rădăcina repository-ului, cât și în `apps/dashboard/`, ca să fie detectată indiferent dacă proiectul Vercel folosește repository root sau `apps/dashboard` ca Root Directory. Jobul rulează zilnic la `15:00 UTC` (18:00 ora României vara, 17:00 iarna). Primul run doar stabilește amprenta; nu trimite notificare.
+4. După deploy, deschide `/catalog` pe dispozitivul dorit și alege **Activează notificările**. Pe iPhone/iPad, dashboard-ul trebuie instalat ca PWA prin “Add to Home Screen”.
 
-```dotenv
-CATALOG_SYNC_URL=https://your-dashboard.vercel.app/api/scoala-noua/ingest
-CATALOG_SYNC_SECRET=aceeasi-valoare-ca-in-vercel
-```
-
-4. Test manual, din rădăcina repository-ului:
-
-```bash
-node --env-file=apps/dashboard/.env.local scripts/scoala_noua_sync.mjs
-```
-
-Primul run doar salvează amprenta; nu trimite notificare. Următoarele run-uri trimit push numai când catalogul s-a schimbat. Pentru rulare zilnică pe macOS, adaugă în `crontab -e` o comandă la ora dorită:
-
-```cron
-0 18 * * * cd /calea/catre/life-dashboard && /calea/catre/node --env-file=apps/dashboard/.env.local scripts/scoala_noua_sync.mjs >> /tmp/scoala-noua-sync.log 2>&1
-```
-
-5. După primul sync, deschide `/catalog` pe dispozitivul dorit și alege **Activează notificările**. Pe iPhone/iPad, dashboard-ul trebuie instalat ca PWA prin “Add to Home Screen”.
-
-Laptopul trebuie să fie pornit la ora verificării. Nu este folosit Vercel Cron, deoarece acesta ar fi blocat de ȘcoalaNouă înainte de autentificare.
+Jobul trimite push doar când găsește o modificare față de ultimul sumar. Pentru Vercel Hobby, cron-ul este limitat la o rulare pe zi; un plan care permite mai des poate modifica expresia din `vercel.json` și apoi necesita redeploy.
 
 ### Al doilea catalog, mai târziu
 
-Când adăugăm al doilea elev, se rulează aceeași comandă locală pentru al doilea cont, cu `SCOALA_NOUA_CATALOG_ID` și `SCOALA_NOUA_CATALOG_LABEL` diferite. Pagina `/catalog` va arăta automat selectorul.
+Când adăugăm al doilea elev, înlocuim cele două variabile individuale cu o singură variabilă server-side `SCOALA_NOUA_CATALOGS` în Vercel. Exemplele de parolă sunt doar placeholder-e:
+
+```json
+[
+  { "id": "leon", "label": "Leon", "username": "...", "password": "..." },
+  { "id": "al-doilea-elev", "label": "Al doilea elev", "username": "...", "password": "..." }
+]
+```
+
+Pagina `/catalog` va arăta automat selectorul, iar cron-ul verifică fiecare catalog separat.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
