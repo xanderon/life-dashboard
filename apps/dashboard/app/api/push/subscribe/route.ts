@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       updated_at: nowIso,
       last_seen_at: nowIso,
     },
-    { onConflict: 'endpoint' }
+    { onConflict: 'app_slug,endpoint' }
   );
 
   if (error) {
