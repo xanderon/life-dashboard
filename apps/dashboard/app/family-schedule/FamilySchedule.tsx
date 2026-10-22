@@ -583,8 +583,7 @@ export function FamilySchedule({
           ]
         : events.filter((event) => event.kind !== "sds");
   const weekStart = useMemo(() => mondayOf(cursor), [cursor]);
-  const weekNotice =
-    iso(weekStart) === iso(mondayOf(now)) ? nextWeekNotice(weekStart) : null;
+  const weekNotice = nextWeekNotice(weekStart);
   // Focus keeps the inexpensive five-day layout unless this actual week has a
   // Saturday/Sunday event. This preserves the extra space on the TV without
   // ever hiding a weekend plan.
@@ -879,6 +878,9 @@ export function FamilySchedule({
                   ? "📱 pe dispozitiv"
                   : "…"}
           </span>
+          {weekNotice ? (
+            <span className={styles.toolbarWeekNotice} role="status">{weekNotice}</span>
+          ) : null}
         </strong>
         <div className={styles.toolbarOptions}>
           <div className={styles.textSizeSwitch} aria-label="Mărimea textului">
@@ -931,7 +933,7 @@ export function FamilySchedule({
             gridTemplateColumns: `${focusMode ? 42 : 56}px repeat(${visibleDates.length}, minmax(${view === "day" ? "280px" : "145px"}, 1fr))`,
           }}
         >
-          {weekNotice ? (
+          {focusMode && weekNotice ? (
             <div className={styles.nextWeekNotice} role="status">{weekNotice}</div>
           ) : null}
           <div className={styles.corner}>

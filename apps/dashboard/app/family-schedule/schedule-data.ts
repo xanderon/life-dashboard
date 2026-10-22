@@ -59,7 +59,9 @@ export function updateLeonMusic(events: ScheduleEvent[]): ScheduleEvent[] {
   const updated = events.filter(
     (event) =>
       !retiredMusicIds.has(event.id) &&
-      !(event.child === "Leon" && isMusicActivity(event)),
+      !(event.child === "Leon" && isMusicActivity(event)) &&
+      !(event.child === "Mina" && event.kind === "activity" &&
+        (event.id === "mina-dance-fri" || event.title.trim().toLowerCase() === "dans")),
   );
   const allActivitySeeds = [...NEW_LEON_ACTIVITIES, ...NEW_MINA_ACTIVITIES];
   const existingIds = new Set(updated.map((event) => event.id));
@@ -110,16 +112,6 @@ export const NEW_MINA_ACTIVITIES: ScheduleEvent[] = [
     end: "15:50",
     kind: "activity",
     notes: "Prof. Ionescu",
-  },
-  {
-    id: "mina-dance-fri",
-    child: "Mina",
-    day: 4,
-    title: "Dans",
-    start: "15:00",
-    end: "16:00",
-    kind: "activity",
-    notes: "",
   },
 ];
 export const DEFAULT_EVENTS: ScheduleEvent[] = [
