@@ -411,6 +411,25 @@
   background: color-mix(in srgb, var(--panel) 90%, transparent);
   box-shadow: 0 24px 60px -38px var(--shadow-color);
 }
+.nextWeekNotice {
+  position: absolute;
+  z-index: 12;
+  left: 62px;
+  bottom: 8px;
+  max-width: calc(100% - 125px);
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: 9px;
+  background: var(--panel-strong);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  pointer-events: none;
+}
+.focusMode .nextWeekNotice {
+  left: 48px;
+}
 .corner,
 .dayHead {
   display: flex;

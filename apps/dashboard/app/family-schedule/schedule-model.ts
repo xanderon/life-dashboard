@@ -20,6 +20,13 @@ export interface ScheduleRepository {
   remove(id: string): Promise<void>;
 }
 
+/** Music lessons stop during school holidays; other activities may continue. */
+export function isMusicActivity(event: ScheduleEvent) {
+  if (event.kind !== "activity") return false;
+  const title = event.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return /pian|violoncel|teorie muzical|muzic/.test(title);
+}
+
 const legacyOneOffDates: Record<string, string> = {
   "leon-parent-meeting-2026-09-14": "2026-09-14",
   "leon-arena-elevilor-2026-09-19": "2026-09-19",

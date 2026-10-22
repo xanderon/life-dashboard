@@ -1,4 +1,5 @@
 import type { Child, ScheduleEvent } from "./schedule-model";
+import { isMusicActivity } from "./schedule-model";
 
 export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
   {
@@ -55,7 +56,11 @@ export function updateLeonMusic(events: ScheduleEvent[]): ScheduleEvent[] {
     "leon-cello-wed",
     "leon-music-theory-wed",
   ]);
-  const updated = events.filter((event) => !retiredMusicIds.has(event.id));
+  const updated = events.filter(
+    (event) =>
+      !retiredMusicIds.has(event.id) &&
+      !(event.child === "Leon" && isMusicActivity(event)),
+  );
   const allActivitySeeds = [...NEW_LEON_ACTIVITIES, ...NEW_MINA_ACTIVITIES];
   const existingIds = new Set(updated.map((event) => event.id));
   updated.push(

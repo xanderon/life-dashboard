@@ -20,7 +20,7 @@ import { supabase } from "@/lib/supabaseClient";
 import styles from "./schedule.module.css";
 
 import type { Child, ScheduleEvent } from "./schedule-model";
-import { occursOn, overlapLayout } from "./schedule-model";
+import { isMusicActivity, occursOn, overlapLayout } from "./schedule-model";
 import {
   DEFAULT_EVENTS,
   SCHOOL_EVENTS,
@@ -72,6 +72,7 @@ const START_HOUR = 8,
   SCHOOL_STORAGE_KEY = "life-dashboard:school-schedule:v7",
   TEXT_SIZE_STORAGE_KEY = "life-dashboard:schedule-text-size:v1";
 const FOCUS_REFRESH_KEY = "life-dashboard:schedule-focus-refresh";
+// OMEC 3194/2026; the February dates are the ISMB decision for Bucharest.
 const HOLIDAYS = [
   {
     name: "Vacanța de toamnă",
@@ -160,6 +161,22 @@ function label(d: Date) {
 function holidayFor(d: Date) {
   const value = iso(d);
   return HOLIDAYS.find((h) => value >= h.start && value <= h.end);
+}
+function nextWeekNotice(weekStart: Date) {
+  const currentFriday = holidayFor(addDays(weekStart, 4));
+  const nextWeek = Array.from({ length: 5 }, (_, i) => addDays(weekStart, 7 + i));
+  if (currentFriday) {
+    const firstSchoolDay = nextWeek.find((date) => !holidayFor(date));
+    if (firstSchoolDay)
+      return `📚 ${DAYS[dayIndex(firstSchoolDay)]}, ${label(firstSchoolDay)} · reîncepe școala`;
+  }
+  const nextHoliday = nextWeek.map(holidayFor).find(Boolean);
+  if (nextHoliday && (!currentFriday || currentFriday.start !== nextHoliday.start))
+    return `${nextHoliday.emoji} Săptămâna viitoare · ${nextHoliday.name.toLowerCase()}`;
+  return null;
+}
+function visibleDuringHoliday(event: ScheduleEvent, isHoliday: boolean) {
+  return !isHoliday || (event.kind === "activity" && !isMusicActivity(event));
 }
 function sdsForDate(
   date: Date,
@@ -313,7 +330,7 @@ export function FamilySchedule({
   const [focusMode, setFocusMode] = useState(false);
   const [viewBeforeFocus, setViewBeforeFocus] = useState<View>("week");
   const [focusMenuOpen, setFocusMenuOpen] = useState(false);
-  const [events, setEvents] = useState(initialEvents ?? DEFAULT_EVENTS),
+  const [events, setEvents] = useState(() => normalizeEvents(initialEvents ?? DEFAULT_EVENTS)),
     [schoolEvents, setSchoolEvents] = useState(SCHOOL_EVENTS),
     [view, setView] = useState<View>("week"),
     [cursor, setCursor] = useState(new Date());
@@ -566,6 +583,8 @@ export function FamilySchedule({
           ]
         : events.filter((event) => event.kind !== "sds");
   const weekStart = useMemo(() => mondayOf(cursor), [cursor]);
+  const weekNotice =
+    iso(weekStart) === iso(mondayOf(now)) ? nextWeekNotice(weekStart) : null;
   // Focus keeps the inexpensive five-day layout unless this actual week has a
   // Saturday/Sunday event. This preserves the extra space on the TV without
   // ever hiding a weekend plan.
@@ -575,7 +594,8 @@ export function FamilySchedule({
     [5, 6].some((day) => {
       const date = addDays(weekStart, day);
       return displayedEvents.some((event) =>
-        occursOn(event, iso(date), day),
+        occursOn(event, iso(date), day) &&
+        visibleDuringHoliday(event, Boolean(holidayFor(date))),
       );
     });
   const visibleWeekDays = focusMode && !focusShowsWeekend ? 5 : 7;
@@ -911,6 +931,9 @@ export function FamilySchedule({
             gridTemplateColumns: `${focusMode ? 42 : 56}px repeat(${visibleDates.length}, minmax(${view === "day" ? "280px" : "145px"}, 1fr))`,
           }}
         >
+          {weekNotice ? (
+            <div className={styles.nextWeekNotice} role="status">{weekNotice}</div>
+          ) : null}
           <div className={styles.corner}>
             <span>Timp</span>
             {weather?.current ? (
@@ -969,7 +992,7 @@ export function FamilySchedule({
             const dayEvents = displayedEvents.filter(
               (event) =>
                 occursOn(event, iso(d), di) &&
-                (!holiday || event.kind === "activity"),
+                visibleDuringHoliday(event, Boolean(holiday)),
             );
             const sdsEvents =
               section === "school"
@@ -1268,7 +1291,7 @@ function MonthView({
             count = events.filter(
               (e) =>
                 occursOn(e, iso(d), dayIndex(d)) &&
-                (!holiday || e.kind === "activity"),
+                visibleDuringHoliday(e, Boolean(holiday)),
             ).length;
           return (
             <button
