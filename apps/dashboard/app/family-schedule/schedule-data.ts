@@ -2,24 +2,14 @@ import type { Child, ScheduleEvent } from "./schedule-model";
 
 export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
   {
-    id: "leon-music-theory-mon",
+    id: "leon-electronics-sat",
     child: "Leon",
-    day: 0,
-    title: "Teorie muzicală",
-    start: "17:00",
-    end: "17:50",
+    day: 5,
+    title: "Electronică",
+    start: "10:30",
+    end: "12:00",
     kind: "activity",
-    notes: "Prof. Liliana Foday",
-  },
-  {
-    id: "leon-piano-mon",
-    child: "Leon",
-    day: 0,
-    title: "Pian",
-    start: "18:00",
-    end: "19:00",
-    kind: "activity",
-    notes: "",
+    notes: "Durata de o oră și jumătate este estimată; ora de încheiere trebuie confirmată.",
   },
   {
     id: "leon-parent-meeting-2026-09-14",
@@ -54,53 +44,18 @@ export const NEW_LEON_ACTIVITIES: ScheduleEvent[] = [
     kind: "activity",
     notes: "Circul Metropolitan București",
   },
-  {
-    id: "leon-cello-tue",
-    child: "Leon",
-    day: 1,
-    title: "Violoncel",
-    start: "18:00",
-    end: "19:00",
-    kind: "activity",
-    notes: "Instrument",
-  },
-  {
-    id: "leon-cello-wed",
-    child: "Leon",
-    day: 2,
-    title: "Violoncel",
-    start: "15:15",
-    end: "16:50",
-    kind: "activity",
-    notes: "",
-  },
-  {
-    id: "leon-music-theory-wed",
-    child: "Leon",
-    day: 2,
-    title: "Teorie muzicală",
-    start: "17:00",
-    end: "18:00",
-    kind: "activity",
-    notes: "",
-  },
 ];
 /** Apply confirmed activity updates and seed anything saved before it existed. */
 export function updateLeonMusic(events: ScheduleEvent[]): ScheduleEvent[] {
-  const ids = new Set([
+  const retiredMusicIds = new Set([
+    "leon-cello-mon",
     "leon-cello-tue",
+    "leon-piano-mon",
     "leon-music-theory-mon",
     "leon-cello-wed",
     "leon-music-theory-wed",
   ]);
-  const updated = events.map((event) => {
-    const current = ids.has(event.id)
-      ? NEW_LEON_ACTIVITIES.find((seed) => seed.id === event.id)
-      : undefined;
-    return current
-      ? { ...event, start: current.start, end: current.end }
-      : event;
-  });
+  const updated = events.filter((event) => !retiredMusicIds.has(event.id));
   const allActivitySeeds = [...NEW_LEON_ACTIVITIES, ...NEW_MINA_ACTIVITIES];
   const existingIds = new Set(updated.map((event) => event.id));
   updated.push(

@@ -27,6 +27,9 @@ const legacyOneOffDates: Record<string, string> = {
 };
 
 export function occursOn(event: ScheduleEvent, date: string, day: number) {
+  // No electronics class on the Saturday of the 2026 autumn break.
+  if (event.id === "leon-electronics-sat" && date === "2026-10-31")
+    return false;
   // Compatibility for saved rows predating the date field.
   const once = event.date ?? legacyOneOffDates[event.id];
   return once ? once === date : event.day === day;
@@ -62,7 +65,7 @@ export function overlapLayout(events: ScheduleEvent[]) {
         group = [];
       }
       group.push(event);
-      end = Math.max(...group.map((e) => minutes(e.end)));
+      end = Math.max(end, minutes(event.end));
     }
     flush();
   }

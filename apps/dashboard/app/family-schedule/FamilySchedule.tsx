@@ -241,6 +241,7 @@ function emoji(e: ScheduleEvent) {
   if (t.includes("violoncel")) return "🎻";
   if (t.includes("teorie muzical")) return "🎼";
   if (t.includes("pian")) return "🎹";
+  if (t.includes("electronic")) return "🔌";
   if (t.includes("dans")) return "💃";
   if (t.includes("teatru")) return "🎭";
   if (t.includes("test")) return "📝";
