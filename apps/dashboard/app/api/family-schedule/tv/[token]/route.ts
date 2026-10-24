@@ -154,6 +154,8 @@ export async function GET(
           category: event.kind,
           source: "family_schedule",
           notes: event.notes,
+          date: event.date ?? null,
+          recurring: !event.date,
           allDay: false,
         })),
         holidays: HOLIDAYS,
