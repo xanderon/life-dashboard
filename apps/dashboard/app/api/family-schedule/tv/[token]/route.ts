@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import {
+  DEFAULT_EVENTS,
   NEW_LEON_ACTIVITIES,
   NEW_MINA_ACTIVITIES,
   updateLeonMusic,
@@ -100,12 +101,15 @@ async function loadEvents() {
   const events = (data ?? [])
     .filter((row) => row.id !== "leon-cello-mon")
     .map(normalizeRow);
-  return updateLeonMusic([
+  return {
+    dataSource: "supabase",
+    events: updateLeonMusic([
     ...events,
     ...[...NEW_LEON_ACTIVITIES, ...NEW_MINA_ACTIVITIES].filter(
       (addition) => !events.some((event) => event.id === addition.id),
     ),
-  ]);
+    ]),
+  };
 }
 
 export async function GET(
@@ -116,12 +120,30 @@ export async function GET(
   if (!validToken(token)) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   try {
-    const events = await loadEvents();
+    let dataSource = "supabase";
+    let warning: string | undefined;
+    let events: ScheduleEvent[];
+    try {
+      const loaded = await loadEvents();
+      dataSource = loaded.dataSource;
+      events = loaded.events;
+    } catch (error) {
+      // The existing shared page already uses this model when Supabase is not
+      // provisioned. Keep the TV useful, but make the degraded source explicit
+      // so it can show an offline/stale indicator instead of pretending this is
+      // a live database response.
+      console.warn("TV family schedule using model fallback", error);
+      dataSource = "schedule-model-fallback";
+      warning = "Supabase schedule storage is not provisioned";
+      events = updateLeonMusic(DEFAULT_EVENTS);
+    }
     return NextResponse.json(
       {
         version: 1,
         generatedAt: new Date().toISOString(),
         timezone: "Europe/Bucharest",
+        dataSource,
+        warning,
         events: events.map((event) => ({
           id: event.id,
           person: event.child,
