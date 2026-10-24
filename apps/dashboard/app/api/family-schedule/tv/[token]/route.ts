@@ -139,7 +139,9 @@ export async function GET(
     }
     return NextResponse.json(
       {
-        version: 1,
+        // Version 2 makes the one-off date/recurrence contract explicit. TV
+        // clients use it to discard a legacy cache that predated `date`.
+        version: 2,
         generatedAt: new Date().toISOString(),
         timezone: "Europe/Bucharest",
         dataSource,
