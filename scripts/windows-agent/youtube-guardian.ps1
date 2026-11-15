@@ -3,17 +3,18 @@
 
 [CmdletBinding()]
 param(
-    [switch]$Once
+    [switch]$Once,
+    [switch]$FirewallDiagnostics
 )
 
 # Life Dashboard YouTube Guardian. Windows PowerShell 5.1 compatible.
 # This program changes only hosts-file YouTube entries. It never changes DNS settings.
 
-$AGENT_VERSION = "2.0.0"
+$AGENT_VERSION = "2.3.0"
 $DASHBOARD_URL = "https://YOUR_DASHBOARD_HOST"
 $DEVICE_ID = "YOUR_DEVICE_UUID"
 $DEVICE_TOKEN = "YOUR_RANDOM_DEVICE_TOKEN"
-$POLL_INTERVAL_SEC = 30
+$POLL_INTERVAL_SEC = 10
 
 $DATA_DIR = "C:\ProgramData\LifeDashboard"
 $STATE_FILE = Join-Path $DATA_DIR "last_state.json"
@@ -22,17 +23,44 @@ $HOSTS_FILE = Join-Path $env:SystemRoot "System32\drivers\etc\hosts"
 $HOSTS_BACKUP = Join-Path (Split-Path $HOSTS_FILE) "hosts.youtube-guardian.original.bak"
 $LOG_MAX_BYTES = 524288
 $MUTEX_NAME = "Global\LifeDashboardYouTubeGuardian"
+$FIREWALL_HELPER = Join-Path $PSScriptRoot "firewall-guardian.ps1"
 $MARKER_START = "# YouTube Guardian managed block - start"
 $MARKER_END = "# YouTube Guardian managed block - end"
-$YOUTUBE_ENTRIES = @(
-    "127.0.0.1 youtube.com",
-    "127.0.0.1 www.youtube.com",
-    "127.0.0.1 m.youtube.com",
-    "127.0.0.1 youtu.be"
-)
-$LEGACY_PATTERN = '^\s*127\.0\.0\.1\s+(youtube\.com|www\.youtube\.com|m\.youtube\.com|youtu\.be)\s*$'
+# Exact hosts only. The Windows hosts file does not support wildcard names.
+# Keep groups and hostnames alphabetical for review and maintenance.
+$YOUTUBE_HOST_GROUPS = [ordered]@{
+    "API endpoints" = @(
+        "youtube.googleapis.com",
+        "youtubei.googleapis.com"
+    )
+    "Core and app surfaces" = @(
+        "kids.youtube.com",
+        "m.youtube.com",
+        "music.youtube.com",
+        "studio.youtube.com",
+        "tv.youtube.com",
+        "www.youtube.com",
+        "youtube.com",
+        "youtu.be"
+    )
+    "Embedded players" = @(
+        "www.youtube-nocookie.com",
+        "www.youtubeeducation.com",
+        "youtube-nocookie.com"
+    )
+    "Images and static assets" = @(
+        "i.ytimg.com",
+        "s.ytimg.com",
+        "yt3.ggpht.com",
+        "yt3.googleusercontent.com"
+    )
+}
+$MANAGED_HOSTNAMES = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($group in $YOUTUBE_HOST_GROUPS.Values) {
+    foreach ($hostname in $group) { [void]$MANAGED_HOSTNAMES.Add($hostname) }
+}
 $ASCII = New-Object System.Text.ASCIIEncoding($false)
-$script:ConsoleLogging = [bool]$Once
+$script:ConsoleLogging = ([bool]$Once -or [bool]$FirewallDiagnostics)
 
 function Ensure-DataDir {
     if (-not (Test-Path -LiteralPath $DATA_DIR)) {
@@ -85,6 +113,9 @@ function Test-Configuration {
     }
     if (-not (Test-Path -LiteralPath $HOSTS_FILE -PathType Leaf)) {
         Write-Log "Hosts file does not exist: $HOSTS_FILE" "FATAL"; return $false
+    }
+    if (-not (Test-Path -LiteralPath $FIREWALL_HELPER -PathType Leaf)) {
+        Write-Log "Firewall helper does not exist: $FIREWALL_HELPER" "FATAL"; return $false
     }
     return $true
 }
@@ -200,14 +231,21 @@ function Get-DesiredHostsText {
     foreach ($line in $lines) {
         if ($line -eq $MARKER_START) { $inside = $true; continue }
         if ($line -eq $MARKER_END) { $inside = $false; continue }
-        if ($inside -or $line -match $LEGACY_PATTERN) { continue }
+        if ($inside) { continue }
+        if ($line -match '^\s*(?:127\.0\.0\.1|::1)\s+([^\s#]+)\s*$' -and $MANAGED_HOSTNAMES.Contains($Matches[1])) { continue }
         $kept.Add($line)
     }
     while ($kept.Count -gt 0 -and $kept[$kept.Count - 1] -eq "") { $kept.RemoveAt($kept.Count - 1) }
     if ($Block) {
         if ($kept.Count -gt 0) { $kept.Add("") }
         $kept.Add($MARKER_START)
-        foreach ($entry in $YOUTUBE_ENTRIES) { $kept.Add($entry) }
+        foreach ($groupName in $YOUTUBE_HOST_GROUPS.Keys) {
+            $kept.Add("# $groupName")
+            foreach ($hostname in $YOUTUBE_HOST_GROUPS[$groupName]) {
+                $kept.Add("127.0.0.1 $hostname")
+                $kept.Add("::1 $hostname")
+            }
+        }
         $kept.Add($MARKER_END)
     }
     return [string]::Join("`r`n", $kept.ToArray()) + "`r`n"
@@ -269,16 +307,58 @@ function Invoke-PollCycle {
     $shouldBlock = -not $allowed
     Write-Log "Effective state cached_state_used=$usedCache fail_closed=$failClosed effectively_allowed=$allowed should_block=$shouldBlock"
     $hostsResult = Set-YouTubeBlocked -Block $shouldBlock
-    return @{ Success = ($fetch.Success -and $hostsResult.Success); RemoteSuccess = $fetch.Success; HostsSuccess = $hostsResult.Success }
+    $firewallResult = Set-GuardianFirewallBlocked -Block $shouldBlock -Log { param($Message, $Level) Write-Log $Message $Level }
+    if ($shouldBlock -and -not $firewallResult.Success) {
+        Write-Log "Strict stream blocking failed; hosts blocking remains the active fallback" "ERROR"
+    }
+    if ($fetch.Success) {
+        # A rule being enabled is not proof that it can inspect every stream.
+        $enforcementReady = $false
+        try {
+            $mp = Get-MpComputerStatus -ErrorAction Stop
+            $pref = Get-MpPreference -ErrorAction Stop
+            $activeProfiles = @(Get-NetConnectionProfile -ErrorAction Stop | ForEach-Object { if ([string]$_.NetworkCategory -eq 'DomainAuthenticated') { 'Domain' } else { [string]$_.NetworkCategory } } | Select-Object -Unique)
+            $firewallProfiles = @(Get-NetFirewallProfile -ErrorAction Stop | Where-Object { $activeProfiles -contains $_.Name })
+            $enforcementReady = ([bool]$mp.AntivirusEnabled -and [bool]$mp.AMServiceEnabled -and
+                [int]$pref.EnableNetworkProtection -in @(1, 2) -and $firewallProfiles.Count -gt 0 -and
+                @($firewallProfiles | Where-Object { [string]$_.Enabled -ne 'True' }).Count -eq 0)
+        } catch { Write-Log "Enforcement prerequisite check failed: $($_.Exception.Message)" "WARN" }
+        try {
+            $report = @{
+                youtube_allowed = $allowed
+                hosts_ok = [bool]$hostsResult.Success
+                firewall_ok = [bool]$firewallResult.Success
+                enforcement_ready = [bool]$enforcementReady
+                control_updated_at = $state.updated_at
+                agent_version = $AGENT_VERSION
+            } | ConvertTo-Json -Compress
+            $headers = @{ Authorization = "Bearer $DEVICE_TOKEN"; "X-Device-Id" = $DEVICE_ID }
+            Invoke-RestMethod -Uri (Get-SafeEndpoint) -Method Post -Headers $headers -Body $report -ContentType 'application/json' -TimeoutSec 10 -ErrorAction Stop | Out-Null
+        } catch { Write-Log "Status report failed: $($_.Exception.Message)" "WARN" }
+    }
+    return @{
+        Success = ($fetch.Success -and $hostsResult.Success -and $firewallResult.Success)
+        RemoteSuccess = $fetch.Success
+        HostsSuccess = $hostsResult.Success
+        FirewallSuccess = $firewallResult.Success
+    }
 }
 
 if (-not (Test-Configuration)) { exit 2 }
+try { . $FIREWALL_HELPER }
+catch { Write-FatalAndExit "Could not load firewall helper exception_type=$($_.Exception.GetType().FullName) message=$($_.Exception.Message)" 6 }
+if ($FirewallDiagnostics) {
+    Write-Log "Firewall diagnostics started"
+    foreach ($line in (Get-GuardianFirewallDiagnostics)) { Write-Log $line "DIAG" }
+    exit 0
+}
 $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
 $isSystem = $identity.Name -eq "NT AUTHORITY\SYSTEM"
 $mutex = New-Object System.Threading.Mutex($false, $MUTEX_NAME)
 $mutexAcquired = $false
 try { $mutexAcquired = $mutex.WaitOne(0, $false) } catch { }
-Write-Log "Startup version=$AGENT_VERSION identity=$($identity.Name) is_system=$isSystem pid=$PID script_path=$PSCommandPath powershell_version=$($PSVersionTable.PSVersion) dashboard_host=$((New-Object System.Uri($DASHBOARD_URL)).Host) device_id=$DEVICE_ID poll_interval_sec=$POLL_INTERVAL_SEC hosts_path=$HOSTS_FILE state_path=$STATE_FILE log_path=$LOG_FILE mutex_acquired=$mutexAcquired once=$([bool]$Once)"
+$firewallStartup = Get-GuardianFirewallState
+Write-Log "Startup version=$AGENT_VERSION identity=$($identity.Name) is_system=$isSystem pid=$PID script_path=$PSCommandPath powershell_version=$($PSVersionTable.PSVersion) dashboard_host=$((New-Object System.Uri($DASHBOARD_URL)).Host) device_id=$DEVICE_ID poll_interval_sec=$POLL_INTERVAL_SEC hosts_path=$HOSTS_FILE state_path=$STATE_FILE log_path=$LOG_FILE mutex_acquired=$mutexAcquired once=$([bool]$Once) dynamic_fqdn_supported=$($firewallStartup.Supported) firewall_keyword_id=$($firewallStartup.KeywordId) firewall_keyword_exists=$($firewallStartup.KeywordExists) firewall_rule_exists=$($firewallStartup.RuleExists) firewall_rule_enabled=$($firewallStartup.RuleEnabled)"
 if (-not $mutexAcquired) { Write-FatalAndExit "Another YouTube Guardian instance already owns mutex=$MUTEX_NAME" 3 }
 
 try {

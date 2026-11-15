@@ -11,25 +11,32 @@ function unauthorized() {
   return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
 }
 
-export async function GET(req: NextRequest) {
+async function authenticate(req: NextRequest) {
   const deviceId = req.headers.get('x-device-id') ?? '';
   const authorization = req.headers.get('authorization') ?? '';
   const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
-  if (!DEVICE_ID_RE.test(deviceId) || token.length < 32 || token.length > 512) return unauthorized();
+  if (!DEVICE_ID_RE.test(deviceId) || token.length < 32 || token.length > 512) return null;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
-    return NextResponse.json({ error: 'Server configuration error' }, { status: 503 });
+    return null;
   }
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const presentedHash = createHash('sha256').update(token, 'utf8').digest('hex');
   const { data: credential } = await admin.from('device_agent_credentials')
     .select('token_hash').eq('device_id', deviceId).maybeSingle();
-  if (!credential) return unauthorized();
+  if (!credential) return null;
   const expected = Buffer.from(credential.token_hash, 'hex');
   const presented = Buffer.from(presentedHash, 'hex');
-  if (expected.length !== presented.length || !timingSafeEqual(expected, presented)) return unauthorized();
+  if (expected.length !== presented.length || !timingSafeEqual(expected, presented)) return null;
+  return { admin, deviceId };
+}
+
+export async function GET(req: NextRequest) {
+  const auth = await authenticate(req);
+  if (!auth) return unauthorized();
+  const { admin, deviceId } = auth;
 
   const { data, error } = await admin.from('device_controls')
     .select('device_id,youtube_allowed,youtube_allowed_until,updated_at')
@@ -39,4 +46,28 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ data: data ?? {
     device_id: deviceId, youtube_allowed: false, youtube_allowed_until: null, updated_at: null,
   } }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+export async function POST(req: NextRequest) {
+  const auth = await authenticate(req);
+  if (!auth) return unauthorized();
+  let body: Record<string, unknown>;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
+  if (!body || ['youtube_allowed', 'hosts_ok', 'firewall_ok', 'enforcement_ready'].some(k => typeof body[k] !== 'boolean') ||
+      typeof body.agent_version !== 'string' || body.agent_version.length > 40 ||
+      (body.control_updated_at !== null && (typeof body.control_updated_at !== 'string' || !Number.isFinite(Date.parse(body.control_updated_at))))) {
+    return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+  }
+  const { error } = await auth.admin.from('device_agent_status').upsert({
+    device_id: auth.deviceId,
+    reported_at: new Date().toISOString(),
+    control_updated_at: body.control_updated_at,
+    youtube_allowed: body.youtube_allowed,
+    hosts_ok: body.hosts_ok,
+    firewall_ok: body.firewall_ok,
+    enforcement_ready: body.enforcement_ready,
+    agent_version: body.agent_version,
+  }, { onConflict: 'device_id' });
+  if (error) return NextResponse.json({ error: 'Unable to save status' }, { status: 503 });
+  return NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
 }

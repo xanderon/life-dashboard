@@ -46,6 +46,16 @@ type DeviceControl = {
 
 type ControlMap = Record<string, DeviceControl>;
 
+type AgentStatus = {
+  reported_at: string;
+  control_updated_at: string | null;
+  youtube_allowed: boolean;
+  hosts_ok: boolean;
+  firewall_ok: boolean;
+  enforcement_ready: boolean;
+  agent_version: string;
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const OFFLINE_AFTER_MIN = 45;
@@ -141,6 +151,8 @@ function ParentalControlsPanel({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [agent, setAgent] = useState<AgentStatus | null>(null);
+  const [clock, setClock] = useState(() => Date.now());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Countdown ticker ──
@@ -159,6 +171,24 @@ function ParentalControlsPanel({
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [control]);
+
+  useEffect(() => {
+    let alive = true;
+    async function refresh() {
+      try {
+        const response = await fetch(`/api/device-controls?device_id=${encodeURIComponent(deviceId)}`, { cache: 'no-store' });
+        if (!response.ok) return;
+        const payload = await response.json() as { data: DeviceControl | null; status: AgentStatus | null };
+        if (alive) {
+          setAgent(payload.status);
+          if (!busy) onUpdated(deviceId, payload.data);
+        }
+      } catch { /* The last report will become stale instead of implying success. */ }
+    }
+    void refresh();
+    const interval = setInterval(() => { setClock(Date.now()); void refresh(); }, 4000);
+    return () => { alive = false; clearInterval(interval); };
+  }, [deviceId, busy, onUpdated]);
 
   const send = useCallback(
     async (action: 'block' | 'allow' | 'allow_temporarily', minutes?: 15 | 30 | 60) => {
@@ -205,6 +235,12 @@ function ParentalControlsPanel({
     countdown === null;
 
   const effectivelyAllowed = control?.youtube_allowed && !timerExpired;
+  const online = agent && clock - Date.parse(agent.reported_at) < 45000;
+  const matches = agent && control && agent.control_updated_at &&
+    Date.parse(agent.control_updated_at) === Date.parse(control.updated_at) &&
+    agent.youtube_allowed === Boolean(effectivelyAllowed);
+  const applied = online && matches && agent.hosts_ok && agent.firewall_ok;
+  const reliable = applied && (agent.youtube_allowed || agent.enforcement_ready);
 
   return (
     <div className="parental-panel mt-4 rounded-[1.2rem] border border-[var(--border)] bg-[color-mix(in_srgb,var(--panel-2)_88%,transparent)] p-4">
@@ -219,23 +255,20 @@ function ParentalControlsPanel({
         {/* YouTube status badge */}
         <span
           className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] transition-all duration-300 ${
-            effectivelyAllowed
+            reliable && agent?.youtube_allowed
               ? 'border-[color-mix(in_srgb,var(--success)_36%,transparent)] bg-[color-mix(in_srgb,var(--success)_12%,transparent)] text-[var(--success)]'
               : 'border-[color-mix(in_srgb,var(--danger)_38%,transparent)] bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] text-[var(--danger)]'
           }`}
         >
           <span
             className={`h-[0.42rem] w-[0.42rem] rounded-full ${
-              effectivelyAllowed ? 'bg-[var(--success)] shadow-[0_0_0_0.18rem_color-mix(in_srgb,var(--success)_22%,transparent)]' : 'bg-[var(--danger)]'
-            } ${effectivelyAllowed ? 'animate-pulse' : ''}`}
+              reliable && agent?.youtube_allowed ? 'bg-[var(--success)]' : 'bg-[var(--danger)]'
+            }`}
           />
-          {control === null
-            ? 'Not configured'
-            : effectivelyAllowed
-            ? 'YouTube ON'
-            : 'YouTube BLOCKED'}
+          {!control ? 'Neconfigurat' : !agent ? 'Fara confirmare' : !online ? 'Agent offline' : !matches ? 'Se aplica' : !agent.hosts_ok || !agent.firewall_ok ? 'Eroare la aplicare' : !agent.youtube_allowed && !agent.enforcement_ready ? 'Blocare limitata' : agent.youtube_allowed ? 'Reguli aplicate · ON' : 'Reguli aplicate · OFF'}
         </span>
       </div>
+      {agent && <div className="mt-2 text-[11px] text-[var(--muted)]">Agent: {fmtLastSeen(agent.reported_at)} · {agent.agent_version}{!agent.youtube_allowed && !agent.enforcement_ready ? ' · Protectia fluxurilor video este incompleta' : ''}. Regulile nu garanteaza oprirea conexiunilor deja deschise sau a tunelurilor.</div>}
 
       {/* Countdown */}
       {control?.youtube_allowed && control.youtube_allowed_until && countdown !== null && (

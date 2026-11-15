@@ -1,10 +1,30 @@
 # YouTube Guardian Windows agent
 
-The agent runs continuously as SYSTEM and polls the Life Dashboard every 30 seconds. It makes outbound HTTPS requests only, opens no inbound ports, and never changes Windows DNS server configuration.
+The agent runs continuously as SYSTEM and polls Life Dashboard approximately every 10 seconds. Blocked mode combines an exact-hosts block with a persistent Microsoft Defender Firewall wildcard FQDN rule for `*.googlevideo.com`. Allowed mode removes the managed hosts block and disables the firewall rule. After applying a state, it reports the result and prerequisite status to the dashboard; the dashboard marks stale reports offline. Apply `apps/dashboard/supabase/device_agent_status.sql` and deploy the corresponding API before installing this version.
+
+It makes outbound HTTPS requests only, opens no inbound ports, does not close browsers, and never changes DNS, Secure DNS, proxy, VPN, Defender, or unrelated firewall settings.
+
+## Files
+
+- `youtube-guardian.ps1`: polling, cached state, hosts management, and firewall state application.
+- `firewall-guardian.ps1`: shared firewall reconciliation and diagnostics.
+- `install-task.ps1`: idempotent installation of both scripts, firewall objects, and Scheduled Task.
+
+## Firewall prerequisites
+
+Microsoft documents dynamic FQDN keywords for Windows 10, Windows 11, Windows Server 2016, Windows Server 2019, Windows Server 2022, and Windows Server 2025. Effective FQDN enforcement requires:
+
+- Microsoft Defender Antivirus enabled;
+- Defender platform version 4.18.2209.7 or later;
+- Network Protection in Enabled or Audit mode;
+- Microsoft Defender Firewall enabled on the active profile;
+- DNS over HTTPS disabled so Windows can observe the DNS response.
+
+The installer reports these conditions but does not change them automatically.
 
 ## Configure
 
-Edit these placeholders in `youtube-guardian.ps1` before installation:
+Edit only the placeholders in `youtube-guardian.ps1` before installation:
 
 ```powershell
 $DASHBOARD_URL = "https://YOUR_DASHBOARD_HOST"
@@ -12,33 +32,30 @@ $DEVICE_ID = "YOUR_DEVICE_UUID"
 $DEVICE_TOKEN = "YOUR_RANDOM_DEVICE_TOKEN"
 ```
 
-Use the dashboard origin only, without `/api/device-controls/agent`. Keep the token only on the child PC. The repository must retain placeholders.
+Use the dashboard origin without `/api/device-controls/agent`. Keep the token only on the child PC. Keep repository copies as placeholders.
 
-## Install
+## Install or update
 
-Open Windows PowerShell 5.1 as Administrator in the directory containing both scripts:
-
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force
-.\install-task.ps1
-```
-
-The installer copies the configured guardian to `C:\ProgramData\LifeDashboard\agent`, replaces an existing `YouTubeGuardian` task, starts it, waits five seconds, and prints the state, result, action, principal, and recent logs.
-
-## Reinstall or update
-
-Configure the new `youtube-guardian.ps1`, then run from its directory in an elevated Windows PowerShell 5.1 prompt:
+Place all three scripts in one directory. Open Windows PowerShell 5.1 as Administrator there:
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
 .\install-task.ps1 -InstallDirectory "C:\ProgramData\LifeDashboard\agent"
 ```
 
-This stops and unregisters the previous task before replacing it. It does not change the device token or other configuration unless the configured source script is copied over it.
+The same command is the reinstall/update command. It:
 
-## One-cycle diagnostic
+1. validates and copies both runtime scripts;
+2. stops and replaces the existing task;
+3. creates or repairs the stable `*.googlevideo.com` AutoResolve keyword;
+4. removes duplicate managed rules and creates or repairs `LifeDashboard - Block YouTube Streams`;
+5. starts the SYSTEM task and prints task, firewall, prerequisite, and log diagnostics.
 
-Stop the continuous task first because the singleton mutex intentionally prevents two agents from running:
+Firewall objects persist across reboot. Reinstallation is idempotent and does not touch unrelated rules.
+
+## Agent diagnostics
+
+One remote poll and apply cycle requires stopping the singleton agent first:
 
 ```powershell
 Stop-ScheduledTask -TaskName "YouTubeGuardian"
@@ -47,16 +64,46 @@ $LASTEXITCODE
 Start-ScheduledTask -TaskName "YouTubeGuardian"
 ```
 
-Exit `0` means the remote poll and safe hosts evaluation/application succeeded. A nonzero result indicates configuration, duplicate-instance, HTTP, JSON, or hosts failure. Detailed diagnostic output is printed and appended to the log. Offline cached-state enforcement remains safe but `-Once` returns nonzero because the remote health check failed.
+Firewall-only diagnostics are read-only and may run while the task is active:
 
-## Inspect and operate the task
+```powershell
+& "C:\ProgramData\LifeDashboard\agent\youtube-guardian.ps1" -FirewallDiagnostics
+```
+
+Direct inspection commands:
+
+```powershell
+Get-NetFirewallDynamicKeywordAddress -Id "{4d36f2d8-9ec5-4ce6-a8b7-70e5267f1b26}" | Format-List *
+Get-NetFirewallRule -Name "LifeDashboard-BlockYouTubeStreams" | Format-List *
+Get-NetFirewallProfile | Format-Table Name,Enabled,DefaultInboundAction,DefaultOutboundAction
+Get-MpComputerStatus | Format-List AntivirusEnabled,AMServiceEnabled,AMProductVersion
+Get-MpPreference | Select-Object EnableNetworkProtection
+```
+
+`Addresses` can be empty until an application performs a matching DNS query. Windows also clears learned dynamic addresses at restart and relearns them from observed DNS traffic.
+
+## Manual firewall enable/disable test
+
+These commands test only the already-installed Guardian rule:
+
+```powershell
+Set-NetFirewallRule -Name "LifeDashboard-BlockYouTubeStreams" -Enabled True
+Get-NetFirewallRule -Name "LifeDashboard-BlockYouTubeStreams" | Select-Object Name,Enabled,Direction,Action
+Get-NetFirewallDynamicKeywordAddress -Id "{4d36f2d8-9ec5-4ce6-a8b7-70e5267f1b26}" | Select-Object Id,Keyword,AutoResolve,Addresses
+```
+
+```powershell
+Set-NetFirewallRule -Name "LifeDashboard-BlockYouTubeStreams" -Enabled False
+Get-NetFirewallRule -Name "LifeDashboard-BlockYouTubeStreams" | Select-Object Name,Enabled
+```
+
+The agent will restore the rule to the effective dashboard state on its next poll.
+
+## Task and log commands
 
 ```powershell
 Get-ScheduledTask -TaskName "YouTubeGuardian" | Format-List TaskName,State,Actions,Principal,Settings
 Get-ScheduledTaskInfo -TaskName "YouTubeGuardian" | Format-List *
-```
-
-```powershell
 Get-Content "C:\ProgramData\LifeDashboard\guardian.log" -Tail 100
 Get-Content "C:\ProgramData\LifeDashboard\guardian.log" -Wait -Tail 20
 ```
@@ -69,57 +116,63 @@ Start-Sleep -Seconds 2
 Start-ScheduledTask -TaskName "YouTubeGuardian"
 ```
 
-Also inspect the Task Scheduler Operational log:
+## Apply behavior
 
-```powershell
-Get-WinEvent -LogName "Microsoft-Windows-TaskScheduler/Operational" -MaxEvents 50 |
-    Where-Object { $_.Message -like "*YouTubeGuardian*" } |
-    Format-List TimeCreated,Id,LevelDisplayName,Message
-```
+Blocked:
 
-## Expected safety behavior
+- exact YouTube hosts resolve to IPv4 and IPv6 loopback;
+- the persistent outbound firewall rule is enabled for `*.googlevideo.com`;
+- a firewall failure is logged, hosts remain blocked as fallback, and polling continues.
 
-- Unrelated hosts lines are preserved.
-- Only the marked Guardian block and exact legacy YouTube entries are managed.
-- A permanent original backup is created before the first hosts modification.
-- Same-directory temporary content is validated and atomically replaced.
-- Only changed content is written, and DNS is flushed only following a successful hosts replacement.
-- A process-lifetime global mutex prevents duplicate agents and concurrent hosts editing.
-- Cached temporary permissions expire locally while offline.
-- No valid cache plus a failed request blocks YouTube.
-- One failed cycle is logged and cannot terminate the continuous loop.
+Allowed:
+
+- the managed hosts block is removed;
+- the existing firewall rule is disabled, not deleted;
+- the browser remains open; existing connections are not forcibly terminated.
+
+The agent checks actual firewall state each cycle but invokes `Set-NetFirewallRule` only when the enabled state differs. It never recreates firewall objects during polling; repair is an installation responsibility.
+
+## End-to-end test
+
+1. Run the installer and confirm one keyword and one disabled or state-appropriate Guardian rule exist.
+2. Run `-FirewallDiagnostics`; confirm Defender AV, platform, Network Protection, firewall profiles, and DoH results.
+3. In Life Dashboard select Block now.
+4. After the next poll confirm the managed hosts block exists and the Guardian rule is enabled.
+5. Open a fresh browser tab and test normal YouTube, Shorts, an embedded player, and video playback. Do not rely on a stream that was already connected.
+6. Inspect `Addresses` after a `googlevideo.com` DNS query and review the Guardian log.
+7. Select Allow indefinitely.
+8. After the next poll confirm the managed hosts block is absent and the Guardian rule is disabled; refresh or open a new connection to test playback.
+9. Disconnect the network during a temporary allowance and confirm cached expiry reenables both blocking layers locally.
+10. Temporarily rename the managed firewall rule, select Block, and confirm the error is logged while hosts blocking remains active. Rerun the installer to repair it.
+
+## Known limitations
+
+- DoH or browser Secure DNS can hide DNS responses from Defender Firewall FQDN inspection.
+- VPNs, proxies, and some tunnels can bypass or change the traffic path.
+- Previously cached IPs and direct-IP connections might not generate the DNS query required for dynamic matching.
+- Connections established before the rule is enabled are not forcibly closed. Test with a new tab, refresh, or new playback request.
+- Dynamic address learning is asynchronous, so the first connection can race rule hydration; applications normally retry.
+- Defender or domain policy can override local firewall and Network Protection configuration.
+- Third-party YouTube frontends that proxy media through their own servers are outside the YouTube domain list.
+
+The diagnostic mode detects common Windows, Chrome, Edge, VPN, and WinHTTP proxy conditions, but no local diagnostic can prove that every browser profile, extension, tunnel, or user-level proxy is absent.
 
 ## Troubleshooting
 
-### Works manually but not as Scheduled Task
+- HTTP 401: verify the raw device token and UUID match the server-side credential hash.
+- HTTP 404 or HTML: use the deployed dashboard origin, not Supabase or a URL already containing the API path.
+- HTTP 500/503: inspect dashboard server logs; the agent uses valid cache or fails closed.
+- Rule exists but streams work: run firewall diagnostics and check Network Protection, Defender platform, active firewall profile, DoH, VPN/proxy use, cached IPs, and existing connections.
+- Task running without logs: inspect the task action/working directory, Task Scheduler Operational log, SYSTEM access to `C:\ProgramData\LifeDashboard`, and the singleton mutex startup entry.
+- Hosts write failure: verify SYSTEM/highest privileges and endpoint-protection logs; failed writes preserve the original hosts file.
 
-Compare the startup log fields `identity`, `is_system`, `script_path`, `dashboard_host`, and `mutex_acquired`. Verify the task action uses the installed script, its working directory is `C:\ProgramData\LifeDashboard\agent`, and the log receives a new poll entry every 30 seconds. SYSTEM can have different proxy and certificate trust behavior than your user account. Use `-Once` after stopping the task, then test as SYSTEM with an approved administration tool if the environments still differ.
-
-### HTTP 401
-
-The device token or device ID does not match the server-side credential hash. Re-enter the raw token without quotes or whitespace changes and confirm the configured UUID. Authorization headers and tokens are never logged.
-
-### HTTP 404 or HTML instead of JSON
-
-Confirm `DASHBOARD_URL` is the deployed dashboard origin, not Supabase and not a URL containing the API path. Confirm the deployed application contains `/api/device-controls/agent`. The log reports endpoint, HTTP status, content type, JSON validity, and a truncated response body.
-
-### HTTP 500 or 503
-
-Inspect the dashboard server logs and confirm its server-only Supabase environment variables are configured. The Windows agent will use valid cache or fail closed until the server recovers.
-
-### Task says Running but no new log entries
-
-Check `Get-ScheduledTaskInfo`, the Task Scheduler Operational log, action path/arguments, and whether another process owns the Guardian mutex. Confirm SYSTEM can create and append files under `C:\ProgramData\LifeDashboard`. Re-run `install-task.ps1`; it prints the installed action and recent log lines.
-
-### SYSTEM permission or hosts write failures
-
-Confirm the task principal is `SYSTEM` with `Highest` run level. Check antivirus or endpoint-protection logs for blocked writes. Verify the hosts file exists and is not locked by security software. The agent logs the exception type/message, preserves the existing file on failure, and does not flush DNS after a failed replacement.
-
-## Uninstall
+## Uninstall and firewall cleanup
 
 ```powershell
 Stop-ScheduledTask -TaskName "YouTubeGuardian" -ErrorAction SilentlyContinue
-Unregister-ScheduledTask -TaskName "YouTubeGuardian" -Confirm:$false
+Unregister-ScheduledTask -TaskName "YouTubeGuardian" -Confirm:$false -ErrorAction SilentlyContinue
+Remove-NetFirewallRule -Name "LifeDashboard-BlockYouTubeStreams" -ErrorAction SilentlyContinue
+Remove-NetFirewallDynamicKeywordAddress -Id "{4d36f2d8-9ec5-4ce6-a8b7-70e5267f1b26}" -Confirm:$false -ErrorAction SilentlyContinue
 ```
 
-Uninstalling does not alter hosts automatically. Remove the marked block manually only if that is the intended final state.
+Uninstall does not alter hosts automatically. Remove the marked block manually only if that is the intended final state.

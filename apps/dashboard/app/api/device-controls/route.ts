@@ -39,7 +39,11 @@ export async function GET(req: NextRequest) {
     .eq('device_id', deviceId)
     .maybeSingle();
   if (error) return NextResponse.json({ error: 'Unable to read controls' }, { status: 500 });
-  return NextResponse.json({ data });
+  const { data: status, error: statusError } = await owner.supabase
+    .from('device_agent_status')
+    .select('reported_at,control_updated_at,youtube_allowed,hosts_ok,firewall_ok,enforcement_ready,agent_version')
+    .eq('device_id', deviceId).maybeSingle();
+  return NextResponse.json({ data, status: statusError ? null : status }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: NextRequest) {

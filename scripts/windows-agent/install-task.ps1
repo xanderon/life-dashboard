@@ -9,7 +9,9 @@ param(
 $ErrorActionPreference = "Stop"
 $TaskName = "YouTubeGuardian"
 $SourceScript = Join-Path $PSScriptRoot "youtube-guardian.ps1"
+$SourceFirewallHelper = Join-Path $PSScriptRoot "firewall-guardian.ps1"
 $InstalledScript = Join-Path $InstallDirectory "youtube-guardian.ps1"
+$InstalledFirewallHelper = Join-Path $InstallDirectory "firewall-guardian.ps1"
 $LogFile = "C:\ProgramData\LifeDashboard\guardian.log"
 
 function Fail-Install {
@@ -20,12 +22,17 @@ function Fail-Install {
 
 try {
     if (-not (Test-Path -LiteralPath $SourceScript -PathType Leaf)) { Fail-Install "Cannot find $SourceScript" }
+    if (-not (Test-Path -LiteralPath $SourceFirewallHelper -PathType Leaf)) { Fail-Install "Cannot find $SourceFirewallHelper" }
     $scriptText = [System.IO.File]::ReadAllText($SourceScript)
+    $helperText = [System.IO.File]::ReadAllText($SourceFirewallHelper)
     if ($scriptText -match 'YOUR_DASHBOARD_HOST|YOUR_DEVICE_UUID|YOUR_RANDOM_DEVICE_TOKEN') {
         Fail-Install "Configure DASHBOARD_URL, DEVICE_ID, and DEVICE_TOKEN before installing"
     }
     if ($scriptText.ToCharArray() | Where-Object { [int]$_ -gt 127 } | Select-Object -First 1) {
         Fail-Install "youtube-guardian.ps1 contains non-ASCII characters"
+    }
+    if ($helperText.ToCharArray() | Where-Object { [int]$_ -gt 127 } | Select-Object -First 1) {
+        Fail-Install "firewall-guardian.ps1 contains non-ASCII characters"
     }
     if (-not (Test-Path -LiteralPath $InstallDirectory)) {
         New-Item -ItemType Directory -Path $InstallDirectory -Force | Out-Null
@@ -35,7 +42,14 @@ try {
     if (-not $sourceFull.Equals($installedFull, [System.StringComparison]::OrdinalIgnoreCase)) {
         Copy-Item -LiteralPath $SourceScript -Destination $InstalledScript -Force
     }
+    $helperSourceFull = [System.IO.Path]::GetFullPath($SourceFirewallHelper)
+    $helperInstalledFull = [System.IO.Path]::GetFullPath($InstalledFirewallHelper)
+    if (-not $helperSourceFull.Equals($helperInstalledFull, [System.StringComparison]::OrdinalIgnoreCase)) {
+        Copy-Item -LiteralPath $SourceFirewallHelper -Destination $InstalledFirewallHelper -Force
+    }
     if (-not (Test-Path -LiteralPath $InstalledScript -PathType Leaf)) { Fail-Install "Installed script was not created at $InstalledScript" }
+    if (-not (Test-Path -LiteralPath $InstalledFirewallHelper -PathType Leaf)) { Fail-Install "Installed helper was not created at $InstalledFirewallHelper" }
+    . $InstalledFirewallHelper
 
     $existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
     if ($null -ne $existing) {
@@ -43,6 +57,12 @@ try {
         $deadline = (Get-Date).AddSeconds(10)
         while ((Get-ScheduledTask -TaskName $TaskName).State -eq "Running" -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 500 }
         Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+    }
+
+    Write-Host "Reconciling persistent YouTube stream firewall objects..."
+    $firewallState = Repair-GuardianFirewallObjects -Log { param($Message, $Level) Write-Host "[$Level] $Message" }
+    if (-not $firewallState.KeywordExists -or -not $firewallState.RuleExists -or $firewallState.RuleCount -ne 1) {
+        Fail-Install "Firewall object reconciliation did not produce one valid keyword and rule"
     }
 
     $arguments = '-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}"' -f $InstalledScript
@@ -74,6 +94,10 @@ try {
     Write-Host "Principal:       $($task.Principal.UserId)"
     Write-Host "Run level:       $($task.Principal.RunLevel)"
     Write-Host "Installed script: $InstalledScript"
+    Write-Host "Firewall keyword: $($firewallState.KeywordId) $($firewallState.Keyword)"
+    Write-Host "Firewall rule:    $GUARDIAN_FIREWALL_RULE_DISPLAY_NAME (enabled=$($firewallState.RuleEnabled))"
+    Write-Host "Firewall diagnostics:"
+    Get-GuardianFirewallDiagnostics | ForEach-Object { Write-Host "  $_" }
     Write-Host "Recent log lines:"
     if (Test-Path -LiteralPath $LogFile) { Get-Content -LiteralPath $LogFile -Tail 20 } else { Write-Host "No log file exists yet: $LogFile" }
     if ($task.State -ne "Running") { Fail-Install "Task did not remain running; inspect LastTaskResult and the log above" }
