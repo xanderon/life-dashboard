@@ -281,8 +281,17 @@ function ParentalControlsPanel({
       </div>
       {err && <p className="youtube-error" role="alert">{err}</p>}
       <div className="youtube-actions">
-        <button id={`ctrl-allow-${deviceId}`} disabled={busy} onClick={() => send('allow')} className="youtube-button youtube-button--primary">Permite YouTube</button>
-        <button id={`ctrl-block-${deviceId}`} disabled={busy} onClick={() => send('block')} className="youtube-button">Blochează acum</button>
+        {state === 'allowed' ? (
+          <>
+            <button id={`ctrl-block-${deviceId}`} disabled={busy} onClick={() => send('block')} className="youtube-button youtube-button--primary">Blochează YouTube</button>
+            {countdown !== null && <button id={`ctrl-allow-${deviceId}`} disabled={busy} onClick={() => send('allow')} className="youtube-button">Permite fără limită</button>}
+          </>
+        ) : (
+          <>
+            <button id={`ctrl-allow-${deviceId}`} disabled={busy} onClick={() => send('allow')} className="youtube-button youtube-button--primary">Permite YouTube</button>
+            <button id={`ctrl-block-${deviceId}`} disabled={busy} onClick={() => send('block')} className="youtube-button">Blochează acum</button>
+          </>
+        )}
       </div>
       <div className="youtube-temporary">
         <span>Permite temporar</span>
