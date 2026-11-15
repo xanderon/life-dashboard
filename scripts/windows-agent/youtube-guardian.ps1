@@ -108,7 +108,7 @@ function Test-Configuration {
     if (-not [guid]::TryParse($DEVICE_ID, [ref]$parsedId) -or $parsedId -eq [guid]::Empty) {
         Write-Log "DEVICE_ID must be a valid non-empty UUID" "FATAL"; return $false
     }
-    if ([string]::IsNullOrWhiteSpace($DEVICE_TOKEN) -or $DEVICE_TOKEN -eq "YOUR_RANDOM_DEVICE_TOKEN" -or $DEVICE_TOKEN.Length -lt 32) {
+    if ([string]::IsNullOrWhiteSpace($DEVICE_TOKEN) -or $DEVICE_TOKEN.Length -lt 32) {
         Write-Log "DEVICE_TOKEN must be configured and at least 32 characters" "FATAL"; return $false
     }
     if (-not (Test-Path -LiteralPath $HOSTS_FILE -PathType Leaf)) {
