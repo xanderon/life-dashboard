@@ -1,6 +1,7 @@
 import { DevicesCard } from '@/components/DevicesCard';
 import { FamilyScheduleCard } from '@/components/FamilyScheduleCard';
 import { LogoutButton } from '@/components/LogoutButton';
+import { MyWorkCard } from '@/components/MyWorkCard';
 import { PageShell } from '@/components/PageShell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TricorderCard } from '@/components/TricorderCard';
@@ -25,6 +26,7 @@ export default function HomePage() {
           <h2 className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">Infrastructure</h2>
           <TricorderCard />
         </section>
+        <MyWorkCard />
         <footer className="flex justify-end px-1"><LogoutButton /></footer>
       </div>
     </PageShell>
