@@ -10,7 +10,7 @@ param(
 # Life Dashboard YouTube Guardian. Windows PowerShell 5.1 compatible.
 # This program changes only hosts-file YouTube entries. It never changes DNS settings.
 
-$AGENT_VERSION = "2.3.2"
+$AGENT_VERSION = "2.3.3"
 $DASHBOARD_URL = "https://YOUR_DASHBOARD_HOST"
 $DEVICE_ID = "YOUR_DEVICE_UUID"
 $DEVICE_TOKEN = "YOUR_RANDOM_DEVICE_TOKEN"
@@ -292,7 +292,24 @@ function Set-YouTubeBlocked {
     }
 }
 
+function Reset-BrowserConnections {
+    try {
+        $processes = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+            $_.Name -in @('chrome.exe', 'msedge.exe') -and
+            $_.CommandLine -match '--type=utility' -and
+            $_.CommandLine -match '--utility-sub-type=network\.mojom\.NetworkService'
+        })
+        foreach ($process in $processes) {
+            Stop-Process -Id $process.ProcessId -Force -ErrorAction Stop
+        }
+        & "$env:SystemRoot\System32\ipconfig.exe" /flushdns | Out-Null
+        Write-Log "Browser network service restart count=$($processes.Count); DNS cache flushed"
+    } catch { Write-Log "Browser network service restart failed: $($_.Exception.Message)" "ERROR" }
+}
+
+$script:lastAppliedAllowed = $null
 function Invoke-PollCycle {
+    $previousState = Load-State
     $fetch = Fetch-ControlState
     $state = $fetch.State
     $usedCache = $false
@@ -311,6 +328,14 @@ function Invoke-PollCycle {
     if ($shouldBlock -and -not $firewallResult.Success) {
         Write-Log "Strict stream blocking failed; hosts blocking remains the active fallback" "ERROR"
     }
+    $newBlockCommand = ($fetch.Success -and $null -ne $previousState -and
+        $previousState.updated_at -and $state.updated_at -and
+        [string]$previousState.updated_at -ne [string]$state.updated_at)
+    if ($shouldBlock -and $hostsResult.Success -and
+        (($script:lastAppliedAllowed -eq $true) -or $newBlockCommand)) {
+        Reset-BrowserConnections
+    }
+    $script:lastAppliedAllowed = $allowed
     if ($fetch.Success) {
         # A rule being enabled is not proof that it can inspect every stream.
         $enforcementReady = $false

@@ -2,7 +2,7 @@
 
 The agent runs continuously as SYSTEM and polls Life Dashboard approximately every 10 seconds. Blocked mode combines an exact-hosts block with a persistent Microsoft Defender Firewall wildcard FQDN rule for `*.googlevideo.com`. Allowed mode removes the managed hosts block and disables the firewall rule. After applying a state, it reports the result and prerequisite status to the dashboard; the dashboard marks stale reports offline. Apply `apps/dashboard/supabase/device_agent_status.sql` and deploy the corresponding API before installing this version.
 
-It makes outbound HTTPS requests only, opens no inbound ports, does not close browsers, and never changes DNS, Secure DNS, proxy, VPN, Defender, or unrelated firewall settings.
+It makes outbound HTTPS requests only, opens no inbound ports, and never changes DNS servers, Secure DNS, proxy, VPN, Defender, or unrelated firewall settings. When a new block command arrives or a temporary allowance expires, it restarts Chrome and Edge network-service processes and flushes the Windows DNS cache. Browser windows stay open, but downloads and other browser connections may be interrupted. Firefox and other browsers are not covered by this connection reset; buffered media may continue temporarily.
 
 ## Files
 
