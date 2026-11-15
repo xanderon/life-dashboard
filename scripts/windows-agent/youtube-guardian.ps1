@@ -10,7 +10,7 @@ param(
 # Life Dashboard YouTube Guardian. Windows PowerShell 5.1 compatible.
 # This program changes only hosts-file YouTube entries. It never changes DNS settings.
 
-$AGENT_VERSION = "2.3.1"
+$AGENT_VERSION = "2.3.2"
 $DASHBOARD_URL = "https://YOUR_DASHBOARD_HOST"
 $DEVICE_ID = "YOUR_DEVICE_UUID"
 $DEVICE_TOKEN = "YOUR_RANDOM_DEVICE_TOKEN"
@@ -331,7 +331,23 @@ function Invoke-PollCycle {
                 enforcement_ready = [bool]$enforcementReady
                 control_updated_at = $state.updated_at
                 agent_version = $AGENT_VERSION
-            } | ConvertTo-Json -Compress
+            }
+            try {
+                $computer = Get-CimInstance Win32_ComputerSystem -ErrorAction Stop
+                $os = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
+                $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'" -ErrorAction Stop
+                $connection = Get-NetIPConfiguration -ErrorAction Stop | Where-Object { $_.IPv4DefaultGateway -and $_.IPv4Address } | Select-Object -First 1
+                $report.metrics = @{
+                    user_name = $(if ($computer.UserName) { [string]$computer.UserName } else { $null })
+                    ip_address = $(if ($connection) { [string]$connection.IPv4Address[0].IPAddress } else { $null })
+                    uptime_sec = [math]::Max(0, [math]::Floor(((Get-Date) - $os.LastBootUpTime).TotalSeconds))
+                    mem_total_mb = [math]::Round($os.TotalVisibleMemorySize / 1024)
+                    mem_used_mb = [math]::Round(($os.TotalVisibleMemorySize - $os.FreePhysicalMemory) / 1024)
+                    storage_total_gb = [math]::Round($disk.Size / 1GB)
+                    storage_used_gb = [math]::Round(($disk.Size - $disk.FreeSpace) / 1GB)
+                }
+            } catch { Write-Log "Device metrics unavailable: $($_.Exception.Message)" "WARN" }
+            $report = $report | ConvertTo-Json -Compress -Depth 4
             $headers = @{ Authorization = "Bearer $DEVICE_TOKEN"; "X-Device-Id" = $DEVICE_ID }
             Invoke-RestMethod -Uri (Get-SafeEndpoint) -Method Post -Headers $headers -Body $report -ContentType 'application/json' -TimeoutSec 10 -ErrorAction Stop | Out-Null
         } catch { Write-Log "Status report failed: $($_.Exception.Message)" "WARN" }

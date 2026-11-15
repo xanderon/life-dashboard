@@ -3,7 +3,7 @@ export function StatusPill({ status }: { status: 'ok' | 'warn' | 'down' | 'unkno
     ok: { label: 'OK', cls: 'status-pill--ok' },
     warn: { label: 'Warn', cls: 'status-pill--warn' },
     down: { label: 'Down', cls: 'status-pill--down' },
-    unknown: { label: 'Idle', cls: 'status-pill--unknown' },
+    unknown: { label: 'Necunoscut', cls: 'status-pill--unknown' },
   };
 
   const v = map[status] ?? map.unknown;

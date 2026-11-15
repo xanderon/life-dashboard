@@ -69,5 +69,20 @@ export async function POST(req: NextRequest) {
     agent_version: body.agent_version,
   }, { onConflict: 'device_id' });
   if (error) return NextResponse.json({ error: 'Unable to save status' }, { status: 503 });
+  if (body.metrics && typeof body.metrics === 'object' && !Array.isArray(body.metrics)) {
+    const m = body.metrics as Record<string, unknown>;
+    const validNumber = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1e12;
+    if ((m.user_name === null || (typeof m.user_name === 'string' && m.user_name.length <= 256)) &&
+        (m.ip_address === null || (typeof m.ip_address === 'string' && m.ip_address.length <= 45)) &&
+        ['uptime_sec', 'mem_total_mb', 'mem_used_mb', 'storage_total_gb', 'storage_used_gb'].every(k => validNumber(m[k]))) {
+      const { error: metricsError } = await auth.admin.from('devices').update({
+        user_name: m.user_name, ip_address: m.ip_address,
+        uptime_sec: m.uptime_sec, mem_total_mb: m.mem_total_mb, mem_used_mb: m.mem_used_mb,
+        storage_total_gb: m.storage_total_gb, storage_used_gb: m.storage_used_gb,
+        last_seen_at: new Date().toISOString(), status: 'ok',
+      }).eq('id', auth.deviceId);
+      if (metricsError) return NextResponse.json({ error: 'Unable to save device metrics' }, { status: 503 });
+    } else return NextResponse.json({ error: 'Invalid device metrics' }, { status: 400 });
+  }
   return NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
 }

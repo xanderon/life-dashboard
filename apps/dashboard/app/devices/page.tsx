@@ -88,6 +88,11 @@ function deriveStatus(device: DeviceRow) {
   return 'ok' as const;
 }
 
+function deriveAgentStatus(device: DeviceRow, agent: AgentStatus) {
+  if (Date.now() - Date.parse(agent.reported_at) >= 45000) return 'down' as const;
+  return device.alerts?.length ? 'warn' as const : 'ok' as const;
+}
+
 /** Returns seconds until expiry, or null if no expiry / already expired. */
 function secondsUntilExpiry(allowedUntil: string | null): number | null {
   if (!allowedUntil) return null;
@@ -143,10 +148,12 @@ function ParentalControlsPanel({
   deviceId,
   control,
   onUpdated,
+  onAgentUpdated,
 }: {
   deviceId: string;
   control: DeviceControl | null;
   onUpdated: (deviceId: string, ctrl: DeviceControl | null) => void;
+  onAgentUpdated: (deviceId: string, status: AgentStatus | null) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -181,6 +188,7 @@ function ParentalControlsPanel({
         const payload = await response.json() as { data: DeviceControl | null; status: AgentStatus | null };
         if (alive) {
           setAgent(payload.status);
+          onAgentUpdated(deviceId, payload.status);
           if (!busy) onUpdated(deviceId, payload.data);
         }
       } catch { /* The last report will become stale instead of implying success. */ }
@@ -188,7 +196,7 @@ function ParentalControlsPanel({
     void refresh();
     const interval = setInterval(() => { setClock(Date.now()); void refresh(); }, 4000);
     return () => { alive = false; clearInterval(interval); };
-  }, [deviceId, busy, onUpdated]);
+  }, [deviceId, busy, onUpdated, onAgentUpdated]);
 
   const send = useCallback(
     async (action: 'block' | 'allow' | 'allow_temporarily', minutes?: 15 | 30 | 60) => {
@@ -268,7 +276,7 @@ function ParentalControlsPanel({
           {!control ? 'Neconfigurat' : !agent ? 'Fara confirmare' : !online ? 'Agent offline' : !matches ? 'Se aplica' : !agent.hosts_ok || !agent.firewall_ok ? 'Eroare la aplicare' : !agent.youtube_allowed && !agent.enforcement_ready ? 'Blocare limitata' : agent.youtube_allowed ? 'Reguli aplicate · ON' : 'Reguli aplicate · OFF'}
         </span>
       </div>
-      {agent && <div className="mt-2 text-[11px] text-[var(--muted)]">Agent: {fmtLastSeen(agent.reported_at)} · {agent.agent_version}{!agent.youtube_allowed && !agent.enforcement_ready ? ' · Protectia fluxurilor video este incompleta' : ''}. Regulile nu garanteaza oprirea conexiunilor deja deschise sau a tunelurilor.</div>}
+      {agent && <div className="mt-2 text-[11px] text-[var(--muted)]">Ultima confirmare: {fmtLastSeen(agent.reported_at)}{!agent.youtube_allowed && !agent.enforcement_ready ? ' · Protectia fluxurilor video este incompleta' : ''}</div>}
 
       {/* Countdown */}
       {control?.youtube_allowed && control.youtube_allowed_until && countdown !== null && (
@@ -362,6 +370,7 @@ function ParentalControlsPanel({
 export default function DevicesPage() {
   const [devices, setDevices] = useState<DeviceRow[] | null>(null);
   const [controls, setControls] = useState<ControlMap>({});
+  const [agentStatuses, setAgentStatuses] = useState<Record<string, AgentStatus | null>>({});
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -402,13 +411,23 @@ export default function DevicesPage() {
     }
 
     load();
-    return () => { alive = false; };
+    const refresh = setInterval(async () => {
+      const { data, error } = await supabase.from('devices')
+        .select('id,slug,name,user_name,os,status,ip_address,last_seen_at,uptime_sec,mem_total_mb,mem_used_mb,storage_total_gb,storage_used_gb,storage_volumes,alerts')
+        .order('name', { ascending: true });
+      if (alive && !error) setDevices((data ?? []) as DeviceRow[]);
+    }, 10000);
+    return () => { alive = false; clearInterval(refresh); };
   }, []);
 
   const derived = useMemo(() => {
     const rows = devices ?? [];
-    return rows.map((d) => ({ ...d, derivedStatus: deriveStatus(d) })) as DeviceWithDerivedStatus[];
-  }, [devices]);
+    return rows.map((d) => ({ ...d, derivedStatus: agentStatuses[d.id] ? deriveAgentStatus(d, agentStatuses[d.id]!) : deriveStatus(d) })) as DeviceWithDerivedStatus[];
+  }, [devices, agentStatuses]);
+
+  const handleAgentUpdated = useCallback((id: string, status: AgentStatus | null) => {
+    setAgentStatuses(prev => ({ ...prev, [id]: status }));
+  }, []);
 
   const handleControlUpdated = useCallback((deviceId: string, ctrl: DeviceControl | null) => {
     setControls((prev) => {
@@ -605,6 +624,7 @@ export default function DevicesPage() {
                     deviceId={device.id}
                     control={controls[device.id] ?? null}
                     onUpdated={handleControlUpdated}
+                    onAgentUpdated={handleAgentUpdated}
                   />
                 </article>
               ))
