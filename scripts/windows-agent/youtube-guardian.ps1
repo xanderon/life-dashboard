@@ -10,7 +10,7 @@ param(
 # Life Dashboard YouTube Guardian. Windows PowerShell 5.1 compatible.
 # This program changes only hosts-file YouTube entries. It never changes DNS settings.
 
-$AGENT_VERSION = "2.3.0"
+$AGENT_VERSION = "2.3.1"
 $DASHBOARD_URL = "https://YOUR_DASHBOARD_HOST"
 $DEVICE_ID = "YOUR_DEVICE_UUID"
 $DEVICE_TOKEN = "YOUR_RANDOM_DEVICE_TOKEN"
@@ -59,7 +59,7 @@ $MANAGED_HOSTNAMES = New-Object 'System.Collections.Generic.HashSet[string]' ([S
 foreach ($group in $YOUTUBE_HOST_GROUPS.Values) {
     foreach ($hostname in $group) { [void]$MANAGED_HOSTNAMES.Add($hostname) }
 }
-$ASCII = New-Object System.Text.ASCIIEncoding($false)
+$ASCII = [System.Text.Encoding]::ASCII
 $script:ConsoleLogging = ([bool]$Once -or [bool]$FirewallDiagnostics)
 
 function Ensure-DataDir {
