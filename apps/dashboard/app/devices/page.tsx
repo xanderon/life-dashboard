@@ -289,7 +289,7 @@ function ParentalControlsPanel({
         ) : (
           <>
             <button id={`ctrl-allow-${deviceId}`} disabled={busy} onClick={() => send('allow')} className="youtube-button youtube-button--primary">Permite YouTube</button>
-            <button id={`ctrl-block-${deviceId}`} disabled={busy} onClick={() => send('block')} className="youtube-button">Blochează acum</button>
+            {state !== 'blocked' && <button id={`ctrl-block-${deviceId}`} disabled={busy} onClick={() => send('block')} className="youtube-button">{state === 'error' || state === 'limited' ? 'Reîncearcă blocarea' : 'Blochează acum'}</button>}
           </>
         )}
       </div>
