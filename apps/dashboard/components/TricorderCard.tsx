@@ -1,24 +1,14 @@
-'use client';
-
 import { ArrowUpRight, Radio } from 'lucide-react';
 import Link from 'next/link';
 
 export function TricorderCard() {
   return (
-    <section className="surface-card surface-card--tools p-4 sm:p-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-lg font-semibold tracking-tight">Tricorder</div>
-          <div className="mt-1 text-sm text-[var(--muted)]">Open the dedicated interface.</div>
-        </div>
-        <Link className="app-open-button" href="/tricorder">
-          <span className="app-open-button__icon">
-            <Radio aria-hidden="true" />
-          </span>
-          <span>Open</span>
-          <ArrowUpRight aria-hidden="true" className="h-4 w-4 text-[var(--muted)]" />
-        </Link>
+    <Link href="/tricorder" className="surface-card surface-card--subtle flex items-center justify-between gap-4 p-5 transition-opacity hover:opacity-80 sm:p-6">
+      <div className="flex items-center gap-4">
+        <span className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-[var(--muted)]"><Radio size={20} aria-hidden="true" /></span>
+        <div><h2 className="font-semibold tracking-tight">Tricorder</h2><p className="mt-1 text-sm text-[var(--muted)]">Instrumente pentru verificări rapide.</p></div>
       </div>
-    </section>
+      <ArrowUpRight size={18} className="shrink-0 text-[var(--muted)]" aria-hidden="true" />
+    </Link>
   );
 }

@@ -3,22 +3,14 @@ import Link from 'next/link';
 
 export function FamilyScheduleCard() {
   return (
-    <section className="surface-card surface-card--personal p-4 sm:p-5">
-      <div className="app-card-shell min-w-0">
-        <div className="app-card-head">
-          <div className="app-card-meta">
-            <div className="app-card-kicker">Familie</div>
-            <div className="app-card-title text-lg">Orar Mina & Leon</div>
-          </div>
-          <span className="app-card-icon"><CalendarDays aria-hidden="true" /></span>
-        </div>
-        <div className="app-card-description">Toată săptămâna, activitățile și suprapunerile într-un singur loc.</div>
-        <Link className="app-open-button app-card-footer" href="/family-schedule">
-          <span className="app-open-button__icon"><CalendarDays aria-hidden="true" /></span>
-          <span>Deschide orarul</span>
-          <ArrowUpRight aria-hidden="true" className="h-4 w-4 text-[var(--muted)]" />
-        </Link>
+    <Link href="/family-schedule" className="surface-card surface-card--subtle group block p-6 transition-opacity hover:opacity-80">
+      <div className="flex items-start justify-between gap-4">
+        <span className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-3 text-[var(--muted)]"><CalendarDays size={20} aria-hidden="true" /></span>
+        <ArrowUpRight size={18} className="text-[var(--muted)]" aria-hidden="true" />
       </div>
-    </section>
+      <h2 className="mt-7 text-xl font-semibold tracking-tight">Orar Mina & Leon</h2>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Activitățile și programul familiei, într-un singur loc.</p>
+      <span className="mt-6 inline-block text-sm font-semibold">Deschide orarul <span aria-hidden="true">→</span></span>
+    </Link>
   );
 }
