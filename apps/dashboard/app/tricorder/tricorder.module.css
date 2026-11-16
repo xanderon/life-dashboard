@@ -42,3 +42,43 @@
 .foot { display:flex; justify-content:space-between; gap:5px; margin-top:10px; color:#95a19c; font-size:7px; letter-spacing:.08em; }
 @media (max-height:700px) { .stage { align-items:flex-start; } .top { height:44px; } .scope { height:160px; } .screenTitle { margin-top:8px; } .deckHead { margin-top:7px; } .modeButton { min-height:35px; } .scanButton { min-height:37px; } }
 @media (prefers-reduced-motion:reduce) { .scopeScanning .sweep { animation:none; } }
+
+/* A more tactile field unit, sized for a phone held in one hand. */
+.soundButton { display:flex; align-items:center; gap:4px; min-width:48px; min-height:44px; justify-content:center; border:1px solid #53615f; border-radius:9px; background:#1b2729; color:#c6d7cb; font-size:19px; cursor:pointer; }
+.soundButton small { font-size:8px; letter-spacing:.04em; }
+.soundButton[aria-pressed="true"] { border-color:#9aca97; color:#baf3be; }
+.stage { padding-left:8px; padding-right:8px; }
+.device { width:min(100%, 460px); }
+.top { height:58px; }
+.back { width:44px; height:44px; flex:none; }
+.brand span { font-size:9px; }
+.brand strong { font-size:19px; }
+.hardware { padding:12px 12px 14px; }
+.screen { padding:12px 12px 11px; }
+.screenTop, .screenTitle small, .channel { font-size:10px; }
+.screenTitle h1 { font-size:20px; }
+.scope { height:clamp(200px, 34dvh, 330px); }
+.scopeLeft, .scopeRight, .scopeBottom { font-size:10px; }
+.scopeLeft b, .scopeRight b { font-size:15px; }
+.readout { min-height:40px; font-size:11px; }
+.readout small { font-size:9px; }
+.readings span { font-size:9px; }
+.readings strong { font-size:12px; }
+.deckHead { font-size:9px; }
+.modeButton { min-height:48px; font-size:12px; }
+.modeButton small { font-size:9px; }
+.scanButton { min-height:52px; font-size:12px; }
+.signalBars { height:44px; }
+.foot { font-size:8px; }
+.contact { z-index:2; position:absolute; width:44px; height:44px; transform:translate(-50%,-50%); display:grid; place-items:center; border:0; background:transparent; cursor:pointer; border-radius:50%; box-shadow:none; }
+.contact span { width:10px; height:10px; border:1px solid #d9efb9; background:#b5e2ae; border-radius:50%; box-shadow:0 0 12px #c4ffc2; }
+.contactSelected span { width:15px; height:15px; border:2px solid #e6f5c9; box-shadow:0 0 0 4px #b8eaba24,0 0 16px #c4ffc2; }
+.contact:focus-visible { outline:2px solid #e0f9cf; outline-offset:1px; }
+.contactLabel { z-index:1; transform:translate(14px,-23px); pointer-events:none; font-size:10px; white-space:nowrap; }
+.signalActive span { animation:signal 0.7s ease-in-out infinite alternate; }
+.signalActive span:nth-child(2n) { animation-delay:-.35s; }
+.signalActive span:nth-child(3n) { animation-delay:-.15s; }
+@keyframes signal { from { transform:scaleY(.45); opacity:.55; } to { transform:scaleY(1.2); opacity:1; } }
+@media (max-height:800px) { .scope { height:clamp(180px, 29dvh, 245px); } .top { height:50px; } .modeButton { min-height:44px; } .scanButton { min-height:46px; } }
+@media (max-height:650px) { .stage { align-items:flex-start; } .scope { height:160px; } }
+@media (prefers-reduced-motion:reduce) { .signalActive span { animation:none; } }
