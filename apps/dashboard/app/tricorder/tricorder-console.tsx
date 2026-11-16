@@ -6,6 +6,7 @@ import styles from './tricorder.module.css';
 
 type Mode = 'life' | 'environment' | 'signal';
 type Phase = 'standby' | 'scanning' | 'complete';
+type Overlay = 'mission' | 'log' | null;
 type Finding = { name: string; message: string; readings: [string, string][] };
 
 const modes: Record<Mode, { label: string; code: string; title: string; findings: Finding[] }> = {
@@ -52,8 +53,17 @@ export function TricorderConsole() {
   const [sweep, setSweep] = useState(0);
   const [selectedContact, setSelectedContact] = useState(0);
   const [sound, setSound] = useState(false);
+  const [overlay, setOverlay] = useState<Overlay>(null);
+  const [log, setLog] = useState<{ key: string; mode: Mode; name: string; message: string }[]>([]);
+  const [notice, setNotice] = useState('');
   const current = modes[mode];
   const finding = current.findings[(selectedContact + Math.max(0, sweep - 1)) % current.findings.length];
+  const logged = log.some(entry => entry.key === `${mode}:${finding.name}`);
+  const modesLogged = new Set(log.map(entry => entry.mode)).size;
+  const contacts = positions.map((position, index) => ({
+    x: Math.max(20, Math.min(80, position.x + ((sweep * 13 + index * 9) % 17) - 8)),
+    y: Math.max(20, Math.min(80, position.y + ((sweep * 7 + index * 5) % 15) - 7)),
+  }));
 
   useEffect(() => {
     if (phase !== 'scanning') return;
@@ -63,15 +73,25 @@ export function TricorderConsole() {
 
   function selectMode(next: Mode) {
     feedback(sound, 540);
-    setMode(next); setPhase('standby'); setSelectedContact(0);
+    setMode(next); setPhase('standby'); setSelectedContact(0); setOverlay(null); setNotice('');
   }
   function scan() {
     feedback(sound, 740);
-    setSelectedContact(0); setSweep(value => value + 1); setPhase('scanning');
+    setSelectedContact(0); setSweep(value => value + 1); setPhase('scanning'); setOverlay(null); setNotice('');
   }
   function selectContact(index: number) {
     feedback(sound, 850);
-    setSelectedContact(index);
+    setSelectedContact(index); setNotice('');
+  }
+  function logFinding() {
+    feedback(sound, 970);
+    if (logged) { setNotice('ALREADY IN LOG'); return; }
+    setLog(previous => [...previous, { key: `${mode}:${finding.name}`, mode, name: finding.name, message: finding.message }]);
+    setNotice('SAVED TO MISSION LOG');
+  }
+  function showOverlay(next: Exclude<Overlay, null>) {
+    feedback(sound, 610);
+    setOverlay(previous => previous === next ? null : next);
   }
 
   return (
@@ -93,22 +113,27 @@ export function TricorderConsole() {
             <div className={`${styles.scope} ${phase === 'scanning' ? styles.scopeScanning : ''}`}>
               <div className={styles.grid} /><div className={styles.ring1} /><div className={styles.ring2} /><div className={styles.ring3} />
               <div className={styles.crosshair} /><div className={styles.sweep} /><div className={styles.center} />
-              {phase === 'complete' && positions.map((position, index) => <button type="button" key={index} aria-label={`Selectează contactul ${index + 1}`} aria-pressed={selectedContact === index} onClick={() => selectContact(index)} className={`${styles.contact} ${selectedContact === index ? styles.contactSelected : ''}`} style={{ left: `${position.x}%`, top: `${position.y}%` }}><span /></button>)}
-              {phase === 'complete' && <span className={styles.contactLabel} style={{ left: `${positions[selectedContact].x}%`, top: `${positions[selectedContact].y}%` }}>{finding.name}</span>}
+              {phase === 'complete' && !overlay && contacts.map((position, index) => <button type="button" key={index} aria-label={`Selectează contactul ${index + 1}`} aria-pressed={selectedContact === index} onClick={() => selectContact(index)} className={`${styles.contact} ${selectedContact === index ? styles.contactSelected : ''}`} style={{ left: `${position.x}%`, top: `${position.y}%` }}><span /></button>)}
+              {phase === 'complete' && !overlay && <span className={styles.contactLabel} style={{ left: `${contacts[selectedContact].x}%`, top: `${contacts[selectedContact].y}%` }}>{finding.name}</span>}
               <div className={styles.scopeLeft}>RANGE<br/><b>025</b><br/>METERS</div><div className={styles.scopeRight}>AZ<br/><b>084°</b><br/>ELEV 00°</div>
               <div className={styles.scopeBottom}><span>SECTOR 04</span><span>{phase === 'complete' ? 'TAP A CONTACT' : '∷ ∷ ∷ ∷ ∷'}</span></div>
+              {overlay && <div className={styles.overlay}>
+                <div className={styles.overlayHeader}><strong>{overlay === 'mission' ? 'MISSION BRIEF' : 'MISSION LOG · SESSION'}</strong><button type="button" onClick={() => setOverlay(null)} aria-label="Închide">×</button></div>
+                {overlay === 'mission' ? <><p>EXPLORE THE UNKNOWN</p><div className={styles.missionText}>Scan and log one discovery in each sensor mode.</div><div className={styles.missionList}>{(Object.keys(modes) as Mode[]).map(key => <span key={key} className={log.some(entry => entry.mode === key) ? styles.missionDone : ''}>{log.some(entry => entry.mode === key) ? '✓' : '○'} {modes[key].label}</span>)}</div><div className={styles.missionProgress}>{modesLogged === 3 ? 'MISSION COMPLETE ✦' : `${modesLogged} / 3 SENSOR MODES`}</div></> : <div className={styles.logList}>{log.length ? [...log].reverse().map(entry => <div key={entry.key}><span>{modes[entry.mode].label} / {entry.name}</span><strong>{entry.message}</strong></div>) : <p>NO DISCOVERIES YET<br />SCAN, SELECT A CONTACT, THEN SAVE IT.</p>}</div>}
+              </div>}
             </div>
-            <div className={styles.readout} aria-live="polite"><span className={styles.readoutDot} /><span>{phase === 'standby' ? 'READY FOR SCAN' : phase === 'scanning' ? 'SCANNING SECTOR…' : finding.message}</span><small>{phase === 'complete' ? 'COMPLETE' : phase === 'scanning' ? 'ACTIVE' : 'STANDBY'}</small></div>
+            <div className={styles.readout} aria-live="polite"><span className={styles.readoutDot} /><span>{notice || (phase === 'standby' ? 'READY FOR SCAN' : phase === 'scanning' ? 'SCANNING SECTOR…' : finding.message)}</span><small>{phase === 'complete' ? 'COMPLETE' : phase === 'scanning' ? 'ACTIVE' : 'STANDBY'}</small></div>
             <div className={styles.readings}>{current.findings[0].readings.map(([label], index) => <div key={label}><span>{label}</span><strong>{phase === 'complete' ? finding.readings[index][1] : '— —'}</strong></div>)}</div>
           </section>
 
           <div className={styles.deckHead}><span>SENSOR ARRAY</span><span>SELECT MODE</span></div>
           <div className={styles.modeRow} role="group" aria-label="Select scan mode">{(Object.keys(modes) as Mode[]).map((key, index) => <button key={key} type="button" onClick={() => selectMode(key)} aria-pressed={mode === key} className={`${styles.modeButton} ${mode === key ? styles.selected : ''}`}><small>0{index + 1}</small><span>{modes[key].label}</span><i /></button>)}</div>
           <div className={styles.bottomDeck}>
-            <div className={`${styles.signalBars} ${phase === 'scanning' ? styles.signalActive : ''}`} aria-hidden="true"><span /><span /><span /><span /><span /><span /><span /><span /><span /></div>
+            <button type="button" className={styles.missionButton} onClick={() => showOverlay('mission')} aria-label={`Misiune: ${modesLogged} din 3 moduri descoperite`}>MISSION <strong>{modesLogged}/3</strong></button>
             <button type="button" className={styles.scanButton} onClick={scan}><span className={styles.scanIcon}>✳</span>{phase === 'scanning' ? 'RESTART SCAN' : phase === 'complete' ? 'SCAN AGAIN' : 'INITIATE SCAN'}</button>
-            <div className={styles.deckNumber}>24<span>●</span>07</div>
+            <button type="button" className={styles.logButton} onClick={() => showOverlay('log')} aria-label={`Jurnal: ${log.length} descoperiri`}>LOG <strong>{log.length}</strong></button>
           </div>
+          {phase === 'complete' && <button type="button" className={styles.saveFinding} onClick={logFinding}>{logged ? '✓ SAVED TO LOG' : '+ SAVE DISCOVERY'}</button>}
           <div className={styles.foot}><span>STARFLEET PROPERTY · 2369</span><span>SIMULATED READINGS</span></div>
         </div>
       </div>

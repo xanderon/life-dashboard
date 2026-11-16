@@ -82,3 +82,23 @@
 @media (max-height:800px) { .scope { height:clamp(180px, 29dvh, 245px); } .top { height:50px; } .modeButton { min-height:44px; } .scanButton { min-height:46px; } }
 @media (max-height:650px) { .stage { align-items:flex-start; } .scope { height:160px; } }
 @media (prefers-reduced-motion:reduce) { .signalActive span { animation:none; } }
+
+/* Mission controls and the in-screen field log. */
+.missionButton,.logButton { flex:1; min-width:0; min-height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border:1px solid #11191a; border-radius:5px; color:#a6bab0; background:linear-gradient(#414e4e,#202b2b); box-shadow:inset 0 1px #89958b66,0 2px 2px #0009; font:9px var(--font-tricorder-mono),monospace; letter-spacing:.06em; cursor:pointer; }
+.missionButton strong,.logButton strong { color:#cce6c7; font-size:12px; font-weight:400; }
+.scanButton { flex:1.8; }
+.saveFinding { display:block; width:100%; min-height:34px; margin-top:7px; border:1px solid #849a7f; border-radius:5px; color:#d0e6c4; background:linear-gradient(#34483c,#233329); font:10px var(--font-tricorder-mono),monospace; letter-spacing:.08em; cursor:pointer; }
+.overlay { position:absolute; z-index:5; inset:0; display:flex; flex-direction:column; padding:13px; background:linear-gradient(145deg,#102d2aeb,#071918f7); color:#c5e3c4; }
+.overlayHeader { display:flex; align-items:center; justify-content:space-between; gap:8px; color:#d6e9cb; font-size:12px; letter-spacing:.1em; border-bottom:1px solid #77ad8d66; padding-bottom:6px; }
+.overlayHeader button { min-width:38px; min-height:38px; margin:-8px -8px -8px 0; border:0; border-radius:5px; background:transparent; color:#d6e9cb; font-size:25px; cursor:pointer; }
+.overlay p { color:#a9d2b2; font-size:10px; line-height:1.5; margin:12px 0 7px; }
+.missionText { max-width:230px; font-size:13px; line-height:1.35; }
+.missionList { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
+.missionList span { padding:7px; border:1px solid #4c7962; color:#87a895; font-size:10px; }
+.missionList .missionDone { color:#dbf5c7; border-color:#a0d5a1; }
+.missionProgress { margin-top:auto; padding-top:8px; color:#c8e5b7; font-size:10px; letter-spacing:.08em; }
+.logList { overflow-y:auto; scrollbar-width:thin; }
+.logList div { display:flex; flex-direction:column; gap:3px; padding:9px 0; border-bottom:1px solid #77ad8d44; }
+.logList div span { color:#86ae96; font-size:9px; }
+.logList div strong { font-size:11px; font-weight:400; text-transform:uppercase; }
+@media (max-height:800px) { .missionButton,.logButton { min-height:46px; } .saveFinding { min-height:30px; } }
