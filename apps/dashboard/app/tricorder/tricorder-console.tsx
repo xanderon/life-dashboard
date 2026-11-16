@@ -8,6 +8,14 @@ type Mode = 'life' | 'environment' | 'signal';
 type Phase = 'standby' | 'scanning' | 'complete';
 type Overlay = 'mission' | 'log' | null;
 type Finding = { name: string; message: string; readings: [string, string][] };
+type LogEntry = { key: string; mode: Mode; name: string; message: string };
+
+const LOG_KEY = 'tricorder:mission-log:v1';
+const objectives: { mode: Mode; message: string; hint: string }[] = [
+  { mode: 'life', message: 'Unknown lifeform detected', hint: 'Find an unknown lifeform' },
+  { mode: 'environment', message: 'Temperature variation detected', hint: 'Find a temperature anomaly' },
+  { mode: 'signal', message: 'Unidentified transmission', hint: 'Find an unidentified signal' },
+];
 
 const modes: Record<Mode, { label: string; code: string; title: string; findings: Finding[] }> = {
   life: { label: 'LIFE', code: 'BIO / 01', title: 'LIFE SIGNS', findings: [
@@ -54,12 +62,15 @@ export function TricorderConsole() {
   const [selectedContact, setSelectedContact] = useState(0);
   const [sound, setSound] = useState(false);
   const [overlay, setOverlay] = useState<Overlay>(null);
-  const [log, setLog] = useState<{ key: string; mode: Mode; name: string; message: string }[]>([]);
+  const [log, setLog] = useState<LogEntry[]>([]);
+  const [logLoaded, setLogLoaded] = useState(false);
   const [notice, setNotice] = useState('');
   const current = modes[mode];
   const finding = current.findings[(selectedContact + Math.max(0, sweep - 1)) % current.findings.length];
   const logged = log.some(entry => entry.key === `${mode}:${finding.name}`);
-  const modesLogged = new Set(log.map(entry => entry.mode)).size;
+  const completed = objectives.map(objective => log.some(entry => entry.mode === objective.mode && entry.message === objective.message));
+  const completedCount = completed.filter(Boolean).length;
+  const nextObjective = objectives.find((_, index) => !completed[index]);
   const contacts = positions.map((position, index) => ({
     x: Math.max(20, Math.min(80, position.x + ((sweep * 13 + index * 9) % 17) - 8)),
     y: Math.max(20, Math.min(80, position.y + ((sweep * 7 + index * 5) % 15) - 7)),
@@ -70,6 +81,28 @@ export function TricorderConsole() {
     const timer = window.setTimeout(() => setPhase('complete'), 2800);
     return () => window.clearTimeout(timer);
   }, [phase, sweep]);
+
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      try {
+        const saved: unknown = JSON.parse(localStorage.getItem(LOG_KEY) ?? '[]');
+        if (Array.isArray(saved)) {
+          setLog(saved.filter((entry): entry is LogEntry => entry && typeof entry.key === 'string' &&
+            (entry.mode === 'life' || entry.mode === 'environment' || entry.mode === 'signal') &&
+            typeof entry.name === 'string' && typeof entry.message === 'string').slice(0, 9));
+        }
+      } catch { /* A damaged or unavailable local log starts empty. */ }
+      setLogLoaded(true);
+    });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!logLoaded) return;
+    try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch { /* Storage is optional. */ }
+  }, [log, logLoaded]);
 
   function selectMode(next: Mode) {
     feedback(sound, 540);
@@ -86,8 +119,9 @@ export function TricorderConsole() {
   function logFinding() {
     feedback(sound, 970);
     if (logged) { setNotice('ALREADY IN LOG'); return; }
+    const advancesMission = objectives.some((objective, index) => !completed[index] && objective.mode === mode && objective.message === finding.message);
     setLog(previous => [...previous, { key: `${mode}:${finding.name}`, mode, name: finding.name, message: finding.message }]);
-    setNotice('SAVED TO MISSION LOG');
+    setNotice(advancesMission ? (completedCount === 2 ? 'MISSION COMPLETE!' : 'ANOMALY IDENTIFIED!') : 'SAVED TO MISSION LOG');
   }
   function showOverlay(next: Exclude<Overlay, null>) {
     feedback(sound, 610);
@@ -118,22 +152,22 @@ export function TricorderConsole() {
               <div className={styles.scopeLeft}>RANGE<br/><b>025</b><br/>METERS</div><div className={styles.scopeRight}>AZ<br/><b>084°</b><br/>ELEV 00°</div>
               <div className={styles.scopeBottom}><span>SECTOR 04</span><span>{phase === 'complete' ? 'TAP A CONTACT' : '∷ ∷ ∷ ∷ ∷'}</span></div>
               {overlay && <div className={styles.overlay}>
-                <div className={styles.overlayHeader}><strong>{overlay === 'mission' ? 'MISSION BRIEF' : 'MISSION LOG · SESSION'}</strong><button type="button" onClick={() => setOverlay(null)} aria-label="Închide">×</button></div>
-                {overlay === 'mission' ? <><p>EXPLORE THE UNKNOWN</p><div className={styles.missionText}>Scan and log one discovery in each sensor mode.</div><div className={styles.missionList}>{(Object.keys(modes) as Mode[]).map(key => <span key={key} className={log.some(entry => entry.mode === key) ? styles.missionDone : ''}>{log.some(entry => entry.mode === key) ? '✓' : '○'} {modes[key].label}</span>)}</div><div className={styles.missionProgress}>{modesLogged === 3 ? 'MISSION COMPLETE ✦' : `${modesLogged} / 3 SENSOR MODES`}</div></> : <div className={styles.logList}>{log.length ? [...log].reverse().map(entry => <div key={entry.key}><span>{modes[entry.mode].label} / {entry.name}</span><strong>{entry.message}</strong></div>) : <p>NO DISCOVERIES YET<br />SCAN, SELECT A CONTACT, THEN SAVE IT.</p>}</div>}
+                <div className={styles.overlayHeader}><strong>{overlay === 'mission' ? 'MISSION BRIEF' : 'MISSION LOG'}</strong><button type="button" onClick={() => setOverlay(null)} aria-label="Închide">×</button></div>
+                {overlay === 'mission' ? <><p>YOUR ASSIGNMENT</p><div className={styles.missionText}>{nextObjective ? nextObjective.hint : 'All anomalies identified. Mission complete!'}</div><div className={styles.missionList}>{objectives.map((objective, index) => <span key={objective.mode} className={completed[index] ? styles.missionDone : ''}>{completed[index] ? '✓' : '○'} {modes[objective.mode].label}</span>)}</div><div className={styles.missionProgress}>{completedCount === 3 ? 'MISSION COMPLETE ✦' : `${completedCount} / 3 ANOMALIES`}</div>{completedCount === 3 && <button type="button" className={styles.restartMission} onClick={() => { if (window.confirm('Start a new mission and clear this device’s discovery log?')) { setLog([]); setNotice('NEW MISSION READY'); setPhase('standby'); setOverlay(null); } }}>NEW MISSION</button>}</> : <div className={styles.logList}>{log.length ? [...log].reverse().map(entry => <div key={entry.key}><span>{modes[entry.mode].label} / {entry.name}</span><strong>{entry.message}</strong></div>) : <p>NO DISCOVERIES YET<br />SCAN, SELECT A CONTACT, THEN SAVE IT.</p>}</div>}
               </div>}
             </div>
-            <div className={styles.readout} aria-live="polite"><span className={styles.readoutDot} /><span>{notice || (phase === 'standby' ? 'READY FOR SCAN' : phase === 'scanning' ? 'SCANNING SECTOR…' : finding.message)}</span><small>{phase === 'complete' ? 'COMPLETE' : phase === 'scanning' ? 'ACTIVE' : 'STANDBY'}</small></div>
+            <div className={styles.readout} aria-live="polite"><span className={styles.readoutDot} /><span>{notice || (phase === 'standby' ? (nextObjective ? `MISSION: ${modes[nextObjective.mode].label} / ${nextObjective.hint}` : 'MISSION COMPLETE') : phase === 'scanning' ? 'SCANNING SECTOR…' : finding.message)}</span><small>{phase === 'complete' ? 'COMPLETE' : phase === 'scanning' ? 'ACTIVE' : 'STANDBY'}</small></div>
             <div className={styles.readings}>{current.findings[0].readings.map(([label], index) => <div key={label}><span>{label}</span><strong>{phase === 'complete' ? finding.readings[index][1] : '— —'}</strong></div>)}</div>
           </section>
 
           <div className={styles.deckHead}><span>SENSOR ARRAY</span><span>SELECT MODE</span></div>
           <div className={styles.modeRow} role="group" aria-label="Select scan mode">{(Object.keys(modes) as Mode[]).map((key, index) => <button key={key} type="button" onClick={() => selectMode(key)} aria-pressed={mode === key} className={`${styles.modeButton} ${mode === key ? styles.selected : ''}`}><small>0{index + 1}</small><span>{modes[key].label}</span><i /></button>)}</div>
           <div className={styles.bottomDeck}>
-            <button type="button" className={styles.missionButton} onClick={() => showOverlay('mission')} aria-label={`Misiune: ${modesLogged} din 3 moduri descoperite`}>MISSION <strong>{modesLogged}/3</strong></button>
+            <button type="button" className={styles.missionButton} onClick={() => showOverlay('mission')} aria-label={`Misiune: ${completedCount} din 3 anomalii descoperite`}>MISSION <strong>{completedCount}/3</strong></button>
             <button type="button" className={styles.scanButton} onClick={scan}><span className={styles.scanIcon}>✳</span>{phase === 'scanning' ? 'RESTART SCAN' : phase === 'complete' ? 'SCAN AGAIN' : 'INITIATE SCAN'}</button>
             <button type="button" className={styles.logButton} onClick={() => showOverlay('log')} aria-label={`Jurnal: ${log.length} descoperiri`}>LOG <strong>{log.length}</strong></button>
           </div>
-          {phase === 'complete' && <button type="button" className={styles.saveFinding} onClick={logFinding}>{logged ? '✓ SAVED TO LOG' : '+ SAVE DISCOVERY'}</button>}
+          <button type="button" className={styles.saveFinding} onClick={logFinding} disabled={phase !== 'complete' || logged}>{phase !== 'complete' ? 'SELECT A CONTACT TO SAVE' : logged ? '✓ SAVED TO LOG' : '+ SAVE DISCOVERY'}</button>
           <div className={styles.foot}><span>STARFLEET PROPERTY · 2369</span><span>SIMULATED READINGS</span></div>
         </div>
       </div>

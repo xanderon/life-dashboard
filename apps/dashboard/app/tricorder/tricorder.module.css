@@ -102,3 +102,10 @@
 .logList div span { color:#86ae96; font-size:9px; }
 .logList div strong { font-size:11px; font-weight:400; text-transform:uppercase; }
 @media (max-height:800px) { .missionButton,.logButton { min-height:46px; } .saveFinding { min-height:30px; } }
+/* Keep controls anchored as scan state changes. */
+.saveFinding { min-height:44px; }
+.saveFinding:disabled { opacity:.48; cursor:default; }
+.readout { height:40px; min-height:40px; overflow:hidden; }
+.readout > span:nth-child(2) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media (max-height:820px) { .scope { height:clamp(170px, 26dvh, 218px); } .saveFinding { min-height:44px; } }
+.restartMission { min-height:44px; margin-top:5px; padding:0 12px; border:1px solid #a0d5a1; border-radius:4px; color:#d6e9cb; background:#315640; font:10px var(--font-tricorder-mono),monospace; letter-spacing:.08em; cursor:pointer; }
